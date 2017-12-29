@@ -64,7 +64,7 @@ let translate = function (matrix: mathjs.Matrix, vector: Point3D) {
 	]));
 };
 
-class Scene {
+class View {
 	private stack: mathjs.Matrix[];
 
 	public constructor() {
@@ -110,4 +110,4 @@ class Scene {
 	}
 }
 
-export { Point2D, Point3D, Scene };
+export { Point2D, Point3D, View };
