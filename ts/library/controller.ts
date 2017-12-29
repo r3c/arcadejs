@@ -45,7 +45,7 @@ class Input {
 		this.presses = new Map<ButtonId, boolean>();
 
 		// Define and attach event listeners
-		let callbacks = {
+		const callbacks = {
 			'contextmenu': (event: Event) => {}, // NoOp, just disable context menu on canvas
 			'keydown': (event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, true),
 			'keyup': (event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, false),
@@ -56,10 +56,10 @@ class Input {
 			'DOMMouseScroll': (event: MouseWheelEvent) => this.processMouseWheel(-event.detail / 3)
 		};
 
-		for (var name in callbacks) {
-			let handler = function (callback: any) {
+		for (const name in callbacks) {
+			const handler = function (callback: any) {
 				return (e: Event) => {
-					var event = e || window.event;
+					const event = e || window.event;
 
 					if (event.preventDefault)
 						event.preventDefault();
@@ -77,7 +77,7 @@ class Input {
 		}
 
 		// Register all known keys as buttons having the same lowercase name (e.g. Key.Left as button "left")
-		for (let key in Key)
+		for (const key in Key)
 			this.assign(key.toLowerCase(), (<any>Key)[key]);
 
 		// Relocate mouse on window resize
@@ -90,7 +90,7 @@ class Input {
 	** Internal assign function.
 	*/
 	public assign(buttonId: ButtonId, key: Key) {
-		var buttons = this.buttonsMap.get(key);
+		let buttons = this.buttonsMap.get(key);
 
 		if (buttons === undefined) {
 			buttons = [];
@@ -114,7 +114,7 @@ class Input {
 	** button:	button ID
 	*/
 	public clear(buttonId: ButtonId) {
-		for (let [key, buttons] of this.buttonsMap) {
+		for (const [key, buttons] of this.buttonsMap) {
 			for (let i = buttons.length; i-- > 0;) {
 				if (buttons[i].id == buttonId)
 					buttons.splice(i, 1);
@@ -145,7 +145,7 @@ class Input {
 	** Get and reset mouse mouvement.
 	*/
 	public fetchMovement() {
-		let { x, y } = this.mouseMouvement;
+		const { x, y } = this.mouseMouvement;
 
 		this.mouseMouvement.x = 0;
 		this.mouseMouvement.y = 0;
@@ -169,7 +169,7 @@ class Input {
 	** Get and reset mouse wheel delta.
 	*/
 	public fetchWheel() {
-		let wheel = this.mouseWheel;
+		const wheel = this.mouseWheel;
 
 		this.mouseWheel = 0;
 
@@ -195,10 +195,10 @@ class Input {
 	** input:	input instance
 	*/
 	private mouseRelocate() {
-		var mouseOffsetX = 0;
-		var mouseOffsetY = 0;
+		let mouseOffsetX = 0;
+		let mouseOffsetY = 0;
 
-		for (var element = this.mouseOrigin; element !== null && element.offsetParent instanceof HTMLElement; element = element.offsetParent) {
+		for (let element = this.mouseOrigin; element !== null && element.offsetParent instanceof HTMLElement; element = element.offsetParent) {
 			mouseOffsetX += element.offsetLeft;
 			mouseOffsetY += element.offsetTop;
 		}
@@ -214,12 +214,12 @@ class Input {
 	** value:	new button state
 	*/
 	private processKeyPress(key: number, pressed: boolean) {
-		let buttons = this.buttonsMap.get(key);
+		const buttons = this.buttonsMap.get(key);
 
 		if (buttons === undefined)
 			return;
 
-		for (let button of buttons) {
+		for (const button of buttons) {
 			if (button.enabled)
 				this.presses.set(button.id, pressed);
 		}
@@ -229,8 +229,8 @@ class Input {
 	** Update mouse position.
 	*/
 	private processMouseMove(event: MouseEvent) {
-		let locationX = event.pageX - this.mouseOffset.x;
-		let locationY = event.pageY - this.mouseOffset.y;
+		const locationX = event.pageX - this.mouseOffset.x;
+		const locationY = event.pageY - this.mouseOffset.y;
 
 		if (event.movementX !== undefined && event.movementY !== undefined) {
 			this.mouseMouvement.x += event.movementX;
@@ -256,8 +256,8 @@ class Input {
 	** Enable or disable button presses.
 	*/
 	private setEnabled(buttonId: ButtonId, enabled: boolean) {
-		for (let [key, buttons] of this.buttonsMap) {
-			for (let button of buttons) {
+		for (const [key, buttons] of this.buttonsMap) {
+			for (const button of buttons) {
 				if (button.id == buttonId)
 					button.enabled = enabled;
 			}

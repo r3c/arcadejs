@@ -1,7 +1,7 @@
 import * as screen from "../library/screen";
 
-let tick = () => {
-	let context = screen.context;
+const tick = () => {
+	const context = screen.context;
 
 	context.fillStyle = 'red';
 	context.fillRect(0, 0, screen.width, screen.height);

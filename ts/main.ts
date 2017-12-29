@@ -3,12 +3,12 @@ import * as s02 from "./scene/s02_test";
 
 var current: number | undefined;
 
-let handlers = {
+const handlers = {
 	49: s01.tick,
 	50: s02.tick
 };
 
-let setup = (handler: () => void) => {
+const setup = (handler: () => void) => {
 	if (current !== undefined)
 		clearInterval(current);
 
@@ -16,7 +16,7 @@ let setup = (handler: () => void) => {
 };
 
 document.addEventListener("keyup", (event: KeyboardEvent) => {
-	let handler = (<any>handlers)[event.keyCode];
+	const handler = (<any>handlers)[event.keyCode];
 
 	if (handler === undefined)
 		return;

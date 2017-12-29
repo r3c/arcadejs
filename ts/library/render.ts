@@ -11,14 +11,14 @@ interface Point3D {
 	z: number
 };
 
-let perspective = function (view: mathjs.Matrix, point: Point3D, screenSize: Point2D): Point2D {
-	let px = view.get([0, 0]) * point.x + view.get([0, 1]) * point.y + view.get([0, 2]) * point.z + view.get([0, 3]);
-	let py = view.get([1, 0]) * point.x + view.get([1, 1]) * point.y + view.get([1, 2]) * point.z + view.get([1, 3]);
-	let pz = view.get([2, 0]) * point.x + view.get([2, 1]) * point.y + view.get([2, 2]) * point.z + view.get([2, 3]);
+const perspective = function (view: mathjs.Matrix, point: Point3D, screenSize: Point2D): Point2D {
+	const px = view.get([0, 0]) * point.x + view.get([0, 1]) * point.y + view.get([0, 2]) * point.z + view.get([0, 3]);
+	const py = view.get([1, 0]) * point.x + view.get([1, 1]) * point.y + view.get([1, 2]) * point.z + view.get([1, 3]);
+	const pz = view.get([2, 0]) * point.x + view.get([2, 1]) * point.y + view.get([2, 2]) * point.z + view.get([2, 3]);
 
-	let halfScreenWidth = screenSize.x / 2;
-	let halfScreenHeight = screenSize.y / 2;
-	let haltScreenMin = Math.min(halfScreenWidth, halfScreenHeight);
+	const halfScreenWidth = screenSize.x / 2;
+	const halfScreenHeight = screenSize.y / 2;
+	const haltScreenMin = Math.min(halfScreenWidth, halfScreenHeight);
 
 	return {
 		x: halfScreenWidth - haltScreenMin * px / pz,
@@ -26,24 +26,24 @@ let perspective = function (view: mathjs.Matrix, point: Point3D, screenSize: Poi
 	};
 };
 
-let rotate = function (matrix: mathjs.Matrix, axis: Point3D, angle: number) {
+const rotate = function (matrix: mathjs.Matrix, axis: Point3D, angle: number) {
 	// Normalized axis
-	let modInv = 1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
-	let x = axis.x * modInv;
-	let y = axis.y * modInv;
-	let z = axis.z * modInv;
+	const modInv = 1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+	const x = axis.x * modInv;
+	const y = axis.y * modInv;
+	const z = axis.z * modInv;
 
 	// Rotation angle
-	let cos = Math.cos(angle);
-	let sin = Math.sin(angle);
+	const cos = Math.cos(angle);
+	const sin = Math.sin(angle);
 
 	// Factorized operands
-	let xCos = x * (1 - cos);
-	let yCos = y * (1 - cos);
-	let zCos = z * (1 - cos);
-	let xSin = x * sin;
-	let ySin = y * sin;
-	let zSin = z * sin;
+	const xCos = x * (1 - cos);
+	const yCos = y * (1 - cos);
+	const zCos = z * (1 - cos);
+	const xSin = x * sin;
+	const ySin = y * sin;
+	const zSin = z * sin;
 
 	// Rotation matrix around an arbitrary axis
 	// From: https://fr.wikipedia.org/wiki/Matrice_de_rotation#Matrices_de_rotation_dans_le_cas_g%C3%A9n%C3%A9ral
@@ -55,7 +55,7 @@ let rotate = function (matrix: mathjs.Matrix, axis: Point3D, angle: number) {
 	]));
 }
 
-let translate = function (matrix: mathjs.Matrix, vector: Point3D) {
+const translate = function (matrix: mathjs.Matrix, vector: Point3D) {
 	return math.multiply(matrix, math.matrix([
 		[1, 0, 0, vector.x],
 		[0, 1, 0, vector.y],
@@ -68,7 +68,7 @@ class View {
 	private stack: mathjs.Matrix[];
 
 	public constructor() {
-		let identity = math.matrix([
+		const identity = math.matrix([
 			[1, 0, 0, 0],
 			[0, 1, 0, 0],
 			[0, 0, 1, 0],
