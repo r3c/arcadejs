@@ -6,6 +6,7 @@ interface State {
 	context: CanvasRenderingContext2D,
 	input: controller.Input,
 	position: render.Point3D,
+	rotation: render.Point3D,
 	screen: render.Point2D,
 	view: render.View
 };
@@ -14,6 +15,7 @@ const state = {
 	context: screen.context,
 	input: new controller.Input(screen.canvas),
 	position: { x: 0, y: 0, z: -10 },
+	rotation: { x: 0, y: 0, z: 0 },
 	screen: { x: screen.width, y: screen.height },
 	view: new render.View()
 };
@@ -37,8 +39,8 @@ const display = function (state: State) {
 
 	scene.enter();
 	scene.translate(state.position)
-	scene.rotate({ x: 0, y: 1, z: 0 }, state.input.getPosition().x / 128);
-	scene.rotate({ x: 1, y: 0, z: 0 }, state.input.getPosition().y / 128);
+	scene.rotate({ x: 1, y: 0, z: 0 }, state.rotation.x);
+	scene.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
 
 	const vertices = [
 		{ x: -2, y: 2, z: -2 },
@@ -74,18 +76,17 @@ const display = function (state: State) {
 };
 
 const refresh = function (state: State) {
-	if (state.input.isPressed("up"))
-		state.position.z += 1;
-
-	if (state.input.isPressed("down"))
-		state.position.z -= 1;
-
-		const movement = state.input.fetchMovement();
+	const movement = state.input.fetchMovement();
 	const wheel = state.input.fetchWheel();
 
 	if (state.input.isPressed("mouseleft")) {
 		state.position.x += movement.x / 64;
 		state.position.y -= movement.y / 64;
+	}
+
+	if (state.input.isPressed("mouseright")) {
+		state.rotation.x -= movement.y / 64;
+		state.rotation.y -= movement.x / 64;
 	}
 
 	state.position.z += wheel;

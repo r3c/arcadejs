@@ -5,6 +5,7 @@ document.body.appendChild(canvas);
 canvas.tabIndex = 1;
 canvas.width = canvas.offsetWidth;
 canvas.height = canvas.offsetHeight;
+canvas.focus();
 
 const contextOrNull = canvas.getContext('2d');
 

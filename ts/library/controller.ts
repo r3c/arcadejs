@@ -32,48 +32,50 @@ class Input {
 	private mouseWheel: number;
 	private presses: Map<ButtonId, boolean>;
 
-	constructor(keySource: HTMLElement, mouseOrigin?: HTMLElement) {
-		if (keySource.tabIndex < 0)
-			throw Error('keySource element requires a \'tabindex="1"\' attribute to receive key inputs');
+	constructor(eventSource: HTMLElement, mouseOrigin?: HTMLElement) {
+		if (eventSource.tabIndex < 0)
+			throw Error('eventSource element requires a \'tabindex="1"\' attribute to capture key events');
 
 		this.buttonsMap = new Map<number, Button[]>();
 		this.mouseMouvement = { x: 0, y: 0 };
 		this.mousePosition = { x: 0, y: 0 };
 		this.mouseOffset = { x: 0, y: 0 };
-		this.mouseOrigin = mouseOrigin || keySource;
+		this.mouseOrigin = mouseOrigin || eventSource;
 		this.mouseWheel = 0;
 		this.presses = new Map<ButtonId, boolean>();
 
 		// Define and attach event listeners
-		const callbacks = {
-			'contextmenu': (event: Event) => {}, // NoOp, just disable context menu on canvas
-			'keydown': (event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, true),
-			'keyup': (event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, false),
-			'mousedown': (event: MouseEvent) => this.processKeyPress(event.button, true),
-			'mousemove': (event: MouseEvent) => this.processMouseMove(event),
-			'mouseup': (event: MouseEvent) => this.processKeyPress(event.button, false),
-			'mousewheel': (event: MouseWheelEvent) => this.processMouseWheel(event.wheelDelta / 120),
-			'DOMMouseScroll': (event: MouseWheelEvent) => this.processMouseWheel(-event.detail / 3)
-		};
+		const handlers: [string, (event: Event) => void, boolean][] = [
+			['contextmenu', (event: Event) => {}, true], // NoOp, just disable context menu on canvas
+			['keydown', <(Event: Event) => void>((event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, true)), true],
+			['keyup', <(Event: Event) => void>((event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, false)), true],
+			['mousedown', <(Event: Event) => void>((event: MouseEvent) => this.processKeyPress(event.button, true)), false],
+			['mousemove', <(Event: Event) => void>((event: MouseEvent) => this.processMouseMove(event)), false],
+			['mouseup', <(Event: Event) => void>((event: MouseEvent) => this.processKeyPress(event.button, false)), false],
+			['mousewheel', <(Event: Event) => void>((event: MouseWheelEvent) => this.processMouseWheel(event.wheelDelta / 120)), true],
+			['DOMMouseScroll', <(Event: Event) => void>((event: MouseWheelEvent) => this.processMouseWheel(-event.detail / 3)), true]
+		];
 
-		for (const name in callbacks) {
-			const handler = function (callback: any) {
+		for (const [name, callback, cancel] of handlers) {
+			const handler = function (callback: (event: Event) => void, cancel: boolean) {
 				return (e: Event) => {
 					const event = e || window.event;
 
-					if (event.preventDefault)
-						event.preventDefault();
+					if (cancel) {
+						if (event.preventDefault)
+							event.preventDefault();
 
-					if (event.stopPropagation)
-						event.stopPropagation();
+						if (event.stopPropagation)
+							event.stopPropagation();
 
-					event.returnValue = false;
+						event.returnValue = false;
+					}
 
 					callback(event);
 				};
-			}((<any>callbacks)[name]);
+			}(callback, cancel);
 
-			keySource.addEventListener(name, handler, false);
+			eventSource.addEventListener(name, handler);
 		}
 
 		// Register all known keys as buttons having the same lowercase name (e.g. Key.Left as button "left")
