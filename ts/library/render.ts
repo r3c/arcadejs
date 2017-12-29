@@ -11,21 +11,6 @@ interface Point3D {
 	z: number
 };
 
-const perspective = function (view: mathjs.Matrix, point: Point3D, screenSize: Point2D): Point2D {
-	const px = view.get([0, 0]) * point.x + view.get([0, 1]) * point.y + view.get([0, 2]) * point.z + view.get([0, 3]);
-	const py = view.get([1, 0]) * point.x + view.get([1, 1]) * point.y + view.get([1, 2]) * point.z + view.get([1, 3]);
-	const pz = view.get([2, 0]) * point.x + view.get([2, 1]) * point.y + view.get([2, 2]) * point.z + view.get([2, 3]);
-
-	const halfScreenWidth = screenSize.x / 2;
-	const halfScreenHeight = screenSize.y / 2;
-	const haltScreenMin = Math.min(halfScreenWidth, halfScreenHeight);
-
-	return {
-		x: halfScreenWidth - haltScreenMin * px / pz,
-		y: halfScreenHeight + haltScreenMin * py / pz
-	};
-};
-
 const rotate = function (matrix: mathjs.Matrix, axis: Point3D, angle: number) {
 	// Normalized axis
 	const modInv = 1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
@@ -64,6 +49,38 @@ const translate = function (matrix: mathjs.Matrix, vector: Point3D) {
 	]));
 };
 
+class Projection {
+	private matrix: mathjs.Matrix;
+
+	public get() {
+		return this.matrix;
+	}
+
+	public setOrthographic(xMin: number, xMax: number, yMin: number, yMax: number, zMin: number, zMax: number) {
+		this.matrix = math.matrix([
+			[2 / (xMax - xMin), 0, 0, -(xMax + xMin) / (xMax - xMin)],
+			[0, 2 / (yMax - yMin), 0, -(yMax + yMin) / (yMax - yMin)],
+			[0, 0, -2 / (zMax - zMin), -(zMax + zMin) / (zMax - zMin)],
+			[0, 0, 0, 1]
+		]);
+	}
+
+	/*
+	** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
+	*/
+	public setPerspective(angle: number, ratio: number, zMin: number, zMax: number) {
+		var f = 1.0 / Math.tan(angle * Math.PI / 360.0);
+		var q = 1 / (zMin - zMax);
+
+		this.matrix = math.matrix([
+			[f / ratio, 0, 0, 0],
+			[0, f, 0, 0],
+			[0, 0, (zMax + zMin) * q, (2 * zMax * zMin) * q],
+			[0, 0, -1, 0]
+		]);
+	}
+}
+
 class View {
 	private stack: mathjs.Matrix[];
 
@@ -89,10 +106,6 @@ class View {
 		return this.stack.pop();
 	}
 
-	public perspective(point: Point3D, screenSize: Point2D) {
-		return perspective(this.get(), point, screenSize);
-	}
-
 	public rotate(axis: Point3D, angle: number) {
 		this.set(rotate(this.get(), axis, angle));
 	}
@@ -101,7 +114,7 @@ class View {
 		this.set(translate(this.get(), vector));
 	}
 
-	private get() {
+	public get() {
 		return this.stack[this.stack.length - 1];
 	}
 
@@ -110,4 +123,4 @@ class View {
 	}
 }
 
-export { Point2D, Point3D, View };
+export { Point2D, Point3D, Projection, View };

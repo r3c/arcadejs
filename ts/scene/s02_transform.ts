@@ -1,11 +1,13 @@
 import * as controller from "../library/controller";
 import * as display from "../library/display";
+import * as projection from "../library/projection";
 import * as render from "../library/render";
 
 interface State {
 	context: CanvasRenderingContext2D,
 	input: controller.Input,
 	position: render.Point3D,
+	projection: render.Projection,
 	rotation: render.Point3D,
 	screen: render.Point2D,
 	view: render.View
@@ -14,11 +16,14 @@ interface State {
 const state = {
 	context: display.context,
 	input: new controller.Input(display.canvas),
-	position: { x: 0, y: 0, z: -6 },
+	position: { x: 0, y: 0, z: -5 },
+	projection: new render.Projection(),
 	rotation: { x: 0, y: 0, z: 0 },
 	screen: { x: display.width, y: display.height },
 	view: new render.View()
 };
+
+state.projection.setPerspective(45, 800 / 600, 0.1, 100);
 
 const change = function (state: State, dt: number) {
 	const movement = state.input.fetchMovement();
@@ -60,14 +65,14 @@ const draw = (state: State) => {
 	view.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
 
 	const points: render.Point3D[] = [
-		{ x: -2, y: 2, z: -2 },
-		{ x: 2, y: 2, z: -2 },
-		{ x: 2, y: -2, z: -2 },
-		{ x: -2, y: -2, z: -2 },
-		{ x: -2, y: 2, z: 2 },
-		{ x: 2, y: 2, z: 2 },
-		{ x: 2, y: -2, z: 2 },
-		{ x: -2, y: -2, z: 2 }
+		{ x: -1, y: 1, z: -1 },
+		{ x: 1, y: 1, z: -1 },
+		{ x: 1, y: -1, z: -1 },
+		{ x: -1, y: -1, z: -1 },
+		{ x: -1, y: 1, z: 1 },
+		{ x: 1, y: 1, z: 1 },
+		{ x: 1, y: -1, z: 1 },
+		{ x: -1, y: -1, z: 1 }
 	];
 
 	const faces = [
@@ -81,7 +86,7 @@ const draw = (state: State) => {
 
 	for (const face of faces) {
 		const vertices = face.map(i => points[i]);
-		const dots = vertices.map(v => view.perspective(v, state.screen));
+		const dots = vertices.map(v => projection.perspective(state.projection.get(), view.get(), state.screen, v));
 
 		drawTriangle(context, dots[0], dots[1], dots[2]);
 		drawTriangle(context, dots[2], dots[3], dots[0]);
