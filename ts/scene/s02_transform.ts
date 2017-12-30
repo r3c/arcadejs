@@ -1,26 +1,26 @@
 import * as controller from "../library/controller";
 import * as display from "../library/display";
-import * as projection from "../library/projection";
+import * as math from "../library/math";
 import * as render from "../library/render";
 
 interface State {
 	context: CanvasRenderingContext2D,
 	input: controller.Input,
-	position: render.Point3D,
-	projection: render.Projection,
-	rotation: render.Point3D,
-	screen: render.Point2D,
-	view: render.View
+	position: math.Point3D,
+	projection: math.Projection,
+	rotation: math.Point3D,
+	screen: math.Point2D,
+	view: math.View
 };
 
 const state = {
 	context: display.context,
 	input: new controller.Input(display.canvas),
 	position: { x: 0, y: 0, z: -5 },
-	projection: new render.Projection(),
+	projection: new math.Projection(),
 	rotation: { x: 0, y: 0, z: 0 },
 	screen: { x: display.width, y: display.height },
-	view: new render.View()
+	view: new math.View()
 };
 
 state.projection.setPerspective(45, 800 / 600, 0.1, 100);
@@ -42,7 +42,7 @@ const change = function (state: State, dt: number) {
 	state.position.z += wheel;
 };
 
-const drawTriangle = (context: CanvasRenderingContext2D, p1: render.Point2D, p2: render.Point2D, p3: render.Point2D) => {
+const drawTriangle = (context: CanvasRenderingContext2D, p1: math.Point2D, p2: math.Point2D, p3: math.Point2D) => {
 	context.strokeStyle = 'white';
 	context.beginPath();
 	context.moveTo(p1.x, p1.y);
@@ -64,7 +64,7 @@ const draw = (state: State) => {
 	view.rotate({ x: 1, y: 0, z: 0 }, state.rotation.x);
 	view.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
 
-	const points: render.Point3D[] = [
+	const points: math.Point3D[] = [
 		{ x: -1, y: 1, z: -1 },
 		{ x: 1, y: 1, z: -1 },
 		{ x: 1, y: -1, z: -1 },
@@ -86,7 +86,7 @@ const draw = (state: State) => {
 
 	for (const face of faces) {
 		const vertices = face.map(i => points[i]);
-		const dots = vertices.map(v => projection.perspective(state.projection.get(), view.get(), state.screen, v));
+		const dots = vertices.map(v => render.project(state.projection.get(), view.get(), state.screen, v));
 
 		drawTriangle(context, dots[0], dots[1], dots[2]);
 		drawTriangle(context, dots[2], dots[3], dots[0]);

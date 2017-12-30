@@ -1,25 +1,25 @@
 import * as controller from "../library/controller";
 import * as display from "../library/display";
-import * as projection from "../library/projection";
+import * as math from "../library/math";
 import * as render from "../library/render";
 
 interface State {
 	context: CanvasRenderingContext2D,
-	projection: render.Projection,
-	screen: render.Point2D,
-	view: render.View
+	projection: math.Projection,
+	screen: math.Point2D,
+	view: math.View
 };
 
 const state = {
 	context: display.context,
-	projection: new render.Projection(),
+	projection: new math.Projection(),
 	screen: { x: display.width, y: display.height },
-	view: new render.View()
+	view: new math.View()
 };
 
 state.projection.setPerspective(45, 800 / 600, 0.1, 100);
 
-const drawTriangle = (context: CanvasRenderingContext2D, p1: render.Point2D, p2: render.Point2D, p3: render.Point2D) => {
+const drawTriangle = (context: CanvasRenderingContext2D, p1: math.Point2D, p2: math.Point2D, p3: math.Point2D) => {
 	context.strokeStyle = 'white';
 	context.beginPath();
 	context.moveTo(p1.x, p1.y);
@@ -38,7 +38,7 @@ const draw = (state: State) => {
 
 	view.enter();
 
-	const points: render.Point3D[] = [
+	const points: math.Point3D[] = [
 		{ x: -1, y: 1, z: -5 },
 		{ x: 1, y: 1, z: -5 },
 		{ x: 1, y: -1, z: -5 },
@@ -60,7 +60,7 @@ const draw = (state: State) => {
 
 	for (const face of faces) {
 		const vertices = face.map(i => points[i]);
-		const dots = vertices.map(v => projection.perspective(state.projection.get(), view.get(), state.screen, moveVertex(v)));
+		const dots = vertices.map(v => render.project(state.projection.get(), view.get(), state.screen, moveVertex(v)));
 
 		drawTriangle(context, dots[0], dots[1], dots[2]);
 		drawTriangle(context, dots[2], dots[3], dots[0]);
@@ -69,7 +69,7 @@ const draw = (state: State) => {
 	view.leave();
 };
 
-const moveVertex = (vertex: render.Point3D): render.Point3D => {
+const moveVertex = (vertex: math.Point3D): math.Point3D => {
 	const now = new Date().getTime();
 
 	return {
