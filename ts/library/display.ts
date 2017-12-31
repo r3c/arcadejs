@@ -1,20 +1,34 @@
 
-const canvas = document.createElement('canvas');
+class Screen {
+	public readonly canvas: HTMLCanvasElement;
+	public readonly context: CanvasRenderingContext2D;
 
-document.body.appendChild(canvas);
+	public constructor(document: HTMLDocument) {
+		const canvas = document.createElement('canvas');
 
-canvas.tabIndex = 1;
-canvas.width = canvas.offsetWidth;
-canvas.height = canvas.offsetHeight;
-canvas.focus();
+		document.body.appendChild(canvas);
 
-const contextOrNull = canvas.getContext('2d');
+		canvas.tabIndex = 1;
+		canvas.width = canvas.offsetWidth;
+		canvas.height = canvas.offsetHeight;
+		canvas.focus();
 
-if (contextOrNull === null)
-	throw Error("cannot get 2d context");
+		const contextOrNull = canvas.getContext('2d');
 
-const context = contextOrNull;
-const height = canvas.height;
-const width = canvas.width;
+		if (contextOrNull === null)
+			throw Error("cannot get 2d context");
 
-export { canvas, context, width, height };
+		this.canvas = canvas;
+		this.context = contextOrNull;
+	}
+
+	public getHeight() {
+		return this.canvas.height;
+	}
+
+	public getWidth() {
+		return this.canvas.width;
+	}
+};
+
+export { Screen };

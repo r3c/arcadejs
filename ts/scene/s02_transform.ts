@@ -2,24 +2,23 @@ import * as controller from "../library/controller";
 import * as display from "../library/display";
 import * as math from "../library/math";
 import * as render from "../library/render";
+import * as shared from "./shared";
 
 interface State {
-	context: CanvasRenderingContext2D,
 	input: controller.Input,
 	position: math.Point3D,
 	projection: math.Projection,
 	rotation: math.Point3D,
-	screen: math.Point2D,
+	screen: display.Screen,
 	view: math.View
 };
 
 const state = {
-	context: display.context,
-	input: new controller.Input(display.canvas),
+	input: shared.input,
 	position: { x: 0, y: 0, z: -5 },
 	projection: new math.Projection(),
 	rotation: { x: 0, y: 0, z: 0 },
-	screen: { x: display.width, y: display.height },
+	screen: shared.screen,
 	view: new math.View()
 };
 
@@ -42,22 +41,12 @@ const change = function (state: State, dt: number) {
 	state.position.z += wheel;
 };
 
-const drawTriangle = (context: CanvasRenderingContext2D, p1: math.Point2D, p2: math.Point2D, p3: math.Point2D) => {
-	context.strokeStyle = 'white';
-	context.beginPath();
-	context.moveTo(p1.x, p1.y);
-	context.lineTo(p2.x, p2.y);
-	context.lineTo(p3.x, p3.y);
-	context.lineTo(p1.x, p1.y);
-	context.stroke();
-};
-
 const draw = (state: State) => {
-	const context = state.context;
+	const screen = state.screen;
 	const view = state.view;
 
-	context.fillStyle = 'black';
-	context.fillRect(0, 0, state.screen.x, state.screen.y);
+	screen.context.fillStyle = 'black';
+	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
 
 	view.enter();
 	view.translate(state.position)
@@ -84,13 +73,14 @@ const draw = (state: State) => {
 		[2, 3, 7, 6]
 	];
 
-	for (const face of faces) {
-		const vertices = face.map(i => points[i]);
-		const dots = vertices.map(v => render.project(state.projection.get(), view.get(), state.screen, v));
+	const vertices = faces
+		.map(face => face.map(i => points[i]))
+		.map(face => [face[0], face[1], face[2], face[2], face[3], face[0]])
+		.reduce((current, value) => current = current.concat(value), []);
 
-		drawTriangle(context, dots[0], dots[1], dots[2]);
-		drawTriangle(context, dots[2], dots[3], dots[0]);
-	}
+	render.draw(screen, state.projection.get(), view.get(), {
+		vertices: vertices
+	});
 
 	view.leave();
 };
