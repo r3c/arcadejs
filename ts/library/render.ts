@@ -1,4 +1,3 @@
-import * as mathjs from "mathjs";
 import * as display from "./display";
 import * as math from "./math";
 
@@ -17,11 +16,11 @@ const drawTriangle = (context: CanvasRenderingContext2D, p1: math.Point2D, p2: m
 	context.stroke();
 };
 
-const draw = (screen: display.Screen, projection: mathjs.Matrix, modelView: mathjs.Matrix, mesh: Mesh) => {
+const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mesh: Mesh) => {
 	const halfWidth = screen.getWidth() * 0.5;
 	const halfHeight = screen.getHeight() * 0.5;
 
-	const modelViewProjection = mathjs.multiply(projection, modelView);
+	const modelViewProjection = projection.multiply(modelView);
 	const vertices = mesh.vertices;
 
 	for (let i = 0; i + 2 < vertices.length; i += 3) {
@@ -33,16 +32,12 @@ const draw = (screen: display.Screen, projection: mathjs.Matrix, modelView: math
 	}
 };
 
-const projectToScreen = (modelViewProjection: mathjs.Matrix, halfWidth: number, halfHeight: number, vertex: math.Point3D): math.Point2D => {
-	const point = mathjs.multiply(modelViewProjection, mathjs.matrix([vertex.x, vertex.y, vertex.z, 1]));
-
-	const x = point.get([0]);
-	const y = point.get([1]);
-	const w = point.get([3]);
+const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, halfHeight: number, vertex: math.Point3D): math.Point2D => {
+	const point = modelViewProjection.transform(vertex);
 
 	return {
-		x: x / w * halfWidth + halfWidth,
-		y: y / w * halfHeight + halfHeight
+		x: point.x * halfWidth + halfWidth,
+		y: point.y * halfHeight + halfHeight
 	};
 };
 

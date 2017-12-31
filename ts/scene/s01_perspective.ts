@@ -4,29 +4,22 @@ import * as render from "../library/render";
 import * as shared from "./shared";
 
 interface State {
-	projection: math.Projection,
-	screen: display.Screen,
-	view: math.View
+	projection: math.Matrix,
+	screen: display.Screen
 };
 
 const state = {
-	projection: new math.Projection(),
-	screen: shared.screen,
-	view: new math.View()
+	projection: math.Matrix.createPerspective(45, shared.screen.getWidth() / shared.screen.getHeight(), 0.1, 100),
+	screen: shared.screen
 };
-
-state.projection.setPerspective(45, state.screen.getWidth() / state.screen.getHeight(), 0.1, 100);
 
 const draw = (state: State) => {
 	const screen = state.screen;
-	const view = state.view;
 
 	screen.context.fillStyle = 'black';
 	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 
-	view.enter();
-
-	const points: math.Point3D[] = [
+	const points = [
 		{ x: -1, y: 1, z: -5 },
 		{ x: 1, y: 1, z: -5 },
 		{ x: 1, y: -1, z: -5 },
@@ -51,11 +44,9 @@ const draw = (state: State) => {
 		.map(face => [face[0], face[1], face[2], face[2], face[3], face[0]])
 		.reduce((current, value) => current = current.concat(value), []);
 
-	render.draw(screen, state.projection.get(), view.get(), {
+	render.draw(screen, state.projection, math.Matrix.createIdentity(), {
 		vertices: vertices.map(moveVertex)
 	});
-
-	view.leave();
 };
 
 const moveVertex = (vertex: math.Point3D): math.Point3D => {

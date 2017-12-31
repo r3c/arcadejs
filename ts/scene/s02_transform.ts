@@ -7,22 +7,18 @@ import * as shared from "./shared";
 interface State {
 	input: controller.Input,
 	position: math.Point3D,
-	projection: math.Projection,
+	projection: math.Matrix,
 	rotation: math.Point3D,
-	screen: display.Screen,
-	view: math.View
+	screen: display.Screen
 };
 
 const state = {
 	input: shared.input,
 	position: { x: 0, y: 0, z: -5 },
-	projection: new math.Projection(),
+	projection: math.Matrix.createPerspective(45, 800 / 600, 0.1, 100),
 	rotation: { x: 0, y: 0, z: 0 },
-	screen: shared.screen,
-	view: new math.View()
+	screen: shared.screen
 };
-
-state.projection.setPerspective(45, 800 / 600, 0.1, 100);
 
 const change = function (state: State, dt: number) {
 	const movement = state.input.fetchMovement();
@@ -43,17 +39,17 @@ const change = function (state: State, dt: number) {
 
 const draw = (state: State) => {
 	const screen = state.screen;
-	const view = state.view;
 
 	screen.context.fillStyle = 'black';
 	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
 
-	view.enter();
-	view.translate(state.position)
-	view.rotate({ x: 1, y: 0, z: 0 }, state.rotation.x);
-	view.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
+	const view = math.Matrix
+		.createIdentity()
+		.translate(state.position)
+		.rotate({ x: 1, y: 0, z: 0 }, state.rotation.x)
+		.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
 
-	const points: math.Point3D[] = [
+	const points = [
 		{ x: -1, y: 1, z: -1 },
 		{ x: 1, y: 1, z: -1 },
 		{ x: 1, y: -1, z: -1 },
@@ -78,11 +74,9 @@ const draw = (state: State) => {
 		.map(face => [face[0], face[1], face[2], face[2], face[3], face[0]])
 		.reduce((current, value) => current = current.concat(value), []);
 
-	render.draw(screen, state.projection.get(), view.get(), {
+	render.draw(screen, state.projection, view, {
 		vertices: vertices
 	});
-
-	view.leave();
 };
 
 const tick = (dt: number) => {
