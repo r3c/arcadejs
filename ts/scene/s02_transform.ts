@@ -24,7 +24,7 @@ const change = function (dt: number) {
 	}
 
 	if (input.isPressed("mouseright")) {
-		camera.rotation.x -= movement.y / 64;
+		camera.rotation.x += movement.y / 64;
 		camera.rotation.y -= movement.x / 64;
 	}
 

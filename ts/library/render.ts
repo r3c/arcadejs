@@ -103,7 +103,7 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 	const halfWidth = screen.getWidth() * 0.5;
 	const halfHeight = screen.getHeight() * 0.5;
 
-	const modelViewProjection = projection.multiply(modelView);
+	const modelViewProjection = projection.compose(modelView);
 
 	const faces = mesh.faces;
 	const points = mesh.points;
