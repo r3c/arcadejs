@@ -19,19 +19,20 @@ const draw = () => {
 		{ x: -1, y: -1, z: -4 }
 	];
 
-	const faces = [
-		[0, 1, 2, 3],
-		[4, 5, 6, 7],
-		[0, 3, 7, 4],
-		[1, 2, 6, 5],
-		[0, 1, 5, 4],
-		[2, 3, 7, 6]
+	const faces: [number, number, number][] = [
+		[0, 1, 2],
+		[2, 3, 0],
+		[4, 5, 6],
+		[6, 7, 4],
+		[0, 3, 7],
+		[7, 4, 0],
+		[1, 2, 6],
+		[6, 5, 1],
+		[0, 1, 5],
+		[5, 4, 0],
+		[2, 3, 7],
+		[7, 6, 2]
 	];
-
-	const vertices = faces
-		.map(face => face.map(i => points[i]))
-		.map(face => [face[0], face[1], face[2], face[2], face[3], face[0]])
-		.reduce((current, value) => current = current.concat(value), []);
 
 	const screen = state.screen;
 
@@ -39,11 +40,12 @@ const draw = () => {
 	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 
 	render.draw(screen, state.projection, math.Matrix.createIdentity(), {
-		vertices: vertices.map(moveVertex)
+		faces: faces,
+		points: points.map(moveVertex)
 	});
 };
 
-const moveVertex = (vertex: math.Point3D): math.Point3D => {
+const moveVertex = (vertex: math.Vector3) => {
 	const angle = new Date().getTime() * 0.005;
 	const distance = 0.5;
 

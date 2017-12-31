@@ -58,7 +58,7 @@ class Matrix {
 	** Rotate matrix around an arbitrary axis
 	** From: https://fr.wikipedia.org/wiki/Matrice_de_rotation#Matrices_de_rotation_dans_le_cas_g%C3%A9n%C3%A9ral
 	*/
-	public rotate(axis: Point3D, angle: number) {
+	public rotate(axis: Vector3, angle: number) {
 		// Normalized axis
 		const modInv = 1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
 		const x = axis.x * modInv;
@@ -85,7 +85,7 @@ class Matrix {
 		])));
 	}
 
-	public transform(vertex: Point3D) {
+	public transform(vertex: Vector3) {
 		const transform = mathjs.multiply(this.matrix, mathjs.matrix([vertex.x, vertex.y, vertex.z, 1]));
 		const normalize = 1 / transform.get([3]);
 
@@ -96,7 +96,7 @@ class Matrix {
 		};
 	}
 
-	public translate(vector: Point3D) {
+	public translate(vector: Vector3) {
 		return new Matrix(mathjs.multiply(this.matrix, mathjs.matrix([
 			[1, 0, 0, vector.x],
 			[0, 1, 0, vector.y],
@@ -106,15 +106,15 @@ class Matrix {
 	}
 };
 
-interface Point2D {
+interface Vector2 {
 	x: number,
 	y: number
 };
 
-interface Point3D {
+interface Vector3 {
 	x: number,
 	y: number,
 	z: number
 };
 
-export { Matrix, Point2D, Point3D };
+export { Matrix, Vector2, Vector3 };
