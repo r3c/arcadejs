@@ -1,16 +1,6 @@
-import * as controller from "../library/controller";
-import * as display from "../library/display";
 import * as math from "../library/math";
 import * as render from "../library/render";
 import * as shared from "./shared";
-
-interface State {
-	input: controller.Input,
-	position: math.Point3D,
-	projection: math.Matrix,
-	rotation: math.Point3D,
-	screen: display.Screen
-};
 
 const state = {
 	input: shared.input,
@@ -20,7 +10,7 @@ const state = {
 	screen: shared.screen
 };
 
-const change = function (state: State, dt: number) {
+const change = function (dt: number) {
 	const movement = state.input.fetchMovement();
 	const wheel = state.input.fetchWheel();
 
@@ -37,18 +27,7 @@ const change = function (state: State, dt: number) {
 	state.position.z += wheel;
 };
 
-const draw = (state: State) => {
-	const screen = state.screen;
-
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
-
-	const view = math.Matrix
-		.createIdentity()
-		.translate(state.position)
-		.rotate({ x: 1, y: 0, z: 0 }, state.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
-
+const draw = () => {
 	const points = [
 		{ x: -1, y: 1, z: -1 },
 		{ x: 1, y: 1, z: -1 },
@@ -74,14 +53,25 @@ const draw = (state: State) => {
 		.map(face => [face[0], face[1], face[2], face[2], face[3], face[0]])
 		.reduce((current, value) => current = current.concat(value), []);
 
+	const screen = state.screen;
+
+	screen.context.fillStyle = 'black';
+	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
+
+	const view = math.Matrix
+		.createIdentity()
+		.translate(state.position)
+		.rotate({ x: 1, y: 0, z: 0 }, state.rotation.x)
+		.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
+
 	render.draw(screen, state.projection, view, {
 		vertices: vertices
 	});
 };
 
 const tick = (dt: number) => {
-	change(state, dt);
-	draw(state);
+	change(dt);
+	draw();
 };
 
 export { tick };

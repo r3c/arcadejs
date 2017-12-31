@@ -1,24 +1,13 @@
-import * as display from "../library/display";
 import * as math from "../library/math";
 import * as render from "../library/render";
 import * as shared from "./shared";
-
-interface State {
-	projection: math.Matrix,
-	screen: display.Screen
-};
 
 const state = {
 	projection: math.Matrix.createPerspective(45, shared.screen.getWidth() / shared.screen.getHeight(), 0.1, 100),
 	screen: shared.screen
 };
 
-const draw = (state: State) => {
-	const screen = state.screen;
-
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
-
+const draw = () => {
 	const points = [
 		{ x: -1, y: 1, z: -5 },
 		{ x: 1, y: 1, z: -5 },
@@ -44,6 +33,11 @@ const draw = (state: State) => {
 		.map(face => [face[0], face[1], face[2], face[2], face[3], face[0]])
 		.reduce((current, value) => current = current.concat(value), []);
 
+	const screen = state.screen;
+
+	screen.context.fillStyle = 'black';
+	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+
 	render.draw(screen, state.projection, math.Matrix.createIdentity(), {
 		vertices: vertices.map(moveVertex)
 	});
@@ -60,7 +54,7 @@ const moveVertex = (vertex: math.Point3D): math.Point3D => {
 };
 
 const tick = (dt: number) => {
-	draw(state);
+	draw();
 };
 
 export { tick };
