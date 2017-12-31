@@ -3,7 +3,7 @@ import * as render from "../library/render";
 import * as shared from "./shared";
 
 const state = {
-	projection: math.Matrix.createPerspective(45, shared.screen.getWidth() / shared.screen.getHeight(), 0.1, 100),
+	projection: math.Matrix.createPerspective(45, shared.screen.getRatio(), 0.1, 100),
 	screen: shared.screen
 };
 
@@ -44,11 +44,12 @@ const draw = () => {
 };
 
 const moveVertex = (vertex: math.Point3D): math.Point3D => {
-	const now = new Date().getTime();
+	const angle = new Date().getTime() * 0.005;
+	const distance = 0.5;
 
 	return {
-		x: vertex.x + Math.cos(now * 0.005) * 0.5,
-		y: vertex.y + Math.sin(now * 0.005) * 0.5,
+		x: vertex.x + Math.cos(angle) * distance,
+		y: vertex.y + Math.sin(angle) * distance,
 		z: vertex.z
 	};
 };

@@ -26,6 +26,10 @@ class Screen {
 		return this.canvas.height;
 	}
 
+	public getRatio() {
+		return this.canvas.width / this.canvas.height;
+	}
+
 	public getWidth() {
 		return this.canvas.width;
 	}

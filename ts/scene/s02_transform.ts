@@ -3,28 +3,32 @@ import * as render from "../library/render";
 import * as shared from "./shared";
 
 const state = {
+	camera : {
+		position: { x: 0, y: 0, z: -5 },
+		rotation: { x: 0, y: 0, z: 0 }
+	},
 	input: shared.input,
-	position: { x: 0, y: 0, z: -5 },
-	projection: math.Matrix.createPerspective(45, 800 / 600, 0.1, 100),
-	rotation: { x: 0, y: 0, z: 0 },
+	projection: math.Matrix.createPerspective(45, shared.screen.getRatio(), 0.1, 100),
 	screen: shared.screen
 };
 
 const change = function (dt: number) {
-	const movement = state.input.fetchMovement();
-	const wheel = state.input.fetchWheel();
+	const camera = state.camera;
+	const input = state.input;
+	const movement = input.fetchMovement();
+	const wheel = input.fetchWheel();
 
-	if (state.input.isPressed("mouseleft")) {
-		state.position.x += movement.x / 64;
-		state.position.y -= movement.y / 64;
+	if (input.isPressed("mouseleft")) {
+		camera.position.x += movement.x / 64;
+		camera.position.y -= movement.y / 64;
 	}
 
-	if (state.input.isPressed("mouseright")) {
-		state.rotation.x -= movement.y / 64;
-		state.rotation.y -= movement.x / 64;
+	if (input.isPressed("mouseright")) {
+		camera.rotation.x -= movement.y / 64;
+		camera.rotation.y -= movement.x / 64;
 	}
 
-	state.position.z += wheel;
+	camera.position.z += wheel;
 };
 
 const draw = () => {
@@ -58,11 +62,12 @@ const draw = () => {
 	screen.context.fillStyle = 'black';
 	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
 
+	const camera = state.camera;
 	const view = math.Matrix
 		.createIdentity()
-		.translate(state.position)
-		.rotate({ x: 1, y: 0, z: 0 }, state.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, state.rotation.y);
+		.translate(camera.position)
+		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	render.draw(screen, state.projection, view, {
 		vertices: vertices

@@ -4,13 +4,13 @@ import * as s03 from "./scene/s03_test";
 
 var current: number | undefined;
 
-const handlers = {
+const scenes = {
 	49: s01.tick,
 	50: s02.tick,
 	51: s03.tick
 };
 
-const setup = (handler: (dt: number) => void) => {
+const setup = (scene: (dt: number) => void) => {
 	if (current !== undefined)
 		clearInterval(current);
 
@@ -19,19 +19,19 @@ const setup = (handler: (dt: number) => void) => {
 	current = setInterval(() => {
 		const now = new Date().getTime();
 
-		handler(now - last);
+		scene(now - last);
 
 		last = now;
 	}, 30);
 };
 
 document.addEventListener("keyup", (event: KeyboardEvent) => {
-	const handler = (<any>handlers)[event.keyCode];
+	const scene = (<any>scenes)[event.keyCode];
 
-	if (handler === undefined)
+	if (scene === undefined)
 		return;
 
-	setup(handler);
+	setup(scene);
 });
 
 setup(s01.tick);
