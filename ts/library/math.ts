@@ -84,20 +84,14 @@ class Matrix {
 		]));
 	}
 
-	public transform(vertex: Vector3) {
+	public transform(vertex: Vector4) {
 		const m = this.values;
 
-		const x = vertex.x * m[0] + vertex.y * m[1] + vertex.z * m[2] + m[3];
-		const y = vertex.x * m[4] + vertex.y * m[5] + vertex.z * m[6] + m[7];
-		const z = vertex.x * m[8] + vertex.y * m[9] + vertex.z * m[10] + m[11];
-		const w = vertex.x * m[12] + vertex.y * m[13] + vertex.z * m[14] + m[15];
-
-		const normalize = 1 / w;
-
 		return {
-			x: x * normalize,
-			y: y * normalize,
-			z: z * normalize
+			x: vertex.x * m[0] + vertex.y * m[1] + vertex.z * m[2] + vertex.w * m[3],
+			y: vertex.x * m[4] + vertex.y * m[5] + vertex.z * m[6] + vertex.w * m[7],
+			z: vertex.x * m[8] + vertex.y * m[9] + vertex.z * m[10] + vertex.w * m[11],
+			w: vertex.x * m[12] + vertex.y * m[13] + vertex.z * m[14] + vertex.w * m[15]
 		};
 	}
 
@@ -130,17 +124,24 @@ class Matrix {
 			lhs[12] * rhs[3] + lhs[13] * rhs[7] + lhs[14] * rhs[11] + lhs[15] * rhs[15]
 		];
 	}
-};
+}
 
 interface Vector2 {
 	x: number,
 	y: number
-};
+}
 
 interface Vector3 {
 	x: number,
 	y: number,
 	z: number
-};
+}
 
-export { Matrix, Vector2, Vector3 };
+interface Vector4 {
+	x: number,
+	y: number,
+	z: number,
+	w: number
+}
+
+export { Matrix, Vector2, Vector3, Vector4 };

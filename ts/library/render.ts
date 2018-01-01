@@ -1,79 +1,125 @@
 import * as display from "./display";
 import * as math from "./math";
+import { Vector4 } from "./math";
 
 interface Image {
-	data: Uint8ClampedArray;
+	colors: Uint8ClampedArray;
+	depths: Float32Array;
 	height: number;
 	width: number;
 }
 
 interface Mesh {
+	colors?: math.Vector4[];
 	faces: [number, number, number][];
 	normals?: math.Vector3[];
-	points: math.Vector3[];
+	positions: math.Vector3[];
 }
 
-const interpolate = (min: number, max: number, ratio: number) => {
+interface Vertex {
+	color: math.Vector4;
+	position: math.Vector3;
+}
+
+const white = {
+	x: 255,
+	y: 255,
+	z: 255,
+	w: 255
+};
+
+const lerpScalar = (min: number, max: number, ratio: number) => {
 	return min + (max - min) * ratio;
 };
 
-const blitScanline = (image: Image, y: number, pa: math.Vector3, pb: math.Vector3, pc: math.Vector3, pd: math.Vector3) => {
+const lerpVector4 = (min: Vector4, max: Vector4, ratio: number) => {
+	return {
+		x: lerpScalar(min.x, max.x, ratio),
+		y: lerpScalar(min.y, max.y, ratio),
+		z: lerpScalar(min.z, max.z, ratio),
+		w: lerpScalar(min.w, max.w, ratio)
+	}
+};
+
+const fillScanline = (image: Image, y: number, pa: Vertex, pb: Vertex, pc: Vertex, pd: Vertex) => {
 	if (y < 0 || y >= image.height)
 		return;
 
-	const offset = y * image.width;
+	const ratio1 = pa.position.y != pb.position.y ? (y - pa.position.y) / (pb.position.y - pa.position.y) : 1;
+	const ratio2 = pc.position.y != pd.position.y ? (y - pc.position.y) / (pd.position.y - pc.position.y) : 1;
 
-	const ratio1 = pa.y != pb.y ? (y - pa.y) / (pb.y - pa.y) : 1;
-	const ratio2 = pc.y != pd.y ? (y - pc.y) / (pd.y - pc.y) : 1;
+	let start = {
+		color: lerpVector4(pa.color, pb.color, ratio1),
+		depth: lerpScalar(pa.position.z, pb.position.z, ratio1),
+		x: Math.max(Math.min(lerpScalar(pa.position.x, pb.position.x, ratio1) >> 0, image.width - 1), 0)
+	};
 
-	let x1 = Math.max(Math.min(interpolate(pa.x, pb.x, ratio1) >> 0, image.width - 1), 0);
-	let x2 = Math.max(Math.min(interpolate(pc.x, pd.x, ratio2) >> 0, image.width - 1), 0);
+	let stop = {
+		color: lerpVector4(pc.color, pd.color, ratio2),
+		depth: lerpScalar(pc.position.z, pd.position.z, ratio2),
+		x: Math.max(Math.min(lerpScalar(pc.position.x, pd.position.x, ratio2) >> 0, image.width - 1), 0)
+	};
 
-	if (x1 > x2)
-		[x1, x2] = [x2, x1];
+	if (start.x > stop.x)
+		[start, stop] = [stop, start];
 
-	for (var x = x1; x < x2; x++) {
-		const index = (x + offset) * 4;
+	const offset = (y >> 0) * image.width;
 
-		image.data[index + 0] = 255;
-		image.data[index + 1] = 255;
-		image.data[index + 2] = 255;
-		image.data[index + 3] = 255;
+	for (var x = start.x; x <= stop.x; x++) {
+		const ratio = (x - start.x) / (stop.x - start.x);
+
+		// Depth test
+		const depth = lerpScalar(start.depth, stop.depth, ratio);
+		const depthIndex = offset + x;
+
+		if (depth <= image.depths[depthIndex])
+			continue;
+
+		image.depths[depthIndex] = depth;
+
+		// Color update
+		const color = lerpVector4(start.color, stop.color, ratio);
+		const colorIndex = depthIndex * 4;
+
+		image.colors[colorIndex + 0] = color.x;
+		image.colors[colorIndex + 1] = color.y;
+		image.colors[colorIndex + 2] = color.z;
+		image.colors[colorIndex + 3] = color.w;
 	}
 }
 
 /*
 ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
 */
-const blitTriangle = (image: Image, p1: math.Vector3, p2: math.Vector3, p3: math.Vector3) => {
+const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
 	// Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
-	if (p1.y > p2.y)
-		[p1, p2] = [p2, p1];
+	if (v1.position.y > v2.position.y)
+		[v1, v2] = [v2, v1];
 
-	if (p2.y > p3.y)
-		[p2, p3] = [p3, p2];
+	if (v2.position.y > v3.position.y)
+		[v2, v3] = [v3, v2];
 
-	if (p1.y > p2.y)
-		[p1, p2] = [p2, p1];
+	if (v1.position.y > v2.position.y)
+		[v1, v2] = [v2, v1];
 
 	// Compute p1-p2 and p1-p3 slopes
-	const slope12 = p2.y > p1.y ? (p2.x - p1.x) / (p2.y - p1.y) : 0;
-	const slope13 = p3.y > p1.y ? (p3.x - p1.x) / (p3.y - p1.y) : 0;
+	const slope12 = v2.position.y > v1.position.y ? (v2.position.x - v1.position.x) / (v2.position.y - v1.position.y) : 0;
+	const slope13 = v3.position.y > v1.position.y ? (v3.position.x - v1.position.x) / (v3.position.y - v1.position.y) : 0;
 
 	if (slope12 > slope13) {
-		for (let y = p1.y; y < p2.y; ++y)
-			blitScanline(image, y, p1, p3, p1, p2);
+		for (let y = v1.position.y; y < v2.position.y; ++y)
+			fillScanline(image, y, v1, v3, v1, v2);
 
-		for (let y = p2.y; y <= p3.y; ++y)
-			blitScanline(image, y, p1, p3, p2, p3);
+		for (let y = v2.position.y; y <= v3.position.y; ++y)
+			fillScanline(image, y, v1, v3, v2, v3);
 	}
 
 	else {
-		for (let y = p1.y; y < p2.y; ++y)
-			blitScanline(image, y, p1, p2, p1, p3);
+		for (let y = v1.position.y; y < v2.position.y; ++y)
+			fillScanline(image, y, v1, v2, v1, v3);
 
-		for (let y = p2.y; y <= p3.y; ++y)
-			blitScanline(image, y, p2, p3, p1, p3);
+		for (let y = v2.position.y; y <= v3.position.y; ++y)
+			fillScanline(image, y, v2, v3, v1, v3);
 	}
 };
 
@@ -81,24 +127,28 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 	const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
 	const image = {
-		data: capture.data,
+		colors: capture.data,
+		depths: new Float32Array(capture.width * capture.height),
 		height: screen.getHeight(),
 		width: screen.getWidth()
 	};
+
+	image.depths.fill(-Math.pow(2, 127));
 
 	const halfWidth = screen.getWidth() * 0.5;
 	const halfHeight = screen.getHeight() * 0.5;
 
 	const modelViewProjection = projection.compose(modelView);
 
+	const colors = mesh.colors || [];
+	const coords = mesh.positions;
 	const faces = mesh.faces;
-	const points = mesh.points;
 
 	for (const [i, j, k] of faces) {
-		blitTriangle(image,
-			projectToScreen(modelViewProjection, halfWidth, halfHeight, points[i]),
-			projectToScreen(modelViewProjection, halfWidth, halfHeight, points[j]),
-			projectToScreen(modelViewProjection, halfWidth, halfHeight, points[k])
+		fillTriangle(image,
+			{ position: projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[i]), color: colors[i] || white },
+			{ position: projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]), color: colors[j] || white },
+			{ position: projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]), color: colors[k] || white }
 		);
 	}
 
@@ -106,11 +156,16 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 };
 
 const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, halfHeight: number, vertex: math.Vector3) => {
-	const point = modelViewProjection.transform(vertex);
+	const point = modelViewProjection.transform({
+		x: vertex.x,
+		y: vertex.y,
+		z: vertex.z,
+		w: 1
+	});
 
 	return {
-		x: (point.x * halfWidth + halfWidth) >> 0,
-		y: (point.y * halfHeight + halfHeight) >> 0,
+		x: point.x / point.w * halfWidth + halfWidth,
+		y: point.y / point.w * halfHeight + halfHeight,
 		z: point.z
 	};
 };

@@ -4,7 +4,7 @@ import * as shared from "./shared";
 
 const state = {
 	camera : {
-		position: { x: 0, y: 0, z: -5 },
+		position: { x: 0, y: 0, z: 5 },
 		rotation: { x: 0, y: 0, z: 0 }
 	},
 	input: shared.input,
@@ -19,8 +19,8 @@ const change = function (dt: number) {
 	const wheel = input.fetchWheel();
 
 	if (input.isPressed("mouseleft")) {
-		camera.position.x += movement.x / 64;
-		camera.position.y += movement.y / 64;
+		camera.position.x -= movement.x / 64;
+		camera.position.y -= movement.y / 64;
 	}
 
 	if (input.isPressed("mouseright")) {
@@ -28,11 +28,11 @@ const change = function (dt: number) {
 		camera.rotation.y -= movement.x / 64;
 	}
 
-	camera.position.z += wheel;
+	camera.position.z -= wheel;
 };
 
 const draw = () => {
-	const points = [
+	const positions = [
 		{ x: -1, y: 1, z: -1 },
 		{ x: 1, y: 1, z: -1 },
 		{ x: 1, y: -1, z: -1 },
@@ -71,8 +71,9 @@ const draw = () => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	render.draw(screen, state.projection, view, {
-		faces: faces,
-		points: points
+		colors: Array.apply(null, Array(positions.length)).map((v: undefined, i: number) => ({ x: (i / 2 * 37) % 128 + 128, y: (i * 61) % 128 + 128, z: (i * 89) % 128 + 128, w: 255 })),
+		positions: positions,
+		faces: faces
 	});
 };
 
