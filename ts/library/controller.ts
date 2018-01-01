@@ -24,29 +24,29 @@ interface Position {
 ** Keyboard & mouse input abstraction class.
 */
 class Input {
-	private buttonsMap: Map<number, Button[]>;
+	private buttonMap: { [key: number]: Button[] };
 	private mouseMouvement: Position;
 	private mousePosition: Position;
 	private mouseOffset: Position;
 	private mouseOrigin: HTMLElement;
 	private mouseWheel: number;
-	private presses: Map<ButtonId, boolean>;
+	private presses: { [key: string]: boolean };
 
 	constructor(eventSource: HTMLElement, mouseOrigin?: HTMLElement) {
 		if (eventSource.tabIndex < 0)
 			throw Error('eventSource element requires a \'tabindex="1"\' attribute to capture key events');
 
-		this.buttonsMap = new Map<number, Button[]>();
+		this.buttonMap = {};
 		this.mouseMouvement = { x: 0, y: 0 };
 		this.mousePosition = { x: 0, y: 0 };
 		this.mouseOffset = { x: 0, y: 0 };
 		this.mouseOrigin = mouseOrigin || eventSource;
 		this.mouseWheel = 0;
-		this.presses = new Map<ButtonId, boolean>();
+		this.presses = {};
 
 		// Define and attach event listeners
 		const handlers: [string, (event: Event) => void, boolean][] = [
-			['contextmenu', (event: Event) => {}, true], // NoOp, just disable context menu on canvas
+			['contextmenu', (event: Event) => { }, true], // NoOp, just disable context menu on canvas
 			['keydown', <(Event: Event) => void>((event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, true)), true],
 			['keyup', <(Event: Event) => void>((event: KeyboardEvent) => this.processKeyPress(event.keyCode || event.which, false)), true],
 			['mousedown', <(Event: Event) => void>((event: MouseEvent) => this.processKeyPress(event.button, true)), false],
@@ -92,12 +92,12 @@ class Input {
 	** Internal assign function.
 	*/
 	public assign(buttonId: ButtonId, key: Key) {
-		let buttons = this.buttonsMap.get(key);
+		let buttons = this.buttonMap[key];
 
 		if (buttons === undefined) {
 			buttons = [];
 
-			this.buttonsMap.set(key, buttons);
+			this.buttonMap[key] = buttons;
 		}
 
 		for (let i = buttons.length; i-- > 0;) {
@@ -116,17 +116,19 @@ class Input {
 	** button:	button ID
 	*/
 	public clear(buttonId: ButtonId) {
-		for (const [key, buttons] of this.buttonsMap) {
+		for (const key in this.buttonMap) {
+			const buttons = this.buttonMap[key];
+
 			for (let i = buttons.length; i-- > 0;) {
 				if (buttons[i].id == buttonId)
 					buttons.splice(i, 1);
 			}
 
 			if (buttons.length == 0)
-				this.buttonsMap.delete(key);
+				delete this.buttonMap[key];
 		}
 
-		this.presses.delete(buttonId);
+		delete this.presses[buttonId];
 	}
 
 	/*
@@ -159,10 +161,10 @@ class Input {
 	** Get and reset button pressed state.
 	*/
 	public fetchPressed(buttonId: ButtonId) {
-		if (!this.presses.get(buttonId))
+		if (!this.presses[buttonId])
 			return false;
 
-		this.presses.set(buttonId, false);
+		this.presses[buttonId] = false;
 
 		return true;
 	}
@@ -189,7 +191,7 @@ class Input {
 	** Check if button is pressed.
 	*/
 	public isPressed(buttonId: ButtonId) {
-		return !!this.presses.get(buttonId);
+		return !!this.presses[buttonId];
 	}
 
 	/*
@@ -216,14 +218,14 @@ class Input {
 	** value:	new button state
 	*/
 	private processKeyPress(key: number, pressed: boolean) {
-		const buttons = this.buttonsMap.get(key);
+		const buttons = this.buttonMap[key];
 
 		if (buttons === undefined)
 			return;
 
 		for (const button of buttons) {
 			if (button.enabled)
-				this.presses.set(button.id, pressed);
+				this.presses[button.id] = pressed;
 		}
 	}
 
@@ -258,7 +260,9 @@ class Input {
 	** Enable or disable button presses.
 	*/
 	private setEnabled(buttonId: ButtonId, enabled: boolean) {
-		for (const [key, buttons] of this.buttonsMap) {
+		for (const key in this.buttonMap) {
+			const buttons = this.buttonMap[key];
+
 			for (const button of buttons) {
 				if (button.id == buttonId)
 					button.enabled = enabled;
