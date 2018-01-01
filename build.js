@@ -10,13 +10,8 @@ let browserifyOptions = {
 	packageCache: {}
 };
 
-let typescriptOptions = {
-	strict: true,
-	target: "es6"
-};
-
 project = browserify(browserifyOptions)
-	.plugin("tsify", typescriptOptions)
+	.plugin("tsify")
 	.plugin(watchify);
 
 let bundle = function () {
