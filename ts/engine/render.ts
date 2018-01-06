@@ -1,7 +1,6 @@
 import * as display from "./display";
 import * as graphic from "./graphic";
 import * as math from "./math";
-import { Vector4 } from "./math";
 
 interface Image {
 	colors: Uint8ClampedArray;
@@ -17,21 +16,34 @@ enum Mode {
 
 interface Vertex {
 	color: math.Vector4;
+	coord: math.Vector2;
 	point: math.Vector3;
 }
 
-const white = {
+const defaultColor = {
 	x: 255,
 	y: 255,
 	z: 255,
 	w: 255
 };
 
+const defaultCoord = {
+	x: 0,
+	y: 0
+};
+
 const lerpScalar = (min: number, max: number, ratio: number) => {
 	return min + (max - min) * ratio;
 };
 
-const lerpVector4 = (min: Vector4, max: Vector4, ratio: number) => {
+const lerpVector2 = (min: math.Vector2, max: math.Vector2, ratio: number) => {
+	return {
+		x: lerpScalar(min.x, max.x, ratio),
+		y: lerpScalar(min.y, max.y, ratio)
+	}
+};
+
+const lerpVector4 = (min: math.Vector4, max: math.Vector4, ratio: number) => {
 	return {
 		x: lerpScalar(min.x, max.x, ratio),
 		y: lerpScalar(min.y, max.y, ratio),
@@ -49,12 +61,14 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 
 	let start = {
 		color: lerpVector4(va.color, vb.color, ratio1),
+		coord: lerpVector2(va.coord, vb.color, ratio1),
 		depth: lerpScalar(va.point.z, vb.point.z, ratio1),
 		x: Math.max(Math.min(~~lerpScalar(va.point.x, vb.point.x, ratio1), image.width - 1), 0)
 	};
 
 	let stop = {
 		color: lerpVector4(vc.color, vd.color, ratio2),
+		coord: lerpVector2(vc.coord, vd.color, ratio2),
 		depth: lerpScalar(vc.point.z, vd.point.z, ratio2),
 		x: Math.max(Math.min(~~lerpScalar(vc.point.x, vd.point.x, ratio2), image.width - 1), 0)
 	};
@@ -129,17 +143,17 @@ const wireLine = (image: Image, begin: math.Vector3, end: math.Vector3) => {
 	let y0 = ~~begin.y;
 	const y1 = ~~end.y;
 
-    const dx = Math.abs(x1 - x0);
-    const dy = Math.abs(y1 - y0);
-    const sx = (x0 < x1) ? 1 : -1;
+	const dx = Math.abs(x1 - x0);
+	const dy = Math.abs(y1 - y0);
+	const sx = (x0 < x1) ? 1 : -1;
 	const sy = (y0 < y1) ? 1 : -1;
 
-    let err = dx - dy;
+	let err = dx - dy;
 
-    while (x0 !== x1 || y0 !== y1) {
+	while (x0 !== x1 || y0 !== y1) {
 		if (x0 >= 0 && x0 < image.width && y0 >= 0 && y0 < image.height) {
 			const index = (x0 + y0 * image.width) * 4;
-	
+
 			image.colors[index + 0] = 255;
 			image.colors[index + 1] = 255;
 			image.colors[index + 2] = 255;
@@ -148,12 +162,12 @@ const wireLine = (image: Image, begin: math.Vector3, end: math.Vector3) => {
 
 		const e2 = err * 2;
 
-        if (e2 > -dy) {
+		if (e2 > -dy) {
 			err -= dy;
 			x0 += sx;
 		}
 
-        if (e2 < dx) {
+		if (e2 < dx) {
 			err += dx;
 			y0 += sy;
 		}
@@ -164,6 +178,21 @@ const wireTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
 	wireLine(image, v1.point, v2.point);
 	wireLine(image, v1.point, v3.point);
 	wireLine(image, v2.point, v3.point);
+};
+
+const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, halfHeight: number, position: math.Vector3) => {
+	const point = modelViewProjection.transform({
+		x: position.x,
+		y: position.y,
+		z: position.z,
+		w: 1
+	});
+
+	return {
+		x: point.x / point.w * halfWidth + halfWidth,
+		y: point.y / point.w * halfHeight + halfHeight,
+		z: point.z / point.w
+	};
 };
 
 const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mode: Mode, model: graphic.Model) => {
@@ -187,41 +216,35 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 
 	for (const mesh of model.meshes) {
 		const colors = mesh.colors || [];
-		const coords = mesh.positions;
+		const coords = mesh.coords || [];
 		const faces = mesh.faces;
+		const material = model.materials !== undefined && mesh.materialName !== undefined ? model.materials[mesh.materialName] : undefined;
+		const positions = mesh.positions;
 
 		for (const [i, j, k] of faces) {
-			const color1 = colors[i] || white;
-			const color2 = colors[j] || white;
-			const color3 = colors[k] || white;
-			const point1 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[i]);
-			const point2 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]);
-			const point3 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]);
+			const vertex1 = {
+				color: colors[i] || defaultColor,
+				coord: coords[i] || defaultCoord,
+				point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[i])
+			};
 
-			triangle(image,
-				{ color: color1, point: point1 },
-				{ color: color2, point: point2 },
-				{ color: color3, point: point3 }
-			);
+			const vertex2 = {
+				color: colors[j] || defaultColor,
+				coord: coords[j] || defaultCoord,
+				point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[j])
+			};
+
+			const vertex3 = {
+				color: colors[k] || defaultColor,
+				coord: coords[k] || defaultCoord,
+				point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[k])
+			};
+
+			triangle(image, vertex1, vertex2, vertex3);
 		}
 	}
 
 	screen.context.putImageData(capture, 0, 0);
-};
-
-const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, halfHeight: number, vertex: math.Vector3) => {
-	const point = modelViewProjection.transform({
-		x: vertex.x,
-		y: vertex.y,
-		z: vertex.z,
-		w: 1
-	});
-
-	return {
-		x: point.x / point.w * halfWidth + halfWidth,
-		y: point.y / point.w * halfHeight + halfHeight,
-		z: point.z / point.w
-	};
 };
 
 export { draw, Mode };

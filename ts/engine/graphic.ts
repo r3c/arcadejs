@@ -14,6 +14,7 @@ interface MaterialMap {
 
 interface Mesh {
 	colors?: math.Vector4[];
+	coords?: math.Vector2[];
 	faces: [number, number, number][];
 	materialName?: string;
 	normals?: math.Vector3[];
@@ -93,6 +94,7 @@ class Loader {
 
 		return {
 			colors: instance.colors !== undefined ? Loader.toArrayOf(`${name}.colors`, instance.colors, Loader.toVector4) : undefined,
+			coords: instance.coords !== undefined ? Loader.toArrayOf(`${name}.coords`, instance.coords, Loader.toVector2) : undefined,
 			faces: Loader.toArrayOf(`${name}.faces`, instance.faces, Loader.toIntegerTuple3),
 			materialName: instance.materialName !== undefined ? Loader.toString(`${name}.materialName`, instance.materialName) : undefined,
 			normals: instance.normals !== undefined ? Loader.toArrayOf(`${name}.normals`, instance.normals, Loader.toVector3) : undefined,
@@ -115,6 +117,16 @@ class Loader {
 			throw Loader.invalid(name, instance, "string");
 
 		return <string>instance;
+	}
+
+	private static toVector2(name: string, instance: any): math.Vector2 {
+		if (typeof instance !== "object")
+			throw Loader.invalid(name, instance, "2-dimensional vector");
+
+		return {
+			x: Loader.toDecimal(`${name}.x`, instance.x),
+			y: Loader.toDecimal(`${name}.y`, instance.y)
+		};
 	}
 
 	private static toVector3(name: string, instance: any): math.Vector3 {
