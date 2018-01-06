@@ -4,7 +4,7 @@ import * as shared from "./shared";
 
 const state = {
 	camera : {
-		position: { x: 0, y: 0, z: 5 },
+		position: { x: 0, y: 0, z: -5 },
 		rotation: { x: 0, y: 0, z: 0 }
 	},
 	input: shared.input,
@@ -19,8 +19,8 @@ const change = function (dt: number) {
 	const wheel = input.fetchWheel();
 
 	if (input.isPressed("mouseleft")) {
-		camera.position.x -= movement.x / 64;
-		camera.position.y -= movement.y / 64;
+		camera.position.x += movement.x / 64;
+		camera.position.y += movement.y / 64;
 	}
 
 	if (input.isPressed("mouseright")) {
@@ -28,7 +28,7 @@ const change = function (dt: number) {
 		camera.rotation.y -= movement.x / 64;
 	}
 
-	camera.position.z -= wheel;
+	camera.position.z += wheel;
 };
 
 const draw = () => {
