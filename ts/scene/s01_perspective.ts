@@ -51,9 +51,8 @@ const draw = () => {
 	screen.context.fillStyle = 'black';
 	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 
-	render.draw(screen, state.projection, math.Matrix.createIdentity(), render.Mode.Default, {
+	render.draw(screen, state.projection, math.Matrix.createIdentity(), render.Mode.Wire, {
 		meshes: [{
-			colors: new Array(positions.length).fill(0).map((v, i) => ({ x: (i / 2 * 37) % 128 + 128, y: (i * 61) % 128 + 128, z: (i * 89) % 128 + 128, w: 255 })),
 			positions: positions,
 			faces: faces
 		}]

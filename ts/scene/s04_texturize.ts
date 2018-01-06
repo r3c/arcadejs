@@ -6,8 +6,6 @@ import * as shared from "./shared";
 
 /*
 ** What changed?
-** - In-code mesh replaced by model loaded from JSON file
-** - Texture coordinates are defined on cube mesh
 */
 
 const state = {

@@ -40,7 +40,7 @@ const lerpVector4 = (min: Vector4, max: Vector4, ratio: number) => {
 	}
 };
 
-const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, mode: Mode) => {
+const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex) => {
 	if (y < 0 || y >= image.height)
 		return;
 
@@ -50,23 +50,22 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 	let start = {
 		color: lerpVector4(va.color, vb.color, ratio1),
 		depth: lerpScalar(va.point.z, vb.point.z, ratio1),
-		x: Math.max(Math.min(lerpScalar(va.point.x, vb.point.x, ratio1) >> 0, image.width - 1), 0)
+		x: Math.max(Math.min(~~lerpScalar(va.point.x, vb.point.x, ratio1), image.width - 1), 0)
 	};
 
 	let stop = {
 		color: lerpVector4(vc.color, vd.color, ratio2),
 		depth: lerpScalar(vc.point.z, vd.point.z, ratio2),
-		x: Math.max(Math.min(lerpScalar(vc.point.x, vd.point.x, ratio2) >> 0, image.width - 1), 0)
+		x: Math.max(Math.min(~~lerpScalar(vc.point.x, vd.point.x, ratio2), image.width - 1), 0)
 	};
 
 	if (start.x > stop.x)
 		[start, stop] = [stop, start];
 
-	const offset = (y >> 0) * image.width;
+	const offset = ~~y * image.width;
 	const length = Math.max(stop.x - start.x, 1);
-	const step = mode == Mode.Default ? 1 : length;
 
-	for (var x = start.x; x <= stop.x; x += step) {
+	for (var x = start.x; x <= stop.x; x += 1) {
 		const ratio = (x - start.x) / length;
 
 		// Depth test
@@ -92,7 +91,7 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 /*
 ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
 */
-const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, mode: Mode) => {
+const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
 	// Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
 	if (v1.point.y > v2.point.y)
 		[v1, v2] = [v2, v1];
@@ -109,19 +108,62 @@ const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, mode: Mo
 
 	if (slope12 > slope13) {
 		for (let y = v1.point.y; y < v2.point.y; ++y)
-			fillScanline(image, y, v1, v3, v1, v2, mode);
+			fillScanline(image, y, v1, v3, v1, v2);
 
 		for (let y = v2.point.y; y <= v3.point.y; ++y)
-			fillScanline(image, y, v1, v3, v2, v3, mode);
+			fillScanline(image, y, v1, v3, v2, v3);
 	}
 
 	else {
 		for (let y = v1.point.y; y < v2.point.y; ++y)
-			fillScanline(image, y, v1, v2, v1, v3, mode);
+			fillScanline(image, y, v1, v2, v1, v3);
 
 		for (let y = v2.point.y; y <= v3.point.y; ++y)
-			fillScanline(image, y, v2, v3, v1, v3, mode);
+			fillScanline(image, y, v2, v3, v1, v3);
 	}
+};
+
+const wireLine = (image: Image, begin: math.Vector3, end: math.Vector3) => {
+	let x0 = ~~begin.x;
+	const x1 = ~~end.x;
+	let y0 = ~~begin.y;
+	const y1 = ~~end.y;
+
+    const dx = Math.abs(x1 - x0);
+    const dy = Math.abs(y1 - y0);
+    const sx = (x0 < x1) ? 1 : -1;
+	const sy = (y0 < y1) ? 1 : -1;
+
+    let err = dx - dy;
+
+    while (x0 !== x1 || y0 !== y1) {
+		if (x0 >= 0 && x0 < image.width && y0 >= 0 && y0 < image.height) {
+			const index = (x0 + y0 * image.width) * 4;
+	
+			image.colors[index + 0] = 255;
+			image.colors[index + 1] = 255;
+			image.colors[index + 2] = 255;
+			image.colors[index + 3] = 255;
+		}
+
+		const e2 = err * 2;
+
+        if (e2 > -dy) {
+			err -= dy;
+			x0 += sx;
+		}
+
+        if (e2 < dx) {
+			err += dx;
+			y0 += sy;
+		}
+	}
+};
+
+const wireTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
+	wireLine(image, v1.point, v2.point);
+	wireLine(image, v1.point, v3.point);
+	wireLine(image, v2.point, v3.point);
 };
 
 const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mode: Mode, model: graphic.Model) => {
@@ -141,6 +183,8 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 
 	const modelViewProjection = projection.compose(modelView);
 
+	const triangle = mode === Mode.Default ? fillTriangle : wireTriangle;
+
 	for (const mesh of model.meshes) {
 		const colors = mesh.colors || [];
 		const coords = mesh.positions;
@@ -154,11 +198,10 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 			const point2 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]);
 			const point3 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]);
 
-			fillTriangle(image,
+			triangle(image,
 				{ color: color1, point: point1 },
 				{ color: color2, point: point2 },
-				{ color: color3, point: point3 },
-				mode
+				{ color: color3, point: point3 }
 			);
 		}
 	}

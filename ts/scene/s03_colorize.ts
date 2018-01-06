@@ -1,16 +1,17 @@
+import * as graphic from "../engine/graphic";
+import * as io from "../engine/io";
 import * as math from "../engine/math";
 import * as render from "../engine/render";
 import * as shared from "./shared";
 
 /*
 ** What changed?
-** - New "camera" property in state to hold current camera position/rotation
-** - New "input" instance referenced to read mouse position and button presses
-** - Manually modified cube positions replaced by constant structure
+** - Constant mesh data structure is now loaded from a JSON file
+** - Mesh defines per-vertex color used to interpolate face colors
 */
 
 const state = {
-	camera : {
+	camera: {
 		position: { x: 0, y: 0, z: -5 },
 		rotation: { x: 0, y: 0, z: 0 }
 	},
@@ -18,6 +19,8 @@ const state = {
 	projection: math.Matrix.createPerspective(45, shared.screen.getRatio(), 0.1, 100),
 	screen: shared.screen
 };
+
+let cube: graphic.Model | undefined;
 
 const change = function (dt: number) {
 	const camera = state.camera;
@@ -39,32 +42,6 @@ const change = function (dt: number) {
 };
 
 const draw = () => {
-	const positions = [
-		{ x: -1, y: 1, z: -1 },
-		{ x: 1, y: 1, z: -1 },
-		{ x: 1, y: -1, z: -1 },
-		{ x: -1, y: -1, z: -1 },
-		{ x: -1, y: 1, z: 1 },
-		{ x: 1, y: 1, z: 1 },
-		{ x: 1, y: -1, z: 1 },
-		{ x: -1, y: -1, z: 1 }
-	];
-
-	const faces: [number, number, number][] = [
-		[0, 1, 2],
-		[2, 3, 0],
-		[4, 5, 6],
-		[6, 7, 4],
-		[0, 3, 7],
-		[7, 4, 0],
-		[1, 2, 6],
-		[6, 5, 1],
-		[0, 1, 5],
-		[5, 4, 0],
-		[2, 3, 7],
-		[7, 6, 2]
-	];
-
 	const screen = state.screen;
 
 	screen.context.fillStyle = 'black';
@@ -77,17 +54,17 @@ const draw = () => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	render.draw(screen, state.projection, view, render.Mode.Wire, {
-		meshes: [{
-			positions: positions,
-			faces: faces
-		}]
-	});
+	if (cube !== undefined)
+		render.draw(screen, state.projection, view, render.Mode.Default, cube);
 };
 
 const tick = (dt: number) => {
 	change(dt);
 	draw();
 };
+
+io.Stream
+	.readURL(io.StringReader, "./res/mesh/cube.json")
+	.then(reader => cube = graphic.Loader.fromJSON(reader.data));
 
 export { tick };

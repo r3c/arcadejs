@@ -1,6 +1,7 @@
 import * as s01 from "./scene/s01_perspective";
 import * as s02 from "./scene/s02_transform";
-import * as s03 from "./scene/s03_texture";
+import * as s03 from "./scene/s03_colorize";
+import * as s04 from "./scene/s04_texturize";
 
 type Scene = (dt: number) => void;
 
@@ -13,7 +14,8 @@ var current: number | undefined;
 const scenes: SceneMap = {
 	"perspective": s01.tick,
 	"transform": s02.tick,
-	"texture": s03.tick
+	"colorize": s03.tick,
+	"texturize": s04.tick
 };
 
 const setup = (scene: Scene) => {
