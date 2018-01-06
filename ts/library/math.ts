@@ -4,7 +4,7 @@ class Matrix {
 		1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0,
-		0, 0, 0, 0
+		0, 0, 0, 1
 	]);
 
 	private readonly values: number[];
