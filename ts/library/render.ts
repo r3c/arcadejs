@@ -16,9 +16,14 @@ interface Mesh {
 	positions: math.Vector3[];
 }
 
+enum Mode {
+	Default,
+	Wire
+}
+
 interface Vertex {
 	color: math.Vector4;
-	position: math.Vector3;
+	point: math.Vector3;
 }
 
 const white = {
@@ -41,38 +46,40 @@ const lerpVector4 = (min: Vector4, max: Vector4, ratio: number) => {
 	}
 };
 
-const fillScanline = (image: Image, y: number, pa: Vertex, pb: Vertex, pc: Vertex, pd: Vertex) => {
+const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, mode: Mode) => {
 	if (y < 0 || y >= image.height)
 		return;
 
-	const ratio1 = pa.position.y != pb.position.y ? (y - pa.position.y) / (pb.position.y - pa.position.y) : 1;
-	const ratio2 = pc.position.y != pd.position.y ? (y - pc.position.y) / (pd.position.y - pc.position.y) : 1;
+	const ratio1 = (y - va.point.y) / Math.max(vb.point.y - va.point.y, 1);
+	const ratio2 = (y - vc.point.y) / Math.max(vd.point.y - vc.point.y, 1);
 
 	let start = {
-		color: lerpVector4(pa.color, pb.color, ratio1),
-		depth: lerpScalar(pa.position.z, pb.position.z, ratio1),
-		x: Math.max(Math.min(lerpScalar(pa.position.x, pb.position.x, ratio1) >> 0, image.width - 1), 0)
+		color: lerpVector4(va.color, vb.color, ratio1),
+		depth: lerpScalar(va.point.z, vb.point.z, ratio1),
+		x: Math.max(Math.min(lerpScalar(va.point.x, vb.point.x, ratio1) >> 0, image.width - 1), 0)
 	};
 
 	let stop = {
-		color: lerpVector4(pc.color, pd.color, ratio2),
-		depth: lerpScalar(pc.position.z, pd.position.z, ratio2),
-		x: Math.max(Math.min(lerpScalar(pc.position.x, pd.position.x, ratio2) >> 0, image.width - 1), 0)
+		color: lerpVector4(vc.color, vd.color, ratio2),
+		depth: lerpScalar(vc.point.z, vd.point.z, ratio2),
+		x: Math.max(Math.min(lerpScalar(vc.point.x, vd.point.x, ratio2) >> 0, image.width - 1), 0)
 	};
 
 	if (start.x > stop.x)
 		[start, stop] = [stop, start];
 
 	const offset = (y >> 0) * image.width;
+	const length = Math.max(stop.x - start.x, 1);
+	const step = mode == Mode.Default ? 1 : length;
 
-	for (var x = start.x; x <= stop.x; x++) {
-		const ratio = (x - start.x) / (stop.x - start.x);
+	for (var x = start.x; x <= stop.x; x += step) {
+		const ratio = (x - start.x) / length;
 
 		// Depth test
 		const depth = lerpScalar(start.depth, stop.depth, ratio);
 		const depthIndex = offset + x;
 
-		if (depth <= image.depths[depthIndex])
+		if (depth >= image.depths[depthIndex])
 			continue;
 
 		image.depths[depthIndex] = depth;
@@ -91,39 +98,39 @@ const fillScanline = (image: Image, y: number, pa: Vertex, pb: Vertex, pc: Verte
 /*
 ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
 */
-const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
+const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, mode: Mode) => {
 	// Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
-	if (v1.position.y > v2.position.y)
+	if (v1.point.y > v2.point.y)
 		[v1, v2] = [v2, v1];
 
-	if (v2.position.y > v3.position.y)
+	if (v2.point.y > v3.point.y)
 		[v2, v3] = [v3, v2];
 
-	if (v1.position.y > v2.position.y)
+	if (v1.point.y > v2.point.y)
 		[v1, v2] = [v2, v1];
 
 	// Compute p1-p2 and p1-p3 slopes
-	const slope12 = v2.position.y > v1.position.y ? (v2.position.x - v1.position.x) / (v2.position.y - v1.position.y) : 0;
-	const slope13 = v3.position.y > v1.position.y ? (v3.position.x - v1.position.x) / (v3.position.y - v1.position.y) : 0;
+	const slope12 = v2.point.y > v1.point.y ? (v2.point.x - v1.point.x) / (v2.point.y - v1.point.y) : 0;
+	const slope13 = v3.point.y > v1.point.y ? (v3.point.x - v1.point.x) / (v3.point.y - v1.point.y) : 0;
 
 	if (slope12 > slope13) {
-		for (let y = v1.position.y; y < v2.position.y; ++y)
-			fillScanline(image, y, v1, v3, v1, v2);
+		for (let y = v1.point.y; y < v2.point.y; ++y)
+			fillScanline(image, y, v1, v3, v1, v2, mode);
 
-		for (let y = v2.position.y; y <= v3.position.y; ++y)
-			fillScanline(image, y, v1, v3, v2, v3);
+		for (let y = v2.point.y; y <= v3.point.y; ++y)
+			fillScanline(image, y, v1, v3, v2, v3, mode);
 	}
 
 	else {
-		for (let y = v1.position.y; y < v2.position.y; ++y)
-			fillScanline(image, y, v1, v2, v1, v3);
+		for (let y = v1.point.y; y < v2.point.y; ++y)
+			fillScanline(image, y, v1, v2, v1, v3, mode);
 
-		for (let y = v2.position.y; y <= v3.position.y; ++y)
-			fillScanline(image, y, v2, v3, v1, v3);
+		for (let y = v2.point.y; y <= v3.point.y; ++y)
+			fillScanline(image, y, v2, v3, v1, v3, mode);
 	}
 };
 
-const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mesh: Mesh) => {
+const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mode: Mode, mesh: Mesh) => {
 	const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
 	const image = {
@@ -133,22 +140,27 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 		width: screen.getWidth()
 	};
 
-	image.depths.fill(-Math.pow(2, 127));
+	image.depths.fill(Math.pow(2, 127));
 
 	const halfWidth = screen.getWidth() * 0.5;
 	const halfHeight = screen.getHeight() * 0.5;
 
 	const modelViewProjection = projection.compose(modelView);
 
-	const colors = mesh.colors || [];
+	const colors = mesh.colors || [white, white, white];
 	const coords = mesh.positions;
 	const faces = mesh.faces;
 
 	for (const [i, j, k] of faces) {
+		const point1 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[i]);
+		const point2 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]);
+		const point3 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]);
+
 		fillTriangle(image,
-			{ position: projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[i]), color: colors[i] || white },
-			{ position: projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]), color: colors[j] || white },
-			{ position: projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]), color: colors[k] || white }
+			{ color: colors[i], point: point1 },
+			{ color: colors[j], point: point2 },
+			{ color: colors[k], point: point3 },
+			mode
 		);
 	}
 
@@ -166,8 +178,8 @@ const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, ha
 	return {
 		x: point.x / point.w * halfWidth + halfWidth,
 		y: point.y / point.w * halfHeight + halfHeight,
-		z: point.z
+		z: point.z / point.w
 	};
 };
 
-export { draw };
+export { draw, Mode };

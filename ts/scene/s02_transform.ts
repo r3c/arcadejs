@@ -70,7 +70,7 @@ const draw = () => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	render.draw(screen, state.projection, view, {
+	render.draw(screen, state.projection, view, render.Mode.Default, {
 		colors: Array.apply(null, Array(positions.length)).map((v: undefined, i: number) => ({ x: (i / 2 * 37) % 128 + 128, y: (i * 61) % 128 + 128, z: (i * 89) % 128 + 128, w: 255 })),
 		positions: positions,
 		faces: faces
