@@ -3,10 +3,10 @@ class Screen {
 	public readonly canvas: HTMLCanvasElement;
 	public readonly context: CanvasRenderingContext2D;
 
-	public constructor(document: HTMLDocument) {
+	public constructor(container: HTMLElement) {
 		const canvas = document.createElement('canvas');
 
-		document.body.appendChild(canvas);
+		container.appendChild(canvas);
 
 		canvas.tabIndex = 1;
 		canvas.width = canvas.offsetWidth;
