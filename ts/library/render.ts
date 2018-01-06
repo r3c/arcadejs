@@ -147,19 +147,22 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 
 	const modelViewProjection = projection.compose(modelView);
 
-	const colors = mesh.colors || [white, white, white];
+	const colors = mesh.colors || [];
 	const coords = mesh.positions;
 	const faces = mesh.faces;
 
 	for (const [i, j, k] of faces) {
+		const color1 = colors[i] || white;
+		const color2 = colors[j] || white;
+		const color3 = colors[k] || white;
 		const point1 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[i]);
 		const point2 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]);
 		const point3 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]);
 
 		fillTriangle(image,
-			{ color: colors[i], point: point1 },
-			{ color: colors[j], point: point2 },
-			{ color: colors[k], point: point3 },
+			{ color: color1, point: point1 },
+			{ color: color2, point: point2 },
+			{ color: color3, point: point3 },
 			mode
 		);
 	}
