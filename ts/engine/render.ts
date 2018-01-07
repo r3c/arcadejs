@@ -2,6 +2,11 @@ import * as display from "./display";
 import * as graphic from "./graphic";
 import * as math from "./math";
 
+enum DrawMode {
+	Default,
+	Wire
+}
+
 interface Image {
 	colors: Uint8ClampedArray;
 	depths: Float32Array;
@@ -9,9 +14,21 @@ interface Image {
 	width: number;
 }
 
-enum Mode {
-	Default,
-	Wire
+interface Material {
+	ambientData: ImageData | undefined;
+}
+
+interface MaterialMap {
+	[name: string]: Material;
+}
+
+interface Mesh {
+	colors: math.Vector4[] | undefined;
+	coords: math.Vector2[] | undefined;
+	faces: [number, number, number][];
+	material: Material | undefined;
+	normals: math.Vector3[] | undefined;
+	positions: math.Vector3[];
 }
 
 interface Vertex {
@@ -105,7 +122,7 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 /*
 ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
 */
-const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
+const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material?: Material) => {
 	// Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
 	if (v1.point.y > v2.point.y)
 		[v1, v2] = [v2, v1];
@@ -195,7 +212,7 @@ const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, ha
 	};
 };
 
-const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mode: Mode, model: graphic.Model) => {
+const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, drawMode: DrawMode, meshes: Mesh[]) => {
 	const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
 	const image = {
@@ -212,13 +229,13 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 
 	const modelViewProjection = projection.compose(modelView);
 
-	const triangle = mode === Mode.Default ? fillTriangle : wireTriangle;
+	const triangle = drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
 
-	for (const mesh of model.meshes) {
+	for (const mesh of meshes) {
 		const colors = mesh.colors || [];
 		const coords = mesh.coords || [];
 		const faces = mesh.faces;
-		const material = model.materials !== undefined && mesh.materialName !== undefined ? model.materials[mesh.materialName] : undefined;
+		const material = mesh.material;
 		const positions = mesh.positions;
 
 		for (const [i, j, k] of faces) {
@@ -240,11 +257,77 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 				point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[k])
 			};
 
-			triangle(image, vertex1, vertex2, vertex3);
+			triangle(image, vertex1, vertex2, vertex3, material);
 		}
 	}
 
 	screen.context.putImageData(capture, 0, 0);
 };
 
-export { draw, Mode };
+const loadImageData = (url: string) => {
+	return new Promise<ImageData>((resolve, reject) => {
+		const image = new Image();
+
+		image.onabort = () => reject("image load aborted");
+		image.onerror = () => reject("image load failed");
+		image.onload = () => {
+			const canvas = document.createElement('canvas');
+
+			canvas.height = image.height;
+			canvas.width = image.width;
+
+			const context = canvas.getContext('2d');
+
+			if (context === null) {
+				reject("cannot get 2d contxt");
+
+				return;
+			}
+
+			context.drawImage(image, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+
+			resolve(context.getImageData(0, 0, canvas.width, canvas.height));
+		};
+	});
+};
+
+const load = async (model: graphic.Model) => {
+	const definitions = model.materials || {};
+	const materials: MaterialMap = {};
+	const meshes: Mesh[] = [];
+
+	for (const mesh of model.meshes) {
+		let material: Material | undefined;
+		const name = mesh.materialName;
+
+		if (materials !== undefined && name !== undefined && definitions[name] !== undefined) {
+			if (materials[name] === undefined) {
+				const definition = definitions[name];
+
+				materials[name] = {
+					ambientData: definition.ambientMap !== undefined
+						? await loadImageData(definition.ambientMap)
+						: undefined
+				}
+			}
+
+			material = materials[name];
+		}
+		else {
+			material = undefined;
+		}
+
+		meshes.push({
+			colors: mesh.colors,
+			coords: mesh.coords,
+			faces: mesh.faces,
+			material: material,
+			normals: mesh.normals,
+			positions: mesh.positions
+		})
+	}
+
+	return meshes;
+};
+
+export { DrawMode, Mesh, draw, load };

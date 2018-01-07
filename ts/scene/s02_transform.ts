@@ -7,10 +7,11 @@ import * as shared from "./shared";
 ** - New "camera" property in state to hold current camera position/rotation
 ** - New "input" instance referenced to read mouse position and button presses
 ** - Manually modified cube positions replaced by constant structure
+** - Model loading is done only once instead of once per draw iteration
 */
 
 const state = {
-	camera : {
+	camera: {
 		position: { x: 0, y: 0, z: -5 },
 		rotation: { x: 0, y: 0, z: 0 }
 	},
@@ -38,33 +39,9 @@ const change = function (dt: number) {
 	camera.position.z += wheel;
 };
 
+let cube: render.Mesh[] = [];
+
 const draw = () => {
-	const positions = [
-		{ x: -1, y: 1, z: -1 },
-		{ x: 1, y: 1, z: -1 },
-		{ x: 1, y: -1, z: -1 },
-		{ x: -1, y: -1, z: -1 },
-		{ x: -1, y: 1, z: 1 },
-		{ x: 1, y: 1, z: 1 },
-		{ x: 1, y: -1, z: 1 },
-		{ x: -1, y: -1, z: 1 }
-	];
-
-	const faces: [number, number, number][] = [
-		[0, 1, 2],
-		[2, 3, 0],
-		[4, 5, 6],
-		[6, 7, 4],
-		[0, 3, 7],
-		[7, 4, 0],
-		[1, 2, 6],
-		[6, 5, 1],
-		[0, 1, 5],
-		[5, 4, 0],
-		[2, 3, 7],
-		[7, 6, 2]
-	];
-
 	const screen = state.screen;
 
 	screen.context.fillStyle = 'black';
@@ -77,17 +54,43 @@ const draw = () => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	render.draw(screen, state.projection, view, render.Mode.Wire, {
-		meshes: [{
-			positions: positions,
-			faces: faces
-		}]
-	});
+	render.draw(screen, state.projection, view, render.DrawMode.Wire, cube);
 };
 
 const tick = (dt: number) => {
 	change(dt);
 	draw();
 };
+
+render
+	.load({
+		meshes: [{
+			positions: [
+				{ x: -1, y: 1, z: -1 },
+				{ x: 1, y: 1, z: -1 },
+				{ x: 1, y: -1, z: -1 },
+				{ x: -1, y: -1, z: -1 },
+				{ x: -1, y: 1, z: 1 },
+				{ x: 1, y: 1, z: 1 },
+				{ x: 1, y: -1, z: 1 },
+				{ x: -1, y: -1, z: 1 }
+			],
+			faces: [
+				[0, 1, 2],
+				[2, 3, 0],
+				[4, 5, 6],
+				[6, 7, 4],
+				[0, 3, 7],
+				[7, 4, 0],
+				[1, 2, 6],
+				[6, 5, 1],
+				[0, 1, 5],
+				[5, 4, 0],
+				[2, 3, 7],
+				[7, 6, 2]
+			]
+		}]
+	})
+	.then(meshes => cube = meshes);
 
 export { tick };

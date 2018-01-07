@@ -51,12 +51,16 @@ const draw = () => {
 	screen.context.fillStyle = 'black';
 	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 
-	render.draw(screen, state.projection, math.Matrix.createIdentity(), render.Mode.Wire, {
+	const model = {
 		meshes: [{
 			positions: positions,
 			faces: faces
 		}]
-	});
+	};
+
+	render
+		.load(model)
+		.then((meshes => render.draw(screen, state.projection, math.Matrix.createIdentity(), render.DrawMode.Wire, meshes)));
 };
 
 const tick = (dt: number) => {

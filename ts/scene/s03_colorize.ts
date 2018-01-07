@@ -20,7 +20,7 @@ const state = {
 	screen: shared.screen
 };
 
-let cube: graphic.Model | undefined;
+let cube: render.Mesh[] = [];
 
 const change = function (dt: number) {
 	const camera = state.camera;
@@ -54,8 +54,7 @@ const draw = () => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	if (cube !== undefined)
-		render.draw(screen, state.projection, view, render.Mode.Default, cube);
+	render.draw(screen, state.projection, view, render.DrawMode.Default, cube);
 };
 
 const tick = (dt: number) => {
@@ -65,6 +64,7 @@ const tick = (dt: number) => {
 
 io.Stream
 	.readURL(io.StringReader, "./res/mesh/cube.json")
-	.then(reader => cube = graphic.Loader.fromJSON(reader.data));
+	.then(reader => render.load(graphic.Loader.fromJSON(reader.data)))
+	.then(meshes => cube = meshes);
 
 export { tick };
