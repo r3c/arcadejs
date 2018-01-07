@@ -62,7 +62,7 @@ const tick = (dt: number) => {
 
 io.Stream
 	.readURL(io.StringReader, "./res/mesh/cube-ambient.json")
-	.then(reader => render.load(graphic.Loader.fromJSON(reader.data)))
+	.then(reader => render.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"))
 	.then(meshes => cube = meshes);
 
 export { tick };

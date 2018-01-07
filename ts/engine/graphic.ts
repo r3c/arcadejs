@@ -54,6 +54,16 @@ class Loader {
 		};
 	}
 
+	private static toCoord(name: string, instance: any): math.Vector2 {
+		if (typeof instance !== "object")
+			throw Loader.invalid(name, instance, "texture coordinate");
+
+		return {
+			x: Loader.toDecimal(`${name}.u`, instance.u),
+			y: Loader.toDecimal(`${name}.v`, instance.v)
+		};
+	}
+
 	private static toDecimal(name: string, instance: any) {
 		if (typeof instance !== "number")
 			throw Loader.invalid(name, instance, "decimal number");
@@ -106,11 +116,11 @@ class Loader {
 
 		return {
 			colors: instance.colors !== undefined ? Loader.toArrayOf(`${name}.colors`, instance.colors, Loader.toColor) : undefined,
-			coords: instance.coords !== undefined ? Loader.toArrayOf(`${name}.coords`, instance.coords, Loader.toVector2) : undefined,
+			coords: instance.coords !== undefined ? Loader.toArrayOf(`${name}.coords`, instance.coords, Loader.toCoord) : undefined,
 			faces: Loader.toArrayOf(`${name}.faces`, instance.faces, Loader.toIntegerTuple3),
 			materialName: instance.materialName !== undefined ? Loader.toString(`${name}.materialName`, instance.materialName) : undefined,
-			normals: instance.normals !== undefined ? Loader.toArrayOf(`${name}.normals`, instance.normals, Loader.toVector3) : undefined,
-			positions: Loader.toArrayOf(`${name}.positions`, instance.positions, Loader.toVector3)
+			normals: instance.normals !== undefined ? Loader.toArrayOf(`${name}.normals`, instance.normals, Loader.toPosition) : undefined,
+			positions: Loader.toArrayOf(`${name}.positions`, instance.positions, Loader.toPosition)
 		};
 	}
 
@@ -124,32 +134,22 @@ class Loader {
 		};
 	}
 
-	private static toString(name: string, instance: any): string {
-		if (typeof instance !== "string")
-			throw Loader.invalid(name, instance, "string");
-
-		return <string>instance;
-	}
-
-	private static toVector2(name: string, instance: any): math.Vector2 {
+	private static toPosition(name: string, instance: any): math.Vector3 {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "2-dimensional vector");
-
-		return {
-			x: Loader.toDecimal(`${name}.x`, instance.x),
-			y: Loader.toDecimal(`${name}.y`, instance.y)
-		};
-	}
-
-	private static toVector3(name: string, instance: any): math.Vector3 {
-		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "3-dimensional vector");
+			throw Loader.invalid(name, instance, "position");
 
 		return {
 			x: Loader.toDecimal(`${name}.x`, instance.x),
 			y: Loader.toDecimal(`${name}.y`, instance.y),
 			z: Loader.toDecimal(`${name}.z`, instance.z)
 		};
+	}
+
+	private static toString(name: string, instance: any): string {
+		if (typeof instance !== "string")
+			throw Loader.invalid(name, instance, "string");
+
+		return <string>instance;
 	}
 }
 
