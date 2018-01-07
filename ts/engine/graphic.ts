@@ -42,6 +42,18 @@ class Loader {
 		return (<any[]>instance).map((v, i) => converter(name + "[" + i + "]", v));
 	}
 
+	private static toColor(name: string, instance: any): math.Vector4 {
+		if (typeof instance !== "object")
+			throw Loader.invalid(name, instance, "color");
+
+		return {
+			x: Math.max(Math.min(Loader.toDecimal(`${name}.r`, instance.r), 1), 0),
+			y: Math.max(Math.min(Loader.toDecimal(`${name}.g`, instance.g), 1), 0),
+			z: Math.max(Math.min(Loader.toDecimal(`${name}.b`, instance.b), 1), 0),
+			w: instance.a !== undefined ? Math.max(Math.min(Loader.toDecimal(`${name}.a`, instance.a), 1), 0) : 1
+		};
+	}
+
 	private static toDecimal(name: string, instance: any) {
 		if (typeof instance !== "number")
 			throw Loader.invalid(name, instance, "decimal number");
@@ -93,7 +105,7 @@ class Loader {
 			throw Loader.invalid(name, instance, "mesh");
 
 		return {
-			colors: instance.colors !== undefined ? Loader.toArrayOf(`${name}.colors`, instance.colors, Loader.toVector4) : undefined,
+			colors: instance.colors !== undefined ? Loader.toArrayOf(`${name}.colors`, instance.colors, Loader.toColor) : undefined,
 			coords: instance.coords !== undefined ? Loader.toArrayOf(`${name}.coords`, instance.coords, Loader.toVector2) : undefined,
 			faces: Loader.toArrayOf(`${name}.faces`, instance.faces, Loader.toIntegerTuple3),
 			materialName: instance.materialName !== undefined ? Loader.toString(`${name}.materialName`, instance.materialName) : undefined,
@@ -107,7 +119,7 @@ class Loader {
 			throw Loader.invalid(name, instance, "model");
 
 		return {
-			materials: Loader.toMapOf(`${name}.materials`, instance.materials, Loader.toMaterial),
+			materials: instance.materials !== undefined ? Loader.toMapOf(`${name}.materials`, instance.materials, Loader.toMaterial) : undefined,
 			meshes: Loader.toArrayOf(`${name}.meshes`, instance.meshes, Loader.toMesh)
 		};
 	}
@@ -137,18 +149,6 @@ class Loader {
 			x: Loader.toDecimal(`${name}.x`, instance.x),
 			y: Loader.toDecimal(`${name}.y`, instance.y),
 			z: Loader.toDecimal(`${name}.z`, instance.z)
-		};
-	}
-
-	private static toVector4(name: string, instance: any): math.Vector4 {
-		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "4-dimensional vector");
-
-		return {
-			x: Loader.toDecimal(`${name}.x`, instance.x),
-			y: Loader.toDecimal(`${name}.y`, instance.y),
-			z: Loader.toDecimal(`${name}.z`, instance.z),
-			w: Loader.toDecimal(`${name}.w`, instance.w)
 		};
 	}
 }

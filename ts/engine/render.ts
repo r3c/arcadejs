@@ -112,10 +112,10 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 		const color = lerpVector4(start.color, stop.color, ratio);
 		const colorIndex = depthIndex * 4;
 
-		image.colors[colorIndex + 0] = color.x;
-		image.colors[colorIndex + 1] = color.y;
-		image.colors[colorIndex + 2] = color.z;
-		image.colors[colorIndex + 3] = color.w;
+		image.colors[colorIndex + 0] = color.x * 255;
+		image.colors[colorIndex + 1] = color.y * 255;
+		image.colors[colorIndex + 2] = color.z * 255;
+		image.colors[colorIndex + 3] = color.w * 255;
 	}
 }
 
