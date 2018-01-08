@@ -229,7 +229,7 @@ const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, ha
 	};
 };
 
-const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, drawMode: DrawMode, meshes: Mesh[]) => {
+const draw = (screen: display.Context2DScreen, projection: math.Matrix, modelView: math.Matrix, drawMode: DrawMode, meshes: Mesh[]) => {
 	const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
 	const image = {

@@ -6,7 +6,15 @@ const container = document.getElementById("render");
 if (container === null)
 	throw new Error("missing screen container");
 
-const screen = new display.Screen(container);
-const input = new controller.Input(screen.canvas);
+const screen2d = new display.Context2DScreen(container);
+const screen3d = new display.WebGLScreen(container);
+const input = new controller.Input(screen2d.canvas);
 
-export { input, screen };
+const select = (show: display.Screen) => {
+	for (const hide of [screen2d, screen3d])
+		hide.canvas.style.display = 'none';
+
+	show.canvas.style.display = 'block';
+};
+
+export { input, screen2d, screen3d, select };

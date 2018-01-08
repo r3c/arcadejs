@@ -1,9 +1,8 @@
 
 class Screen {
 	public readonly canvas: HTMLCanvasElement;
-	public readonly context: CanvasRenderingContext2D;
 
-	public constructor(container: HTMLElement) {
+	protected constructor(container: HTMLElement, ) {
 		const canvas = document.createElement('canvas');
 
 		container.appendChild(canvas);
@@ -13,13 +12,7 @@ class Screen {
 		canvas.height = canvas.offsetHeight;
 		canvas.focus();
 
-		const contextOrNull = canvas.getContext('2d');
-
-		if (contextOrNull === null)
-			throw Error("cannot get 2d context");
-
 		this.canvas = canvas;
-		this.context = contextOrNull;
 	}
 
 	public getHeight() {
@@ -33,6 +26,36 @@ class Screen {
 	public getWidth() {
 		return this.canvas.width;
 	}
-};
+}
 
-export { Screen };
+class Context2DScreen extends Screen {
+	public readonly context: CanvasRenderingContext2D;
+
+	public constructor(container: HTMLElement) {
+		super(container);
+
+		const contextOrNull = this.canvas.getContext('2d');
+
+		if (contextOrNull === null)
+			throw Error("cannot get 2d context");
+
+		this.context = contextOrNull;
+	}
+}
+
+class WebGLScreen extends Screen {
+	public readonly context: WebGLRenderingContext;
+
+	public constructor(container: HTMLElement) {
+		super(container);
+
+		const contextOrNull = this.canvas.getContext('webgl');
+
+		if (contextOrNull === null)
+			throw Error("cannot get WebGL context");
+
+		this.context = contextOrNull;
+	}
+}
+
+export { Context2DScreen, Screen, WebGLScreen };

@@ -16,8 +16,8 @@ const state = {
 		rotation: { x: 0, y: 0, z: 0 }
 	},
 	input: shared.input,
-	projection: math.Matrix.createPerspective(45, shared.screen.getRatio(), 0.1, 100),
-	screen: shared.screen
+	projection: math.Matrix.createPerspective(45, shared.screen2d.getRatio(), 0.1, 100),
+	screen: shared.screen2d
 };
 
 const change = function (dt: number) {
@@ -57,11 +57,6 @@ const draw = () => {
 	render.draw(screen, state.projection, view, render.DrawMode.Wire, cube);
 };
 
-const tick = (dt: number) => {
-	change(dt);
-	draw();
-};
-
 render
 	.load({
 		meshes: [{
@@ -93,4 +88,12 @@ render
 	})
 	.then(meshes => cube = meshes);
 
-export { tick };
+const scene = {
+	focus: () => shared.select(shared.screen2d),
+	tick: (dt: number) => {
+		change(dt);
+		draw();
+	}
+};
+
+export { scene };

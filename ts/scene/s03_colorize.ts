@@ -16,8 +16,8 @@ const state = {
 		rotation: { x: 0, y: 0, z: 0 }
 	},
 	input: shared.input,
-	projection: math.Matrix.createPerspective(45, shared.screen.getRatio(), 0.1, 100),
-	screen: shared.screen
+	projection: math.Matrix.createPerspective(45, shared.screen2d.getRatio(), 0.1, 100),
+	screen: shared.screen2d
 };
 
 let cube: render.Mesh[] = [];
@@ -57,14 +57,17 @@ const draw = () => {
 	render.draw(screen, state.projection, view, render.DrawMode.Default, cube);
 };
 
-const tick = (dt: number) => {
-	change(dt);
-	draw();
-};
-
 io.Stream
 	.readURL(io.StringReader, "./res/mesh/cube-color.json")
 	.then(reader => render.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"))
 	.then(meshes => cube = meshes);
 
-export { tick };
+const scene = {
+	focus: () => shared.select(shared.screen2d),
+	tick: (dt: number) => {
+		change(dt);
+		draw();
+	}
+};
+
+export { scene };

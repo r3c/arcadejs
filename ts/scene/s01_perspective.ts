@@ -3,8 +3,8 @@ import * as render from "../engine/render";
 import * as shared from "./shared";
 
 const state = {
-	projection: math.Matrix.createPerspective(45, shared.screen.getRatio(), 0.1, 100),
-	screen: shared.screen
+	projection: math.Matrix.createPerspective(45, shared.screen2d.getRatio(), 0.1, 100),
+	screen: shared.screen2d
 };
 
 const draw = () => {
@@ -63,8 +63,9 @@ const draw = () => {
 		.then((meshes => render.draw(screen, state.projection, math.Matrix.createIdentity(), render.DrawMode.Wire, meshes)));
 };
 
-const tick = (dt: number) => {
-	draw();
+const scene = {
+	focus: () => shared.select(shared.screen2d),
+	tick: (dt: number) => draw()
 };
 
-export { tick };
+export { scene };

@@ -1,12 +1,11 @@
 import * as graphic from "../engine/graphic";
 import * as io from "../engine/io";
 import * as math from "../engine/math";
-import * as render from "../engine/render";
 import * as shared from "./shared";
 
 /*
 ** What changed?
-** - Cube mesh now defines material with ambient map
+** - Rendering target is now a WebGL context instead of a 2D one
 */
 
 const state = {
@@ -16,10 +15,8 @@ const state = {
 	},
 	input: shared.input,
 	projection: math.Matrix.createPerspective(45, shared.screen2d.getRatio(), 0.1, 100),
-	screen: shared.screen2d
+	screen: shared.screen3d
 };
-
-let cube: render.Mesh[] = [];
 
 const change = function (dt: number) {
 	const camera = state.camera;
@@ -43,26 +40,11 @@ const change = function (dt: number) {
 const draw = () => {
 	const screen = state.screen;
 
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
-
-	const camera = state.camera;
-	const view = math.Matrix
-		.createIdentity()
-		.translate(camera.position)
-		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
-
-	render.draw(screen, state.projection, view, render.DrawMode.Default, cube);
+	// FIXME
 };
 
-io.Stream
-	.readURL(io.StringReader, "./res/mesh/cube-ambient.json")
-	.then(reader => render.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"))
-	.then(meshes => cube = meshes);
-
 const scene = {
-	focus: () => shared.select(shared.screen2d),
+	focus: () => shared.select(shared.screen3d),
 	tick: (dt: number) => {
 		change(dt);
 		draw();
