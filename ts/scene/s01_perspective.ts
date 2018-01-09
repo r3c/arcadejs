@@ -1,13 +1,13 @@
+import * as application from "../engine/application";
 import * as math from "../engine/math";
-import * as render from "../engine/render";
-import * as shared from "./shared";
+import * as software from "../engine/software";
 
 const state = {
-	projection: math.Matrix.createPerspective(45, shared.screen2d.getRatio(), 0.1, 100),
-	screen: shared.screen2d
+	projection: math.Matrix.createPerspective(45, application.screen2d.getRatio(), 0.1, 100),
+	screen: application.screen2d
 };
 
-const draw = () => {
+const render = () => {
 	const distance = -8;
 	const orbitate = new Date().getTime() * 0.001;
 	const pi = Math.PI;
@@ -58,14 +58,15 @@ const draw = () => {
 		}]
 	};
 
-	render
+	software
 		.load(model)
-		.then((meshes => render.draw(screen, state.projection, math.Matrix.createIdentity(), render.DrawMode.Wire, meshes)));
+		.then((meshes => software.draw(screen, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire, meshes)));
 };
 
 const scene = {
-	focus: () => shared.select(shared.screen2d),
-	tick: (dt: number) => draw()
+	enable: () => application.show(application.screen2d),
+	render: render,
+	update: (dt: number) => {}
 };
 
 export { scene };

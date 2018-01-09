@@ -1,8 +1,8 @@
+import * as application from "../engine/application";
 import * as graphic from "../engine/graphic";
 import * as io from "../engine/io";
 import * as math from "../engine/math";
-import * as render from "../engine/render";
-import * as shared from "./shared";
+import * as software from "../engine/software";
 
 /*
 ** What changed?
@@ -15,14 +15,30 @@ const state = {
 		position: { x: 0, y: 0, z: -5 },
 		rotation: { x: 0, y: 0, z: 0 }
 	},
-	input: shared.input,
-	projection: math.Matrix.createPerspective(45, shared.screen2d.getRatio(), 0.1, 100),
-	screen: shared.screen2d
+	input: application.input,
+	projection: math.Matrix.createPerspective(45, application.screen2d.getRatio(), 0.1, 100),
+	screen: application.screen2d
 };
 
-let cube: render.Mesh[] = [];
+let cube: software.Mesh[] = [];
 
-const change = function (dt: number) {
+const render = () => {
+	const screen = state.screen;
+
+	screen.context.fillStyle = 'black';
+	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
+
+	const camera = state.camera;
+	const view = math.Matrix
+		.createIdentity()
+		.translate(camera.position)
+		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+
+	software.draw(screen, state.projection, view, software.DrawMode.Default, cube);
+};
+
+const update = (dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
@@ -41,33 +57,15 @@ const change = function (dt: number) {
 	camera.position.z += wheel;
 };
 
-const draw = () => {
-	const screen = state.screen;
-
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
-
-	const camera = state.camera;
-	const view = math.Matrix
-		.createIdentity()
-		.translate(camera.position)
-		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
-
-	render.draw(screen, state.projection, view, render.DrawMode.Default, cube);
-};
-
 io.Stream
 	.readURL(io.StringReader, "./res/mesh/cube-color.json")
-	.then(reader => render.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"))
+	.then(reader => software.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"))
 	.then(meshes => cube = meshes);
 
 const scene = {
-	focus: () => shared.select(shared.screen2d),
-	tick: (dt: number) => {
-		change(dt);
-		draw();
-	}
+	enable: () => application.show(application.screen2d),
+	render: render,
+	update: update
 };
 
 export { scene };

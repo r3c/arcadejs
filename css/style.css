@@ -19,9 +19,9 @@ html {
 	padding:		4px 8px;
 	margin:			4px;
 	border-color:	#BCD #89A #89A #BCD;
-	border-radius:	4px;
+	border-radius:	8px;
 	border-style:	solid;
-	border-width:	1px;
+	border-width:	2px;
 	background:		#DEF;
 }
 
@@ -39,4 +39,5 @@ html {
 	margin:			auto;
 	width:			800px;
 	height:			600px;
+	box-shadow:		0 0 10px black;
 }

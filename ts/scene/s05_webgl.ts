@@ -1,7 +1,8 @@
+import * as application from "../engine/application";
 import * as graphic from "../engine/graphic";
 import * as io from "../engine/io";
 import * as math from "../engine/math";
-import * as shared from "./shared";
+import * as webgl from "../engine/webgl";
 
 /*
 ** What changed?
@@ -13,12 +14,18 @@ const state = {
 		position: { x: 0, y: 0, z: -5 },
 		rotation: { x: 0, y: 0, z: 0 }
 	},
-	input: shared.input,
-	projection: math.Matrix.createPerspective(45, shared.screen2d.getRatio(), 0.1, 100),
-	screen: shared.screen3d
+	input: application.input,
+	projection: math.Matrix.createPerspective(45, application.screen2d.getRatio(), 0.1, 100),
+	screen: application.screen3d
 };
 
-const change = function (dt: number) {
+const render = () => {
+	const screen = state.screen;
+
+	webgl.draw(screen.context);
+};
+
+const update = (dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
@@ -37,18 +44,10 @@ const change = function (dt: number) {
 	camera.position.z += wheel;
 };
 
-const draw = () => {
-	const screen = state.screen;
-
-	// FIXME
-};
-
 const scene = {
-	focus: () => shared.select(shared.screen3d),
-	tick: (dt: number) => {
-		change(dt);
-		draw();
-	}
+	enable: () => application.show(application.screen3d),
+	render: render,
+	update: update
 };
 
 export { scene };
