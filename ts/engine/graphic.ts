@@ -5,7 +5,7 @@ interface Map<T> {
 }
 
 interface Material {
-	ambientMap?: string;
+	ambient?: string;
 }
 
 interface MaterialMap {
@@ -106,7 +106,7 @@ class Loader {
 			throw Loader.invalid(name, instance, "material");
 
 		return {
-			ambientMap: instance.ambientMap !== undefined ? Loader.toString(`${name}.ambientMap`, instance.ambientMap) : undefined
+			ambient: instance.ambientMap !== undefined ? Loader.toString(`${name}.ambientMap`, instance.ambientMap) : undefined
 		};
 	}
 

@@ -24,7 +24,7 @@ if (render === null)
 let current: number | undefined;
 const screen2d = new display.Context2DScreen(render);
 const screen3d = new display.WebGLScreen(render);
-const input = new controller.Input(screen2d.canvas);
+const input = new controller.Input(render);
 
 const enable = (scene: Scene) => {
 	if (current !== undefined)

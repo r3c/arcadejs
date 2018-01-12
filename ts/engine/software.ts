@@ -15,7 +15,7 @@ interface Image {
 }
 
 interface Material {
-	ambientData: ImageData | undefined;
+	ambient: ImageData | undefined;
 }
 
 interface MaterialMap {
@@ -26,7 +26,7 @@ interface Mesh {
 	colors: math.Vector4[] | undefined;
 	coords: math.Vector2[] | undefined;
 	faces: [number, number, number][];
-	material: Material | undefined;
+	material: Material;
 	normals: math.Vector3[] | undefined;
 	positions: math.Vector3[];
 }
@@ -38,10 +38,10 @@ interface Vertex {
 }
 
 const defaultColor = {
-	x: 255,
-	y: 255,
-	z: 255,
-	w: 255
+	x: 1,
+	y: 1,
+	z: 1,
+	w: 1
 };
 
 const defaultCoord = {
@@ -113,9 +113,9 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 		const colorIndex = depthIndex * 4;
 
 		// Ambient map
-		if (material !== undefined && material.ambientData !== undefined) {
+		if (material !== undefined && material.ambient !== undefined) {
 			const coord = lerpVector2(begin.coord, end.coord, ratio);
-			const image = material.ambientData;
+			const image = material.ambient;
 
 			const x = ~~(coord.x * image.width) % image.width;
 			const y = ~~(coord.y * image.height) % image.height;
@@ -222,9 +222,15 @@ const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, ha
 		w: 1
 	});
 
+	/*
+	** Normalize point and apply following conversions:
+	** - Convert x range from [-1, 1] to [0, screen.width]
+	** - Convert y range from [-1, 1] to [0, screen.height]
+	** - Negate y to use WebGL convension
+	*/
 	return {
 		x: point.x / point.w * halfWidth + halfWidth,
-		y: point.y / point.w * halfHeight + halfHeight,
+		y: -point.y / point.w * halfHeight + halfHeight,
 		z: point.z / point.w
 	};
 };
@@ -235,8 +241,8 @@ const draw = (screen: display.Context2DScreen, projection: math.Matrix, modelVie
 	const image = {
 		colors: capture.data,
 		depths: new Float32Array(capture.width * capture.height),
-		height: screen.getHeight(),
-		width: screen.getWidth()
+		height: capture.height,
+		width: capture.width
 	};
 
 	image.depths.fill(Math.pow(2, 127));
@@ -295,11 +301,8 @@ const loadImageData = (url: string) => {
 
 			const context = canvas.getContext('2d');
 
-			if (context === null) {
-				reject("cannot get canvas 2d contxt");
-
-				return;
-			}
+			if (context === null)
+				return reject("cannot get canvas 2d contxt");
 
 			context.drawImage(image, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
 
@@ -316,7 +319,7 @@ const load = async (model: graphic.Model, path: string = "") => {
 	const meshes: Mesh[] = [];
 
 	for (const mesh of model.meshes) {
-		let material: Material | undefined;
+		let material: Material;
 		const name = mesh.materialName;
 
 		if (name !== undefined && definitions[name] !== undefined) {
@@ -324,8 +327,8 @@ const load = async (model: graphic.Model, path: string = "") => {
 				const definition = definitions[name];
 
 				materials[name] = {
-					ambientData: definition.ambientMap !== undefined
-						? await loadImageData(path + definition.ambientMap)
+					ambient: definition.ambient !== undefined
+						? await loadImageData(path + definition.ambient)
 						: undefined
 				}
 			}
@@ -333,7 +336,9 @@ const load = async (model: graphic.Model, path: string = "") => {
 			material = materials[name];
 		}
 		else {
-			material = undefined;
+			material = {
+				ambient: undefined
+			};
 		}
 
 		meshes.push({

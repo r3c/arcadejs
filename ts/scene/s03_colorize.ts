@@ -46,11 +46,11 @@ const update = (dt: number) => {
 
 	if (input.isPressed("mouseleft")) {
 		camera.position.x += movement.x / 64;
-		camera.position.y += movement.y / 64;
+		camera.position.y -= movement.y / 64;
 	}
 
 	if (input.isPressed("mouseright")) {
-		camera.rotation.x += movement.y / 64;
+		camera.rotation.x -= movement.y / 64;
 		camera.rotation.y -= movement.x / 64;
 	}
 
