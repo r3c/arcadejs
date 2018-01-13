@@ -53,7 +53,7 @@ class Matrix {
 		return new Matrix(Matrix.multiply(this.values, other.values));
 	}
 
-	public getValues(): Iterable<number> {
+	public getValues(): number[] {
 		return this.values;
 	}
 

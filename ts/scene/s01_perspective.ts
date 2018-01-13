@@ -15,7 +15,7 @@ const render = () => {
 	const rotate = new Date().getTime() * 0.002;
 	const size = Math.sqrt(2) / 2;
 
-	const positions = [
+	const points = [
 		{ x: Math.cos(rotate + pi * 0), y: -size, z: distance + Math.sin(rotate + pi * 0) },
 		{ x: Math.cos(rotate + pi * 0.5), y: -size, z: distance + Math.sin(rotate + pi * 0.5) },
 		{ x: Math.cos(rotate + pi * 1), y: -size, z: distance + Math.sin(rotate + pi * 1) },
@@ -26,12 +26,12 @@ const render = () => {
 		{ x: Math.cos(rotate + pi * 1.5), y: size, z: distance + Math.sin(rotate + pi * 1.5) }
 	];
 
-	for (const position of positions) {
-		position.x = position.x + Math.cos(orbitate) * range;
-		position.y = position.y + Math.sin(orbitate) * range;
+	for (const point of points) {
+		point.x = point.x + Math.cos(orbitate) * range;
+		point.y = point.y + Math.sin(orbitate) * range;
 	}
 
-	const faces: [number, number, number][] = [
+	const indices: [number, number, number][] = [
 		[0, 1, 2],
 		[2, 3, 0],
 		[4, 5, 6],
@@ -53,8 +53,8 @@ const render = () => {
 
 	const model = {
 		meshes: [{
-			positions: positions,
-			faces: faces
+			indices: indices,
+			points: points
 		}]
 	};
 

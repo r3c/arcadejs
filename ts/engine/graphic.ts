@@ -15,10 +15,10 @@ interface MaterialMap {
 interface Mesh {
 	colors?: math.Vector4[];
 	coords?: math.Vector2[];
-	faces: [number, number, number][];
+	indices: [number, number, number][];
 	materialName?: string;
 	normals?: math.Vector3[];
-	positions: math.Vector3[];
+	points: math.Vector3[];
 }
 
 interface Model {
@@ -117,10 +117,10 @@ class Loader {
 		return {
 			colors: instance.colors !== undefined ? Loader.toArrayOf(`${name}.colors`, instance.colors, Loader.toColor) : undefined,
 			coords: instance.coords !== undefined ? Loader.toArrayOf(`${name}.coords`, instance.coords, Loader.toCoord) : undefined,
-			faces: Loader.toArrayOf(`${name}.faces`, instance.faces, Loader.toIntegerTuple3),
+			indices: Loader.toArrayOf(`${name}.indices`, instance.indices, Loader.toIntegerTuple3),
 			materialName: instance.materialName !== undefined ? Loader.toString(`${name}.materialName`, instance.materialName) : undefined,
-			normals: instance.normals !== undefined ? Loader.toArrayOf(`${name}.normals`, instance.normals, Loader.toPosition) : undefined,
-			positions: Loader.toArrayOf(`${name}.positions`, instance.positions, Loader.toPosition)
+			normals: instance.normals !== undefined ? Loader.toArrayOf(`${name}.normals`, instance.normals, Loader.toVertex) : undefined,
+			points: Loader.toArrayOf(`${name}.points`, instance.points, Loader.toVertex)
 		};
 	}
 
@@ -134,22 +134,22 @@ class Loader {
 		};
 	}
 
-	private static toPosition(name: string, instance: any): math.Vector3 {
+	private static toString(name: string, instance: any): string {
+		if (typeof instance !== "string")
+			throw Loader.invalid(name, instance, "string");
+
+		return <string>instance;
+	}
+
+	private static toVertex(name: string, instance: any): math.Vector3 {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "position");
+			throw Loader.invalid(name, instance, "vertex");
 
 		return {
 			x: Loader.toDecimal(`${name}.x`, instance.x),
 			y: Loader.toDecimal(`${name}.y`, instance.y),
 			z: Loader.toDecimal(`${name}.z`, instance.z)
 		};
-	}
-
-	private static toString(name: string, instance: any): string {
-		if (typeof instance !== "string")
-			throw Loader.invalid(name, instance, "string");
-
-		return <string>instance;
 	}
 }
 

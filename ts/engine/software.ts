@@ -344,10 +344,10 @@ const load = async (model: graphic.Model, path: string = "") => {
 		meshes.push({
 			colors: mesh.colors,
 			coords: mesh.coords,
-			faces: mesh.faces,
+			faces: mesh.indices,
 			material: material,
 			normals: mesh.normals,
-			positions: mesh.positions
+			positions: mesh.points
 		})
 	}
 

@@ -39,30 +39,7 @@ const vsSource = `
 `;
 
 const gl = application.screen3d.context;
-const program = webgl.createProgram(gl, vsSource, fsSource);
-const projectionUniformLocation = gl.getUniformLocation(program, "uProjectionMatrix");
-const modelViewUniformLocation = gl.getUniformLocation(program, "uModelViewMatrix");
-
-if (projectionUniformLocation === null)
-	throw Error("couldn't find projection matrix uniform location");
-
-if (modelViewUniformLocation === null)
-	throw Error("couldn't find modelView matrix uniform location");
-
-const shader: webgl.Shader = {
-	attributes: {
-		color: gl.getAttribLocation(program, "aColor"),
-		coord: gl.getAttribLocation(program, "aTextureCoord"),
-		normal: undefined,
-		position: gl.getAttribLocation(program, "aVertexPosition")
-	},
-	program: program,
-	uniforms: {
-		ambient: gl.getUniformLocation(program, "uSampler") || undefined,
-		projectionMatrix: projectionUniformLocation,
-		modelViewMatrix: modelViewUniformLocation,
-	}
-};
+const shader = new webgl.Shader(gl, vsSource, fsSource);
 
 const state = {
 	camera: {
@@ -71,7 +48,15 @@ const state = {
 	},
 	input: application.input,
 	projection: math.Matrix.createPerspective(45, application.screen3d.getRatio(), 0.1, 100),
-	program: program,
+	scene: {
+		projectionMatrix: shader.declareUniformMatrix("uProjectionMatrix", gl => gl.uniformMatrix4fv),
+		modelViewMatrix: shader.declareUniformMatrix("uModelViewMatrix", gl => gl.uniformMatrix4fv),
+		ambient: shader.declareUniformValue("uSampler", gl => gl.uniform1i),
+		colors: shader.declareAttribute("aColor", 4, gl.FLOAT),
+		coords: shader.declareAttribute("aTextureCoord", 2, gl.FLOAT),
+		points: shader.declareAttribute("aVertexPosition", 3, gl.FLOAT),
+		shader: shader
+	},
 	screen: application.screen3d
 };
 
@@ -95,7 +80,7 @@ const render = () => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
 	webgl.clear(screen.context);
-	webgl.draw(screen.context, shader, state.projection, view, cube);
+	webgl.draw(state.scene, state.projection, view, cube);
 };
 
 const update = (dt: number) => {

@@ -17,30 +17,146 @@ interface MaterialMap {
 interface Mesh {
 	colors: WebGLBuffer | undefined,
 	coords: WebGLBuffer | undefined,
-	faces: WebGLBuffer,
+	count: number,
+	indices: WebGLBuffer,
 	material: Material,
 	normals: WebGLBuffer | undefined,
-	positions: WebGLBuffer,
-	vertices: number
+	points: WebGLBuffer
 }
 
-interface ShaderAttributes {
-	color: number | undefined,
-	coord: number | undefined,
-	normal: number | undefined,
-	position: number
+interface ShaderAttribute {
+	location: number,
+	size: number,
+	type: number
 }
 
-interface ShaderUniforms {
-	ambient: WebGLUniformLocation | undefined,
-	modelViewMatrix: WebGLUniformLocation,
-	projectionMatrix: WebGLUniformLocation
+type ShaderUniformMatrix<T> = (location: WebGLUniformLocation, transpose: boolean, value: T) => void;
+type ShaderUniformValue<T> = (location: WebGLUniformLocation, value: T) => void;
+type ShaderUniform<T> = (gl: WebGLRenderingContext, value: T) => void;
+
+class Shader {
+	private readonly gl: WebGLRenderingContext;
+	private readonly program: WebGLProgram;
+
+	public constructor(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
+		const program = gl.createProgram();
+
+		if (program === null)
+			throw Error("could not create program");
+
+		gl.attachShader(program, Shader.compile(gl, gl.VERTEX_SHADER, vsSource));
+		gl.attachShader(program, Shader.compile(gl, gl.FRAGMENT_SHADER, fsSource));
+		gl.linkProgram(program);
+
+		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+			const error = gl.getProgramInfoLog(program);
+
+			gl.deleteProgram(program);
+
+			throw Error(`could not link program: ${error}`);
+		}
+
+		this.gl = gl;
+		this.program = program;
+	}
+
+	public activate() {
+		this.gl.useProgram(this.program);
+	}
+
+	public declareAttribute(name: string, size: number, type: number): ShaderAttribute {
+		const location = this.gl.getAttribLocation(this.program, name);
+
+		if (location === -1)
+			throw Error(`cound not find location for attribute "${name}"`);
+
+		return {
+			location: location,
+			size: size,
+			type: type
+		};
+	}
+
+	public declareUniformMatrix<T>(name: string, method: (gl: WebGLRenderingContext) => ShaderUniformMatrix<T>): ShaderUniform<T> {
+		const location = this.gl.getUniformLocation(this.program, name);
+
+		if (location === null)
+			throw Error(`cound not find location for matrix uniform "${name}"`);
+
+		const assign = method(this.gl);
+
+		return (gl, value) => assign.call(gl, location, false, value);
+	}
+
+	public declareUniformValue<T>(name: string, method: (gl: WebGLRenderingContext) => ShaderUniformValue<T>): ShaderUniform<T> {
+		const location = this.gl.getUniformLocation(this.program, name);
+
+		if (location === null)
+			throw Error(`cound not find location for vector uniform "${name}"`);
+
+		const assign = method(this.gl);
+
+		return (gl, value) => assign.call(gl, location, value);
+	}
+
+	public draw(indices: WebGLBuffer, count: number) {
+		const gl = this.gl;
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
+		gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
+	}
+
+	public setAttribute(attribute: ShaderAttribute, buffer: WebGLBuffer) {
+		const gl = this.gl;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		gl.vertexAttribPointer(attribute.location, attribute.size, attribute.type, false, 0, 0);
+		gl.enableVertexAttribArray(attribute.location);
+	}
+
+	public setTexture(uniform: ShaderUniform<number>, texture: WebGLTexture, index: number) {
+		const gl = this.gl;
+
+		gl.activeTexture(gl.TEXTURE0 + index);
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+
+		uniform(gl, index);
+	}
+
+	public setUniform<T>(uniform: ShaderUniform<T>, value: T) {
+		uniform(this.gl, value);
+	}
+
+	private static compile(gl: WebGLRenderingContext, shaderType: number, source: string) {
+		const shader = gl.createShader(shaderType);
+
+		if (shader === null)
+			throw Error(`could not create shader`);
+
+		gl.shaderSource(shader, source);
+		gl.compileShader(shader);
+
+		if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+			const error = gl.getShaderInfoLog(shader);
+
+			gl.deleteShader(shader);
+
+			throw Error(`could not compile shader: ${error}`);
+		}
+
+		return shader;
+	}
 }
 
-interface Shader {
-	attributes: ShaderAttributes;
-	program: WebGLProgram;
-	uniforms: ShaderUniforms;
+interface Scene {
+	ambient?: ShaderUniform<number>,
+	colors?: ShaderAttribute,
+	coords?: ShaderAttribute,
+	normals?: ShaderAttribute,
+	points: ShaderAttribute,
+	modelViewMatrix: ShaderUniform<number[]>,
+	projectionMatrix: ShaderUniform<number[]>,
+	shader: Shader
 }
 
 const defaultColor = {
@@ -64,47 +180,6 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	gl.bufferData(target, values, gl.STATIC_DRAW);
 
 	return buffer;
-};
-
-const createProgram = (gl: WebGLRenderingContext, vertexSource: string, fragmentSource: string) => {
-	const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource);
-	const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
-
-	const program = gl.createProgram();
-
-	if (program === null)
-		throw Error("could not create program");
-
-	gl.attachShader(program, vertexShader);
-	gl.attachShader(program, fragmentShader);
-	gl.linkProgram(program);
-
-	if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-		const error = gl.getProgramInfoLog(program);
-
-		gl.deleteProgram(program);
-
-		throw Error(`could not link program: ${error}`);
-	}
-
-	return program;
-}
-
-const createShader = (gl: WebGLRenderingContext, shaderType: number, source: string) => {
-	const shader = gl.createShader(shaderType);
-
-	gl.shaderSource(shader, source);
-	gl.compileShader(shader);
-
-	if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-		const error = gl.getShaderInfoLog(shader);
-
-		gl.deleteShader(shader);
-
-		throw Error(`could not compile shader: ${error}`);
-	}
-
-	return shader;
 };
 
 const createTexture = async (gl: WebGLRenderingContext, url: string) => {
@@ -141,43 +216,32 @@ const clear = (gl: WebGLRenderingContext) => {
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 };
 
-const draw = (gl: WebGLRenderingContext, shader: Shader, projection: math.Matrix, modelView: math.Matrix, meshes: Mesh[]) => {
-	gl.useProgram(shader.program);
+const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, meshes: Mesh[]) => {
+	const shader = scene.shader;
+
+	shader.activate();
 
 	for (const mesh of meshes) {
 		// Bind colors vector if defined and supported
-		if (mesh.colors !== undefined && shader.attributes.color !== undefined) {
-			gl.bindBuffer(gl.ARRAY_BUFFER, mesh.colors);
-			gl.vertexAttribPointer(shader.attributes.color, 4, gl.FLOAT, false, 0, 0);
-			gl.enableVertexAttribArray(shader.attributes.color);
-		}
+		if (mesh.colors !== undefined && scene.colors !== undefined)
+			shader.setAttribute(scene.colors, mesh.colors);
 
 		// Bind coords vector if defined and supported
-		if (mesh.coords !== undefined && shader.attributes.coord !== undefined) {
-			gl.bindBuffer(gl.ARRAY_BUFFER, mesh.coords);
-			gl.vertexAttribPointer(shader.attributes.coord, 2, gl.FLOAT, false, 0, 0);
-			gl.enableVertexAttribArray(shader.attributes.coord);
-		}
+		if (mesh.coords !== undefined && scene.coords !== undefined)
+			shader.setAttribute(scene.coords, mesh.coords);
 
 		// Bind ambient texture if defined and supported
-		if (mesh.material.ambient !== undefined && shader.uniforms.ambient !== undefined) {
-			gl.activeTexture(gl.TEXTURE0);
-			gl.bindTexture(gl.TEXTURE_2D, mesh.material.ambient);
-			gl.uniform1i(shader.uniforms.ambient, 0);
-		}
+		if (mesh.material.ambient !== undefined && scene.ambient !== undefined)
+			shader.setTexture(scene.ambient, mesh.material.ambient, 0);
 
-		// Bind positions vector
-		gl.bindBuffer(gl.ARRAY_BUFFER, mesh.positions);
-		gl.vertexAttribPointer(shader.attributes.position, 3, gl.FLOAT, false, 0, 0);
-		gl.enableVertexAttribArray(shader.attributes.position);
+		// Bind points vector
+		shader.setAttribute(scene.points, mesh.points);
 
-		// Set the shader uniforms
-		gl.uniformMatrix4fv(shader.uniforms.projectionMatrix, false, new Float32Array(projection.getValues()));
-		gl.uniformMatrix4fv(shader.uniforms.modelViewMatrix, false, new Float32Array(modelView.getValues()));
+		// Set the shader uniforms and perform draw call
+		shader.setUniform(scene.projectionMatrix, projection.getValues());
+		shader.setUniform(scene.modelViewMatrix, modelView.getValues());
 
-		// Bind indices array buffer and perform draw call
-		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.faces);
-		gl.drawElements(gl.TRIANGLES, mesh.vertices, gl.UNSIGNED_SHORT, 0);
+		shader.draw(mesh.indices, mesh.count);
 	}
 };
 
@@ -226,13 +290,13 @@ const load = async (gl: WebGLRenderingContext, model: graphic.Model, path: strin
 			coords: mesh.coords !== undefined
 				? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.coords, coord => [coord.x, coord.y])))
 				: undefined,
-			faces: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.faces, face => [face[0], face[1], face[2]]))),
+			count: mesh.indices.length * 3,
+			indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.indices, index => [index[0], index[1], index[2]]))),
 			material: material,
 			normals: mesh.normals !== undefined
 				? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.normals, normal => [normal.x, normal.y, normal.z])))
 				: undefined,
-			positions: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.positions, position => [position.x, position.y, position.z]))),
-			vertices: mesh.faces.length * 3
+			points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, position => [position.x, position.y, position.z])))
 		});
 
 	}
@@ -247,4 +311,4 @@ const setup = (gl: WebGLRenderingContext) => {
 	gl.enable(gl.DEPTH_TEST);
 };
 
-export { Mesh, Shader, createProgram, clear, draw, load, setup }
+export { Mesh, Shader, clear, draw, load, setup }
