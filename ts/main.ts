@@ -4,11 +4,13 @@ import * as s02 from "./scene/s02_transform";
 import * as s03 from "./scene/s03_colorize";
 import * as s04 from "./scene/s04_texturize";
 import * as s05 from "./scene/s05_webgl";
+import * as s06 from "./scene/s06_lightning";
 
 application.initialize({
 	"perspective": s01.scene,
 	"transform": s02.scene,
 	"colorize": s03.scene,
 	"texturize": s04.scene,
-	"webgl": s05.scene
+	"webgl": s05.scene,
+	"lightning": s06.scene
 });

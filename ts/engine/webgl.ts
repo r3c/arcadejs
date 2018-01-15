@@ -230,6 +230,10 @@ const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, mes
 		if (mesh.coords !== undefined && scene.coords !== undefined)
 			shader.setAttribute(scene.coords, mesh.coords);
 
+		// Bind face normals if defined and supported
+		if (mesh.normals !== undefined && scene.normals !== undefined)
+			shader.setAttribute(scene.normals, mesh.normals);
+
 		// Bind ambient texture if defined and supported
 		if (mesh.material.ambient !== undefined && scene.ambient !== undefined)
 			shader.setTexture(scene.ambient, mesh.material.ambient, 0);

@@ -6,12 +6,12 @@ import * as webgl from "../engine/webgl";
 
 /*
 ** What changed?
-** - Rendering target is now a WebGL context instead of a 2D one
 */
 
 const vsSource = `
 	attribute vec4 color;
 	attribute vec2 coord;
+	attribute vec3 normal;
 	attribute vec4 point;
 
 	uniform mat4 modelViewMatrix;
@@ -19,10 +19,12 @@ const vsSource = `
 
 	varying highp vec4 vColor;
 	varying highp vec2 vCoord;
+	varying highp vec3 vNormal;
 
 	void main(void) {
 		vColor = color;
 		vCoord = coord;
+		vNormal = (projectionMatrix * modelViewMatrix * vec4(normal, 0.0)).xyz;
 
 		gl_Position = projectionMatrix * modelViewMatrix * point;
 	}
@@ -31,11 +33,19 @@ const vsSource = `
 const fsSource = `
 	varying highp vec4 vColor;
 	varying highp vec2 vCoord;
+	varying highp vec3 vNormal;
 
 	uniform sampler2D colorTexture;
 
 	void main(void) {
-		gl_FragColor = vColor * texture2D(colorTexture, vCoord);
+		highp vec3 ambientLightColor = vec3(0.3, 0.3, 0.3);
+		highp vec3 diffuseLightColor = vec3(1, 1, 1);
+		highp vec3 diffuseLightDirection = normalize(vec3(0.85, 0.8, 0.75));
+
+		highp float directional = max(dot(vNormal, diffuseLightDirection), 0.0);
+		highp vec4 vLighting = vec4(ambientLightColor + (diffuseLightColor * directional), 1.0);
+
+		gl_FragColor = vColor * vLighting * texture2D(colorTexture, vCoord);
 	}
 `;
 
@@ -55,6 +65,7 @@ const state = {
 		ambient: shader.declareUniformValue("colorTexture", gl => gl.uniform1i),
 		colors: shader.declareAttribute("color", 4, gl.FLOAT),
 		coords: shader.declareAttribute("coord", 2, gl.FLOAT),
+		normals: shader.declareAttribute("normal", 3, gl.FLOAT),
 		points: shader.declareAttribute("point", 3, gl.FLOAT),
 		shader: shader
 	},
