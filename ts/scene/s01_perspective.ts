@@ -1,14 +1,18 @@
 import * as application from "../engine/application";
+import * as display from "../engine/display";
 import * as math from "../engine/math";
 import * as software from "../engine/software";
 
-const state = {
-	projection: math.Matrix.createPerspective(45, application.screen2d.getRatio(), 0.1, 100),
-	screen: application.screen2d
-};
+interface State {
+	projection: math.Matrix,
+	runtime: application.Runtime<display.Context2DScreen>
+}
+
+let state: State;
 
 const enable = () => {
-	application.show(application.screen2d);
+	state.runtime = new application.Runtime<display.Context2DScreen>(display.Context2DScreen);
+	state.projection = math.Matrix.createPerspective(45, state.runtime.screen.getRatio(), 0.1, 100);
 
 	return {};
 };
@@ -52,7 +56,7 @@ const render = () => {
 		[7, 6, 2]
 	];
 
-	const screen = state.screen;
+	const screen = state.runtime.screen;
 
 	screen.context.fillStyle = 'black';
 	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());

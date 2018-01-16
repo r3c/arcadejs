@@ -33,20 +33,34 @@ const sceneContainer = document.getElementById("scenes");
 if (sceneContainer === null)
 	throw Error("missing scene container");
 
-const screenContainer = document.getElementById("screens");
-
-if (screenContainer === null)
-	throw Error("missing screen container");
-
 const tweakContainer = document.getElementById("tweaks");
 
 if (tweakContainer === null)
 	throw Error("missing tweak container");
 
 let current: number | undefined;
-const screen2d = new display.Context2DScreen(screenContainer);
-const screen3d = new display.WebGLScreen(screenContainer);
-const input = new controller.Input(screenContainer);
+
+interface RuntimeScreen<T> {
+	new (container: HTMLElement): T
+}
+
+class Runtime<T> {
+	public readonly input: controller.Input;
+	public readonly screen: T;
+
+	public constructor(screenConstructor: RuntimeScreen<T>) {
+		const container = document.getElementById("screens");
+
+		if (container === null)
+			throw Error("missing screen container");
+
+		while (container.childNodes.length > 0)
+			container.removeChild(container.childNodes[0]);
+
+		this.input = new controller.Input(container);
+		this.screen = new screenConstructor(container);
+	}
+}
 
 const createCheckbox = (caption: string, value: number, change: (value: number) => void) => {
 	const checkbox = document.createElement("input");
@@ -133,16 +147,6 @@ const setup = (scenes: Scene[]) => {
 
 	sceneContainer.appendChild(select);
 	sceneContainer.appendChild(submit);
-
-	show(undefined);
 };
 
-const show = (show: display.Screen | undefined) => {
-	for (const hide of [screen2d, screen3d])
-		hide.canvas.style.display = 'none';
-
-	if (show !== undefined)
-		show.canvas.style.display = 'block';
-};
-
-export { DefinitionType, OptionMap, input, screen2d, screen3d, setup, show };
+export { DefinitionType, OptionMap, Runtime, setup };
