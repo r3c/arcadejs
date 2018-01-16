@@ -53,7 +53,32 @@ class Matrix {
 		return new Matrix(Matrix.multiply(this.values, other.values));
 	}
 
-	public getValues(): number[] {
+	public getTransposedInverse3x3() {
+		const m = this.values;
+		const determinant =
+			m[0] * (m[5] * m[10] - m[6] * m[9]) -
+			m[1] * (m[4] * m[10] - m[6] * m[8]) +
+			m[2] * (m[4] * m[9] - m[5] * m[8]);
+
+		if (determinant < Number.EPSILON)
+			return m;
+
+		const inverse = 1 / determinant;
+
+		return [
+			(m[5] * m[10] - m[9] * m[6]) * inverse,
+			(m[4] * m[10] - m[6] * m[8]) * -inverse,
+			(m[4] * m[9] - m[8] * m[5]) * inverse,
+			(m[1] * m[10] - m[2] * m[9]) * -inverse,
+			(m[0] * m[10] - m[2] * m[8]) * inverse,
+			(m[0] * m[9] - m[8] * m[1]) * -inverse,
+			(m[1] * m[6] - m[2] * m[5]) * inverse,
+			(m[0] * m[6] - m[4] * m[2]) * -inverse,
+			(m[0] * m[5] - m[4] * m[1]) * inverse
+		];
+	}
+
+	public getValues() {
 		return this.values;
 	}
 

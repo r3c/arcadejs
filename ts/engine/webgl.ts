@@ -155,6 +155,7 @@ interface Scene {
 	normals?: ShaderAttribute,
 	points: ShaderAttribute,
 	modelViewMatrix: ShaderUniform<number[]>,
+	normalMatrix?: ShaderUniform<number[]>,
 	projectionMatrix: ShaderUniform<number[]>,
 	shader: Shader
 }
@@ -241,10 +242,14 @@ const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, mes
 		// Bind points vector
 		shader.setAttribute(scene.points, mesh.points);
 
-		// Set the shader uniforms and perform draw call
+		// Set the shader matrix uniforms
+		if (scene.normalMatrix !== undefined)
+			shader.setUniform(scene.normalMatrix, modelView.getTransposedInverse3x3());
+
 		shader.setUniform(scene.projectionMatrix, projection.getValues());
 		shader.setUniform(scene.modelViewMatrix, modelView.getValues());
 
+		// Perform draw call
 		shader.draw(mesh.indices, mesh.count);
 	}
 };

@@ -15,6 +15,7 @@ const vsSource = `
 	attribute vec4 point;
 
 	uniform mat4 modelViewMatrix;
+	uniform mat3 normalMatrix;
 	uniform mat4 projectionMatrix;
 
 	varying highp vec4 vColor;
@@ -24,7 +25,7 @@ const vsSource = `
 	void main(void) {
 		vColor = color;
 		vCoord = coord;
-		vNormal = (projectionMatrix * modelViewMatrix * vec4(normal, 0.0)).xyz;
+		vNormal = normalMatrix * normal;
 
 		gl_Position = projectionMatrix * modelViewMatrix * point;
 	}
@@ -60,8 +61,9 @@ const state = {
 	input: application.input,
 	projection: math.Matrix.createPerspective(45, application.screen3d.getRatio(), 0.1, 100),
 	scene: {
-		projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
 		modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+		normalMatrix: shader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
+		projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
 		ambient: shader.declareUniformValue("colorTexture", gl => gl.uniform1i),
 		colors: shader.declareAttribute("color", 4, gl.FLOAT),
 		coords: shader.declareAttribute("coord", 2, gl.FLOAT),
