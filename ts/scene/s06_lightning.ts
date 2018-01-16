@@ -38,16 +38,25 @@ const fsSource = `
 
 	uniform highp vec4 colorBase;
 	uniform sampler2D colorMap;
+	uniform bool light;
 
 	void main(void) {
-		highp vec3 ambientLightColor = vec3(0.3, 0.3, 0.3);
-		highp vec3 diffuseLightColor = vec3(1, 1, 1);
-		highp vec3 diffuseLightDirection = normalize(vec3(0.85, 0.8, 0.75));
+		highp vec4 lightColor;
 
-		highp float directional = max(dot(vNormal, diffuseLightDirection), 0.0);
-		highp vec4 vLighting = vec4(ambientLightColor + (diffuseLightColor * directional), 1.0);
+		if (light) {
+			highp vec3 ambientLightColor = vec3(0.3, 0.3, 0.3);
+			highp vec3 diffuseLightColor = vec3(1, 1, 1);
+			highp vec3 diffuseLightDirection = normalize(vec3(0.85, 0.8, 0.75));
 
-		gl_FragColor = vColor * colorBase * vLighting * texture2D(colorMap, vCoord);
+			highp float directional = max(dot(vNormal, diffuseLightDirection), 0.0);
+
+			lightColor = vec4(ambientLightColor + (diffuseLightColor * directional), 1.0);
+		}
+		else {
+			lightColor = vec4(1, 1, 1, 1);
+		}
+
+		gl_FragColor = vColor * colorBase * lightColor * texture2D(colorMap, vCoord);
 	}
 `;
 
@@ -60,6 +69,7 @@ const state = {
 		rotation: { x: 0, y: 0, z: 0 }
 	},
 	input: application.input,
+	light: shader.declareUniformValue("light", gl => gl.uniform1i),
 	projection: math.Matrix.createPerspective(45, application.screen3d.getRatio(), 0.1, 100),
 	scene: {
 		colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
@@ -83,6 +93,14 @@ const enable = () => {
 
 	application.show(screen);
 	webgl.setup(screen.context);
+
+	return {
+		light: {
+			caption: "Enable light",
+			type: application.DefinitionType.Checkbox,
+			default: 1
+		}
+	};
 };
 
 const render = () => {
@@ -99,11 +117,13 @@ const render = () => {
 	webgl.draw(state.scene, state.projection, view, cube);
 };
 
-const update = (dt: number) => {
+const update = (options: application.OptionMap, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
 	const wheel = input.fetchWheel();
+
+	shader.setUniform(state.light, options["light"]);
 
 	if (input.isPressed("mouseleft")) {
 		camera.position.x += movement.x / 64;
@@ -124,6 +144,7 @@ io.Stream
 	.then(meshes => cube = meshes);
 
 const scene = {
+	caption: "s06: lightning",
 	enable: enable,
 	render: render,
 	update: update

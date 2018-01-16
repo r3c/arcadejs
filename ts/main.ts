@@ -6,11 +6,11 @@ import * as s04 from "./scene/s04_texturize";
 import * as s05 from "./scene/s05_webgl";
 import * as s06 from "./scene/s06_lightning";
 
-application.initialize({
-	"perspective": s01.scene,
-	"transform": s02.scene,
-	"colorize": s03.scene,
-	"texturize": s04.scene,
-	"webgl": s05.scene,
-	"lightning": s06.scene
-});
+application.setup([
+	s01.scene,
+	s02.scene,
+	s03.scene,
+	s04.scene,
+	s05.scene,
+	s06.scene
+]);

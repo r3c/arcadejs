@@ -70,6 +70,8 @@ const enable = () => {
 
 	application.show(screen);
 	webgl.setup(screen.context);
+
+	return {};
 };
 
 const render = () => {
@@ -86,7 +88,7 @@ const render = () => {
 	webgl.draw(state.scene, state.projection, view, cube);
 };
 
-const update = (dt: number) => {
+const update = (options: application.OptionMap, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
@@ -111,6 +113,7 @@ io.Stream
 	.then(meshes => cube = meshes);
 
 const scene = {
+	caption: "s05: webgl",
 	enable: enable,
 	render: render,
 	update: update

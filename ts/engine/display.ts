@@ -2,7 +2,7 @@
 class Screen {
 	public readonly canvas: HTMLCanvasElement;
 
-	protected constructor(container: HTMLElement, ) {
+	protected constructor(container: HTMLElement) {
 		const canvas = document.createElement('canvas');
 
 		container.appendChild(canvas);

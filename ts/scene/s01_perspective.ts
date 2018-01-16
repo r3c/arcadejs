@@ -7,6 +7,12 @@ const state = {
 	screen: application.screen2d
 };
 
+const enable = () => {
+	application.show(application.screen2d);
+
+	return {};
+};
+
 const render = () => {
 	const distance = -8;
 	const orbitate = new Date().getTime() * 0.001;
@@ -64,9 +70,10 @@ const render = () => {
 };
 
 const scene = {
-	enable: () => application.show(application.screen2d),
+	caption: "s01: perspective",
+	enable: enable,
 	render: render,
-	update: (dt: number) => {}
+	update: (options: application.OptionMap, dt: number) => {}
 };
 
 export { scene };

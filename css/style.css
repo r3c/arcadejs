@@ -11,11 +11,14 @@ html {
 	height:	100%;
 }
 
-#button {
-	padding:	16px;
+#buttons {
+	display:		flex;
+	align-items:	center;
+	padding:		16px;
 }
 
-#button input {
+#scenes input,
+#scenes select {
 	padding:		4px 8px;
 	margin:			4px;
 	border-color:	#BCD #89A #89A #BCD;
@@ -25,17 +28,17 @@ html {
 	background:		#DEF;
 }
 
-#button input:hover {
+#scenes input:hover {
 	border-color:	#89A #BCD #BCD #89A;
 	background:		#CDE;
 }
 
-#render {
+#screens {
 	display:	flex;
 	flex:		1;
 }
 
-#render canvas {
+#screens canvas {
 	margin:			auto;
 	width:			800px;
 	height:			600px;

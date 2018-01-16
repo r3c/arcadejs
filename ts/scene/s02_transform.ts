@@ -22,6 +22,12 @@ const state = {
 
 let cube: software.Mesh[] = [];
 
+const enable = () => {
+	application.show(application.screen2d);
+
+	return {};
+};
+
 const render = () => {
 	const screen = state.screen;
 
@@ -38,7 +44,7 @@ const render = () => {
 	software.draw(screen, state.projection, view, software.DrawMode.Wire, cube);
 };
 
-const update = (dt: number) => {
+const update = (options: application.OptionMap, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
@@ -89,7 +95,8 @@ software
 	.then(meshes => cube = meshes);
 
 const scene = {
-	enable: () => application.show(application.screen2d),
+	caption: "s02: transform",
+	enable: enable,
 	render: render,
 	update: update
 };

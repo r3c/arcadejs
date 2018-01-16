@@ -21,6 +21,12 @@ const state = {
 
 let cube: software.Mesh[] = [];
 
+const enable = () => {
+	application.show(application.screen2d);
+
+	return {};
+};
+
 const render = () => {
 	const screen = state.screen;
 
@@ -37,7 +43,7 @@ const render = () => {
 	software.draw(screen, state.projection, view, software.DrawMode.Default, cube);
 };
 
-const update = (dt: number) => {
+const update = (options: application.OptionMap, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
@@ -62,7 +68,8 @@ io.Stream
 	.then(meshes => cube = meshes);
 
 const scene = {
-	enable: () => application.show(application.screen2d),
+	caption: "s04: texturize",
+	enable: enable,
 	render: render,
 	update: update
 };
