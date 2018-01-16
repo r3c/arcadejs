@@ -15,7 +15,7 @@ interface Image {
 }
 
 interface Material {
-	ambient: ImageData | undefined;
+	colorMap: ImageData | undefined;
 }
 
 interface MaterialMap {
@@ -113,9 +113,9 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 		const colorIndex = depthIndex * 4;
 
 		// Ambient map
-		if (material !== undefined && material.ambient !== undefined) {
+		if (material !== undefined && material.colorMap !== undefined) {
 			const coord = lerpVector2(begin.coord, end.coord, ratio);
-			const image = material.ambient;
+			const image = material.colorMap;
 
 			const x = ~~(coord.x * image.width) % image.width;
 			const y = ~~(coord.y * image.height) % image.height;
@@ -327,8 +327,8 @@ const load = async (model: graphic.Model, path: string = "") => {
 				const definition = definitions[name];
 
 				materials[name] = {
-					ambient: definition.ambient !== undefined
-						? await loadImageData(path + definition.ambient)
+					colorMap: definition.colorMap !== undefined
+						? await loadImageData(path + definition.colorMap)
 						: undefined
 				}
 			}
@@ -337,7 +337,7 @@ const load = async (model: graphic.Model, path: string = "") => {
 		}
 		else {
 			material = {
-				ambient: undefined
+				colorMap: undefined
 			};
 		}
 

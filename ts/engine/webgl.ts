@@ -2,12 +2,8 @@ import * as graphic from "./graphic";
 import * as math from "./math";
 
 interface Material {
-	ambient: WebGLTexture | undefined,
-	ambientColor: math.Vector4,
-	diffuse: WebGLTexture | undefined,
-	diffuseColor: math.Vector4,
-	specular: WebGLTexture | undefined
-	specularColor: math.Vector4
+	colorBase: math.Vector4,
+	colorMap: WebGLTexture | undefined
 }
 
 interface MaterialMap {
@@ -149,23 +145,17 @@ class Shader {
 }
 
 interface Scene {
-	ambient?: ShaderUniform<number>,
+	colorBase: ShaderUniform<number[]>,
+	colorMap?: ShaderUniform<number>,
 	colors?: ShaderAttribute,
 	coords?: ShaderAttribute,
-	normals?: ShaderAttribute,
-	points: ShaderAttribute,
 	modelViewMatrix: ShaderUniform<number[]>,
 	normalMatrix?: ShaderUniform<number[]>,
+	normals?: ShaderAttribute,
+	points: ShaderAttribute,
 	projectionMatrix: ShaderUniform<number[]>,
 	shader: Shader
 }
-
-const defaultColor = {
-	x: 1,
-	y: 1,
-	z: 1,
-	w: 1
-};
 
 function flatMap<T, U>(items: T[], convert: (item: T) => U[]) {
 	return new Array<U>().concat(...items.map(convert));
@@ -223,6 +213,8 @@ const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, mes
 	shader.activate();
 
 	for (const mesh of meshes) {
+		const material = mesh.material;
+
 		// Bind colors vector if defined and supported
 		if (mesh.colors !== undefined && scene.colors !== undefined)
 			shader.setAttribute(scene.colors, mesh.colors);
@@ -235,9 +227,9 @@ const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, mes
 		if (mesh.normals !== undefined && scene.normals !== undefined)
 			shader.setAttribute(scene.normals, mesh.normals);
 
-		// Bind ambient texture if defined and supported
-		if (mesh.material.ambient !== undefined && scene.ambient !== undefined)
-			shader.setTexture(scene.ambient, mesh.material.ambient, 0);
+		// Bind color map texture if defined and supported
+		if (material.colorMap !== undefined && scene.colorMap !== undefined)
+			shader.setTexture(scene.colorMap, material.colorMap, 0);
 
 		// Bind points vector
 		shader.setAttribute(scene.points, mesh.points);
@@ -246,8 +238,9 @@ const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, mes
 		if (scene.normalMatrix !== undefined)
 			shader.setUniform(scene.normalMatrix, modelView.getTransposedInverse3x3());
 
-		shader.setUniform(scene.projectionMatrix, projection.getValues());
+		shader.setUniform(scene.colorBase, [material.colorBase.x, material.colorBase.y, material.colorBase.z, material.colorBase.w]);
 		shader.setUniform(scene.modelViewMatrix, modelView.getValues());
+		shader.setUniform(scene.projectionMatrix, projection.getValues());
 
 		// Perform draw call
 		shader.draw(mesh.indices, mesh.count);
@@ -268,14 +261,10 @@ const load = async (gl: WebGLRenderingContext, model: graphic.Model, path: strin
 				const definition = definitions[name];
 
 				materials[name] = {
-					ambient: definition.ambient !== undefined
-						? await createTexture(gl, path + definition.ambient)
-						: undefined,
-					ambientColor: defaultColor,
-					diffuse: undefined,
-					diffuseColor: defaultColor,
-					specular: undefined,
-					specularColor: defaultColor
+					colorBase: definition.colorBase,
+					colorMap: definition.colorMap !== undefined
+						? await createTexture(gl, path + definition.colorMap)
+						: undefined
 				}
 			}
 
@@ -283,12 +272,8 @@ const load = async (gl: WebGLRenderingContext, model: graphic.Model, path: strin
 		}
 		else {
 			material = {
-				ambient: undefined,
-				ambientColor: defaultColor,
-				diffuse: undefined,
-				diffuseColor: defaultColor,
-				specular: undefined,
-				specularColor: defaultColor
+				colorBase: graphic.defaultColor,
+				colorMap: undefined
 			};
 		}
 

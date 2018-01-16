@@ -5,7 +5,8 @@ interface Map<T> {
 }
 
 interface Material {
-	ambient?: string;
+	colorBase: math.Vector4,
+	colorMap?: string;
 }
 
 interface MaterialMap {
@@ -26,6 +27,13 @@ interface Model {
 	meshes: Mesh[];
 }
 
+const defaultColor = {
+	x: 1,
+	y: 1,
+	z: 1,
+	w: 1
+};
+
 class Loader {
 	public static fromJSON(json: string): Model {
 		return Loader.toModel("", JSON.parse(json));
@@ -44,7 +52,7 @@ class Loader {
 
 	private static toColor(name: string, instance: any): math.Vector4 {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "color");
+			throw Loader.invalid(name, instance, "rgb(a) color");
 
 		return {
 			x: Math.max(Math.min(Loader.toDecimal(`${name}.r`, instance.r), 1), 0),
@@ -106,7 +114,8 @@ class Loader {
 			throw Loader.invalid(name, instance, "material");
 
 		return {
-			ambient: instance.ambientMap !== undefined ? Loader.toString(`${name}.ambientMap`, instance.ambientMap) : undefined
+			colorBase: instance.colorBase !== undefined ? Loader.toColor(`${name}.colorBase`, instance.colorBase) : defaultColor,
+			colorMap: instance.colorMap !== undefined ? Loader.toString(`${name}.colorMap`, instance.colorMap) : undefined
 		};
 	}
 
@@ -153,4 +162,4 @@ class Loader {
 	}
 }
 
-export { Loader, Model };
+export { Loader, Model, defaultColor };

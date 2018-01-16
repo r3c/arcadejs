@@ -32,10 +32,11 @@ const fsSource = `
 	varying highp vec4 vColor;
 	varying highp vec2 vCoord;
 
-	uniform sampler2D colorTexture;
+	uniform highp vec4 colorBase;
+	uniform sampler2D colorMap;
 
 	void main(void) {
-		gl_FragColor = vColor * texture2D(colorTexture, vCoord);
+		gl_FragColor = vColor * colorBase * texture2D(colorMap, vCoord);
 	}
 `;
 
@@ -50,11 +51,12 @@ const state = {
 	input: application.input,
 	projection: math.Matrix.createPerspective(45, application.screen3d.getRatio(), 0.1, 100),
 	scene: {
-		projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-		modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-		ambient: shader.declareUniformValue("colorTexture", gl => gl.uniform1i),
+		colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
+		colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
 		colors: shader.declareAttribute("color", 4, gl.FLOAT),
 		coords: shader.declareAttribute("coord", 2, gl.FLOAT),
+		modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+		projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
 		points: shader.declareAttribute("point", 3, gl.FLOAT),
 		shader: shader
 	},
