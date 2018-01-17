@@ -1,6 +1,16 @@
 import * as graphic from "./graphic";
 import * as math from "./math";
 
+interface ShaderAttribute {
+	location: number,
+	size: number,
+	type: number
+}
+
+type ShaderUniformMatrix<T> = (location: WebGLUniformLocation, transpose: boolean, value: T) => void;
+type ShaderUniformValue<T> = (location: WebGLUniformLocation, value: T) => void;
+type ShaderUniform<T> = (gl: WebGLRenderingContext, value: T) => void;
+
 interface Binding {
 	colorBase: ShaderUniform<number[]>,
 	colorMap?: ShaderUniform<number>,
@@ -10,8 +20,7 @@ interface Binding {
 	normalMatrix?: ShaderUniform<number[]>,
 	normals?: ShaderAttribute,
 	points: ShaderAttribute,
-	projectionMatrix: ShaderUniform<number[]>,
-	shader: Shader
+	projectionMatrix: ShaderUniform<number[]>
 }
 
 interface Material {
@@ -32,16 +41,6 @@ interface Mesh {
 	normals: WebGLBuffer | undefined,
 	points: WebGLBuffer
 }
-
-interface ShaderAttribute {
-	location: number,
-	size: number,
-	type: number
-}
-
-type ShaderUniformMatrix<T> = (location: WebGLUniformLocation, transpose: boolean, value: T) => void;
-type ShaderUniformValue<T> = (location: WebGLUniformLocation, value: T) => void;
-type ShaderUniform<T> = (gl: WebGLRenderingContext, value: T) => void;
 
 class Shader {
 	private readonly gl: WebGLRenderingContext;
@@ -207,40 +206,36 @@ const clear = (gl: WebGLRenderingContext) => {
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 };
 
-const draw = (scene: Binding, projection: math.Matrix, modelView: math.Matrix, meshes: Mesh[]) => {
-	const shader = scene.shader;
-
-	shader.activate();
-
+const draw = (shader: Shader, binding: Binding, meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix) => {
 	for (const mesh of meshes) {
 		const material = mesh.material;
 
 		// Bind colors vector if defined and supported
-		if (mesh.colors !== undefined && scene.colors !== undefined)
-			shader.setAttribute(scene.colors, mesh.colors);
+		if (mesh.colors !== undefined && binding.colors !== undefined)
+			shader.setAttribute(binding.colors, mesh.colors);
 
 		// Bind coords vector if defined and supported
-		if (mesh.coords !== undefined && scene.coords !== undefined)
-			shader.setAttribute(scene.coords, mesh.coords);
+		if (mesh.coords !== undefined && binding.coords !== undefined)
+			shader.setAttribute(binding.coords, mesh.coords);
 
 		// Bind face normals if defined and supported
-		if (mesh.normals !== undefined && scene.normals !== undefined)
-			shader.setAttribute(scene.normals, mesh.normals);
+		if (mesh.normals !== undefined && binding.normals !== undefined)
+			shader.setAttribute(binding.normals, mesh.normals);
 
 		// Bind color map texture if defined and supported
-		if (material.colorMap !== undefined && scene.colorMap !== undefined)
-			shader.setTexture(scene.colorMap, material.colorMap, 0);
+		if (material.colorMap !== undefined && binding.colorMap !== undefined)
+			shader.setTexture(binding.colorMap, material.colorMap, 0);
 
 		// Bind points vector
-		shader.setAttribute(scene.points, mesh.points);
+		shader.setAttribute(binding.points, mesh.points);
 
 		// Set the shader matrix uniforms
-		if (scene.normalMatrix !== undefined)
-			shader.setUniform(scene.normalMatrix, modelView.getTransposedInverse3x3());
+		if (binding.normalMatrix !== undefined)
+			shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
 
-		shader.setUniform(scene.colorBase, material.colorBase);
-		shader.setUniform(scene.modelViewMatrix, modelView.getValues());
-		shader.setUniform(scene.projectionMatrix, projection.getValues());
+		shader.setUniform(binding.colorBase, material.colorBase);
+		shader.setUniform(binding.modelViewMatrix, modelView.getValues());
+		shader.setUniform(binding.projectionMatrix, projection.getValues());
 
 		// Perform draw call
 		shader.draw(mesh.indices, mesh.count);

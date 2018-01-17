@@ -9,6 +9,7 @@ import * as webgl from "../engine/webgl";
 /*
 ** What changed?
 ** - Rendering target is now a WebGL context instead of a 2D one
+** - Shaders are defined to replace software projection and rasterization steps
 */
 
 const vsSource = `
@@ -47,10 +48,13 @@ interface State {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
-	cube: webgl.Mesh[],
+	draw: {
+		binding: webgl.Binding,
+		meshes: webgl.Mesh[],
+		shader: webgl.Shader
+	},
 	input: controller.Input,
 	projection: math.Matrix,
-	scene: webgl.Binding,
 	screen: display.WebGLScreen
 }
 
@@ -68,25 +72,28 @@ const prepare = async () => {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
-		cube: await webgl.load(gl, graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
-		input: runtime.input,
-		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		scene: {
-			colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
-			colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
-			colors: shader.declareAttribute("color", 4, gl.FLOAT),
-			coords: shader.declareAttribute("coord", 2, gl.FLOAT),
-			modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-			projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-			points: shader.declareAttribute("point", 3, gl.FLOAT),
+		draw: {
+			binding: {
+				colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
+				colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
+				colors: shader.declareAttribute("color", 4, gl.FLOAT),
+				coords: shader.declareAttribute("coord", 2, gl.FLOAT),
+				modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
+				points: shader.declareAttribute("point", 3, gl.FLOAT)
+			},
+			meshes: await webgl.load(gl, graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
 			shader: shader
 		},
+		input: runtime.input,
+		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		screen: runtime.screen
 	};
 };
 
 const render = (state: State) => {
 	const camera = state.camera;
+	const draw = state.draw;
 	const screen = state.screen;
 
 	const view = math.Matrix
@@ -96,7 +103,10 @@ const render = (state: State) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
 	webgl.clear(screen.context);
-	webgl.draw(state.scene, state.projection, view, state.cube);
+
+	draw.shader.activate();
+
+	webgl.draw(draw.shader, draw.binding, draw.meshes, state.projection, view);
 };
 
 const update = (state: State, dt: number) => {

@@ -67,14 +67,16 @@ interface State {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
-	cube: webgl.Mesh[],
+	draw: {
+		binding: webgl.Binding,
+		meshes: webgl.Mesh[],
+		shader: webgl.Shader
+	}
 	input: controller.Input,
 	light: webgl.ShaderUniform<number>,
 	options: application.OptionMap,
 	projection: math.Matrix,
-	scene: webgl.Binding,
-	screen: display.WebGLScreen,
-	shader: webgl.Shader
+	screen: display.WebGLScreen
 }
 
 const definitions = {
@@ -99,30 +101,32 @@ const prepare = async (options: application.OptionMap) => {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
-		cube: await webgl.load(gl, graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
+		draw: {
+			binding: {
+				colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
+				colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
+				colors: shader.declareAttribute("color", 4, gl.FLOAT),
+				coords: shader.declareAttribute("coord", 2, gl.FLOAT),
+				modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				normalMatrix: shader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
+				normals: shader.declareAttribute("normal", 3, gl.FLOAT),
+				points: shader.declareAttribute("point", 3, gl.FLOAT),
+				projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
+			},
+			meshes: await webgl.load(gl, graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
+			shader: shader
+		},
 		input: runtime.input,
 		light: shader.declareUniformValue("light", gl => gl.uniform1i),
 		options: options,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		scene: {
-			colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
-			colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
-			colors: shader.declareAttribute("color", 4, gl.FLOAT),
-			coords: shader.declareAttribute("coord", 2, gl.FLOAT),
-			modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-			normalMatrix: shader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
-			normals: shader.declareAttribute("normal", 3, gl.FLOAT),
-			points: shader.declareAttribute("point", 3, gl.FLOAT),
-			projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-			shader: shader
-		},
-		screen: runtime.screen,
-		shader: shader
+		screen: runtime.screen
 	};
 };
 
 const render = (state: State) => {
 	const camera = state.camera;
+	const draw = state.draw;
 	const screen = state.screen;
 
 	const view = math.Matrix
@@ -132,7 +136,11 @@ const render = (state: State) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
 	webgl.clear(screen.context);
-	webgl.draw(state.scene, state.projection, view, state.cube);
+
+	draw.shader.activate();
+	draw.shader.setUniform(state.light, state.options["light"]);
+
+	webgl.draw(draw.shader, draw.binding, draw.meshes, state.projection, view);
 };
 
 const update = (state: State, dt: number) => {
@@ -140,9 +148,6 @@ const update = (state: State, dt: number) => {
 	const input = state.input;
 	const movement = input.fetchMovement();
 	const wheel = input.fetchWheel();
-
-	// FIXME: must be done after program is used only
-	state.shader.setUniform(state.light, state.options["light"]);
 
 	if (input.isPressed("mouseleft")) {
 		camera.position.x += movement.x / 64;
