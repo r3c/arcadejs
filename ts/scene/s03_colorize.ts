@@ -43,7 +43,7 @@ const prepare = async () => {
 	};
 };
 
-const render = (state: State) => {	
+const render = (state: State) => {
 	const camera = state.camera;
 	const renderer = state.renderer;
 	const view = math.Matrix

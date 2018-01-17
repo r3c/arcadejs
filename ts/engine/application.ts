@@ -27,7 +27,7 @@ interface Process {
 }
 
 interface RuntimeScreen<T> {
-	new (container: HTMLElement): T
+	new(container: HTMLElement): T
 }
 
 class Runtime<T> {
@@ -147,10 +147,10 @@ const initialize = (processes: Process[]) => {
 
 	return setInterval(() => {
 		const now = new Date().getTime();
-	
+
 		if (tick !== undefined)
 			tick(now - time);
-	
+
 		time = now;
 	}, 30);
 };
@@ -165,7 +165,7 @@ const prepare = <T>(name: string, scene: Scenario<T>) => {
 		},
 		tick: (dt: number) => {
 			scene.update(state, dt);
-	
+
 			setTimeout(() => scene.render(state), 0);
 		}
 	};
