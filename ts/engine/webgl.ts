@@ -157,9 +157,9 @@ class Shader {
 	}
 }
 
-function flatMap<T, U>(items: T[], convert: (item: T) => U[]) {
+const flatMap = <T, U>(items: T[], convert: (item: T) => U[]) => {
 	return new Array<U>().concat(...items.map(convert));
-}
+};
 
 const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
 	const buffer = gl.createBuffer();

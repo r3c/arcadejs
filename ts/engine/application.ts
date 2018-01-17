@@ -155,7 +155,7 @@ const initialize = (processes: Process[]) => {
 	}, 30);
 };
 
-function prepare<T>(name: string, scene: Scenario<T>) {
+const prepare = <T>(name: string, scene: Scenario<T>) => {
 	let state: T;
 
 	return {
@@ -170,10 +170,10 @@ function prepare<T>(name: string, scene: Scenario<T>) {
 			setTimeout(() => scene.render(state), 0);
 		}
 	};
-}
+};
 
-function runtime<T>(screenConstructor: RuntimeScreen<T>) {
+const runtime = <T>(screenConstructor: RuntimeScreen<T>) => {
 	return new Runtime<T>(screenConstructor);
-}
+};
 
 export { DefinitionType, OptionMap, initialize, prepare, runtime };

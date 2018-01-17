@@ -57,25 +57,21 @@ class Input {
 		];
 
 		for (const [name, callback, cancel] of handlers) {
-			const handler = function (callback: (event: Event) => void, cancel: boolean) {
-				return (e: Event) => {
-					const event = e || window.event;
+			eventSource.addEventListener(name, e => {
+				const event = e || window.event;
 
-					if (cancel) {
-						if (event.preventDefault)
-							event.preventDefault();
+				if (cancel) {
+					if (event.preventDefault)
+						event.preventDefault();
 
-						if (event.stopPropagation)
-							event.stopPropagation();
+					if (event.stopPropagation)
+						event.stopPropagation();
 
-						event.returnValue = false;
-					}
+					event.returnValue = false;
+				}
 
-					callback(event);
-				};
-			}(callback, cancel);
-
-			eventSource.addEventListener(name, handler);
+				callback(event);
+			});
 		}
 
 		// Register all known keys as buttons having the same lowercase name (e.g. Key.Left as button "left")
