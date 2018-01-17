@@ -20,15 +20,16 @@ interface State {
 	cube: software.Mesh[],
 	input: controller.Input,
 	projection: math.Matrix,
-	screen: display.Context2DScreen
+	renderer: software.Renderer
 }
 
 const prepare = async () => {
+	const runtime = application.runtime(display.Context2DScreen);
+	const renderer = new software.Renderer(runtime.screen);
+
 	const cube = await io.Stream
 		.readURL(io.StringReader, "./res/mesh/cube-color.json")
-		.then(reader => software.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"));
-
-	const runtime = application.runtime(display.Context2DScreen);
+		.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"));
 
 	return {
 		camera: {
@@ -38,24 +39,21 @@ const prepare = async () => {
 		cube: cube,
 		input: runtime.input,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		screen: runtime.screen
+		renderer: renderer
 	};
 };
 
-const render = (state: State) => {
-	const screen = state.screen;
-
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
-
+const render = (state: State) => {	
 	const camera = state.camera;
+	const renderer = state.renderer;
 	const view = math.Matrix
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	software.draw(screen, state.projection, view, software.DrawMode.Default, state.cube);
+	renderer.clear();
+	renderer.draw(state.cube, state.projection, view, software.DrawMode.Default);
 };
 
 const update = (state: State, dt: number) => {

@@ -5,8 +5,8 @@ import * as software from "../engine/software";
 
 interface State {
 	projection: math.Matrix,
-	rotation: number,
-	screen: display.Context2DScreen
+	renderer: software.Renderer,
+	rotation: number
 }
 
 const prepare = async () => {
@@ -14,8 +14,8 @@ const prepare = async () => {
 
 	return {
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		rotation: 0,
-		screen: runtime.screen
+		renderer: new software.Renderer(runtime.screen),
+		rotation: 0
 	};
 };
 
@@ -58,21 +58,19 @@ const render = (state: State) => {
 		[7, 6, 2]
 	];
 
-	const screen = state.screen;
+	const renderer = state.renderer;
 
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
-
-	const model = {
-		meshes: [{
-			indices: indices,
-			points: points
-		}]
-	};
-
-	software
-		.load(model)
-		.then((meshes => software.draw(screen, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire, meshes)));
+	renderer
+		.load({
+			meshes: [{
+				indices: indices,
+				points: points
+			}]
+		})
+		.then((meshes => {
+			renderer.clear();
+			renderer.draw(meshes, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire);
+		}));
 };
 
 const update = (state: State, dt: number) => {

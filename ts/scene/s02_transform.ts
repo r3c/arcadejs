@@ -20,11 +20,14 @@ interface State {
 	cube: software.Mesh[],
 	input: controller.Input,
 	projection: math.Matrix,
-	screen: display.Context2DScreen
+	renderer: software.Renderer
 }
 
 const prepare = async () => {
-	const cube = await software.load({
+	const runtime = application.runtime(display.Context2DScreen);
+	const renderer = new software.Renderer(runtime.screen);
+
+	const cube = await renderer.load({
 		meshes: [{
 			indices: [
 				[0, 1, 2],
@@ -53,8 +56,6 @@ const prepare = async () => {
 		}]
 	});
 
-	const runtime = application.runtime(display.Context2DScreen);
-
 	return {
 		camera: {
 			position: { x: 0, y: 0, z: -5 },
@@ -63,24 +64,21 @@ const prepare = async () => {
 		cube: cube,
 		input: runtime.input,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		screen: runtime.screen
+		renderer: renderer
 	};
 };
 
 const render = (state: State) => {
-	const screen = state.screen;
-
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
-
 	const camera = state.camera;
+	const renderer = state.renderer;
 	const view = math.Matrix
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	software.draw(screen, state.projection, view, software.DrawMode.Wire, state.cube);
+	renderer.clear();
+	renderer.draw(state.cube, state.projection, view, software.DrawMode.Wire);
 };
 
 const update = (state: State, dt: number) => {

@@ -1,6 +1,7 @@
 import * as display from "./display";
 import * as graphic from "./graphic";
 import * as math from "./math";
+import { scenario } from "../scene/s02_transform";
 
 enum DrawMode {
 	Default,
@@ -235,58 +236,6 @@ const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, ha
 	};
 };
 
-const draw = (screen: display.Context2DScreen, projection: math.Matrix, modelView: math.Matrix, drawMode: DrawMode, meshes: Mesh[]) => {
-	const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
-
-	const image = {
-		colors: capture.data,
-		depths: new Float32Array(capture.width * capture.height),
-		height: capture.height,
-		width: capture.width
-	};
-
-	image.depths.fill(Math.pow(2, 127));
-
-	const halfWidth = screen.getWidth() * 0.5;
-	const halfHeight = screen.getHeight() * 0.5;
-
-	const modelViewProjection = projection.compose(modelView);
-
-	const triangle = drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
-
-	for (const mesh of meshes) {
-		const colors = mesh.colors || [];
-		const coords = mesh.coords || [];
-		const faces = mesh.faces;
-		const material = mesh.material;
-		const positions = mesh.positions;
-
-		for (const [i, j, k] of faces) {
-			const vertex1 = {
-				color: colors[i] || defaultColor,
-				coord: coords[i] || defaultCoord,
-				point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[i])
-			};
-
-			const vertex2 = {
-				color: colors[j] || defaultColor,
-				coord: coords[j] || defaultCoord,
-				point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[j])
-			};
-
-			const vertex3 = {
-				color: colors[k] || defaultColor,
-				coord: coords[k] || defaultCoord,
-				point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[k])
-			};
-
-			triangle(image, vertex1, vertex2, vertex3, material);
-		}
-	}
-
-	screen.context.putImageData(capture, 0, 0);
-};
-
 const loadImageData = (url: string) => {
 	return new Promise<ImageData>((resolve, reject) => {
 		const image = new Image();
@@ -313,45 +262,113 @@ const loadImageData = (url: string) => {
 	});
 };
 
-const load = async (model: graphic.Model, path: string = "") => {
-	const definitions = model.materials || {};
-	const materials: MaterialMap = {};
-	const meshes: Mesh[] = [];
+class Renderer {
+	private readonly screen: display.Context2DScreen;
 
-	for (const mesh of model.meshes) {
-		let material: Material;
-		const name = mesh.materialName;
-
-		if (name !== undefined && definitions[name] !== undefined) {
-			if (materials[name] === undefined) {
-				const definition = definitions[name];
-
-				materials[name] = {
-					colorMap: definition.colorMap !== undefined
-						? await loadImageData(path + definition.colorMap)
-						: undefined
-				}
-			}
-
-			material = materials[name];
-		}
-		else {
-			material = {
-				colorMap: undefined
-			};
-		}
-
-		meshes.push({
-			colors: mesh.colors,
-			coords: mesh.coords,
-			faces: mesh.indices,
-			material: material,
-			normals: mesh.normals,
-			positions: mesh.points
-		})
+	public constructor(screen: display.Context2DScreen) {
+		this.screen = screen;
 	}
 
-	return meshes;
-};
+	public clear() {
+		const screen = this.screen;
 
-export { DrawMode, Mesh, draw, load };
+		screen.context.fillStyle = 'black';
+		screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+	}
+
+	public draw(meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix, drawMode: DrawMode) {
+		const screen = this.screen;
+		const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
+	
+		const image = {
+			colors: capture.data,
+			depths: new Float32Array(capture.width * capture.height),
+			height: capture.height,
+			width: capture.width
+		};
+	
+		image.depths.fill(Math.pow(2, 127));
+	
+		const halfWidth = screen.getWidth() * 0.5;
+		const halfHeight = screen.getHeight() * 0.5;
+	
+		const modelViewProjection = projection.compose(modelView);
+	
+		const triangle = drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
+	
+		for (const mesh of meshes) {
+			const colors = mesh.colors || [];
+			const coords = mesh.coords || [];
+			const faces = mesh.faces;
+			const material = mesh.material;
+			const positions = mesh.positions;
+	
+			for (const [i, j, k] of faces) {
+				const vertex1 = {
+					color: colors[i] || defaultColor,
+					coord: coords[i] || defaultCoord,
+					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[i])
+				};
+	
+				const vertex2 = {
+					color: colors[j] || defaultColor,
+					coord: coords[j] || defaultCoord,
+					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[j])
+				};
+	
+				const vertex3 = {
+					color: colors[k] || defaultColor,
+					coord: coords[k] || defaultCoord,
+					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[k])
+				};
+	
+				triangle(image, vertex1, vertex2, vertex3, material);
+			}
+		}
+	
+		screen.context.putImageData(capture, 0, 0);
+	}
+
+	public async load(model: graphic.Model, path: string = "") {
+		const definitions = model.materials || {};
+		const materials: MaterialMap = {};
+		const meshes: Mesh[] = [];
+	
+		for (const mesh of model.meshes) {
+			let material: Material;
+			const name = mesh.materialName;
+	
+			if (name !== undefined && definitions[name] !== undefined) {
+				if (materials[name] === undefined) {
+					const definition = definitions[name];
+	
+					materials[name] = {
+						colorMap: definition.colorMap !== undefined
+							? await loadImageData(path + definition.colorMap)
+							: undefined
+					}
+				}
+	
+				material = materials[name];
+			}
+			else {
+				material = {
+					colorMap: undefined
+				};
+			}
+	
+			meshes.push({
+				colors: mesh.colors,
+				coords: mesh.coords,
+				faces: mesh.indices,
+				material: material,
+				normals: mesh.normals,
+				positions: mesh.points
+			})
+		}
+	
+		return meshes;
+	}
+}
+
+export { DrawMode, Mesh, Renderer };
