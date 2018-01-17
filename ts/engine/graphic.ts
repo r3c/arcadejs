@@ -162,4 +162,4 @@ class Loader {
 	}
 }
 
-export { Loader, Model, defaultColor };
+export { Loader, Model };

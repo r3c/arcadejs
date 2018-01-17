@@ -1,5 +1,4 @@
 import * as controller from "./controller";
-import * as display from "./display";
 
 enum DefinitionType {
 	Checkbox,
@@ -21,24 +20,11 @@ interface OptionMap {
 	[key: string]: number
 }
 
-interface Scene {
-	caption: string,
-	enable: () => DefinitionMap,
-	render: () => void,
-	update: (options: OptionMap, dt: number) => void
+interface Process {
+	name: string,
+	start: () => Promise<void>,
+	tick: (dt: number) => void
 }
-
-const sceneContainer = document.getElementById("scenes");
-
-if (sceneContainer === null)
-	throw Error("missing scene container");
-
-const tweakContainer = document.getElementById("tweaks");
-
-if (tweakContainer === null)
-	throw Error("missing tweak container");
-
-let current: number | undefined;
 
 interface RuntimeScreen<T> {
 	new (container: HTMLElement): T
@@ -62,47 +48,23 @@ class Runtime<T> {
 	}
 }
 
-const createCheckbox = (caption: string, value: number, change: (value: number) => void) => {
-	const checkbox = document.createElement("input");
-	const wrapper = document.createElement("div");
+interface Scenario<T> {
+	definitions?: DefinitionMap,
+	enable: () => Promise<T>,
+	render: (state: T) => void,
+	update?: (state: T, options: OptionMap, dt: number) => void
+}
 
-	checkbox.checked = value !== 0;
-	checkbox.onchange = () => change(checkbox.checked ? 1 : 0);
-	checkbox.type = "checkbox";
+const configure = (definitions: DefinitionMap) => {
+	const tweakContainer = document.getElementById("tweaks");
 
-	wrapper.appendChild(checkbox);
-	wrapper.appendChild(document.createTextNode(caption));
-
-	return wrapper;
-};
-
-const createSelect = (choices: string[], value: number, change: (value: number) => void) => {
-	const select = document.createElement("select");
-
-	for (let i = 0; i < choices.length; ++i) {
-		const option = document.createElement("option");
-
-		option.selected = i === value;
-		option.text = choices[i];
-
-		select.options.add(option);
-	}
-
-	select.onchange = () => change(select.selectedIndex);
-
-	return select;
-};
-
-const enable = (scene: Scene) => {
-	if (current !== undefined)
-		clearInterval(current);
-
-	// Convert definitions into options and append to document
-	const definitions = scene.enable();
-	const options: OptionMap = {};
+	if (tweakContainer === null)
+		throw Error("missing tweak container");
 
 	while (tweakContainer.childNodes.length > 0)
 		tweakContainer.removeChild(tweakContainer.childNodes[0]);
+
+	const options: OptionMap = {};
 
 	for (const key in definitions) {
 		const definition = definitions[key];
@@ -123,30 +85,97 @@ const enable = (scene: Scene) => {
 		options[key] = definition.default;
 	}
 
-	// Start main loop
-	let time = new Date().getTime();
-
-	current = setInterval(() => {
-		const now = new Date().getTime();
-
-		scene.update(options, now - time);
-
-		time = now;
-
-		setTimeout(scene.render, 0);
-	}, 30);
+	return options;
 };
 
-const setup = (scenes: Scene[]) => {
-	const submit = document.createElement("input");
-	const select = createSelect(scenes.map(s => s.caption), 0, value => {});
+const createCheckbox = (caption: string, value: number, change: (value: number) => void) => {
+	const container = document.createElement("div");
+	const checkbox = document.createElement("input");
 
-	submit.onclick = () => enable(scenes[select.selectedIndex]);
+	container.appendChild(checkbox);
+	container.appendChild(document.createTextNode(caption));
+
+	checkbox.checked = value !== 0;
+	checkbox.onchange = () => change(checkbox.checked ? 1 : 0);
+	checkbox.type = "checkbox";
+
+	return container;
+};
+
+const createSelect = (choices: string[], value: number, change: (value: number) => void) => {
+	const container = document.createElement("div");
+	const select = document.createElement("select");
+	const submit = document.createElement("input");
+
+	container.appendChild(select);
+	container.appendChild(submit);
+
+	submit.onclick = () => change(select.selectedIndex);
 	submit.type = "button";
 	submit.value = "OK";
 
-	sceneContainer.appendChild(select);
-	sceneContainer.appendChild(submit);
+	for (let i = 0; i < choices.length; ++i) {
+		const option = document.createElement("option");
+
+		option.selected = i === value;
+		option.text = choices[i];
+
+		select.options.add(option);
+	}
+
+	return container;
 };
 
-export { DefinitionType, OptionMap, Runtime, setup };
+const initialize = (processes: Process[]) => {
+	const sceneContainer = document.getElementById("scenes");
+
+	if (sceneContainer === null)
+		throw Error("missing scene container");
+
+	let tick: ((dt: number) => void) | undefined = undefined;
+	let time = new Date().getTime();
+
+	sceneContainer.appendChild(createSelect(processes.map(p => p.name), 0, value => {
+		const process = processes[value];
+
+		tick = undefined;
+
+		process
+			.start()
+			.then(() => tick = process.tick);
+	}));
+
+	return setInterval(() => {
+		const now = new Date().getTime();
+	
+		if (tick !== undefined)
+			tick(now - time);
+	
+		time = now;
+	}, 30);
+};
+
+function prepare<T>(name: string, scene: Scenario<T>) {
+	let options: OptionMap;
+	let state: T;
+
+	return {
+		name: name,
+		start: async () => {
+			options = configure(scene.definitions || {});
+			state = await scene.enable();
+		},
+		tick: (dt: number) => {
+			if (scene.update !== undefined)
+				scene.update(state, options, dt);
+	
+			setTimeout(() => scene.render(state), 0);
+		}
+	};
+}
+
+function runtime<T>(screenConstructor: RuntimeScreen<T>) {
+	return new Runtime<T>(screenConstructor);
+}
+
+export { DefinitionType, OptionMap, initialize, prepare, runtime };

@@ -5,19 +5,19 @@ import * as software from "../engine/software";
 
 interface State {
 	projection: math.Matrix,
-	runtime: application.Runtime<display.Context2DScreen>
+	screen: display.Context2DScreen
 }
 
-let state: State;
+const enable = async () => {
+	const runtime = application.runtime(display.Context2DScreen);
 
-const enable = () => {
-	state.runtime = new application.Runtime<display.Context2DScreen>(display.Context2DScreen);
-	state.projection = math.Matrix.createPerspective(45, state.runtime.screen.getRatio(), 0.1, 100);
-
-	return {};
+	return {
+		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		screen: runtime.screen
+	};
 };
 
-const render = () => {
+const render = (state: State) => {
 	const distance = -8;
 	const orbitate = new Date().getTime() * 0.001;
 	const pi = Math.PI;
@@ -56,7 +56,7 @@ const render = () => {
 		[7, 6, 2]
 	];
 
-	const screen = state.runtime.screen;
+	const screen = state.screen;
 
 	screen.context.fillStyle = 'black';
 	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
@@ -74,10 +74,8 @@ const render = () => {
 };
 
 const scene = {
-	caption: "s01: perspective",
 	enable: enable,
-	render: render,
-	update: (options: application.OptionMap, dt: number) => {}
+	render: render
 };
 
 export { scene };

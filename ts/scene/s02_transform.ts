@@ -1,4 +1,6 @@
 import * as application from "../engine/application";
+import * as controller from "../engine/controller";
+import * as display from "../engine/display";
 import * as math from "../engine/math";
 import * as software from "../engine/software";
 
@@ -10,61 +12,19 @@ import * as software from "../engine/software";
 ** - Model loading is done only once instead of once per draw iteration
 */
 
-const state = {
+interface State {
 	camera: {
-		position: { x: 0, y: 0, z: -5 },
-		rotation: { x: 0, y: 0, z: 0 }
+		position: math.Vector3,
+		rotation: math.Vector3
 	},
-	input: application.input,
-	projection: math.Matrix.createPerspective(45, application.screen2d.getRatio(), 0.1, 100),
-	screen: application.screen2d
-};
+	cube: software.Mesh[],
+	input: controller.Input,
+	projection: math.Matrix,
+	screen: display.Context2DScreen
+}
 
-let cube: software.Mesh[] = [];
-
-const enable = () => {
-	application.show(application.screen2d);
-
-	return {};
-};
-
-const render = () => {
-	const screen = state.screen;
-
-	screen.context.fillStyle = 'black';
-	screen.context.fillRect(0, 0, screen.getWidth(), state.screen.getHeight());
-
-	const camera = state.camera;
-	const view = math.Matrix
-		.createIdentity()
-		.translate(camera.position)
-		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
-
-	software.draw(screen, state.projection, view, software.DrawMode.Wire, cube);
-};
-
-const update = (options: application.OptionMap, dt: number) => {
-	const camera = state.camera;
-	const input = state.input;
-	const movement = input.fetchMovement();
-	const wheel = input.fetchWheel();
-
-	if (input.isPressed("mouseleft")) {
-		camera.position.x += movement.x / 64;
-		camera.position.y -= movement.y / 64;
-	}
-
-	if (input.isPressed("mouseright")) {
-		camera.rotation.x -= movement.y / 64;
-		camera.rotation.y -= movement.x / 64;
-	}
-
-	camera.position.z += wheel;
-};
-
-software
-	.load({
+const enable = async () => {
+	const cube = await software.load({
 		meshes: [{
 			indices: [
 				[0, 1, 2],
@@ -91,11 +51,58 @@ software
 				{ x: -1, y: -1, z: 1 }
 			]
 		}]
-	})
-	.then(meshes => cube = meshes);
+	});
+
+	const runtime = application.runtime(display.Context2DScreen);
+
+	return {
+		camera: {
+			position: { x: 0, y: 0, z: -5 },
+			rotation: { x: 0, y: 0, z: 0 }
+		},
+		cube: cube,
+		input: runtime.input,
+		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		screen: runtime.screen
+	};
+};
+
+const render = (state: State) => {
+	const screen = state.screen;
+
+	screen.context.fillStyle = 'black';
+	screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+
+	const camera = state.camera;
+	const view = math.Matrix
+		.createIdentity()
+		.translate(camera.position)
+		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+
+	software.draw(screen, state.projection, view, software.DrawMode.Wire, state.cube);
+};
+
+const update = (state: State, options: application.OptionMap, dt: number) => {
+	const camera = state.camera;
+	const input = state.input;
+	const movement = input.fetchMovement();
+	const wheel = input.fetchWheel();
+
+	if (input.isPressed("mouseleft")) {
+		camera.position.x += movement.x / 64;
+		camera.position.y -= movement.y / 64;
+	}
+
+	if (input.isPressed("mouseright")) {
+		camera.rotation.x -= movement.y / 64;
+		camera.rotation.y -= movement.x / 64;
+	}
+
+	camera.position.z += wheel;
+};
 
 const scene = {
-	caption: "s02: transform",
 	enable: enable,
 	render: render,
 	update: update

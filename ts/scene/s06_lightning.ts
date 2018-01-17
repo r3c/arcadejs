@@ -1,4 +1,6 @@
 import * as application from "../engine/application";
+import * as controller from "../engine/controller";
+import * as display from "../engine/display";
 import * as graphic from "../engine/graphic";
 import * as io from "../engine/io";
 import * as math from "../engine/math";
@@ -60,50 +62,64 @@ const fsSource = `
 	}
 `;
 
-const gl = application.screen3d.context;
-const shader = new webgl.Shader(gl, vsSource, fsSource);
-
-const state = {
+interface State {
 	camera: {
-		position: { x: 0, y: 0, z: -5 },
-		rotation: { x: 0, y: 0, z: 0 }
+		position: math.Vector3,
+		rotation: math.Vector3
 	},
-	input: application.input,
-	light: shader.declareUniformValue("light", gl => gl.uniform1i),
-	projection: math.Matrix.createPerspective(45, application.screen3d.getRatio(), 0.1, 100),
-	scene: {
-		colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
-		colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
-		colors: shader.declareAttribute("color", 4, gl.FLOAT),
-		coords: shader.declareAttribute("coord", 2, gl.FLOAT),
-		modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-		normalMatrix: shader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
-		normals: shader.declareAttribute("normal", 3, gl.FLOAT),
-		points: shader.declareAttribute("point", 3, gl.FLOAT),
-		projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-		shader: shader
-	},
-	screen: application.screen3d
+	cube: webgl.Mesh[],
+	input: controller.Input,
+	light: webgl.ShaderUniform<number>,
+	projection: math.Matrix,
+	scene: webgl.Binding,
+	screen: display.WebGLScreen,
+	shader: webgl.Shader
+}
+
+const definitions = {
+	light: {
+		caption: "Enable light",
+		type: application.DefinitionType.Checkbox,
+		default: 1
+	}
 };
 
-let cube: webgl.Mesh[] = [];
+const enable = async () => {
+	const cubeReader = await io.Stream.readURL(io.StringReader, "./res/mesh/cube-ambient.json");
 
-const enable = () => {
-	const screen = state.screen;
+	const runtime = application.runtime(display.WebGLScreen);
+	const gl = runtime.screen.context;
+	const shader = new webgl.Shader(gl, vsSource, fsSource);
 
-	application.show(screen);
-	webgl.setup(screen.context);
+	webgl.setup(gl);
 
 	return {
-		light: {
-			caption: "Enable light",
-			type: application.DefinitionType.Checkbox,
-			default: 1
-		}
+		camera: {
+			position: { x: 0, y: 0, z: -5 },
+			rotation: { x: 0, y: 0, z: 0 }
+		},
+		cube: await webgl.load(gl, graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
+		input: runtime.input,
+		light: shader.declareUniformValue("light", gl => gl.uniform1i),
+		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		scene: {
+			colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
+			colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
+			colors: shader.declareAttribute("color", 4, gl.FLOAT),
+			coords: shader.declareAttribute("coord", 2, gl.FLOAT),
+			modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+			normalMatrix: shader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
+			normals: shader.declareAttribute("normal", 3, gl.FLOAT),
+			points: shader.declareAttribute("point", 3, gl.FLOAT),
+			projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
+			shader: shader
+		},
+		screen: runtime.screen,
+		shader: shader
 	};
 };
 
-const render = () => {
+const render = (state: State) => {
 	const camera = state.camera;
 	const screen = state.screen;
 
@@ -114,16 +130,17 @@ const render = () => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
 	webgl.clear(screen.context);
-	webgl.draw(state.scene, state.projection, view, cube);
+	webgl.draw(state.scene, state.projection, view, state.cube);
 };
 
-const update = (options: application.OptionMap, dt: number) => {
+const update = (state: State, options: application.OptionMap, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
 	const wheel = input.fetchWheel();
 
-	shader.setUniform(state.light, options["light"]);
+	// FIXME: must be done after program is used only
+	state.shader.setUniform(state.light, options["light"]);
 
 	if (input.isPressed("mouseleft")) {
 		camera.position.x += movement.x / 64;
@@ -138,13 +155,8 @@ const update = (options: application.OptionMap, dt: number) => {
 	camera.position.z += wheel;
 };
 
-io.Stream
-	.readURL(io.StringReader, "./res/mesh/cube-ambient.json")
-	.then(reader => webgl.load(state.screen.context, graphic.Loader.fromJSON(reader.data), "./res/mesh/"))
-	.then(meshes => cube = meshes);
-
 const scene = {
-	caption: "s06: lightning",
+	definitions: definitions,
 	enable: enable,
 	render: render,
 	update: update

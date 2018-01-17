@@ -1,8 +1,21 @@
 import * as graphic from "./graphic";
 import * as math from "./math";
 
+interface Binding {
+	colorBase: ShaderUniform<number[]>,
+	colorMap?: ShaderUniform<number>,
+	colors?: ShaderAttribute,
+	coords?: ShaderAttribute,
+	modelViewMatrix: ShaderUniform<number[]>,
+	normalMatrix?: ShaderUniform<number[]>,
+	normals?: ShaderAttribute,
+	points: ShaderAttribute,
+	projectionMatrix: ShaderUniform<number[]>,
+	shader: Shader
+}
+
 interface Material {
-	colorBase: math.Vector4,
+	colorBase: number[],
 	colorMap: WebGLTexture | undefined
 }
 
@@ -144,19 +157,6 @@ class Shader {
 	}
 }
 
-interface Scene {
-	colorBase: ShaderUniform<number[]>,
-	colorMap?: ShaderUniform<number>,
-	colors?: ShaderAttribute,
-	coords?: ShaderAttribute,
-	modelViewMatrix: ShaderUniform<number[]>,
-	normalMatrix?: ShaderUniform<number[]>,
-	normals?: ShaderAttribute,
-	points: ShaderAttribute,
-	projectionMatrix: ShaderUniform<number[]>,
-	shader: Shader
-}
-
 function flatMap<T, U>(items: T[], convert: (item: T) => U[]) {
 	return new Array<U>().concat(...items.map(convert));
 }
@@ -207,7 +207,7 @@ const clear = (gl: WebGLRenderingContext) => {
 	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 };
 
-const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, meshes: Mesh[]) => {
+const draw = (scene: Binding, projection: math.Matrix, modelView: math.Matrix, meshes: Mesh[]) => {
 	const shader = scene.shader;
 
 	shader.activate();
@@ -238,7 +238,7 @@ const draw = (scene: Scene, projection: math.Matrix, modelView: math.Matrix, mes
 		if (scene.normalMatrix !== undefined)
 			shader.setUniform(scene.normalMatrix, modelView.getTransposedInverse3x3());
 
-		shader.setUniform(scene.colorBase, [material.colorBase.x, material.colorBase.y, material.colorBase.z, material.colorBase.w]);
+		shader.setUniform(scene.colorBase, material.colorBase);
 		shader.setUniform(scene.modelViewMatrix, modelView.getValues());
 		shader.setUniform(scene.projectionMatrix, projection.getValues());
 
@@ -261,7 +261,7 @@ const load = async (gl: WebGLRenderingContext, model: graphic.Model, path: strin
 				const definition = definitions[name];
 
 				materials[name] = {
-					colorBase: definition.colorBase,
+					colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
 					colorMap: definition.colorMap !== undefined
 						? await createTexture(gl, path + definition.colorMap)
 						: undefined
@@ -272,7 +272,7 @@ const load = async (gl: WebGLRenderingContext, model: graphic.Model, path: strin
 		}
 		else {
 			material = {
-				colorBase: graphic.defaultColor,
+				colorBase: [1, 1, 1, 1],
 				colorMap: undefined
 			};
 		}
@@ -305,4 +305,4 @@ const setup = (gl: WebGLRenderingContext) => {
 	gl.enable(gl.DEPTH_TEST);
 };
 
-export { Mesh, Shader, clear, draw, load, setup }
+export { Binding, Mesh, Shader, ShaderUniform, clear, draw, load, setup }
