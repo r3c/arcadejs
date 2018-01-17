@@ -55,17 +55,17 @@ interface State {
 	},
 	input: controller.Input,
 	projection: math.Matrix,
-	screen: display.WebGLScreen
+	renderer: webgl.Renderer
 }
 
 const prepare = async () => {
 	const cubeReader = await io.Stream.readURL(io.StringReader, "./res/mesh/cube-ambient.json");
 
 	const runtime = application.runtime(display.WebGLScreen);
-	const gl = runtime.screen.context;
-	const shader = new webgl.Shader(gl, vsSource, fsSource);
 
-	webgl.setup(gl);
+	const float = runtime.screen.context.FLOAT;
+	const renderer = new webgl.Renderer(runtime.screen.context);
+	const shader = new webgl.Shader(runtime.screen.context, vsSource, fsSource);
 
 	return {
 		camera: {
@@ -76,25 +76,25 @@ const prepare = async () => {
 			binding: {
 				colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
 				colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
-				colors: shader.declareAttribute("color", 4, gl.FLOAT),
-				coords: shader.declareAttribute("coord", 2, gl.FLOAT),
+				colors: shader.declareAttribute("color", 4, float),
+				coords: shader.declareAttribute("coord", 2, float),
 				modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
 				projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-				points: shader.declareAttribute("point", 3, gl.FLOAT)
+				points: shader.declareAttribute("point", 3, float)
 			},
-			meshes: await webgl.load(gl, graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
+			meshes: await renderer.load(graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
 			shader: shader
 		},
 		input: runtime.input,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		screen: runtime.screen
+		renderer: renderer
 	};
 };
 
 const render = (state: State) => {
 	const camera = state.camera;
 	const draw = state.draw;
-	const screen = state.screen;
+	const renderer = state.renderer;
 
 	const view = math.Matrix
 		.createIdentity()
@@ -102,11 +102,11 @@ const render = (state: State) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
-	webgl.clear(screen.context);
+	renderer.clear();
 
 	draw.shader.activate();
 
-	webgl.draw(draw.shader, draw.binding, draw.meshes, state.projection, view);
+	renderer.draw(draw.shader, draw.binding, draw.meshes, state.projection, view);
 };
 
 const update = (state: State, dt: number) => {

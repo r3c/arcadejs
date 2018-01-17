@@ -42,6 +42,159 @@ interface Mesh {
 	points: WebGLBuffer
 }
 
+const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
+	const buffer = gl.createBuffer();
+
+	if (buffer === null)
+		throw Error("could not create buffer");
+
+	gl.bindBuffer(target, buffer);
+	gl.bufferData(target, values, gl.STATIC_DRAW);
+
+	return buffer;
+};
+
+const createTexture = async (gl: WebGLRenderingContext, url: string) => {
+	const isPowerOf2 = (value: number) => {
+		return ((value - 1) & value) === 0;
+	};
+
+	return new Promise<WebGLTexture>((resolve, reject) => {
+		const image = new Image();
+
+		image.onabort = () => reject(`image load aborted: "${url}"`);
+		image.onerror = () => reject(`image load failed: "${url}"`);
+		image.onload = () => {
+			const texture = gl.createTexture();
+
+			if (texture === null)
+				return reject(`texture creation failed: "${url}"`);
+
+			if (!isPowerOf2(image.width) || !isPowerOf2(image.height))
+				return reject(`image doesn't have power-of-2 dimensions: "${url}"`);
+
+			gl.bindTexture(gl.TEXTURE_2D, texture);
+			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+			gl.generateMipmap(gl.TEXTURE_2D);
+
+			resolve(texture);
+		};
+
+		image.src = url;
+	});
+};
+
+const flatMap = <T, U>(items: T[], convert: (item: T) => U[]) => {
+	return new Array<U>().concat(...items.map(convert));
+};
+
+class Renderer {
+	private readonly gl: WebGLRenderingContext;
+
+	public constructor(gl: WebGLRenderingContext) {
+		this.gl = gl;
+
+		gl.clearColor(0, 0, 0, 1);
+		gl.clearDepth(1.0);
+		gl.depthFunc(gl.LEQUAL);
+		gl.enable(gl.DEPTH_TEST);
+	}
+
+	public clear() {
+		const gl = this.gl;
+
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	};
+
+	public draw(shader: Shader, binding: Binding, meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix) {
+		for (const mesh of meshes) {
+			const material = mesh.material;
+
+			// Bind colors vector if defined and supported
+			if (mesh.colors !== undefined && binding.colors !== undefined)
+				shader.setAttribute(binding.colors, mesh.colors);
+
+			// Bind coords vector if defined and supported
+			if (mesh.coords !== undefined && binding.coords !== undefined)
+				shader.setAttribute(binding.coords, mesh.coords);
+
+			// Bind face normals if defined and supported
+			if (mesh.normals !== undefined && binding.normals !== undefined)
+				shader.setAttribute(binding.normals, mesh.normals);
+
+			// Bind color map texture if defined and supported
+			if (material.colorMap !== undefined && binding.colorMap !== undefined)
+				shader.setTexture(binding.colorMap, material.colorMap, 0);
+
+			// Bind points vector
+			shader.setAttribute(binding.points, mesh.points);
+
+			// Set the shader matrix uniforms
+			if (binding.normalMatrix !== undefined)
+				shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
+
+			shader.setUniform(binding.colorBase, material.colorBase);
+			shader.setUniform(binding.modelViewMatrix, modelView.getValues());
+			shader.setUniform(binding.projectionMatrix, projection.getValues());
+
+			// Perform draw call
+			shader.draw(mesh.indices, mesh.count);
+		}
+	}
+
+	public async load(model: graphic.Model, path: string = "") {
+		const definitions = model.materials || {};
+		const gl = this.gl;
+		const materials: MaterialMap = {};
+		const meshes: Mesh[] = [];
+
+		for (const mesh of model.meshes) {
+			let material: Material;
+			const name = mesh.materialName;
+
+			if (name !== undefined && definitions[name] !== undefined) {
+				if (materials[name] === undefined) {
+					const definition = definitions[name];
+
+					materials[name] = {
+						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
+						colorMap: definition.colorMap !== undefined
+							? await createTexture(gl, path + definition.colorMap)
+							: undefined
+					}
+				}
+
+				material = materials[name];
+			}
+			else {
+				material = {
+					colorBase: [1, 1, 1, 1],
+					colorMap: undefined
+				};
+			}
+
+			meshes.push({
+				colors: mesh.colors !== undefined
+					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.colors, color => [color.x, color.y, color.z, color.w])))
+					: undefined,
+				coords: mesh.coords !== undefined
+					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.coords, coord => [coord.x, coord.y])))
+					: undefined,
+				count: mesh.indices.length * 3,
+				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.indices, index => [index[0], index[1], index[2]]))),
+				material: material,
+				normals: mesh.normals !== undefined
+					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.normals, normal => [normal.x, normal.y, normal.z])))
+					: undefined,
+				points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, position => [position.x, position.y, position.z])))
+			});
+
+		}
+
+		return meshes;
+	}
+}
+
 class Shader {
 	private readonly gl: WebGLRenderingContext;
 	private readonly program: WebGLProgram;
@@ -156,148 +309,4 @@ class Shader {
 	}
 }
 
-const flatMap = <T, U>(items: T[], convert: (item: T) => U[]) => {
-	return new Array<U>().concat(...items.map(convert));
-};
-
-const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
-	const buffer = gl.createBuffer();
-
-	if (buffer === null)
-		throw Error("could not create buffer");
-
-	gl.bindBuffer(target, buffer);
-	gl.bufferData(target, values, gl.STATIC_DRAW);
-
-	return buffer;
-};
-
-const createTexture = async (gl: WebGLRenderingContext, url: string) => {
-	const isPowerOf2 = (value: number) => {
-		return ((value - 1) & value) === 0;
-	};
-
-	return new Promise<WebGLTexture>((resolve, reject) => {
-		const image = new Image();
-
-		image.onabort = () => reject(`image load aborted: "${url}"`);
-		image.onerror = () => reject(`image load failed: "${url}"`);
-		image.onload = () => {
-			const texture = gl.createTexture();
-
-			if (texture === null)
-				return reject(`texture creation failed: "${url}"`);
-
-			if (!isPowerOf2(image.width) || !isPowerOf2(image.height))
-				return reject(`image doesn't have power-of-2 dimensions: "${url}"`);
-
-			gl.bindTexture(gl.TEXTURE_2D, texture);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-			gl.generateMipmap(gl.TEXTURE_2D);
-
-			resolve(texture);
-		};
-
-		image.src = url;
-	});
-};
-
-const clear = (gl: WebGLRenderingContext) => {
-	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-};
-
-const draw = (shader: Shader, binding: Binding, meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix) => {
-	for (const mesh of meshes) {
-		const material = mesh.material;
-
-		// Bind colors vector if defined and supported
-		if (mesh.colors !== undefined && binding.colors !== undefined)
-			shader.setAttribute(binding.colors, mesh.colors);
-
-		// Bind coords vector if defined and supported
-		if (mesh.coords !== undefined && binding.coords !== undefined)
-			shader.setAttribute(binding.coords, mesh.coords);
-
-		// Bind face normals if defined and supported
-		if (mesh.normals !== undefined && binding.normals !== undefined)
-			shader.setAttribute(binding.normals, mesh.normals);
-
-		// Bind color map texture if defined and supported
-		if (material.colorMap !== undefined && binding.colorMap !== undefined)
-			shader.setTexture(binding.colorMap, material.colorMap, 0);
-
-		// Bind points vector
-		shader.setAttribute(binding.points, mesh.points);
-
-		// Set the shader matrix uniforms
-		if (binding.normalMatrix !== undefined)
-			shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
-
-		shader.setUniform(binding.colorBase, material.colorBase);
-		shader.setUniform(binding.modelViewMatrix, modelView.getValues());
-		shader.setUniform(binding.projectionMatrix, projection.getValues());
-
-		// Perform draw call
-		shader.draw(mesh.indices, mesh.count);
-	}
-};
-
-const load = async (gl: WebGLRenderingContext, model: graphic.Model, path: string = "") => {
-	const definitions = model.materials || {};
-	const materials: MaterialMap = {};
-	const meshes: Mesh[] = [];
-
-	for (const mesh of model.meshes) {
-		let material: Material;
-		const name = mesh.materialName;
-
-		if (name !== undefined && definitions[name] !== undefined) {
-			if (materials[name] === undefined) {
-				const definition = definitions[name];
-
-				materials[name] = {
-					colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
-					colorMap: definition.colorMap !== undefined
-						? await createTexture(gl, path + definition.colorMap)
-						: undefined
-				}
-			}
-
-			material = materials[name];
-		}
-		else {
-			material = {
-				colorBase: [1, 1, 1, 1],
-				colorMap: undefined
-			};
-		}
-
-		meshes.push({
-			colors: mesh.colors !== undefined
-				? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.colors, color => [color.x, color.y, color.z, color.w])))
-				: undefined,
-			coords: mesh.coords !== undefined
-				? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.coords, coord => [coord.x, coord.y])))
-				: undefined,
-			count: mesh.indices.length * 3,
-			indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.indices, index => [index[0], index[1], index[2]]))),
-			material: material,
-			normals: mesh.normals !== undefined
-				? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.normals, normal => [normal.x, normal.y, normal.z])))
-				: undefined,
-			points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, position => [position.x, position.y, position.z])))
-		});
-
-	}
-
-	return meshes;
-};
-
-const setup = (gl: WebGLRenderingContext) => {
-	gl.clearColor(0, 0, 0, 1);
-	gl.clearDepth(1.0);
-	gl.depthFunc(gl.LEQUAL);
-	gl.enable(gl.DEPTH_TEST);
-};
-
-export { Binding, Mesh, Shader, ShaderUniform, clear, draw, load, setup }
+export { Binding, Mesh, Renderer, Shader, ShaderUniform }
