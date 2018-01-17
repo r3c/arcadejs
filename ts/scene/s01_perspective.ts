@@ -5,6 +5,7 @@ import * as software from "../engine/software";
 
 interface State {
 	projection: math.Matrix,
+	rotation: number,
 	screen: display.Context2DScreen
 }
 
@@ -13,16 +14,17 @@ const prepare = async () => {
 
 	return {
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		rotation: 0,
 		screen: runtime.screen
 	};
 };
 
 const render = (state: State) => {
 	const distance = -8;
-	const orbitate = new Date().getTime() * 0.001;
+	const orbitate = state.rotation;
 	const pi = Math.PI;
 	const range = 2;
-	const rotate = new Date().getTime() * 0.002;
+	const rotate = state.rotation * 2;
 	const size = Math.sqrt(2) / 2;
 
 	const points = [
@@ -73,9 +75,14 @@ const render = (state: State) => {
 		.then((meshes => software.draw(screen, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire, meshes)));
 };
 
+const update = (state: State, dt: number) => {
+	state.rotation -= dt * 0.001;
+};
+
 const scenario = {
 	prepare: prepare,
-	render: render
+	render: render,
+	update: update
 };
 
 export { scenario };

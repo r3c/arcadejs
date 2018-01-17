@@ -52,7 +52,7 @@ interface Scenario<T> {
 	definitions?: DefinitionMap,
 	prepare: (options: OptionMap) => Promise<T>,
 	render: (state: T) => void,
-	update?: (state: T, dt: number) => void
+	update: (state: T, dt: number) => void
 }
 
 const configure = (definitions: DefinitionMap) => {
@@ -164,8 +164,7 @@ const prepare = <T>(name: string, scene: Scenario<T>) => {
 			state = await scene.prepare(configure(scene.definitions || {}));
 		},
 		tick: (dt: number) => {
-			if (scene.update !== undefined)
-				scene.update(state, dt);
+			scene.update(state, dt);
 	
 			setTimeout(() => scene.render(state), 0);
 		}
