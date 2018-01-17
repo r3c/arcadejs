@@ -23,7 +23,7 @@ interface State {
 	screen: display.Context2DScreen
 }
 
-const enable = async () => {
+const prepare = async () => {
 	const cube = await software.load({
 		meshes: [{
 			indices: [
@@ -83,7 +83,7 @@ const render = (state: State) => {
 	software.draw(screen, state.projection, view, software.DrawMode.Wire, state.cube);
 };
 
-const update = (state: State, options: application.OptionMap, dt: number) => {
+const update = (state: State, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
@@ -102,10 +102,10 @@ const update = (state: State, options: application.OptionMap, dt: number) => {
 	camera.position.z += wheel;
 };
 
-const scene = {
-	enable: enable,
+const scenario = {
+	prepare: prepare,
 	render: render,
 	update: update
 };
 
-export { scene };
+export { scenario };

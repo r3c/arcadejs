@@ -70,6 +70,7 @@ interface State {
 	cube: webgl.Mesh[],
 	input: controller.Input,
 	light: webgl.ShaderUniform<number>,
+	options: application.OptionMap,
 	projection: math.Matrix,
 	scene: webgl.Binding,
 	screen: display.WebGLScreen,
@@ -84,7 +85,7 @@ const definitions = {
 	}
 };
 
-const enable = async () => {
+const prepare = async (options: application.OptionMap) => {
 	const cubeReader = await io.Stream.readURL(io.StringReader, "./res/mesh/cube-ambient.json");
 
 	const runtime = application.runtime(display.WebGLScreen);
@@ -101,6 +102,7 @@ const enable = async () => {
 		cube: await webgl.load(gl, graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
 		input: runtime.input,
 		light: shader.declareUniformValue("light", gl => gl.uniform1i),
+		options: options,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		scene: {
 			colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
@@ -133,14 +135,14 @@ const render = (state: State) => {
 	webgl.draw(state.scene, state.projection, view, state.cube);
 };
 
-const update = (state: State, options: application.OptionMap, dt: number) => {
+const update = (state: State, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
 	const wheel = input.fetchWheel();
 
 	// FIXME: must be done after program is used only
-	state.shader.setUniform(state.light, options["light"]);
+	state.shader.setUniform(state.light, state.options["light"]);
 
 	if (input.isPressed("mouseleft")) {
 		camera.position.x += movement.x / 64;
@@ -155,11 +157,11 @@ const update = (state: State, options: application.OptionMap, dt: number) => {
 	camera.position.z += wheel;
 };
 
-const scene = {
+const scenario = {
 	definitions: definitions,
-	enable: enable,
+	prepare: prepare,
 	render: render,
 	update: update
 };
 
-export { scene };
+export { scenario };

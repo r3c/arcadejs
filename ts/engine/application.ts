@@ -50,9 +50,9 @@ class Runtime<T> {
 
 interface Scenario<T> {
 	definitions?: DefinitionMap,
-	enable: () => Promise<T>,
+	prepare: (options: OptionMap) => Promise<T>,
 	render: (state: T) => void,
-	update?: (state: T, options: OptionMap, dt: number) => void
+	update?: (state: T, dt: number) => void
 }
 
 const configure = (definitions: DefinitionMap) => {
@@ -89,7 +89,7 @@ const configure = (definitions: DefinitionMap) => {
 };
 
 const createCheckbox = (caption: string, value: number, change: (value: number) => void) => {
-	const container = document.createElement("div");
+	const container = document.createElement("span");
 	const checkbox = document.createElement("input");
 
 	container.appendChild(checkbox);
@@ -103,7 +103,7 @@ const createCheckbox = (caption: string, value: number, change: (value: number) 
 };
 
 const createSelect = (choices: string[], value: number, change: (value: number) => void) => {
-	const container = document.createElement("div");
+	const container = document.createElement("span");
 	const select = document.createElement("select");
 	const submit = document.createElement("input");
 
@@ -156,18 +156,16 @@ const initialize = (processes: Process[]) => {
 };
 
 function prepare<T>(name: string, scene: Scenario<T>) {
-	let options: OptionMap;
 	let state: T;
 
 	return {
 		name: name,
 		start: async () => {
-			options = configure(scene.definitions || {});
-			state = await scene.enable();
+			state = await scene.prepare(configure(scene.definitions || {}));
 		},
 		tick: (dt: number) => {
 			if (scene.update !== undefined)
-				scene.update(state, options, dt);
+				scene.update(state, dt);
 	
 			setTimeout(() => scene.render(state), 0);
 		}

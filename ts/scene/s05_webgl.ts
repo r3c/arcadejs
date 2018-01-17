@@ -54,7 +54,7 @@ interface State {
 	screen: display.WebGLScreen
 }
 
-const enable = async () => {
+const prepare = async () => {
 	const cubeReader = await io.Stream.readURL(io.StringReader, "./res/mesh/cube-ambient.json");
 
 	const runtime = application.runtime(display.WebGLScreen);
@@ -99,7 +99,7 @@ const render = (state: State) => {
 	webgl.draw(state.scene, state.projection, view, state.cube);
 };
 
-const update = (state: State, options: application.OptionMap, dt: number) => {
+const update = (state: State, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
@@ -118,10 +118,10 @@ const update = (state: State, options: application.OptionMap, dt: number) => {
 	camera.position.z += wheel;
 };
 
-const scene = {
-	enable: enable,
+const scenario = {
+	prepare: prepare,
 	render: render,
 	update: update
 };
 
-export { scene };
+export { scenario };

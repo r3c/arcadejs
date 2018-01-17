@@ -8,7 +8,7 @@ interface State {
 	screen: display.Context2DScreen
 }
 
-const enable = async () => {
+const prepare = async () => {
 	const runtime = application.runtime(display.Context2DScreen);
 
 	return {
@@ -73,9 +73,9 @@ const render = (state: State) => {
 		.then((meshes => software.draw(screen, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire, meshes)));
 };
 
-const scene = {
-	enable: enable,
+const scenario = {
+	prepare: prepare,
 	render: render
 };
 
-export { scene };
+export { scenario };
