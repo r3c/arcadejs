@@ -34,9 +34,15 @@ const defaultColor = {
 	w: 1
 };
 
-class Loader {
-	public static fromJSON(json: string): Model {
-		return Loader.toModel("", JSON.parse(json));
+class JsonLoader {
+	public static load(name: string, instance: any): Model {
+		if (typeof instance !== "object")
+			throw JsonLoader.invalid(name, instance, "model");
+
+		return {
+			materials: instance.materials !== undefined ? JsonLoader.toMapOf(`${name}.materials`, instance.materials, JsonLoader.toMaterial) : undefined,
+			meshes: JsonLoader.toArrayOf(`${name}.meshes`, instance.meshes, JsonLoader.toMesh)
+		};
 	}
 
 	private static invalid(name: string, instance: any, expected: string) {
@@ -45,61 +51,50 @@ class Loader {
 
 	private static toArrayOf<T>(name: string, instance: any, converter: (name: string, item: any) => T) {
 		if (!(instance instanceof Array))
-			throw Loader.invalid(name, instance, "array");
+			throw JsonLoader.invalid(name, instance, "array");
 
 		return (<any[]>instance).map((v, i) => converter(name + "[" + i + "]", v));
 	}
 
 	private static toColor(name: string, instance: any): math.Vector4 {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "rgb(a) color");
+			throw JsonLoader.invalid(name, instance, "rgb(a) color");
 
 		return {
-			x: Math.max(Math.min(Loader.toDecimal(`${name}.r`, instance.r), 1), 0),
-			y: Math.max(Math.min(Loader.toDecimal(`${name}.g`, instance.g), 1), 0),
-			z: Math.max(Math.min(Loader.toDecimal(`${name}.b`, instance.b), 1), 0),
-			w: instance.a !== undefined ? Math.max(Math.min(Loader.toDecimal(`${name}.a`, instance.a), 1), 0) : 1
+			x: Math.max(Math.min(JsonLoader.toDecimal(`${name}.r`, instance.r), 1), 0),
+			y: Math.max(Math.min(JsonLoader.toDecimal(`${name}.g`, instance.g), 1), 0),
+			z: Math.max(Math.min(JsonLoader.toDecimal(`${name}.b`, instance.b), 1), 0),
+			w: instance.a !== undefined ? Math.max(Math.min(JsonLoader.toDecimal(`${name}.a`, instance.a), 1), 0) : 1
 		};
 	}
 
 	private static toCoord(name: string, instance: any): math.Vector2 {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "texture coordinate");
+			throw JsonLoader.invalid(name, instance, "texture coordinate");
 
 		return {
-			x: Loader.toDecimal(`${name}.u`, instance.u),
-			y: Loader.toDecimal(`${name}.v`, instance.v)
+			x: JsonLoader.toDecimal(`${name}.u`, instance.u),
+			y: JsonLoader.toDecimal(`${name}.v`, instance.v)
 		};
 	}
 
 	private static toDecimal(name: string, instance: any) {
 		if (typeof instance !== "number")
-			throw Loader.invalid(name, instance, "decimal number");
+			throw JsonLoader.invalid(name, instance, "decimal number");
 
 		return <number>instance;
 	}
 
 	private static toInteger(name: string, instance: any) {
 		if (typeof instance !== "number" || ~~instance !== instance)
-			throw Loader.invalid(name, instance, "integer number");
+			throw JsonLoader.invalid(name, instance, "integer number");
 
 		return <number>instance;
 	}
 
-	private static toIntegerTuple3(name: string, instance: any): [number, number, number] {
-		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "3-integer tuple");
-
-		return [
-			Loader.toInteger(`${name}[0]`, instance[0]),
-			Loader.toInteger(`${name}[1]`, instance[1]),
-			Loader.toInteger(`${name}[2]`, instance[2])
-		];
-	}
-
 	private static toMapOf<T>(name: string, instance: any, converter: (name: string, item: any) => T) {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "map");
+			throw JsonLoader.invalid(name, instance, "map");
 
 		const map: Map<T> = {};
 
@@ -111,54 +106,61 @@ class Loader {
 
 	private static toMaterial(name: string, instance: any): Material {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "material");
+			throw JsonLoader.invalid(name, instance, "material");
 
 		return {
-			colorBase: instance.colorBase !== undefined ? Loader.toColor(`${name}.colorBase`, instance.colorBase) : defaultColor,
-			colorMap: instance.colorMap !== undefined ? Loader.toString(`${name}.colorMap`, instance.colorMap) : undefined
+			colorBase: instance.colorBase !== undefined ? JsonLoader.toColor(`${name}.colorBase`, instance.colorBase) : defaultColor,
+			colorMap: instance.colorMap !== undefined ? JsonLoader.toString(`${name}.colorMap`, instance.colorMap) : undefined
 		};
 	}
 
 	private static toMesh(name: string, instance: any): Mesh {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "mesh");
+			throw JsonLoader.invalid(name, instance, "mesh");
 
 		return {
-			colors: instance.colors !== undefined ? Loader.toArrayOf(`${name}.colors`, instance.colors, Loader.toColor) : undefined,
-			coords: instance.coords !== undefined ? Loader.toArrayOf(`${name}.coords`, instance.coords, Loader.toCoord) : undefined,
-			indices: Loader.toArrayOf(`${name}.indices`, instance.indices, Loader.toIntegerTuple3),
-			materialName: instance.materialName !== undefined ? Loader.toString(`${name}.materialName`, instance.materialName) : undefined,
-			normals: instance.normals !== undefined ? Loader.toArrayOf(`${name}.normals`, instance.normals, Loader.toVertex) : undefined,
-			points: Loader.toArrayOf(`${name}.points`, instance.points, Loader.toVertex)
-		};
-	}
-
-	private static toModel(name: string, instance: any): Model {
-		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "model");
-
-		return {
-			materials: instance.materials !== undefined ? Loader.toMapOf(`${name}.materials`, instance.materials, Loader.toMaterial) : undefined,
-			meshes: Loader.toArrayOf(`${name}.meshes`, instance.meshes, Loader.toMesh)
+			colors: instance.colors !== undefined ? JsonLoader.toArrayOf(`${name}.colors`, instance.colors, JsonLoader.toColor) : undefined,
+			coords: instance.coords !== undefined ? JsonLoader.toArrayOf(`${name}.coords`, instance.coords, JsonLoader.toCoord) : undefined,
+			indices: JsonLoader.toArrayOf(`${name}.indices`, instance.indices, (name, item) => JsonLoader.toTuple3(name, item, JsonLoader.toInteger)),
+			materialName: instance.materialName !== undefined ? JsonLoader.toString(`${name}.materialName`, instance.materialName) : undefined,
+			normals: instance.normals !== undefined ? JsonLoader.toArrayOf(`${name}.normals`, instance.normals, JsonLoader.toVertex) : undefined,
+			points: JsonLoader.toArrayOf(`${name}.points`, instance.points, JsonLoader.toVertex)
 		};
 	}
 
 	private static toString(name: string, instance: any): string {
 		if (typeof instance !== "string")
-			throw Loader.invalid(name, instance, "string");
+			throw JsonLoader.invalid(name, instance, "string");
 
 		return <string>instance;
 	}
 
+	private static toTuple3<T>(name: string, instance: any, converter: (name: string, item: any) => T): [T, T, T] {
+		if (typeof instance !== "object")
+			throw JsonLoader.invalid(name, instance, "3-tuple");
+
+		return [
+			converter(`${name}[0]`, instance[0]),
+			converter(`${name}[1]`, instance[1]),
+			converter(`${name}[2]`, instance[2])
+		];
+	}
+
 	private static toVertex(name: string, instance: any): math.Vector3 {
 		if (typeof instance !== "object")
-			throw Loader.invalid(name, instance, "vertex");
+			throw JsonLoader.invalid(name, instance, "vertex");
 
 		return {
-			x: Loader.toDecimal(`${name}.x`, instance.x),
-			y: Loader.toDecimal(`${name}.y`, instance.y),
-			z: Loader.toDecimal(`${name}.z`, instance.z)
+			x: JsonLoader.toDecimal(`${name}.x`, instance.x),
+			y: JsonLoader.toDecimal(`${name}.y`, instance.y),
+			z: JsonLoader.toDecimal(`${name}.z`, instance.z)
 		};
+	}
+}
+
+class Loader {
+	public static fromJSON(json: string): Model {
+		return JsonLoader.load("", JSON.parse(json));
 	}
 }
 
