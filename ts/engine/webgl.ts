@@ -12,7 +12,7 @@ type ShaderUniformValue<T> = (location: WebGLUniformLocation, value: T) => void;
 type ShaderUniform<T> = (gl: WebGLRenderingContext, value: T) => void;
 
 interface Binding {
-	colorBase: ShaderUniform<number[]>,
+	colorBase?: ShaderUniform<number[]>,
 	colorMap?: ShaderUniform<number>,
 	colors?: ShaderAttribute,
 	coords?: ShaderAttribute,
@@ -129,11 +129,14 @@ class Renderer {
 			// Bind points vector
 			shader.setAttribute(binding.points, mesh.points);
 
-			// Set the shader matrix uniforms
+			// Set base color uniform
+			if (binding.colorBase !== undefined)
+				shader.setUniform(binding.colorBase, material.colorBase);
+
+			// Set matrix uniforms
 			if (binding.normalMatrix !== undefined)
 				shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
 
-			shader.setUniform(binding.colorBase, material.colorBase);
 			shader.setUniform(binding.modelViewMatrix, modelView.getValues());
 			shader.setUniform(binding.projectionMatrix, projection.getValues());
 

@@ -8,72 +8,32 @@ import * as webgl from "../engine/webgl";
 
 /*
 ** What changed?
+** - Simple directional (diffuse) lightning has been added to the scene
+** - Scene uses two different shaders loaded from external files
 */
-
-const vsSource = `
-	attribute vec4 color;
-	attribute vec2 coord;
-	attribute vec3 normal;
-	attribute vec4 point;
-
-	uniform mat4 modelViewMatrix;
-	uniform mat3 normalMatrix;
-	uniform mat4 projectionMatrix;
-
-	varying highp vec4 vColor;
-	varying highp vec2 vCoord;
-	varying highp vec3 vNormal;
-
-	void main(void) {
-		vColor = color;
-		vCoord = coord;
-		vNormal = normalMatrix * normal;
-
-		gl_Position = projectionMatrix * modelViewMatrix * point;
-	}
-`;
-
-const fsSource = `
-	varying highp vec4 vColor;
-	varying highp vec2 vCoord;
-	varying highp vec3 vNormal;
-
-	uniform highp vec4 colorBase;
-	uniform sampler2D colorMap;
-	uniform bool light;
-
-	void main(void) {
-		highp vec4 lightColor;
-
-		if (light) {
-			highp vec3 ambientLightColor = vec3(0.3, 0.3, 0.3);
-			highp vec3 diffuseLightColor = vec3(1, 1, 1);
-			highp vec3 diffuseLightDirection = normalize(vec3(0.85, 0.8, 0.75));
-
-			highp float directional = max(dot(vNormal, diffuseLightDirection), 0.0);
-
-			lightColor = vec4(ambientLightColor + (diffuseLightColor * directional), 1.0);
-		}
-		else {
-			lightColor = vec4(1, 1, 1, 1);
-		}
-
-		gl_FragColor = vColor * colorBase * lightColor * texture2D(colorMap, vCoord);
-	}
-`;
 
 interface State {
 	camera: {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
-	draw: {
+	drawCube: {
 		binding: webgl.Binding,
 		meshes: webgl.Mesh[],
 		shader: webgl.Shader
-	}
+	},
+	drawSpot: {
+		binding: webgl.Binding,
+		meshes: webgl.Mesh[],
+		shader: webgl.Shader
+	},
 	input: controller.Input,
-	light: webgl.ShaderUniform<number>,
+	light: {
+		direction: webgl.ShaderUniform<number[]>,
+		enabled: webgl.ShaderUniform<number>,
+		ry: number,
+		rz: number
+	}
 	options: application.OptionMap,
 	projection: math.Matrix,
 	renderer: webgl.Renderer
@@ -88,36 +48,63 @@ const definitions = {
 };
 
 const prepare = async (options: application.OptionMap) => {
-	const cubeReader = await io.Stream.readURL(io.StringReader, "./res/mesh/cube-ambient.json");
-
 	const runtime = application.runtime(display.WebGLScreen);
+	const renderer = new webgl.Renderer(runtime.screen.context);
+
+	const shaderCube = new webgl.Shader(
+		runtime.screen.context,
+		await io.Stream.readURL(io.StringReader, "./res/shader/s06_cube.vert").then(reader => reader.data),
+		await io.Stream.readURL(io.StringReader, "./res/shader/s06_cube.frag").then(reader => reader.data)
+	);
+
+	const shaderSpot = new webgl.Shader(
+		runtime.screen.context,
+		await io.Stream.readURL(io.StringReader, "./res/shader/s06_spot.vert").then(reader => reader.data),
+		await io.Stream.readURL(io.StringReader, "./res/shader/s06_spot.frag").then(reader => reader.data)
+	);
 
 	const float = runtime.screen.context.FLOAT;
-	const renderer = new webgl.Renderer(runtime.screen.context);
-	const shader = new webgl.Shader(runtime.screen.context, vsSource, fsSource);
 
 	return {
 		camera: {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
-		draw: {
+		drawCube: {
 			binding: {
-				colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
-				colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
-				colors: shader.declareAttribute("color", 4, float),
-				coords: shader.declareAttribute("coord", 2, float),
-				modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-				normalMatrix: shader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
-				normals: shader.declareAttribute("normal", 3, float),
-				points: shader.declareAttribute("point", 3, float),
-				projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
+				colorBase: shaderCube.declareUniformValue("colorBase", gl => gl.uniform4fv),
+				colorMap: shaderCube.declareUniformValue("colorMap", gl => gl.uniform1i),
+				colors: shaderCube.declareAttribute("color", 4, float),
+				coords: shaderCube.declareAttribute("coord", 2, float),
+				modelViewMatrix: shaderCube.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				normalMatrix: shaderCube.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
+				normals: shaderCube.declareAttribute("normal", 3, float),
+				points: shaderCube.declareAttribute("point", 3, float),
+				projectionMatrix: shaderCube.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
-			meshes: await renderer.load(graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
-			shader: shader
+			meshes: await io.Stream
+				.readURL(io.StringReader, "./res/mesh/cube-ambient.json")
+				.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/")),
+			shader: shaderCube
+		},
+		drawSpot: {
+			binding: {
+				modelViewMatrix: shaderSpot.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				points: shaderSpot.declareAttribute("point", 3, float),
+				projectionMatrix: shaderSpot.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
+			},
+			meshes: await io.Stream
+				.readURL(io.StringReader, "./res/mesh/cube-small.json")
+				.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/")),
+			shader: shaderSpot,
 		},
 		input: runtime.input,
-		light: shader.declareUniformValue("light", gl => gl.uniform1i),
+		light: {
+			direction: shaderCube.declareUniformValue("lightDirection", gl => gl.uniform3fv),
+			enabled: shaderCube.declareUniformValue("lightEnabled", gl => gl.uniform1i),
+			ry: Math.PI * 0.3,
+			rz: Math.PI * -0.2
+		},
 		options: options,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: renderer
@@ -126,7 +113,8 @@ const prepare = async (options: application.OptionMap) => {
 
 const render = (state: State) => {
 	const camera = state.camera;
-	const draw = state.draw;
+	const draw = state.drawCube;
+	const light = state.light;
 	const renderer = state.renderer;
 
 	const view = math.Matrix
@@ -135,19 +123,41 @@ const render = (state: State) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
+	const viewCube = view;
+
+	const viewSpot = view
+		.rotate({x: 0, y: 1, z: 0}, light.ry)
+		.rotate({x: 0, y: 0, z: 1}, light.rz)
+		.translate({x: 3, y: 0, z: 0});
+
+	const lightDirection = viewSpot.transform({x: 1, y: 0, z: 0, w: 0});
+
 	renderer.clear();
 
-	draw.shader.activate();
-	draw.shader.setUniform(state.light, state.options["light"]);
+	// Draw cube
+	state.drawCube.shader.activate();
+	state.drawCube.shader.setUniform(light.direction, [lightDirection.x, lightDirection.y, lightDirection.z]);
+	state.drawCube.shader.setUniform(light.enabled, state.options["light"]);
 
-	renderer.draw(draw.shader, draw.binding, draw.meshes, state.projection, view);
+	renderer.draw(state.drawCube.shader, state.drawCube.binding, state.drawCube.meshes, state.projection, viewCube);
+
+	// Draw light spot
+	state.drawSpot.shader.activate();
+
+	renderer.draw(state.drawSpot.shader, state.drawSpot.binding, state.drawSpot.meshes, state.projection, viewSpot);
 };
 
 const update = (state: State, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
+	const light = state.light;
 	const movement = input.fetchMovement();
 	const wheel = input.fetchWheel();
+
+	if (input.isPressed("mousemiddle")) {
+		light.ry += movement.x / 64;
+		light.rz += movement.y / 64;
+	}
 
 	if (input.isPressed("mouseleft")) {
 		camera.position.x += movement.x / 64;
