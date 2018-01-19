@@ -42,6 +42,16 @@ interface Mesh {
 	points: WebGLBuffer
 }
 
+interface Quality {
+	textureElementLinear: boolean,
+	textureMipmapLinear: boolean
+}
+
+const defaultQuality = {
+	textureElementLinear: true,
+	textureMipmapLinear: false
+};
+
 const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
 	const buffer = gl.createBuffer();
 
@@ -54,7 +64,7 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	return buffer;
 };
 
-const createTexture = async (gl: WebGLRenderingContext, url: string) => {
+const createTexture = async (gl: WebGLRenderingContext, url: string, quality: Quality) => {
 	const isPowerOf2 = (value: number) => {
 		return ((value - 1) & value) === 0;
 	};
@@ -75,7 +85,12 @@ const createTexture = async (gl: WebGLRenderingContext, url: string) => {
 
 			gl.bindTexture(gl.TEXTURE_2D, texture);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, quality.textureElementLinear ? gl.LINEAR : gl.NEAREST);
+			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, quality.textureElementLinear
+				? (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_LINEAR)
+				: (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_NEAREST : gl.NEAREST_MIPMAP_NEAREST));
 			gl.generateMipmap(gl.TEXTURE_2D);
+			gl.bindTexture(gl.TEXTURE_2D, null);
 
 			resolve(texture);
 		};
@@ -90,14 +105,16 @@ const flatMap = <T, U>(items: T[], convert: (item: T) => U[]) => {
 
 class Renderer {
 	private readonly gl: WebGLRenderingContext;
+	private readonly quality: Quality;
 
-	public constructor(gl: WebGLRenderingContext) {
-		this.gl = gl;
-
+	public constructor(gl: WebGLRenderingContext, quality: Quality = defaultQuality) {
 		gl.clearColor(0, 0, 0, 1);
 		gl.clearDepth(1.0);
 		gl.depthFunc(gl.LEQUAL);
 		gl.enable(gl.DEPTH_TEST);
+
+		this.gl = gl;
+		this.quality = quality;
 	}
 
 	public clear() {
@@ -162,7 +179,7 @@ class Renderer {
 					materials[name] = {
 						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
 						colorMap: definition.colorMap !== undefined
-							? await createTexture(gl, path + definition.colorMap)
+							? await createTexture(gl, path + definition.colorMap, this.quality)
 							: undefined
 					}
 				}
