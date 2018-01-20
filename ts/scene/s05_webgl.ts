@@ -59,7 +59,7 @@ interface State {
 }
 
 const prepare = async () => {
-	const cubeReader = await io.Stream.readURL(io.StringReader, "./res/mesh/cube-ambient.json");
+	const cubeReader = await io.readURL(io.StringRequest, "./res/mesh/cube-ambient.json");
 
 	const runtime = application.runtime(display.WebGLScreen);
 

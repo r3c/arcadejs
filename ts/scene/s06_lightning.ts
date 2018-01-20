@@ -53,14 +53,14 @@ const prepare = async (options: application.OptionMap) => {
 
 	const shaderCube = new webgl.Shader(
 		runtime.screen.context,
-		await io.Stream.readURL(io.StringReader, "./res/shader/s06_cube.vert").then(reader => reader.data),
-		await io.Stream.readURL(io.StringReader, "./res/shader/s06_cube.frag").then(reader => reader.data)
+		await io.readURL(io.StringRequest, "./res/shader/s06_cube.vert").then(reader => reader.data),
+		await io.readURL(io.StringRequest, "./res/shader/s06_cube.frag").then(reader => reader.data)
 	);
 
 	const shaderSpot = new webgl.Shader(
 		runtime.screen.context,
-		await io.Stream.readURL(io.StringReader, "./res/shader/s06_spot.vert").then(reader => reader.data),
-		await io.Stream.readURL(io.StringReader, "./res/shader/s06_spot.frag").then(reader => reader.data)
+		await io.readURL(io.StringRequest, "./res/shader/s06_spot.vert").then(reader => reader.data),
+		await io.readURL(io.StringRequest, "./res/shader/s06_spot.frag").then(reader => reader.data)
 	);
 
 	const float = runtime.screen.context.FLOAT;
@@ -82,8 +82,8 @@ const prepare = async (options: application.OptionMap) => {
 				points: shaderCube.declareAttribute("point", 3, float),
 				projectionMatrix: shaderCube.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
-			meshes: await io.Stream
-				.readURL(io.StringReader, "./res/mesh/cube-ambient.json")
+			meshes: await io
+				.readURL(io.StringRequest, "./res/mesh/cube-ambient.json")
 				.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/")),
 			shader: shaderCube
 		},
@@ -93,8 +93,8 @@ const prepare = async (options: application.OptionMap) => {
 				points: shaderSpot.declareAttribute("point", 3, float),
 				projectionMatrix: shaderSpot.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
-			meshes: await io.Stream
-				.readURL(io.StringReader, "./res/mesh/cube-small.json")
+			meshes: await io
+				.readURL(io.StringRequest, "./res/mesh/cube-small.json")
 				.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/")),
 			shader: shaderSpot,
 		},

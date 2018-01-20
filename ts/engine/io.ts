@@ -1,11 +1,11 @@
 
-interface ReaderConstructor<T> {
+interface BufferConstructor<T> {
 	new(request: XMLHttpRequest): T;
 
 	readonly responseType: XMLHttpRequestResponseType;
 }
 
-class Reader<T> {
+class Request<T> {
 	public readonly data: T;
 
 	protected constructor(data: T) {
@@ -13,7 +13,7 @@ class Reader<T> {
 	}
 }
 
-class BinaryReader extends Reader<Uint8Array> {
+class BinaryRequest extends Request<Uint8Array> {
 	public static readonly responseType = "arraybuffer";
 
 	public constructor(request: XMLHttpRequest) {
@@ -21,7 +21,7 @@ class BinaryReader extends Reader<Uint8Array> {
 	}
 }
 
-class StringReader extends Reader<string> {
+class StringRequest extends Request<string> {
 	public static readonly responseType = "text";
 
 	public constructor(request: XMLHttpRequest) {
@@ -29,21 +29,19 @@ class StringReader extends Reader<string> {
 	}
 }
 
-class Stream {
-	public static async readURL<TReader>(reader: ReaderConstructor<TReader>, url: string) {
-		return new Promise<TReader>((resolve, reject) => {
-			const request = new XMLHttpRequest();
+const readURL = async <TBuffer>(buffer: BufferConstructor<TBuffer>, url: string) => {
+	return new Promise<TBuffer>((resolve, reject) => {
+		const request = new XMLHttpRequest();
 
-			request.open("GET", url, true);
-			request.responseType = reader.responseType;
+		request.open("GET", url, true);
+		request.responseType = buffer.responseType;
 
-			request.onabort = event => reject("request aborted");
-			request.onerror = event => reject("request failed");
-			request.onload = event => resolve(new reader(request));
+		request.onabort = event => reject("request aborted");
+		request.onerror = event => reject("request failed");
+		request.onload = event => resolve(new buffer(request));
 
-			request.send(null);
-		});
-	}
-}
+		request.send(null);
+	});
+};
 
-export { BinaryReader, Stream, StringReader };
+export { BinaryRequest, StringRequest, readURL };

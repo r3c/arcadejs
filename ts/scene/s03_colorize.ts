@@ -27,8 +27,8 @@ const prepare = async () => {
 	const runtime = application.runtime(display.Context2DScreen);
 	const renderer = new software.Renderer(runtime.screen);
 
-	const cube = await io.Stream
-		.readURL(io.StringReader, "./res/mesh/cube-color.json")
+	const cube = await io
+		.readURL(io.StringRequest, "./res/mesh/cube-color.json")
 		.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"));
 
 	return {
