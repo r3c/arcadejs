@@ -54,15 +54,15 @@ const prepare = async (options: application.OptionMap) => {
 	const cubeModel = await model.fromJSON("./res/s04/cube.json");
 	const cubeShader = new webgl.Shader(
 		runtime.screen.context,
-		await io.readURL(io.StringRequest, "./res/s06/cube.vert"),
-		await io.readURL(io.StringRequest, "./res/s06/cube.frag")
+		await io.readURL(io.StringFormat, "./res/s06/cube.vert"),
+		await io.readURL(io.StringFormat, "./res/s06/cube.frag")
 	);
 
 	const spotModel = await model.fromJSON("./res/s06/spot.json");
 	const spotShader = new webgl.Shader(
 		runtime.screen.context,
-		await io.readURL(io.StringRequest, "./res/s06/spot.vert"),
-		await io.readURL(io.StringRequest, "./res/s06/spot.frag")
+		await io.readURL(io.StringFormat, "./res/s06/spot.vert"),
+		await io.readURL(io.StringFormat, "./res/s06/spot.frag")
 	);
 
 	const float = runtime.screen.context.FLOAT;

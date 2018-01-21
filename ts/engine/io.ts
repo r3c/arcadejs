@@ -5,7 +5,7 @@ interface BufferConstructor<T> {
 	readonly responseType: XMLHttpRequestResponseType;
 }
 
-class Request<T> {
+class Format<T> {
 	public readonly data: T;
 
 	protected constructor(data: T) {
@@ -13,7 +13,7 @@ class Request<T> {
 	}
 }
 
-class BinaryRequest extends Request<Uint8Array> {
+class BinaryFormat extends Format<Uint8Array> {
 	public static readonly responseType = "arraybuffer";
 
 	public constructor(request: XMLHttpRequest) {
@@ -21,7 +21,7 @@ class BinaryRequest extends Request<Uint8Array> {
 	}
 }
 
-class JSONRequest extends Request<any> {
+class JSONFormat extends Format<any> {
 	public static readonly responseType = "json";
 
 	public constructor(request: XMLHttpRequest) {
@@ -29,7 +29,7 @@ class JSONRequest extends Request<any> {
 	}
 }
 
-class StringRequest extends Request<string> {
+class StringFormat extends Format<string> {
 	public static readonly responseType = "text";
 
 	public constructor(request: XMLHttpRequest) {
@@ -45,7 +45,7 @@ class BinaryReader {
 	}
 }
 
-const readURL = async <T>(buffer: BufferConstructor<Request<T>>, url: string) => {
+const readURL = async <T>(buffer: BufferConstructor<Format<T>>, url: string) => {
 	return new Promise<T>((resolve, reject) => {
 		const request = new XMLHttpRequest();
 
@@ -60,4 +60,4 @@ const readURL = async <T>(buffer: BufferConstructor<Request<T>>, url: string) =>
 	});
 };
 
-export { BinaryReader, BinaryRequest, JSONRequest, StringRequest, readURL };
+export { BinaryReader, BinaryFormat, JSONFormat, StringFormat, readURL };

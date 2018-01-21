@@ -11,7 +11,7 @@ const load = async (urlOrData: any) => {
 		const url = <string>urlOrData;
 
 		directory = path.directory(url);
-		root = await io.readURL(io.JSONRequest, url);
+		root = await io.readURL(io.JSONFormat, url);
 	}
 	else if (typeof urlOrData === "object") {
 		directory = "";

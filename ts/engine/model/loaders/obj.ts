@@ -27,7 +27,7 @@ const invalidLine = (file: string, line: number, description: string) => {
 };
 
 const load = async (url: string) => {
-	const data = await io.readURL(io.StringRequest, url);
+	const data = await io.readURL(io.StringFormat, url);
 
 	return loadObject(data, url);
 };
@@ -177,7 +177,7 @@ const loadObject = async (data: string, fileName: string) => {
 				const library = path.combine(directory, fields[1]);
 
 				await io
-					.readURL(io.StringRequest, library)
+					.readURL(io.StringFormat, library)
 					.then(data => loadMaterial(materials, data, library));
 
 				break;
