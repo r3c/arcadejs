@@ -43,7 +43,7 @@
 					"z": 0.1
 				}
 			],
-			"indices": [
+			"triangles": [
 				[
 					0,
 					1,

@@ -59,8 +59,6 @@ interface State {
 }
 
 const prepare = async () => {
-	const cubeReader = await io.readURL(io.StringRequest, "./res/mesh/cube-ambient.json");
-
 	const runtime = application.runtime(display.WebGLScreen);
 
 	const float = runtime.screen.context.FLOAT;
@@ -82,7 +80,10 @@ const prepare = async () => {
 				projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
 				points: shader.declareAttribute("point", 3, float)
 			},
-			meshes: await renderer.load(graphic.Loader.fromJSON(cubeReader.data), "./res/mesh/"),
+			meshes: await io
+				.readURL(io.StringRequest, "./res/mesh/cube-ambient.json")
+				.then(reader => graphic.fromJSON(reader.data))
+				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shader
 		},
 		input: runtime.input,

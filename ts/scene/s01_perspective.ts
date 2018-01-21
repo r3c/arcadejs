@@ -43,7 +43,7 @@ const render = (state: State) => {
 		point.y = point.y + Math.sin(orbitate) * range;
 	}
 
-	const indices: [number, number, number][] = [
+	const triangles: [number, number, number][] = [
 		[0, 1, 2],
 		[2, 3, 0],
 		[4, 5, 6],
@@ -63,8 +63,8 @@ const render = (state: State) => {
 	renderer
 		.load({
 			meshes: [{
-				indices: indices,
-				points: points
+				points: points,
+				triangles: triangles
 			}]
 		})
 		.then((meshes => {

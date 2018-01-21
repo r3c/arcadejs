@@ -84,7 +84,8 @@ const prepare = async (options: application.OptionMap) => {
 			},
 			meshes: await io
 				.readURL(io.StringRequest, "./res/mesh/cube-ambient.json")
-				.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/")),
+				.then(reader => graphic.fromJSON(reader.data))
+				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shaderCube
 		},
 		drawSpot: {
@@ -95,7 +96,8 @@ const prepare = async (options: application.OptionMap) => {
 			},
 			meshes: await io
 				.readURL(io.StringRequest, "./res/mesh/cube-small.json")
-				.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/")),
+				.then(reader => graphic.fromJSON(reader.data))
+				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shaderSpot,
 		},
 		input: runtime.input,

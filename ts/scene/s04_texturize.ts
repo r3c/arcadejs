@@ -28,7 +28,8 @@ const prepare = async () => {
 
 	const cube = await io
 		.readURL(io.StringRequest, "./res/mesh/cube-ambient.json")
-		.then(reader => renderer.load(graphic.Loader.fromJSON(reader.data), "./res/mesh/"));
+		.then(reader => graphic.fromJSON(reader.data))
+		.then(model => renderer.load(model, "./res/mesh/"));
 
 	return {
 		camera: {

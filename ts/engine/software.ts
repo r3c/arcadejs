@@ -9,33 +9,33 @@ enum DrawMode {
 }
 
 interface Image {
-	colors: Uint8ClampedArray;
-	depths: Float32Array;
-	height: number;
-	width: number;
+	colors: Uint8ClampedArray,
+	depths: Float32Array,
+	height: number,
+	width: number
 }
 
 interface Material {
-	colorMap: ImageData | undefined;
+	colorMap: ImageData | undefined
 }
 
 interface MaterialMap {
-	[name: string]: Material;
+	[name: string]: Material
 }
 
 interface Mesh {
-	colors: math.Vector4[] | undefined;
-	coords: math.Vector2[] | undefined;
-	faces: [number, number, number][];
-	material: Material;
-	normals: math.Vector3[] | undefined;
-	positions: math.Vector3[];
+	colors: math.Vector4[] | undefined,
+	coords: math.Vector2[] | undefined,
+	material: Material,
+	normals: math.Vector3[] | undefined,
+	points: math.Vector3[],
+	triangles: [number, number, number][]
 }
 
 interface Vertex {
-	color: math.Vector4;
-	coord: math.Vector2;
-	point: math.Vector3;
+	color: math.Vector4,
+	coord: math.Vector2,
+	point: math.Vector3
 }
 
 const defaultColor = {
@@ -299,9 +299,9 @@ class Renderer {
 		for (const mesh of meshes) {
 			const colors = mesh.colors || [];
 			const coords = mesh.coords || [];
-			const faces = mesh.faces;
+			const faces = mesh.triangles;
 			const material = mesh.material;
-			const positions = mesh.positions;
+			const positions = mesh.points;
 
 			for (const [i, j, k] of faces) {
 				const vertex1 = {
@@ -360,10 +360,10 @@ class Renderer {
 			meshes.push({
 				colors: mesh.colors,
 				coords: mesh.coords,
-				faces: mesh.indices,
 				material: material,
 				normals: mesh.normals,
-				positions: mesh.points
+				points: mesh.points,
+				triangles: mesh.triangles
 			})
 		}
 

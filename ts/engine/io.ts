@@ -29,6 +29,14 @@ class StringRequest extends Request<string> {
 	}
 }
 
+class BinaryReader {
+	private readonly data: Uint8Array;
+
+	public constructor(data: Uint8Array) {
+		this.data = data;
+	}
+}
+
 const readURL = async <TBuffer>(buffer: BufferConstructor<TBuffer>, url: string) => {
 	return new Promise<TBuffer>((resolve, reject) => {
 		const request = new XMLHttpRequest();
@@ -44,4 +52,4 @@ const readURL = async <TBuffer>(buffer: BufferConstructor<TBuffer>, url: string)
 	});
 };
 
-export { BinaryRequest, StringRequest, readURL };
+export { BinaryReader, BinaryRequest, StringRequest, readURL };

@@ -200,13 +200,13 @@ class Renderer {
 				coords: mesh.coords !== undefined
 					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.coords, coord => [coord.x, coord.y])))
 					: undefined,
-				count: mesh.indices.length * 3,
-				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.indices, index => [index[0], index[1], index[2]]))),
+				count: mesh.triangles.length * 3,
+				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.triangles, indices => [indices[0], indices[1], indices[2]]))),
 				material: material,
 				normals: mesh.normals !== undefined
 					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.normals, normal => [normal.x, normal.y, normal.z])))
 					: undefined,
-				points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, position => [position.x, position.y, position.z])))
+				points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, point => [point.x, point.y, point.z])))
 			});
 
 		}
