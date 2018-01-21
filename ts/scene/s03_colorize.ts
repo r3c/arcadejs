@@ -32,7 +32,7 @@ const prepare = async () => {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
-		cube: renderer.load(await model.fromJSON("./res/mesh/cube-color.json")),
+		cube: renderer.load(await model.fromJSON("./res/s03/cube.json")),
 		input: runtime.input,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: renderer

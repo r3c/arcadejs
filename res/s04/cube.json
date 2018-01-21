@@ -1,7 +1,7 @@
 {
 	"materials": {
 		"side": {
-			"colorMap": "cube/side_color.jpg"
+			"colorMap": "cube-ambient.jpg"
 		}
 	},
 	"meshes": [
