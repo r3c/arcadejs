@@ -21,6 +21,14 @@ class BinaryRequest extends Request<Uint8Array> {
 	}
 }
 
+class JSONRequest extends Request<any> {
+	public static readonly responseType = "json";
+
+	public constructor(request: XMLHttpRequest) {
+		super(request.response);
+	}
+}
+
 class StringRequest extends Request<string> {
 	public static readonly responseType = "text";
 
@@ -52,4 +60,4 @@ const readURL = async <TBuffer>(buffer: BufferConstructor<TBuffer>, url: string)
 	});
 };
 
-export { BinaryReader, BinaryRequest, StringRequest, readURL };
+export { BinaryReader, BinaryRequest, JSONRequest, StringRequest, readURL };

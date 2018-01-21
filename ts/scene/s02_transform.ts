@@ -2,7 +2,7 @@ import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
 import * as math from "../engine/math";
-import * as software from "../engine/software";
+import * as software from "../engine/render/software";
 
 /*
 ** What changed?

@@ -1,5 +1,5 @@
-import * as graphic from "./graphic";
-import * as math from "./math";
+import * as math from "../math";
+import * as model from "../model";
 
 interface ShaderAttribute {
 	location: number,
@@ -162,7 +162,7 @@ class Renderer {
 		}
 	}
 
-	public async load(model: graphic.Model, path: string = "") {
+	public async load(model: model.Model, path: string = "") {
 		const definitions = model.materials || {};
 		const gl = this.gl;
 		const materials: MaterialMap = {};

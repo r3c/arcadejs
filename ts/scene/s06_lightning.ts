@@ -1,10 +1,10 @@
 import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
-import * as graphic from "../engine/graphic";
 import * as io from "../engine/io";
 import * as math from "../engine/math";
-import * as webgl from "../engine/webgl";
+import * as model from "../engine/model";
+import * as webgl from "../engine/render/webgl";
 
 /*
 ** What changed?
@@ -83,8 +83,8 @@ const prepare = async (options: application.OptionMap) => {
 				projectionMatrix: shaderCube.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
 			meshes: await io
-				.readURL(io.StringRequest, "./res/mesh/cube-ambient.json")
-				.then(reader => graphic.fromJSON(reader.data))
+				.readURL(io.JSONRequest, "./res/mesh/cube-ambient.json")
+				.then(reader => model.fromJSON(reader.data))
 				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shaderCube
 		},
@@ -95,8 +95,8 @@ const prepare = async (options: application.OptionMap) => {
 				projectionMatrix: shaderSpot.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
 			meshes: await io
-				.readURL(io.StringRequest, "./res/mesh/cube-small.json")
-				.then(reader => graphic.fromJSON(reader.data))
+				.readURL(io.JSONRequest, "./res/mesh/cube-small.json")
+				.then(reader => model.fromJSON(reader.data))
 				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shaderSpot,
 		},

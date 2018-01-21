@@ -1,10 +1,10 @@
 import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
-import * as graphic from "../engine/graphic";
 import * as io from "../engine/io";
 import * as math from "../engine/math";
-import * as software from "../engine/software";
+import * as model from "../engine/model";
+import * as software from "../engine/render/software";
 
 /*
 ** What changed?
@@ -27,8 +27,8 @@ const prepare = async () => {
 	const renderer = new software.Renderer(runtime.screen);
 
 	const cube = await io
-		.readURL(io.StringRequest, "./res/mesh/cube-ambient.json")
-		.then(reader => graphic.fromJSON(reader.data))
+		.readURL(io.JSONRequest, "./res/mesh/cube-ambient.json")
+		.then(reader => model.fromJSON(reader.data))
 		.then(model => renderer.load(model, "./res/mesh/"));
 
 	return {

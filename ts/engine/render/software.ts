@@ -1,7 +1,6 @@
-import * as display from "./display";
-import * as graphic from "./graphic";
-import * as math from "./math";
-import { scenario } from "../scene/s02_transform";
+import * as display from "../display";
+import * as math from "../math";
+import * as model from "../model";
 
 enum DrawMode {
 	Default,
@@ -329,7 +328,7 @@ class Renderer {
 		screen.context.putImageData(capture, 0, 0);
 	}
 
-	public async load(model: graphic.Model, path: string = "") {
+	public async load(model: model.Model, path: string = "") {
 		const definitions = model.materials || {};
 		const materials: MaterialMap = {};
 		const meshes: Mesh[] = [];
