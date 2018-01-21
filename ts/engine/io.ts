@@ -44,8 +44,8 @@ const readURL = async <TBuffer>(buffer: BufferConstructor<TBuffer>, url: string)
 		request.open("GET", url, true);
 		request.responseType = buffer.responseType;
 
-		request.onabort = event => reject("request aborted");
-		request.onerror = event => reject("request failed");
+		request.onabort = event => reject(`request aborted on ${url}`);
+		request.onerror = event => reject(`request failed on ${url}`);
 		request.onload = event => resolve(new buffer(request));
 
 		request.send(null);
