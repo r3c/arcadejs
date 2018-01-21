@@ -1,6 +1,7 @@
 import * as io from "../../io";
 import * as math from "../../math";
 import * as mesh from "../mesh";
+import * as path from "../../fs/path";
 
 const load = async (urlOrData: any) => {
 	let directory: string;
@@ -9,7 +10,7 @@ const load = async (urlOrData: any) => {
 	if (typeof urlOrData === "string") {
 		const url = <string>urlOrData;
 
-		directory = url.substr(0, url.lastIndexOf('/') + 1); // FIXME: path.base
+		directory = path.directory(url);
 		root = await io.readURL(io.JSONRequest, url);
 	}
 	else if (typeof urlOrData === "object") {
@@ -95,7 +96,7 @@ const toMaterial = async (name: string, instance: any, directory: string) => {
 			? toColor(`${name}.colorBase`, instance.colorBase)
 			: mesh.defaultColor,
 		colorMap: instance.colorMap !== undefined
-			? await mesh.loadImage(toString(`${name}.colorMap`, directory + instance.colorMap)) // FIXME: path.combine
+			? await mesh.loadImage(toString(`${name}.colorMap`, path.combine(directory, instance.colorMap)))
 			: mesh.defaultMap
 	};
 };

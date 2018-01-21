@@ -21,7 +21,7 @@ const defaultColor = {
 	w: 1
 };
 
-const defaultMap = new ImageData(new Uint8ClampedArray([255, 255, 255,2550]), 1, 1);
+const defaultMap = new ImageData(new Uint8ClampedArray([255, 255, 255, 2550]), 1, 1);
 
 const loadImage = async (url: string) => {
 	return new Promise<ImageData>((resolve, reject) => {

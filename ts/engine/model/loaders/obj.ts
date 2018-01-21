@@ -1,6 +1,7 @@
 import * as io from "../../io";
 import * as math from "../../math";
 import * as mesh from "../mesh";
+import * as path from "../../fs/path";
 
 interface WavefrontOBJBatchMap {
 	[key: string]: number
@@ -27,19 +28,18 @@ const invalidLine = (file: string, line: number, description: string) => {
 
 const load = async (url: string) => {
 	const data = await io.readURL(io.StringRequest, url);
-	const directory = url.substr(0, url.lastIndexOf('/') + 1);
 
-	return loadObject(data, url, directory);
+	return loadObject(data, url);
 };
 
-const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: string, path: string, directory: string) => {
+const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: string, fileName: string) => {
 	let current: mesh.Material | undefined;
 
 	for (const { line, fields } of parseFile(data)) {
 		switch (fields[0]) {
 			case "Ka": // Ambient light color
 				if (fields.length < 4 || current === undefined)
-					throw invalidLine(path, line, "ambient color");
+					throw invalidLine(fileName, line, "ambient color");
 
 				current.colorBase = parseVector4(fields);
 
@@ -47,7 +47,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "Kd": // Diffuse light color
 				if (fields.length < 4 || current === undefined)
-					throw invalidLine(path, line, "diffuse color");
+					throw invalidLine(fileName, line, "diffuse color");
 
 				/*current.diffuseColor = */parseVector4(fields);
 
@@ -56,7 +56,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "Ks": // Specular light color
 				if (fields.length < 4 || current === undefined)
-					throw invalidLine(path, line, "specular color");
+					throw invalidLine(fileName, line, "specular color");
 
 				/*current.specularColor = */parseVector4(fields);
 
@@ -64,7 +64,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "map_bump": // Bump map texture
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(path, line, "bump color");
+					throw invalidLine(fileName, line, "bump color");
 
 				/*current.bumpMap = */fields[1];
 
@@ -72,15 +72,18 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "map_Ka": // Ambient map texture
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(path, line, "ambient map");
+					throw invalidLine(fileName, line, "ambient map");
 
-				current.colorMap = await mesh.loadImage(directory + fields[1]); // FIXME: path.combine
+				const directory = path.directory(fileName);
+				const texture = path.combine(directory, fields[1]);
+
+				current.colorMap = await mesh.loadImage(texture);
 
 				break;
 
 			case "map_Kd": // Diffuse map texture
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(path, line, "diffuse map");
+					throw invalidLine(fileName, line, "diffuse map");
 
 				/*current.diffuseMap = */fields[1];
 
@@ -88,7 +91,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "map_Ks": // Specular map texture
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(path, line, "specular map");
+					throw invalidLine(fileName, line, "specular map");
 
 				/*current.specularMap = */fields[1];
 
@@ -96,7 +99,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "map_normal": // Normal map texture (custom extension)
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(path, line, "normal map");
+					throw invalidLine(fileName, line, "normal map");
 
 				/*current.normalMap = */fields[1];
 
@@ -104,7 +107,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "Ns": // Material shininess
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(path, line, "shininess");
+					throw invalidLine(fileName, line, "shininess");
 
 				/*current.specularGloss = */parseFloat(fields[1]);
 
@@ -112,7 +115,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "newmtl": // New material declaration
 				if (fields.length < 2)
-					throw invalidLine(path, line, "material");
+					throw invalidLine(fileName, line, "material");
 
 				const material = {
 					colorBase: mesh.defaultColor,
@@ -127,7 +130,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 	}
 };
 
-const loadObject = async (data: string, path: string, directory: string) => {
+const loadObject = async (data: string, fileName: string) => {
 	const coords = new Array<math.Vector2>();
 	const groups: WavefrontOBJGroup[] = [];
 	const materials: { [name: string]: mesh.Material } = {};
@@ -148,7 +151,7 @@ const loadObject = async (data: string, path: string, directory: string) => {
 		switch (fields[0]) {
 			case "f":
 				if (fields.length < 4)
-					throw invalidLine(path, line, "face definition");
+					throw invalidLine(fileName, line, "face definition");
 
 				if (mustStartNew) {
 					current = {
@@ -168,20 +171,20 @@ const loadObject = async (data: string, path: string, directory: string) => {
 
 			case "mtllib":
 				if (fields.length < 2)
-					throw invalidLine(path, line, "material library reference");
+					throw invalidLine(fileName, line, "material library reference");
 
-				const libraryPath = directory + fields[1]; // FIXME: path.combine
-				const libraryDirectory = libraryPath.substr(0, libraryPath.lastIndexOf('/') + 1); // FIXME: path.base
+				const directory = path.directory(fileName);
+				const library = path.combine(directory, fields[1]);
 
 				await io
-					.readURL(io.StringRequest, libraryPath)
-					.then(data => loadMaterial(materials, data, libraryPath, libraryDirectory));
+					.readURL(io.StringRequest, library)
+					.then(data => loadMaterial(materials, data, library));
 
 				break;
 
 			case "usemtl":
 				if (fields.length < 2)
-					throw invalidLine(path, line, "material use");
+					throw invalidLine(fileName, line, "material use");
 
 				mustStartNew = true;
 				mustUseMaterial = fields[1];
@@ -190,7 +193,7 @@ const loadObject = async (data: string, path: string, directory: string) => {
 
 			case "v":
 				if (fields.length < 4)
-					throw invalidLine(path, line, "vertex");
+					throw invalidLine(fileName, line, "vertex");
 
 				points.push(parseVector3(fields));
 
@@ -198,7 +201,7 @@ const loadObject = async (data: string, path: string, directory: string) => {
 
 			case "vn":
 				if (fields.length < 4)
-					throw invalidLine(path, line, "normal");
+					throw invalidLine(fileName, line, "normal");
 
 				normals.push(parseVector3(fields));
 
@@ -206,7 +209,7 @@ const loadObject = async (data: string, path: string, directory: string) => {
 
 			case "vt":
 				if (fields.length < 3)
-					throw invalidLine(path, line, "texture");
+					throw invalidLine(fileName, line, "texture");
 
 				coords.push(parseVector2(fields));
 
@@ -240,26 +243,26 @@ const loadObject = async (data: string, path: string, directory: string) => {
 
 						if (mesh.coords !== undefined) {
 							if (vertex.coord === undefined)
-								throw invalidFile(path, "faces must include texture coordinate index if file specify them");
+								throw invalidFile(fileName, "faces must include texture coordinate index if file specify them");
 
 							if (vertex.coord < 0 || vertex.coord >= coords.length)
-								throw invalidFile(path, `invalid texture coordinate index ${vertex.coord}`);
+								throw invalidFile(fileName, `invalid texture coordinate index ${vertex.coord}`);
 
 							mesh.coords.push(coords[vertex.coord]);
 						}
 
 						if (mesh.normals !== undefined) {
 							if (vertex.normal === undefined)
-								throw invalidFile(path, "faces must include normal index if file specify them");
+								throw invalidFile(fileName, "faces must include normal index if file specify them");
 
 							if (vertex.normal < 0 || vertex.normal >= normals.length)
-								throw invalidFile(path, `invalid normal index ${vertex.normal}`);
+								throw invalidFile(fileName, `invalid normal index ${vertex.normal}`);
 
 							mesh.normals.push(normals[vertex.normal]);
 						}
 
 						if (vertex.point < 0 || vertex.point >= points.length)
-							throw invalidFile(path, `invalid vertex index ${vertex.point}`);
+							throw invalidFile(fileName, `invalid vertex index ${vertex.point}`);
 
 						mesh.points.push(points[vertex.point]);
 					}
