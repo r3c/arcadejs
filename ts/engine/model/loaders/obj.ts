@@ -26,9 +26,10 @@ const invalidLine = (file: string, line: number, description: string) => {
 };
 
 const load = async (url: string) => {
-	const request = await io.readURL(io.StringRequest, url);
+	const data = await io.readURL(io.StringRequest, url);
+	const directory = url.substr(0, url.lastIndexOf('/') + 1);
 
-	return loadObject(request.data, url, url.substr(0, url.lastIndexOf('/') + 1));
+	return loadObject(data, url, directory);
 };
 
 const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: string, path: string) => {
@@ -170,7 +171,7 @@ const loadObject = async (data: string, path: string, directory: string) => {
 
 				await io
 					.readURL(io.StringRequest, directory + fields[1])
-					.then(request => loadMaterial(materials, request.data, directory + fields[1]));
+					.then(data => loadMaterial(materials, data, directory + fields[1]));
 
 				break;
 

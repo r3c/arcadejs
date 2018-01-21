@@ -82,7 +82,7 @@ const prepare = async () => {
 			},
 			meshes: await io
 				.readURL(io.JSONRequest, "./res/mesh/cube-ambient.json")
-				.then(reader => model.fromJSON(reader.data))
+				.then(model.fromJSON)
 				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shader
 		},

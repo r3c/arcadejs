@@ -45,8 +45,8 @@ class BinaryReader {
 	}
 }
 
-const readURL = async <TBuffer>(buffer: BufferConstructor<TBuffer>, url: string) => {
-	return new Promise<TBuffer>((resolve, reject) => {
+const readURL = async <T>(buffer: BufferConstructor<Request<T>>, url: string) => {
+	return new Promise<T>((resolve, reject) => {
 		const request = new XMLHttpRequest();
 
 		request.open("GET", url, true);
@@ -54,7 +54,7 @@ const readURL = async <TBuffer>(buffer: BufferConstructor<TBuffer>, url: string)
 
 		request.onabort = event => reject(`request aborted on ${url}`);
 		request.onerror = event => reject(`request failed on ${url}`);
-		request.onload = event => resolve(new buffer(request));
+		request.onload = event => resolve(new buffer(request).data);
 
 		request.send(null);
 	});

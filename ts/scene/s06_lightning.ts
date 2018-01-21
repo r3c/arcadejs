@@ -53,14 +53,14 @@ const prepare = async (options: application.OptionMap) => {
 
 	const shaderCube = new webgl.Shader(
 		runtime.screen.context,
-		await io.readURL(io.StringRequest, "./res/shader/s06_cube.vert").then(reader => reader.data),
-		await io.readURL(io.StringRequest, "./res/shader/s06_cube.frag").then(reader => reader.data)
+		await io.readURL(io.StringRequest, "./res/shader/s06_cube.vert"),
+		await io.readURL(io.StringRequest, "./res/shader/s06_cube.frag")
 	);
 
 	const shaderSpot = new webgl.Shader(
 		runtime.screen.context,
-		await io.readURL(io.StringRequest, "./res/shader/s06_spot.vert").then(reader => reader.data),
-		await io.readURL(io.StringRequest, "./res/shader/s06_spot.frag").then(reader => reader.data)
+		await io.readURL(io.StringRequest, "./res/shader/s06_spot.vert"),
+		await io.readURL(io.StringRequest, "./res/shader/s06_spot.frag")
 	);
 
 	const float = runtime.screen.context.FLOAT;
@@ -84,7 +84,7 @@ const prepare = async (options: application.OptionMap) => {
 			},
 			meshes: await io
 				.readURL(io.JSONRequest, "./res/mesh/cube-ambient.json")
-				.then(reader => model.fromJSON(reader.data))
+				.then(model.fromJSON)
 				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shaderCube
 		},
@@ -96,7 +96,7 @@ const prepare = async (options: application.OptionMap) => {
 			},
 			meshes: await io
 				.readURL(io.JSONRequest, "./res/mesh/cube-small.json")
-				.then(reader => model.fromJSON(reader.data))
+				.then(model.fromJSON)
 				.then(model => renderer.load(model, "./res/mesh/")),
 			shader: shaderSpot,
 		},

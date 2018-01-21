@@ -29,7 +29,7 @@ const prepare = async () => {
 
 	const cube = await io
 		.readURL(io.JSONRequest, "./res/mesh/cube-color.json")
-		.then(reader => model.fromJSON(reader.data))
+		.then(model.fromJSON)
 		.then(model => renderer.load(model, "./res/mesh/"));
 
 	return {
