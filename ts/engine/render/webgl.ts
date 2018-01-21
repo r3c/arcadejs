@@ -118,16 +118,28 @@ class Renderer {
 			const material = mesh.material;
 
 			// Bind colors vector if defined and supported
-			if (mesh.colors !== undefined && binding.colors !== undefined)
-				shader.setAttribute(binding.colors, mesh.colors);
+			if (binding.colors !== undefined) {
+				if (mesh.colors !== undefined)
+					shader.setAttribute(binding.colors, mesh.colors);
+				else
+					shader.setAttribute(binding.colors);
+			}
 
 			// Bind coords vector if defined and supported
-			if (mesh.coords !== undefined && binding.coords !== undefined)
-				shader.setAttribute(binding.coords, mesh.coords);
+			if (binding.coords !== undefined) {
+				if (mesh.coords !== undefined)
+					shader.setAttribute(binding.coords, mesh.coords);
+				else
+					shader.setAttribute(binding.coords);
+			}
 
 			// Bind face normals if defined and supported
-			if (mesh.normals !== undefined && binding.normals !== undefined)
-				shader.setAttribute(binding.normals, mesh.normals);
+			if (binding.normals !== undefined) {
+				if (mesh.normals !== undefined)
+					shader.setAttribute(binding.normals, mesh.normals);
+				else
+					shader.setAttribute(binding.normals);
+			}
 
 			// Bind color map texture if defined and supported
 			if (material.colorMap !== undefined && binding.colorMap !== undefined)
@@ -278,12 +290,16 @@ class Shader {
 		gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
 	}
 
-	public setAttribute(attribute: ShaderAttribute, buffer: WebGLBuffer) {
+	public setAttribute(attribute: ShaderAttribute, buffer?: WebGLBuffer) {
 		const gl = this.gl;
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-		gl.vertexAttribPointer(attribute.location, attribute.size, attribute.type, false, 0, 0);
-		gl.enableVertexAttribArray(attribute.location);
+		if (buffer !== undefined) {
+			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+			gl.vertexAttribPointer(attribute.location, attribute.size, attribute.type, false, 0, 0);
+			gl.enableVertexAttribArray(attribute.location);
+		}
+		else
+			gl.disableVertexAttribArray(attribute.location);
 	}
 
 	public setTexture(uniform: ShaderUniform<number>, texture: WebGLTexture, index: number) {
