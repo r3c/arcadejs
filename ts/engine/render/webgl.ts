@@ -64,39 +64,29 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	return buffer;
 };
 
-const createTexture = async (gl: WebGLRenderingContext, url: string, quality: Quality) => {
+const createTexture = (gl: WebGLRenderingContext, image: ImageData, quality: Quality) => {
 	const isPowerOf2 = (value: number) => {
 		return ((value - 1) & value) === 0;
 	};
 
-	return new Promise<WebGLTexture>((resolve, reject) => {
-		const image = new Image();
+	const texture = gl.createTexture();
 
-		image.onabort = () => reject(`image load aborted: "${url}"`);
-		image.onerror = () => reject(`image load failed: "${url}"`);
-		image.onload = () => {
-			const texture = gl.createTexture();
+	if (texture === null)
+		throw Error("texture creation failed");
 
-			if (texture === null)
-				return reject(`texture creation failed: "${url}"`);
+	if (!isPowerOf2(image.width) || !isPowerOf2(image.height))
+		throw Error("image doesn't have power-of-2 dimensions");
 
-			if (!isPowerOf2(image.width) || !isPowerOf2(image.height))
-				return reject(`image doesn't have power-of-2 dimensions: "${url}"`);
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, quality.textureElementLinear ? gl.LINEAR : gl.NEAREST);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, quality.textureElementLinear
+		? (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_LINEAR)
+		: (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_NEAREST : gl.NEAREST_MIPMAP_NEAREST));
+	gl.generateMipmap(gl.TEXTURE_2D);
+	gl.bindTexture(gl.TEXTURE_2D, null);
 
-			gl.bindTexture(gl.TEXTURE_2D, texture);
-			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, quality.textureElementLinear ? gl.LINEAR : gl.NEAREST);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, quality.textureElementLinear
-				? (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_LINEAR)
-				: (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_NEAREST : gl.NEAREST_MIPMAP_NEAREST));
-			gl.generateMipmap(gl.TEXTURE_2D);
-			gl.bindTexture(gl.TEXTURE_2D, null);
-
-			resolve(texture);
-		};
-
-		image.src = url;
-	});
+	return texture;
 };
 
 const flatMap = <T, U>(items: T[], convert: (item: T) => U[]) => {
@@ -162,15 +152,16 @@ class Renderer {
 		}
 	}
 
-	public async load(model: model.Model, path: string = "") {
+	public load(model: model.Model) {
 		const definitions = model.materials || {};
 		const gl = this.gl;
 		const materials: MaterialMap = {};
 		const meshes: Mesh[] = [];
 
 		for (const mesh of model.meshes) {
-			let material: Material;
 			const name = mesh.materialName;
+
+			let material: Material;
 
 			if (name !== undefined && definitions[name] !== undefined) {
 				if (materials[name] === undefined) {
@@ -179,7 +170,7 @@ class Renderer {
 					materials[name] = {
 						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
 						colorMap: definition.colorMap !== undefined
-							? await createTexture(gl, path + definition.colorMap, this.quality)
+							? createTexture(gl, definition.colorMap, this.quality)
 							: undefined
 					}
 				}

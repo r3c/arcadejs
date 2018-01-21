@@ -51,13 +51,15 @@ const prepare = async (options: application.OptionMap) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const renderer = new webgl.Renderer(runtime.screen.context);
 
-	const shaderCube = new webgl.Shader(
+	const cubeModel = await model.fromJSON("./res/mesh/cube-ambient.json");
+	const cubeShader = new webgl.Shader(
 		runtime.screen.context,
 		await io.readURL(io.StringRequest, "./res/shader/s06_cube.vert"),
 		await io.readURL(io.StringRequest, "./res/shader/s06_cube.frag")
 	);
 
-	const shaderSpot = new webgl.Shader(
+	const spotModel = await model.fromJSON("./res/mesh/cube-small.json");
+	const spotShader = new webgl.Shader(
 		runtime.screen.context,
 		await io.readURL(io.StringRequest, "./res/shader/s06_spot.vert"),
 		await io.readURL(io.StringRequest, "./res/shader/s06_spot.frag")
@@ -72,38 +74,32 @@ const prepare = async (options: application.OptionMap) => {
 		},
 		drawCube: {
 			binding: {
-				colorBase: shaderCube.declareUniformValue("colorBase", gl => gl.uniform4fv),
-				colorMap: shaderCube.declareUniformValue("colorMap", gl => gl.uniform1i),
-				colors: shaderCube.declareAttribute("color", 4, float),
-				coords: shaderCube.declareAttribute("coord", 2, float),
-				modelViewMatrix: shaderCube.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-				normalMatrix: shaderCube.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
-				normals: shaderCube.declareAttribute("normal", 3, float),
-				points: shaderCube.declareAttribute("point", 3, float),
-				projectionMatrix: shaderCube.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
+				colorBase: cubeShader.declareUniformValue("colorBase", gl => gl.uniform4fv),
+				colorMap: cubeShader.declareUniformValue("colorMap", gl => gl.uniform1i),
+				colors: cubeShader.declareAttribute("color", 4, float),
+				coords: cubeShader.declareAttribute("coord", 2, float),
+				modelViewMatrix: cubeShader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				normalMatrix: cubeShader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
+				normals: cubeShader.declareAttribute("normal", 3, float),
+				points: cubeShader.declareAttribute("point", 3, float),
+				projectionMatrix: cubeShader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
-			meshes: await io
-				.readURL(io.JSONRequest, "./res/mesh/cube-ambient.json")
-				.then(model.fromJSON)
-				.then(model => renderer.load(model, "./res/mesh/")),
-			shader: shaderCube
+			meshes: renderer.load(cubeModel),
+			shader: cubeShader
 		},
 		drawSpot: {
 			binding: {
-				modelViewMatrix: shaderSpot.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-				points: shaderSpot.declareAttribute("point", 3, float),
-				projectionMatrix: shaderSpot.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
+				modelViewMatrix: spotShader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				points: spotShader.declareAttribute("point", 3, float),
+				projectionMatrix: spotShader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
-			meshes: await io
-				.readURL(io.JSONRequest, "./res/mesh/cube-small.json")
-				.then(model.fromJSON)
-				.then(model => renderer.load(model, "./res/mesh/")),
-			shader: shaderSpot,
+			meshes: renderer.load(spotModel),
+			shader: spotShader,
 		},
 		input: runtime.input,
 		light: {
-			direction: shaderCube.declareUniformValue("lightDirection", gl => gl.uniform3fv),
-			enabled: shaderCube.declareUniformValue("lightEnabled", gl => gl.uniform1i),
+			direction: cubeShader.declareUniformValue("lightDirection", gl => gl.uniform3fv),
+			enabled: cubeShader.declareUniformValue("lightEnabled", gl => gl.uniform1i),
 			ry: Math.PI * 0.3,
 			rz: Math.PI * -0.2
 		},

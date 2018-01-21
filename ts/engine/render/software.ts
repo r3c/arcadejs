@@ -15,11 +15,7 @@ interface Image {
 }
 
 interface Material {
-	colorMap: ImageData | undefined
-}
-
-interface MaterialMap {
-	[name: string]: Material
+	colorMap?: ImageData
 }
 
 interface Mesh {
@@ -328,33 +324,19 @@ class Renderer {
 		screen.context.putImageData(capture, 0, 0);
 	}
 
-	public async load(model: model.Model, path: string = "") {
-		const definitions = model.materials || {};
-		const materials: MaterialMap = {};
+	public load(model: model.Model) {
+		const materials = model.materials || {};
 		const meshes: Mesh[] = [];
 
 		for (const mesh of model.meshes) {
-			let material: Material;
 			const name = mesh.materialName;
 
-			if (name !== undefined && definitions[name] !== undefined) {
-				if (materials[name] === undefined) {
-					const definition = definitions[name];
+			let material: Material;
 
-					materials[name] = {
-						colorMap: definition.colorMap !== undefined
-							? await loadImageData(path + definition.colorMap)
-							: undefined
-					}
-				}
-
+			if (name !== undefined && materials[name] !== undefined)
 				material = materials[name];
-			}
-			else {
-				material = {
-					colorMap: undefined
-				};
-			}
+			else
+				material = {};
 
 			meshes.push({
 				colors: mesh.colors,

@@ -80,10 +80,7 @@ const prepare = async () => {
 				projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
 				points: shader.declareAttribute("point", 3, float)
 			},
-			meshes: await io
-				.readURL(io.JSONRequest, "./res/mesh/cube-ambient.json")
-				.then(model.fromJSON)
-				.then(model => renderer.load(model, "./res/mesh/")),
+			meshes: renderer.load(await model.fromJSON("./res/mesh/cube-ambient.json")),
 			shader: shader
 		},
 		input: runtime.input,

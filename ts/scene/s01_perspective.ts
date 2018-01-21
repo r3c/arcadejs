@@ -59,18 +59,15 @@ const render = (state: State) => {
 	];
 
 	const renderer = state.renderer;
+	const meshes = renderer.load({
+		meshes: [{
+			points: points,
+			triangles: triangles
+		}]
+	});
 
-	renderer
-		.load({
-			meshes: [{
-				points: points,
-				triangles: triangles
-			}]
-		})
-		.then((meshes => {
-			renderer.clear();
-			renderer.draw(meshes, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire);
-		}));
+	renderer.clear();
+	renderer.draw(meshes, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire);
 };
 
 const update = (state: State, dt: number) => {

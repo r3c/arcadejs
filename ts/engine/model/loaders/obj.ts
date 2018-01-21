@@ -32,7 +32,7 @@ const load = async (url: string) => {
 	return loadObject(data, url, directory);
 };
 
-const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: string, path: string) => {
+const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: string, path: string, directory: string) => {
 	let current: mesh.Material | undefined;
 
 	for (const { line, fields } of parseFile(data)) {
@@ -74,7 +74,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(path, line, "ambient map");
 
-				current.colorMap = fields[1];
+				current.colorMap = await mesh.loadImage(directory + fields[1]); // FIXME: path.combine
 
 				break;
 
@@ -115,7 +115,8 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 					throw invalidLine(path, line, "material");
 
 				const material = {
-					colorBase: mesh.defaultColor
+					colorBase: mesh.defaultColor,
+					colorMap: mesh.defaultMap
 				};
 
 				materials[fields[1]] = material;
@@ -169,9 +170,12 @@ const loadObject = async (data: string, path: string, directory: string) => {
 				if (fields.length < 2)
 					throw invalidLine(path, line, "material library reference");
 
+				const libraryPath = directory + fields[1]; // FIXME: path.combine
+				const libraryDirectory = libraryPath.substr(0, libraryPath.lastIndexOf('/') + 1); // FIXME: path.base
+
 				await io
-					.readURL(io.StringRequest, directory + fields[1])
-					.then(data => loadMaterial(materials, data, directory + fields[1]));
+					.readURL(io.StringRequest, libraryPath)
+					.then(data => loadMaterial(materials, data, libraryPath, libraryDirectory));
 
 				break;
 

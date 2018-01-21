@@ -3,13 +3,26 @@ import * as math from "../../math";
 import * as mesh from "../mesh";
 
 const load = async (urlOrData: any) => {
-	const root = typeof urlOrData === "string" ? await io.readURL(io.JSONRequest, <string>urlOrData) : urlOrData;
+	let directory: string;
+	let root: any;
 
-	if (typeof root !== "object")
+	if (typeof urlOrData === "string") {
+		const url = <string>urlOrData;
+
+		directory = url.substr(0, url.lastIndexOf('/') + 1); // FIXME: path.base
+		root = await io.readURL(io.JSONRequest, url);
+	}
+	else if (typeof urlOrData === "object") {
+		directory = "";
+		root = urlOrData;
+	}
+	else
 		throw invalid(name, root, "model");
 
 	return {
-		materials: root.materials !== undefined ? toMapOf("materials", root.materials, toMaterial) : {},
+		materials: root.materials !== undefined
+			? await toMapOf("materials", root.materials, toMaterial, directory)
+			: {},
 		meshes: toArrayOf("meshes", root.meshes, toMesh)
 	};
 };
@@ -61,25 +74,29 @@ const toInteger = (name: string, instance: any) => {
 	return <number>instance;
 };
 
-const toMapOf = <T>(name: string, instance: any, converter: (name: string, item: any) => T) => {
+const toMapOf = async <T>(name: string, instance: any, converter: (name: string, item: any, directory: string) => Promise<T>, directory: string) => {
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "map");
 
 	const map: { [key: string]: T } = {};
 
 	for (const key in instance)
-		map[key] = converter(`${name}.${key}`, instance[key]);
+		map[key] = await converter(`${name}.${key}`, instance[key], directory);
 
 	return map;
 };
 
-const toMaterial = (name: string, instance: any): mesh.Material => {
+const toMaterial = async (name: string, instance: any, directory: string) => {
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "material");
 
 	return {
-		colorBase: instance.colorBase !== undefined ? toColor(`${name}.colorBase`, instance.colorBase) : mesh.defaultColor,
-		colorMap: instance.colorMap !== undefined ? toString(`${name}.colorMap`, instance.colorMap) : undefined
+		colorBase: instance.colorBase !== undefined
+			? toColor(`${name}.colorBase`, instance.colorBase)
+			: mesh.defaultColor,
+		colorMap: instance.colorMap !== undefined
+			? await mesh.loadImage(toString(`${name}.colorMap`, directory + instance.colorMap)) // FIXME: path.combine
+			: mesh.defaultMap
 	};
 };
 

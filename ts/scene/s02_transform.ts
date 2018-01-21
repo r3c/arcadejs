@@ -27,7 +27,7 @@ const prepare = async () => {
 	const runtime = application.runtime(display.Context2DScreen);
 	const renderer = new software.Renderer(runtime.screen);
 
-	const cube = await renderer.load({
+	const cube = renderer.load({
 		meshes: [{
 			points: [
 				{ x: -1, y: 1, z: -1 },

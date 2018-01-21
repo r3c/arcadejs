@@ -27,17 +27,12 @@ const prepare = async () => {
 	const runtime = application.runtime(display.Context2DScreen);
 	const renderer = new software.Renderer(runtime.screen);
 
-	const cube = await io
-		.readURL(io.JSONRequest, "./res/mesh/cube-color.json")
-		.then(model.fromJSON)
-		.then(model => renderer.load(model, "./res/mesh/"));
-
 	return {
 		camera: {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
-		cube: cube,
+		cube: renderer.load(await model.fromJSON("./res/mesh/cube-color.json")),
 		input: runtime.input,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: renderer
