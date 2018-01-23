@@ -19,11 +19,11 @@ interface WavefrontOBJVertex {
 }
 
 const invalidFile = (file: string, description: string) => {
-	return new Error(`${description} in file ${file}`);
+	return Error(`${description} in file ${file}`);
 };
 
 const invalidLine = (file: string, line: number, description: string) => {
-	return new Error(`invalid ${description} in file ${file} at line ${line}`);
+	return Error(`invalid ${description} in file ${file} at line ${line}`);
 };
 
 const load = async (url: string) => {
