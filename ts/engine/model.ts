@@ -10,6 +10,11 @@ interface Model {
 	meshes: mesh.Mesh[]
 }
 
+const defaultMaterial: mesh.Material = {
+	colorBase: mesh.defaultColor,
+	colorMap: mesh.defaultMap
+};
+
 const from3DS = async (url: string) => {
 	return tds.load(url);
 };
@@ -22,4 +27,4 @@ const fromOBJ = async (url: string) => {
 	return obj.load(url);
 };
 
-export { Model, from3DS, fromJSON, fromOBJ };
+export { Model, defaultMaterial, from3DS, fromJSON, fromOBJ };

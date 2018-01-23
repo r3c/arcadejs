@@ -1,5 +1,6 @@
 import * as math from "../math";
 import * as model from "../model";
+import { defaultMap } from "../model/mesh";
 
 interface ShaderAttribute {
 	location: number,
@@ -25,7 +26,7 @@ interface Binding {
 
 interface Material {
 	colorBase: number[],
-	colorMap: WebGLTexture | undefined
+	colorMap: WebGLTexture
 }
 
 interface MaterialMap {
@@ -46,6 +47,8 @@ interface Quality {
 	textureElementLinear: boolean,
 	textureMipmapLinear: boolean
 }
+
+const defaultMaterial = model.defaultMaterial;
 
 const defaultQuality = {
 	textureElementLinear: true,
@@ -93,7 +96,12 @@ const flatMap = <T, U>(items: T[], convert: (item: T) => U[]) => {
 	return new Array<U>().concat(...items.map(convert));
 };
 
+const invalidAttributeBinding = (name: string) => {
+	return Error(`cannot draw a mesh with no ${name} attribute when shader expects one`);
+};
+
 class Renderer {
+	private readonly defaultTexture: WebGLTexture;
 	private readonly gl: WebGLRenderingContext;
 	private readonly quality: Quality;
 
@@ -103,6 +111,7 @@ class Renderer {
 		gl.depthFunc(gl.LEQUAL);
 		gl.enable(gl.DEPTH_TEST);
 
+		this.defaultTexture = createTexture(gl, model.defaultMaterial.colorMap, quality);
 		this.gl = gl;
 		this.quality = quality;
 	}
@@ -119,34 +128,34 @@ class Renderer {
 
 			// Bind colors vector if defined and supported
 			if (binding.colors !== undefined) {
-				if (mesh.colors !== undefined)
-					shader.setAttribute(binding.colors, mesh.colors);
-				else
-					shader.setAttribute(binding.colors);
+				if (mesh.colors === undefined)
+					throw invalidAttributeBinding("colors");
+
+				shader.setAttribute(binding.colors, mesh.colors);
 			}
 
 			// Bind coords vector if defined and supported
 			if (binding.coords !== undefined) {
-				if (mesh.coords !== undefined)
-					shader.setAttribute(binding.coords, mesh.coords);
-				else
-					shader.setAttribute(binding.coords);
+				if (mesh.coords === undefined)
+					throw invalidAttributeBinding("coords");
+
+				shader.setAttribute(binding.coords, mesh.coords);
 			}
 
 			// Bind face normals if defined and supported
 			if (binding.normals !== undefined) {
-				if (mesh.normals !== undefined)
-					shader.setAttribute(binding.normals, mesh.normals);
-				else
-					shader.setAttribute(binding.normals);
-			}
+				if (mesh.normals === undefined)
+					throw invalidAttributeBinding("normals");
 
-			// Bind color map texture if defined and supported
-			if (material.colorMap !== undefined && binding.colorMap !== undefined)
-				shader.setTexture(binding.colorMap, material.colorMap, 0);
+				shader.setAttribute(binding.normals, mesh.normals);
+			}
 
 			// Bind points vector
 			shader.setAttribute(binding.points, mesh.points);
+
+			// Bind color map texture if defined and supported
+			if (binding.colorMap !== undefined)
+				shader.setTexture(binding.colorMap, material.colorMap, 0);
 
 			// Set base color uniform
 			if (binding.colorBase !== undefined)
@@ -181,9 +190,7 @@ class Renderer {
 
 					materials[name] = {
 						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
-						colorMap: definition.colorMap !== undefined
-							? createTexture(gl, definition.colorMap, this.quality)
-							: undefined
+						colorMap: createTexture(gl, definition.colorMap, this.quality)
 					}
 				}
 
@@ -191,8 +198,13 @@ class Renderer {
 			}
 			else {
 				material = {
-					colorBase: [1, 1, 1, 1],
-					colorMap: undefined
+					colorBase: [
+						defaultMaterial.colorBase.x,
+						defaultMaterial.colorBase.y,
+						defaultMaterial.colorBase.z,
+						defaultMaterial.colorBase.w
+					],
+					colorMap: this.defaultTexture
 				};
 			}
 

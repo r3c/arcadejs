@@ -15,7 +15,7 @@ interface Image {
 }
 
 interface Material {
-	colorMap?: ImageData
+	colorMap: ImageData
 }
 
 interface Mesh {
@@ -44,6 +44,8 @@ const defaultCoord = {
 	x: 0,
 	y: 0
 };
+
+const defaultMaterial = model.defaultMaterial;
 
 const lerpScalar = (min: number, max: number, ratio: number) => {
 	return min + (max - min) * ratio;
@@ -336,7 +338,7 @@ class Renderer {
 			if (name !== undefined && materials[name] !== undefined)
 				material = materials[name];
 			else
-				material = {};
+				material = defaultMaterial;
 
 			meshes.push({
 				colors: mesh.colors,
