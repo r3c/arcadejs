@@ -158,40 +158,6 @@ const readObject = async (context: Context, end: number, chunk: number, state: m
 				triangles: []
 			});
 
-			mesh.normals = [];
-
-			for (let i = 0; i < mesh.triangles.length; ++i) {
-				const index1 = mesh.triangles[i][0];
-				const index2 = mesh.triangles[i][1];
-				const index3 = mesh.triangles[i][2];
-
-				const point1 = mesh.points[index1];
-				const point2 = mesh.points[index2];
-				const point3 = mesh.points[index3];
-
-				const u = {
-					x: point2.x - point3.x,
-					y: point2.y - point3.y,
-					z: point2.z - point3.z
-				};
-
-				const v = {
-					x: point2.x - point1.x,
-					y: point2.y - point1.y,
-					z: point2.z - point1.z
-				};
-
-				const normal = {
-					x: u.z * v.y - u.z * v.y,
-					y: u.z * v.x - u.x * v.z,
-					z: u.x * v.y - u.y * v.x
-				};
-
-				mesh.normals[index1] = normal;
-				mesh.normals[index2] = normal;
-				mesh.normals[index3] = normal;
-			}
-
 			state.push(mesh);
 
 			return state;

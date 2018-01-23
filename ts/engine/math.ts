@@ -173,4 +173,16 @@ interface Vector4 {
 	w: number
 }
 
-export { Matrix, Vector2, Vector3, Vector4 };
+class Vector {
+	public static normalize3(vector: Vector3) {
+		const invLength = 1 / Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+
+		return {
+			x: vector.x * invLength,
+			y: vector.y * invLength,
+			z: vector.z * invLength
+		};
+	}
+}
+
+export { Matrix, Vector, Vector2, Vector3, Vector4 };
