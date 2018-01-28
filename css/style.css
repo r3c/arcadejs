@@ -33,6 +33,11 @@ html {
 	background:		#CDE;
 }
 
+.control .container {
+	display:	inline-block;
+	margin:		0 8px;
+}
+
 .display {
 	display:		flex;
 	align-items:	center;

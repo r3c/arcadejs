@@ -12,6 +12,14 @@ import * as webgl from "../engine/render/webgl";
 ** - Scene uses two different shaders loaded from external files
 */
 
+interface Configuration {
+	moveLights: boolean,
+	nbLights: string[],
+	useAmbient: boolean,
+	useDiffuse: boolean,
+	useSpecular: boolean
+}
+
 interface State {
 	camera: {
 		position: math.Vector3,
@@ -39,41 +47,20 @@ interface State {
 		useDiffuse: webgl.ShaderUniform<number>,
 		useSpecular: webgl.ShaderUniform<number>
 	},
-	options: application.OptionMap,
 	projection: math.Matrix,
-	renderer: webgl.Renderer
+	renderer: webgl.Renderer,
+	tweak: application.Tweak<Configuration>
 }
 
-const definitions = {
-	move: {
-		caption: "Move lights",
-		type: application.DefinitionType.Checkbox,
-		default: 1
-	},
-	lights: {
-		caption: "Number of lights:",
-		type: application.DefinitionType.Select,
-		choices: ["0", "1", "2", "3"],
-		default: 1
-	},
-	useAmbient: {
-		caption: "Ambient light",
-		type: application.DefinitionType.Checkbox,
-		default: 1
-	},
-	useDiffuse: {
-		caption: "Diffuse light",
-		type: application.DefinitionType.Checkbox,
-		default: 0
-	},
-	useSpecular: {
-		caption: "Specular light",
-		type: application.DefinitionType.Checkbox,
-		default: 0
-	}
+const configuration = {
+	moveLights: true,
+	nbLights: ["0", ".1", "2", "3"],
+	useAmbient: true,
+	useDiffuse: false,
+	useSpecular: false
 };
 
-const prepare = async (options: application.OptionMap) => {
+const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const renderer = new webgl.Renderer(runtime.screen.context);
 
@@ -136,9 +123,9 @@ const prepare = async (options: application.OptionMap) => {
 			useDiffuse: cubeShader.declareUniformValue("useDiffuse", gl => gl.uniform1i),
 			useSpecular: cubeShader.declareUniformValue("useSpecular", gl => gl.uniform1i)
 		},
-		options: options,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		renderer: renderer
+		renderer: renderer,
+		tweak: tweak
 	};
 };
 
@@ -159,7 +146,7 @@ const render = (state: State) => {
 	// Draw light bulbs
 	state.drawSpot.shader.activate();
 
-	for (let i = 0; i < Math.min(light.bulbs.length, state.options["lights"]); ++i) {
+	for (let i = 0; i < Math.min(light.bulbs.length, state.tweak.nbLights); ++i) {
 		const bulb = light.bulbs[i];
 
 		renderer.draw(state.drawSpot.shader, state.drawSpot.binding, state.drawSpot.meshes, state.projection, view.translate(bulb.position));
@@ -168,11 +155,11 @@ const render = (state: State) => {
 	// Draw cube
 	state.drawCube.shader.activate();
 
-	light.bulbs.forEach((bulb, i) => state.drawCube.shader.setUniform(bulb.enabled, i < state.options["lights"] ? 1 : 0));
+	light.bulbs.forEach((bulb, i) => state.drawCube.shader.setUniform(bulb.enabled, i < state.tweak.nbLights ? 1 : 0));
 
-	state.drawCube.shader.setUniform(light.useAmbient, state.options["useAmbient"]);
-	state.drawCube.shader.setUniform(light.useDiffuse, state.options["useDiffuse"]);
-	state.drawCube.shader.setUniform(light.useSpecular, state.options["useSpecular"]);
+	state.drawCube.shader.setUniform(light.useAmbient, state.tweak.useAmbient);
+	state.drawCube.shader.setUniform(light.useDiffuse, state.tweak.useDiffuse);
+	state.drawCube.shader.setUniform(light.useSpecular, state.tweak.useSpecular);
 
 	for (const bulb of light.bulbs) {
 		const position = view.transform({
@@ -210,7 +197,7 @@ const update = (state: State, dt: number) => {
 	// Update light bulb positions
 	const light = state.light;
 
-	if (state.options["move"]) {
+	if (state.tweak.moveLights) {
 		light.move += dt * 0.00003;
 	}
 
@@ -227,7 +214,7 @@ const update = (state: State, dt: number) => {
 };
 
 const scenario = {
-	definitions: definitions,
+	configuration: configuration,
 	prepare: prepare,
 	render: render,
 	update: update

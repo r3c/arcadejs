@@ -1,24 +1,5 @@
 import * as controller from "./controller";
-
-enum DefinitionType {
-	Checkbox,
-	Select
-}
-
-interface Definition {
-	caption: string
-	choices?: string[],
-	default: number,
-	type: DefinitionType
-}
-
-interface DefinitionMap {
-	[key: string]: Definition
-}
-
-interface OptionMap {
-	[key: string]: number
-}
+import * as display from "./display";
 
 interface Process {
 	name: string,
@@ -26,36 +7,27 @@ interface Process {
 	tick: (dt: number) => void
 }
 
-interface RuntimeScreen<T> {
+interface Runtime<T extends display.Screen> {
+	input: controller.Input,
+	screen: T
+}
+
+interface ScreenConstructor<T> {
 	new(container: HTMLElement): T
 }
 
-class Runtime<T> {
-	public readonly input: controller.Input;
-	public readonly screen: T;
+type Tweak<T> = {
+	[P in keyof T]: number
+};
 
-	public constructor(screenConstructor: RuntimeScreen<T>) {
-		const container = document.getElementById("screens");
-
-		if (container === null)
-			throw Error("missing screen container");
-
-		while (container.childNodes.length > 0)
-			container.removeChild(container.childNodes[0]);
-
-		this.input = new controller.Input(container);
-		this.screen = new screenConstructor(container);
-	}
+interface Scenario<TConfiguration, TState> {
+	configuration?: TConfiguration,
+	prepare: (tweak: Tweak<TConfiguration>) => Promise<TState>,
+	render: (state: TState) => void,
+	update: (state: TState, dt: number) => void
 }
 
-interface Scenario<T> {
-	definitions?: DefinitionMap,
-	prepare: (options: OptionMap) => Promise<T>,
-	render: (state: T) => void,
-	update: (state: T, dt: number) => void
-}
-
-const configure = (definitions: DefinitionMap) => {
+const configure = <T>(configuration: T) => {
 	const tweakContainer = document.getElementById("tweaks");
 
 	if (tweakContainer === null)
@@ -64,30 +36,39 @@ const configure = (definitions: DefinitionMap) => {
 	while (tweakContainer.childNodes.length > 0)
 		tweakContainer.removeChild(tweakContainer.childNodes[0]);
 
-	const options: OptionMap = {};
+	const tweak = <Tweak<T>>{};
 
-	for (const key in definitions) {
-		const definition = definitions[key];
-		const change = (value: number) => options[key] = value;
+	for (const key in configuration) {
+		const property = configuration[key];
+		const change = (value: number) => tweak[key] = value;
 
-		switch (definition.type) {
-			case DefinitionType.Checkbox:
-				tweakContainer.appendChild(createCheckbox(definition.caption, definition.default, change));
+		let defaultValue: number;
+		let tweakElement: HTMLElement;
+
+		switch (typeof property) {
+			case "boolean":
+				defaultValue = property ? 1 : 0;
+				tweakElement = createCheckbox(key, defaultValue, change);
 
 				break;
 
-			case DefinitionType.Select:
-				tweakContainer.appendChild(createSelect(definition.caption, definition.choices || [], definition.default, change));
+			case "object":
+				const choices = <string[]><any>property;
+
+				defaultValue = Math.max(choices.findIndex(choice => choice.startsWith(".")), 0);
+				tweakElement = createSelect(key, choices.map(choice => choice.startsWith(".") ? choice.slice(1) : choice), defaultValue, change);
 
 				break;
+
+			default:
+				throw Error(`invalid configuration for key "${key}"`);
 		}
 
-		tweakContainer.appendChild(document.createTextNode(" "));
-
-		options[key] = definition.default;
+		tweakContainer.appendChild(tweakElement);
+		tweak[key] = defaultValue;
 	}
 
-	return options;
+	return tweak;
 };
 
 const createCheckbox = (caption: string, value: number, change: (value: number) => void) => {
@@ -96,6 +77,7 @@ const createCheckbox = (caption: string, value: number, change: (value: number) 
 
 	container.appendChild(checkbox);
 	container.appendChild(document.createTextNode(caption));
+	container.className = 'container';
 
 	checkbox.checked = value !== 0;
 	checkbox.onchange = () => change(checkbox.checked ? 1 : 0);
@@ -107,15 +89,15 @@ const createCheckbox = (caption: string, value: number, change: (value: number) 
 const createSelect = (caption: string, choices: string[], value: number, change: (value: number) => void) => {
 	const container = document.createElement("span");
 	const select = document.createElement("select");
-	const submit = document.createElement("input");
 
-	container.appendChild(document.createTextNode(caption));
 	container.appendChild(select);
-	container.appendChild(submit);
 
-	submit.onclick = () => change(select.selectedIndex);
-	submit.type = "button";
-	submit.value = "OK";
+	if (caption !== "")
+		container.appendChild(document.createTextNode(caption));
+
+	container.className = 'container';
+
+	select.onchange = () => change(select.selectedIndex);
 
 	for (let i = 0; i < choices.length; ++i) {
 		const option = document.createElement("option");
@@ -138,7 +120,7 @@ const initialize = (processes: Process[]) => {
 	let tick: ((dt: number) => void) | undefined = undefined;
 	let time = new Date().getTime();
 
-	sceneContainer.appendChild(createSelect("Scene:", processes.map(p => p.name), 0, value => {
+	sceneContainer.appendChild(createSelect("", processes.map(p => p.name), 0, value => {
 		const process = processes[value];
 
 		tick = undefined;
@@ -158,13 +140,13 @@ const initialize = (processes: Process[]) => {
 	}, 30);
 };
 
-const prepare = <T>(name: string, scene: Scenario<T>) => {
-	let state: T;
+const prepare = <TConfiguration, TState>(name: string, scene: Scenario<TConfiguration, TState>) => {
+	let state: TState;
 
 	return {
 		name: name,
 		start: async () => {
-			state = await scene.prepare(configure(scene.definitions || {}));
+			state = await scene.prepare(configure(scene.configuration || <TConfiguration>{}));
 		},
 		tick: (dt: number) => {
 			scene.update(state, dt);
@@ -174,8 +156,19 @@ const prepare = <T>(name: string, scene: Scenario<T>) => {
 	};
 };
 
-const runtime = <T>(screenConstructor: RuntimeScreen<T>) => {
-	return new Runtime<T>(screenConstructor);
+const runtime = <T extends display.Screen>(screenConstructor: ScreenConstructor<T>) => {
+	const container = document.getElementById("screens");
+
+	if (container === null)
+		throw Error("missing screen container");
+
+	while (container.childNodes.length > 0)
+		container.removeChild(container.childNodes[0]);
+
+	return {
+		input: new controller.Input(container),
+		screen: new screenConstructor(container)
+	};
 };
 
-export { DefinitionType, OptionMap, initialize, prepare, runtime };
+export { Tweak, initialize, prepare, runtime };
