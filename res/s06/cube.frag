@@ -28,12 +28,6 @@ uniform bool useSpecular;
 vec3 getLight(in vec3 normal, in vec3 cameraDirection, in vec3 lightDirection) {
 	vec3 lightColor = vec3(0, 0, 0);
 
-	if (useAmbient) {
-		vec3 ambientColor = vec3(0.3, 0.3, 0.3);
-
-		lightColor += ambientColor;
-	}
-
 	if (useDiffuse) {
 		vec3 diffuseColor = vec3(0.6, 0.6, 0.6);
 		float diffusePower = max(dot(normal, lightDirection), 0.0);
@@ -69,6 +63,9 @@ vec3 getLight(in vec3 normal, in vec3 cameraDirection, in vec3 lightDirection) {
 void main(void) {
 	vec3 lightColor = vec3(0, 0, 0);
 	vec3 normal = normalize(vNormal);
+
+	if (useAmbient)
+		lightColor += vec3(0.3, 0.3, 0.3);
 
 	if (light0.enabled)
 		lightColor += getLight(normal, normalize(vCamera), normalize(light0.position - vPoint));
