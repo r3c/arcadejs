@@ -58,7 +58,7 @@ const prepare = async (options: application.OptionMap) => {
 		await io.readURL(io.StringFormat, "./res/s06/cube.frag")
 	);
 
-	const spotModel = await model.fromJSON("./res/s06/spot.json");
+	const spotModel = await model.fromJSON("./res/s04/cube.json", { scale: { xx: 0.1, yy: 0.1, zz: 0.1 } });
 	const spotShader = new webgl.Shader(
 		runtime.screen.context,
 		await io.readURL(io.StringFormat, "./res/s06/spot.vert"),
@@ -124,11 +124,11 @@ const render = (state: State) => {
 	const viewCube = view;
 
 	const viewSpot = view
-		.rotate({x: 0, y: 1, z: 0}, light.ry)
-		.rotate({x: 0, y: 0, z: 1}, light.rz)
-		.translate({x: 3, y: 0, z: 0});
+		.rotate({ x: 0, y: 1, z: 0 }, light.ry)
+		.rotate({ x: 0, y: 0, z: 1 }, light.rz)
+		.translate({ x: 3, y: 0, z: 0 });
 
-	const lightDirection = viewSpot.transform({x: 1, y: 0, z: 0, w: 0});
+	const lightDirection = viewSpot.transform({ x: 1, y: 0, z: 0, w: 0 });
 
 	renderer.clear();
 

@@ -184,8 +184,8 @@ const readPolygon = async (context: Context, end: number, chunk: number, state: 
 			for (let count = context.reader.readInt16u(); count > 0; --count) {
 				state.points.push({
 					x: context.reader.readFloat32(),
-					z: context.reader.readFloat32(),
-					y: context.reader.readFloat32()
+					y: context.reader.readFloat32(),
+					z: context.reader.readFloat32()
 				});
 			}
 

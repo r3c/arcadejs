@@ -107,9 +107,13 @@ class Renderer {
 
 	public constructor(gl: WebGLRenderingContext, quality: Quality = defaultQuality) {
 		gl.clearColor(0, 0, 0, 1);
-		gl.clearDepth(1.0);
-		gl.depthFunc(gl.LEQUAL);
+
+		gl.enable(gl.CULL_FACE);
+		gl.cullFace(gl.BACK);
+
 		gl.enable(gl.DEPTH_TEST);
+		gl.depthFunc(gl.LEQUAL);
+		gl.clearDepth(1.0);
 
 		this.defaultTexture = createTexture(gl, model.defaultMaterial.colorMap, quality);
 		this.gl = gl;
@@ -216,14 +220,13 @@ class Renderer {
 					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.coords, coord => [coord.x, coord.y])))
 					: undefined,
 				count: mesh.triangles.length * 3,
-				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.triangles, indices => [indices[0], indices[1], indices[2]]))),
+				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.triangles, indices => indices))),
 				material: material,
 				normals: mesh.normals !== undefined
 					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.normals, normal => [normal.x, normal.y, normal.z])))
 					: undefined,
 				points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, point => [point.x, point.y, point.z])))
 			});
-
 		}
 
 		return meshes;
