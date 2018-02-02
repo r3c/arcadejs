@@ -1,6 +1,13 @@
-import * as math from "../library/math";
-import * as render from "../library/render";
+import * as math from "../engine/math";
+import * as render from "../engine/render";
 import * as shared from "./shared";
+
+/*
+** What changed?
+** - New "camera" property in state to hold current camera position/rotation
+** - New "input" instance referenced to read mouse position and button presses
+** - Manually modified cube positions replaced by constant structure
+*/
 
 const state = {
 	camera : {
@@ -71,9 +78,11 @@ const draw = () => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	render.draw(screen, state.projection, view, render.Mode.Default, {
-		colors: new Array(positions.length).fill(0).map((v: any, i: number) => ({ x: (i / 2 * 37) % 128 + 128, y: (i * 61) % 128 + 128, z: (i * 89) % 128 + 128, w: 255 })),
-		positions: positions,
-		faces: faces
+		meshes: [{
+			colors: new Array(positions.length).fill(0).map((v, i) => ({ x: (i / 2 * 37) % 128 + 128, y: (i * 61) % 128 + 128, z: (i * 89) % 128 + 128, w: 255 })),
+			positions: positions,
+			faces: faces
+		}]
 	});
 };
 

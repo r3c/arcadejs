@@ -1,5 +1,5 @@
-import * as controller from "../library/controller";
-import * as display from "../library/display";
+import * as controller from "../engine/controller";
+import * as display from "../engine/display";
 
 const container = document.getElementById("render");
 

@@ -1,4 +1,5 @@
 import * as display from "./display";
+import * as graphic from "./graphic";
 import * as math from "./math";
 import { Vector4 } from "./math";
 
@@ -7,13 +8,6 @@ interface Image {
 	depths: Float32Array;
 	height: number;
 	width: number;
-}
-
-interface Mesh {
-	colors?: math.Vector4[];
-	faces: [number, number, number][];
-	normals?: math.Vector3[];
-	positions: math.Vector3[];
 }
 
 enum Mode {
@@ -130,7 +124,7 @@ const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, mode: Mo
 	}
 };
 
-const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mode: Mode, mesh: Mesh) => {
+const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.Matrix, mode: Mode, model: graphic.Model) => {
 	const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
 	const image = {
@@ -147,24 +141,26 @@ const draw = (screen: display.Screen, projection: math.Matrix, modelView: math.M
 
 	const modelViewProjection = projection.compose(modelView);
 
-	const colors = mesh.colors || [];
-	const coords = mesh.positions;
-	const faces = mesh.faces;
+	for (const mesh of model.meshes) {
+		const colors = mesh.colors || [];
+		const coords = mesh.positions;
+		const faces = mesh.faces;
 
-	for (const [i, j, k] of faces) {
-		const color1 = colors[i] || white;
-		const color2 = colors[j] || white;
-		const color3 = colors[k] || white;
-		const point1 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[i]);
-		const point2 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]);
-		const point3 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]);
+		for (const [i, j, k] of faces) {
+			const color1 = colors[i] || white;
+			const color2 = colors[j] || white;
+			const color3 = colors[k] || white;
+			const point1 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[i]);
+			const point2 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[j]);
+			const point3 = projectToScreen(modelViewProjection, halfWidth, halfHeight, coords[k]);
 
-		fillTriangle(image,
-			{ color: color1, point: point1 },
-			{ color: color2, point: point2 },
-			{ color: color3, point: point3 },
-			mode
-		);
+			fillTriangle(image,
+				{ color: color1, point: point1 },
+				{ color: color2, point: point2 },
+				{ color: color3, point: point3 },
+				mode
+			);
+		}
 	}
 
 	screen.context.putImageData(capture, 0, 0);
