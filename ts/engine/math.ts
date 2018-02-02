@@ -200,6 +200,13 @@ class Vector {
 		};
 	}
 
+	public static substract2(lhs: Vector2, rhs: Vector2) {
+		return {
+			x: lhs.x - rhs.x,
+			y: lhs.y - rhs.y
+		};
+	}
+
 	public static substract3(lhs: Vector3, rhs: Vector3) {
 		return {
 			x: lhs.x - rhs.x,

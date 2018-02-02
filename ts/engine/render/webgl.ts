@@ -19,17 +19,20 @@ interface Binding {
 	coords?: ShaderAttribute,
 	glossMap?: ShaderUniform<number>,
 	modelViewMatrix: ShaderUniform<number[]>,
+	normalMap?: ShaderUniform<number>,
 	normalMatrix?: ShaderUniform<number[]>,
 	normals?: ShaderAttribute,
 	points: ShaderAttribute,
 	projectionMatrix: ShaderUniform<number[]>,
-	shininess?: ShaderUniform<number>
+	shininess?: ShaderUniform<number>,
+	tangents?: ShaderAttribute
 }
 
 interface Material {
 	colorBase: number[],
 	colorMap: WebGLTexture,
 	glossMap: WebGLTexture,
+	normalMap: WebGLTexture,
 	shininess: number
 }
 
@@ -44,7 +47,8 @@ interface Mesh {
 	indices: WebGLBuffer,
 	material: Material,
 	normals: WebGLBuffer | undefined,
-	points: WebGLBuffer
+	points: WebGLBuffer,
+	tangents: WebGLBuffer | undefined
 }
 
 interface Quality {
@@ -158,6 +162,14 @@ class Renderer {
 				shader.setAttribute(binding.normals, mesh.normals);
 			}
 
+			// Bind face tangents if defined and supported
+			if (binding.tangents !== undefined) {
+				if (mesh.tangents === undefined)
+					throw invalidAttributeBinding("tangents");
+
+				shader.setAttribute(binding.tangents, mesh.tangents);
+			}
+
 			// Bind points vector
 			shader.setAttribute(binding.points, mesh.points);
 
@@ -172,6 +184,9 @@ class Renderer {
 
 			if (binding.glossMap !== undefined)
 				shader.setTexture(binding.glossMap, material.glossMap, textureIndex++);
+
+			if (binding.normalMap !== undefined)
+				shader.setTexture(binding.normalMap, material.normalMap, textureIndex++);
 
 			if (binding.normalMatrix !== undefined)
 				shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
@@ -206,6 +221,7 @@ class Renderer {
 						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
 						colorMap: createTexture(gl, definition.colorMap, this.quality),
 						glossMap: createTexture(gl, definition.glossMap, this.quality),
+						normalMap: createTexture(gl, definition.normalMap, this.quality),
 						shininess: definition.shininess
 					}
 				}
@@ -222,6 +238,7 @@ class Renderer {
 					],
 					colorMap: this.defaultTexture,
 					glossMap: this.defaultTexture,
+					normalMap: this.defaultTexture,
 					shininess: defaultMaterial.shininess
 				};
 			}
@@ -239,7 +256,10 @@ class Renderer {
 				normals: mesh.normals !== undefined
 					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.normals, normal => [normal.x, normal.y, normal.z])))
 					: undefined,
-				points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, point => [point.x, point.y, point.z])))
+				points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, point => [point.x, point.y, point.z]))),
+				tangents: mesh.tangents !== undefined
+					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.tangents, tangent => [tangent.x, tangent.y, tangent.z])))
+					: undefined
 			});
 		}
 

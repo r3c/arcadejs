@@ -4,6 +4,7 @@ interface Material {
 	colorBase: math.Vector4,
 	colorMap: ImageData,
 	glossMap: ImageData,
+	normalMap: ImageData,
 	shininess: number
 }
 
@@ -13,6 +14,7 @@ interface Mesh {
 	materialName?: string,
 	normals?: math.Vector3[],
 	points: math.Vector3[],
+	tangents?: math.Vector3[],
 	triangles: [number, number, number][]
 }
 

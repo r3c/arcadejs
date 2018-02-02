@@ -74,10 +74,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "ambient map");
 
-				const directory = path.directory(fileName);
-				const texture = path.combine(directory, fields[1]);
-
-				current.colorMap = await mesh.loadImage(texture);
+				current.colorMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -101,7 +98,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "normal map");
 
-				/*current.normalMap = */fields[1];
+				current.normalMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -121,6 +118,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 					colorBase: mesh.defaultColor,
 					colorMap: mesh.defaultMap,
 					glossMap: mesh.defaultMap,
+					normalMap: mesh.defaultMap,
 					shininess: 1
 				};
 

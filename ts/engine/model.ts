@@ -38,6 +38,7 @@ const defaultMaterial: mesh.Material = {
 	colorBase: mesh.defaultColor,
 	colorMap: mesh.defaultMap,
 	glossMap: mesh.defaultMap,
+	normalMap: mesh.defaultMap,
 	shininess: 1
 };
 
@@ -63,6 +64,42 @@ const computeNormals = (triangles: [number, number, number][], points: math.Vect
 	}
 
 	return normals;
+};
+
+/*
+** Based on:
+** http://fabiensanglard.net/bumpMapping/index.php
+*/
+const computeTangents = (triangles: [number, number, number][], points: math.Vector3[], coords: math.Vector2[]) => {
+	const tangents = [];
+
+	for (const [index1, index2, index3] of triangles) {
+		const coord1 = coords[index1];
+		const coord2 = coords[index2];
+		const coord3 = coords[index3];
+		const point1 = points[index1];
+		const point2 = points[index2];
+		const point3 = points[index3];
+
+		const c1 = math.Vector.substract2(coord3, coord2);
+		const c2 = math.Vector.substract2(coord1, coord2);
+		const p1 = math.Vector.substract3(point3, point2);
+		const p2 = math.Vector.substract3(point1, point2);
+
+		const coef = 1 / (c1.x * c2.y - c2.x * c1.y);
+
+		const tangent = math.Vector.normalize3({
+			x: coef * (p1.x * c2.y - p2.x * c1.y),
+			y: coef * (p1.y * c2.y - p2.y * c1.y),
+			z: coef * (p1.z * c2.y - p2.z * c1.y)
+		});
+
+		tangents[index1] = tangent;
+		tangents[index2] = tangent;
+		tangents[index3] = tangent;
+	}
+
+	return tangents;
 };
 
 const displaceVertex = (vertex: math.Vector3, scaleX: math.Vector3, scaleY: math.Vector3, scaleZ: math.Vector3, shift: math.Vector3) => {
@@ -91,12 +128,15 @@ const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config 
 
 		// Displace normals or compute them from vertices
 		if (mesh.normals !== undefined)
-			mesh.normals = mesh.normals.map(normal => displaceVertex(normal, scaleX, scaleY, scaleZ, shiftZero));
+			mesh.normals = mesh.normals.map(normal => math.Vector.normalize3(displaceVertex(normal, scaleX, scaleY, scaleZ, shiftZero)));
 		else
 			mesh.normals = computeNormals(mesh.triangles, mesh.points);
 
-		// Normalize normals
-		mesh.normals = mesh.normals.map(math.Vector.normalize3);
+		// Displace tangents or compute them from vertices and texture coordinates
+		if (mesh.tangents !== undefined)
+			mesh.tangents = mesh.tangents.map(tangent => math.Vector.normalize3(displaceVertex(tangent, scaleX, scaleY, scaleZ, shiftZero)));
+		else if (mesh.coords !== undefined)
+			mesh.tangents = computeTangents(mesh.triangles, mesh.points, mesh.coords);
 	}
 
 	return model;
