@@ -101,6 +101,9 @@ const toMaterial = async (name: string, instance: any, directory: string) => {
 		glossMap: instance.glossMap !== undefined
 			? await mesh.loadImage(toString(`${name}.glossMap`, path.combine(directory, instance.glossMap)))
 			: mesh.defaultMap,
+		heightMap: instance.heightMap !== undefined
+			? await mesh.loadImage(toString(`${name}.heightMap`, path.combine(directory, instance.heightMap)))
+			: mesh.defaultMap,
 		normalMap: instance.normalMap !== undefined
 			? await mesh.loadImage(toString(`${name}.normalMap`, path.combine(directory, instance.normalMap)))
 			: mesh.defaultMap,

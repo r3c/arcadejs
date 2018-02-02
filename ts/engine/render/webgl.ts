@@ -18,6 +18,7 @@ interface Binding {
 	colors?: ShaderAttribute,
 	coords?: ShaderAttribute,
 	glossMap?: ShaderUniform<number>,
+	heightMap?: ShaderUniform<number>,
 	modelViewMatrix: ShaderUniform<number[]>,
 	normalMap?: ShaderUniform<number>,
 	normalMatrix?: ShaderUniform<number[]>,
@@ -32,6 +33,7 @@ interface Material {
 	colorBase: number[],
 	colorMap: WebGLTexture,
 	glossMap: WebGLTexture,
+	heightMap: WebGLTexture,
 	normalMap: WebGLTexture,
 	shininess: number
 }
@@ -185,6 +187,9 @@ class Renderer {
 			if (binding.glossMap !== undefined)
 				shader.setTexture(binding.glossMap, material.glossMap, textureIndex++);
 
+			if (binding.heightMap !== undefined)
+				shader.setTexture(binding.heightMap, material.heightMap, textureIndex++);
+
 			if (binding.normalMap !== undefined)
 				shader.setTexture(binding.normalMap, material.normalMap, textureIndex++);
 
@@ -221,6 +226,7 @@ class Renderer {
 						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
 						colorMap: createTexture(gl, definition.colorMap, this.quality),
 						glossMap: createTexture(gl, definition.glossMap, this.quality),
+						heightMap: createTexture(gl, definition.heightMap, this.quality),
 						normalMap: createTexture(gl, definition.normalMap, this.quality),
 						shininess: definition.shininess
 					}
@@ -238,6 +244,7 @@ class Renderer {
 					],
 					colorMap: this.defaultTexture,
 					glossMap: this.defaultTexture,
+					heightMap: this.defaultTexture,
 					normalMap: this.defaultTexture,
 					shininess: defaultMaterial.shininess
 				};

@@ -79,6 +79,7 @@ const readEdit = async (context: Context, end: number, chunk: number, state: Mod
 					colorBase: mesh.defaultColor,
 					colorMap: mesh.defaultMap,
 					glossMap: mesh.defaultMap,
+					heightMap: mesh.defaultMap,
 					normalMap: mesh.defaultMap,
 					shininess: 1
 				},

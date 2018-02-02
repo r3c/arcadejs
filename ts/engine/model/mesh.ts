@@ -4,6 +4,7 @@ interface Material {
 	colorBase: math.Vector4,
 	colorMap: ImageData,
 	glossMap: ImageData,
+	heightMap: ImageData,
 	normalMap: ImageData,
 	shininess: number
 }

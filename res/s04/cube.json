@@ -3,6 +3,7 @@
 		"side": {
 			"colorMap": "cube-color.jpg",
 			"glossMap": "cube-gloss.jpg",
+			"heightMap": "cube-height.jpg",
 			"normalMap": "cube-normal.jpg",
 			"shininess": 100
 		}

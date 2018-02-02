@@ -18,7 +18,8 @@ interface Configuration {
 	useAmbient: boolean,
 	useDiffuse: boolean,
 	useSpecular: boolean,
-	useNormalMap: boolean
+	useNormalMap: boolean,
+	useHeightMap: boolean
 }
 
 interface State {
@@ -46,6 +47,7 @@ interface State {
 		move: number,
 		useAmbient: webgl.ShaderUniform<number>,
 		useDiffuse: webgl.ShaderUniform<number>,
+		useHeightMap: webgl.ShaderUniform<number>,
 		useNormalMap: webgl.ShaderUniform<number>,
 		useSpecular: webgl.ShaderUniform<number>
 	},
@@ -60,7 +62,8 @@ const configuration = {
 	useAmbient: true,
 	useDiffuse: false,
 	useSpecular: false,
-	useNormalMap: false
+	useNormalMap: false,
+	useHeightMap: false
 };
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
@@ -100,6 +103,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 				colorMap: cubeShader.declareUniformValue("colorMap", gl => gl.uniform1i),
 				coords: cubeShader.declareAttribute("coords", 2, float),
 				glossMap: cubeShader.declareUniformValue("glossMap", gl => gl.uniform1i),
+				heightMap: cubeShader.declareUniformValue("heightMap", gl => gl.uniform1i),
 				modelViewMatrix: cubeShader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
 				normalMap: cubeShader.declareUniformValue("normalMap", gl => gl.uniform1i),
 				normalMatrix: cubeShader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
@@ -128,6 +132,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			useAmbient: cubeShader.declareUniformValue("useAmbient", gl => gl.uniform1i),
 			useDiffuse: cubeShader.declareUniformValue("useDiffuse", gl => gl.uniform1i),
 			useNormalMap: cubeShader.declareUniformValue("useNormalMap", gl => gl.uniform1i),
+			useHeightMap: cubeShader.declareUniformValue("useHeightMap", gl => gl.uniform1i),
 			useSpecular: cubeShader.declareUniformValue("useSpecular", gl => gl.uniform1i)
 		},
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
@@ -166,6 +171,7 @@ const render = (state: State) => {
 
 	state.drawCube.shader.setUniform(light.useAmbient, state.tweak.useAmbient);
 	state.drawCube.shader.setUniform(light.useDiffuse, state.tweak.useDiffuse);
+	state.drawCube.shader.setUniform(light.useHeightMap, state.tweak.useHeightMap);
 	state.drawCube.shader.setUniform(light.useNormalMap, state.tweak.useNormalMap);
 	state.drawCube.shader.setUniform(light.useSpecular, state.tweak.useSpecular);
 

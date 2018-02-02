@@ -118,6 +118,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 					colorBase: mesh.defaultColor,
 					colorMap: mesh.defaultMap,
 					glossMap: mesh.defaultMap,
+					heightMap: mesh.defaultMap,
 					normalMap: mesh.defaultMap,
 					shininess: 1
 				};
