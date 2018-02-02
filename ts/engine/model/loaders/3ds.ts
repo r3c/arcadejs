@@ -77,7 +77,9 @@ const readEdit = async (context: Context, end: number, chunk: number, state: Mod
 			const { material, name } = await scan(context, end, readMaterial, {
 				material: {
 					colorBase: mesh.defaultColor,
-					colorMap: mesh.defaultMap
+					colorMap: mesh.defaultMap,
+					glossMap: mesh.defaultMap,
+					shininess: 1
 				},
 				name: ""
 			});
@@ -118,9 +120,8 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa040: // Shininess
-			break;
+			state.material.shininess = context.reader.readInt16u();
 
-		case 0xa041: // Shininess strength
 			break;
 
 		case 0xa200: // Texture 1
@@ -135,6 +136,8 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa33c: // Gloss map
+			state.material.glossMap = await scan(context, end, readMaterialMap, mesh.defaultMap);
+
 			break;
 	}
 

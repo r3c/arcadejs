@@ -36,7 +36,9 @@ interface Shift {
 
 const defaultMaterial: mesh.Material = {
 	colorBase: mesh.defaultColor,
-	colorMap: mesh.defaultMap
+	colorMap: mesh.defaultMap,
+	glossMap: mesh.defaultMap,
+	shininess: 1
 };
 
 /*

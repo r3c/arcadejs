@@ -95,13 +95,14 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			binding: {
 				colorBase: cubeShader.declareUniformValue("colorBase", gl => gl.uniform4fv),
 				colorMap: cubeShader.declareUniformValue("colorMap", gl => gl.uniform1i),
-				colors: cubeShader.declareAttribute("color", 4, float),
 				coords: cubeShader.declareAttribute("coord", 2, float),
+				glossMap: cubeShader.declareUniformValue("glossMap", gl => gl.uniform1i),
 				modelViewMatrix: cubeShader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
 				normalMatrix: cubeShader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
 				normals: cubeShader.declareAttribute("normal", 3, float),
 				points: cubeShader.declareAttribute("point", 3, float),
-				projectionMatrix: cubeShader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
+				projectionMatrix: cubeShader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
+				shininess: cubeShader.declareUniformValue("shininess", gl => gl.uniform1f)
 			},
 			meshes: renderer.load(cubeModel),
 			shader: cubeShader

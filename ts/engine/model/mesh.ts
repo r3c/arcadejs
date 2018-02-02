@@ -2,7 +2,9 @@ import * as math from "../math";
 
 interface Material {
 	colorBase: math.Vector4,
-	colorMap: ImageData
+	colorMap: ImageData,
+	glossMap: ImageData,
+	shininess: number
 }
 
 interface Mesh {

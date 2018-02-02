@@ -97,7 +97,13 @@ const toMaterial = async (name: string, instance: any, directory: string) => {
 			: mesh.defaultColor,
 		colorMap: instance.colorMap !== undefined
 			? await mesh.loadImage(toString(`${name}.colorMap`, path.combine(directory, instance.colorMap)))
-			: mesh.defaultMap
+			: mesh.defaultMap,
+		glossMap: instance.glossMap !== undefined
+			? await mesh.loadImage(toString(`${name}.glossMap`, path.combine(directory, instance.glossMap)))
+			: mesh.defaultMap,
+		shininess: instance.shininess !== undefined
+			? toInteger(`${name}.shininess`, instance.shininess)
+			: 1
 	};
 };
 

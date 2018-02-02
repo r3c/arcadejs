@@ -1,7 +1,9 @@
 {
 	"materials": {
 		"side": {
-			"colorMap": "cube-ambient.jpg"
+			"colorMap": "cube-color.jpg",
+			"glossMap": "cube-gloss.jpg",
+			"shininess": 100
 		}
 	},
 	"meshes": [

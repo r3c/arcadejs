@@ -17,16 +17,20 @@ interface Binding {
 	colorMap?: ShaderUniform<number>,
 	colors?: ShaderAttribute,
 	coords?: ShaderAttribute,
+	glossMap?: ShaderUniform<number>,
 	modelViewMatrix: ShaderUniform<number[]>,
 	normalMatrix?: ShaderUniform<number[]>,
 	normals?: ShaderAttribute,
 	points: ShaderAttribute,
-	projectionMatrix: ShaderUniform<number[]>
+	projectionMatrix: ShaderUniform<number[]>,
+	shininess?: ShaderUniform<number>
 }
 
 interface Material {
 	colorBase: number[],
-	colorMap: WebGLTexture
+	colorMap: WebGLTexture,
+	glossMap: WebGLTexture,
+	shininess: number
 }
 
 interface MaterialMap {
@@ -157,17 +161,23 @@ class Renderer {
 			// Bind points vector
 			shader.setAttribute(binding.points, mesh.points);
 
-			// Bind color map texture if defined and supported
-			if (binding.colorMap !== undefined)
-				shader.setTexture(binding.colorMap, material.colorMap, 0);
+			// Bind known uniforms if supported
+			let textureIndex = 0;
 
-			// Set base color uniform
+			if (binding.colorMap !== undefined)
+				shader.setTexture(binding.colorMap, material.colorMap, textureIndex++);
+
 			if (binding.colorBase !== undefined)
 				shader.setUniform(binding.colorBase, material.colorBase);
 
-			// Set matrix uniforms
+			if (binding.glossMap !== undefined)
+				shader.setTexture(binding.glossMap, material.glossMap, textureIndex++);
+
 			if (binding.normalMatrix !== undefined)
 				shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
+
+			if (binding.shininess !== undefined)
+				shader.setUniform(binding.shininess, material.shininess);
 
 			shader.setUniform(binding.modelViewMatrix, modelView.getValues());
 			shader.setUniform(binding.projectionMatrix, projection.getValues());
@@ -194,7 +204,9 @@ class Renderer {
 
 					materials[name] = {
 						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
-						colorMap: createTexture(gl, definition.colorMap, this.quality)
+						colorMap: createTexture(gl, definition.colorMap, this.quality),
+						glossMap: createTexture(gl, definition.glossMap, this.quality),
+						shininess: definition.shininess
 					}
 				}
 
@@ -208,7 +220,9 @@ class Renderer {
 						defaultMaterial.colorBase.z,
 						defaultMaterial.colorBase.w
 					],
-					colorMap: this.defaultTexture
+					colorMap: this.defaultTexture,
+					glossMap: this.defaultTexture,
+					shininess: defaultMaterial.shininess
 				};
 			}
 

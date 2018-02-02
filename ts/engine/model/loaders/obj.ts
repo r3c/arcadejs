@@ -109,7 +109,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "shininess");
 
-				/*current.specularGloss = */parseFloat(fields[1]);
+				current.shininess = parseFloat(fields[1]);
 
 				break;
 
@@ -119,7 +119,9 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 				const material = {
 					colorBase: mesh.defaultColor,
-					colorMap: mesh.defaultMap
+					colorMap: mesh.defaultMap,
+					glossMap: mesh.defaultMap,
+					shininess: 1
 				};
 
 				materials[fields[1]] = material;
