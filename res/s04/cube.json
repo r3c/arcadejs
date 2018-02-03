@@ -1,10 +1,10 @@
 {
 	"materials": {
 		"side": {
-			"colorMap": "cube-color.jpg",
-			"glossMap": "cube-gloss.jpg",
+			"ambientMap": "cube-ambient.jpg",
 			"heightMap": "cube-height.jpg",
 			"normalMap": "cube-normal.jpg",
+			"reflectionMap": "cube-reflection.jpg",
 			"shininess": 100
 		}
 	},

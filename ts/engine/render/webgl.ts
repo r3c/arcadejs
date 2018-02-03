@@ -1,6 +1,6 @@
+import * as functional from "../type/functional";
 import * as math from "../math";
 import * as model from "../model";
-import { defaultMap } from "../model/mesh";
 
 interface ShaderAttribute {
 	location: number,
@@ -13,11 +13,12 @@ type ShaderUniformValue<T> = (location: WebGLUniformLocation, value: T) => void;
 type ShaderUniform<T> = (gl: WebGLRenderingContext, value: T) => void;
 
 interface Binding {
-	colorBase?: ShaderUniform<number[]>,
-	colorMap?: ShaderUniform<number>,
+	ambientColor?: ShaderUniform<number[]>,
+	ambientMap?: ShaderUniform<number>,
 	colors?: ShaderAttribute,
 	coords?: ShaderAttribute,
-	glossMap?: ShaderUniform<number>,
+	diffuseColor?: ShaderUniform<number[]>,
+	diffuseMap?: ShaderUniform<number>,
 	heightMap?: ShaderUniform<number>,
 	modelViewMatrix: ShaderUniform<number[]>,
 	normalMap?: ShaderUniform<number>,
@@ -25,17 +26,24 @@ interface Binding {
 	normals?: ShaderAttribute,
 	points: ShaderAttribute,
 	projectionMatrix: ShaderUniform<number[]>,
+	reflectionMap?: ShaderUniform<number>,
 	shininess?: ShaderUniform<number>,
+	specularColor?: ShaderUniform<number[]>,
+	specularMap?: ShaderUniform<number>,
 	tangents?: ShaderAttribute
 }
 
 interface Material {
-	colorBase: number[],
-	colorMap: WebGLTexture,
-	glossMap: WebGLTexture,
+	ambientColor: number[],
+	ambientMap: WebGLTexture,
+	diffuseColor: number[],
+	diffuseMap: WebGLTexture,
 	heightMap: WebGLTexture,
 	normalMap: WebGLTexture,
-	shininess: number
+	reflectionMap: WebGLTexture,
+	shininess: number,
+	specularColor: number[],
+	specularMap: WebGLTexture
 }
 
 interface MaterialMap {
@@ -58,12 +66,19 @@ interface Quality {
 	textureMipmapLinear: boolean
 }
 
-const defaultMaterial = model.defaultMaterial;
+const defaultColor = {
+	x: 1,
+	y: 1,
+	z: 1,
+	w: 1
+};
 
 const defaultQuality = {
 	textureElementLinear: true,
 	textureMipmapLinear: false
 };
+
+const defaultShininess = 1;
 
 const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
 	const buffer = gl.createBuffer();
@@ -102,20 +117,23 @@ const createTexture = (gl: WebGLRenderingContext, image: ImageData, quality: Qua
 	return texture;
 };
 
-const flatMap = <T, U>(items: T[], convert: (item: T) => U[]) => {
-	return new Array<U>().concat(...items.map(convert));
-};
-
 const invalidAttributeBinding = (name: string) => {
 	return Error(`cannot draw a mesh with no ${name} attribute when shader expects one`);
 };
 
+const toArray2 = (input: math.Vector2) => [input.x, input.y];
+const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
+const toArray4 = (input: math.Vector4) => [input.x, input.y, input.z, input.w];
+const toArrayBuffer = <T, U>(constructor: { new(items: number[]): T }, items: U[], toArray: (input: U) => number[]) => new constructor(functional.flatten(items.map(toArray)));
+
 class Renderer {
-	private readonly defaultTexture: WebGLTexture;
+	private readonly defaultMap: WebGLTexture;
 	private readonly gl: WebGLRenderingContext;
 	private readonly quality: Quality;
 
 	public constructor(gl: WebGLRenderingContext, quality: Quality = defaultQuality) {
+		const blankImage = new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1);
+
 		gl.clearColor(0, 0, 0, 1);
 
 		gl.enable(gl.CULL_FACE);
@@ -125,7 +143,7 @@ class Renderer {
 		gl.depthFunc(gl.LEQUAL);
 		gl.clearDepth(1.0);
 
-		this.defaultTexture = createTexture(gl, model.defaultMaterial.colorMap, quality);
+		this.defaultMap = createTexture(gl, blankImage, quality);
 		this.gl = gl;
 		this.quality = quality;
 	}
@@ -178,14 +196,17 @@ class Renderer {
 			// Bind known uniforms if supported
 			let textureIndex = 0;
 
-			if (binding.colorMap !== undefined)
-				shader.setTexture(binding.colorMap, material.colorMap, textureIndex++);
+			if (binding.ambientColor !== undefined)
+				shader.setUniform(binding.ambientColor, material.ambientColor);
 
-			if (binding.colorBase !== undefined)
-				shader.setUniform(binding.colorBase, material.colorBase);
+			if (binding.ambientMap !== undefined)
+				shader.setTexture(binding.ambientMap, material.ambientMap, textureIndex++);
 
-			if (binding.glossMap !== undefined)
-				shader.setTexture(binding.glossMap, material.glossMap, textureIndex++);
+			if (binding.diffuseColor !== undefined)
+				shader.setUniform(binding.diffuseColor, material.diffuseColor);
+
+			if (binding.diffuseMap !== undefined)
+				shader.setTexture(binding.diffuseMap, material.diffuseMap, textureIndex++);
 
 			if (binding.heightMap !== undefined)
 				shader.setTexture(binding.heightMap, material.heightMap, textureIndex++);
@@ -196,8 +217,17 @@ class Renderer {
 			if (binding.normalMatrix !== undefined)
 				shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
 
+			if (binding.reflectionMap !== undefined)
+				shader.setTexture(binding.reflectionMap, material.reflectionMap, textureIndex++);
+
 			if (binding.shininess !== undefined)
 				shader.setUniform(binding.shininess, material.shininess);
+
+			if (binding.specularColor !== undefined)
+				shader.setUniform(binding.specularColor, material.specularColor);
+
+			if (binding.specularMap !== undefined)
+				shader.setTexture(binding.specularMap, material.specularMap, textureIndex++);
 
 			shader.setUniform(binding.modelViewMatrix, modelView.getValues());
 			shader.setUniform(binding.projectionMatrix, projection.getValues());
@@ -222,13 +252,36 @@ class Renderer {
 				if (materials[name] === undefined) {
 					const definition = definitions[name];
 
+					const ambientColor = definition.ambientColor || defaultColor;
+					const ambientMap = definition.ambientMap !== undefined
+						? createTexture(gl, definition.ambientMap, this.quality)
+						: this.defaultMap;
+					const diffuseColor = definition.diffuseColor || ambientColor;
+					const diffuseMap = definition.diffuseMap !== undefined
+						? createTexture(gl, definition.diffuseMap, this.quality)
+						: ambientMap;
+					const specularColor = definition.specularColor || diffuseColor;
+					const specularMap = definition.specularMap !== undefined
+						? createTexture(gl, definition.specularMap, this.quality)
+						: diffuseMap;
+
 					materials[name] = {
-						colorBase: [definition.colorBase.x, definition.colorBase.y, definition.colorBase.z, definition.colorBase.w],
-						colorMap: createTexture(gl, definition.colorMap, this.quality),
-						glossMap: createTexture(gl, definition.glossMap, this.quality),
-						heightMap: createTexture(gl, definition.heightMap, this.quality),
-						normalMap: createTexture(gl, definition.normalMap, this.quality),
-						shininess: definition.shininess
+						ambientColor: toArray4(ambientColor),
+						ambientMap: ambientMap,
+						diffuseColor: toArray4(diffuseColor),
+						diffuseMap: diffuseMap,
+						heightMap: definition.heightMap !== undefined
+							? createTexture(gl, definition.heightMap, this.quality)
+							: this.defaultMap,
+						normalMap: definition.normalMap !== undefined
+							? createTexture(gl, definition.normalMap, this.quality)
+							: this.defaultMap,
+						reflectionMap: definition.reflectionMap !== undefined
+							? createTexture(gl, definition.reflectionMap, this.quality)
+							: this.defaultMap,
+						shininess: functional.coalesce(definition.shininess, defaultShininess),
+						specularColor: toArray4(specularColor),
+						specularMap: specularMap
 					}
 				}
 
@@ -236,36 +289,35 @@ class Renderer {
 			}
 			else {
 				material = {
-					colorBase: [
-						defaultMaterial.colorBase.x,
-						defaultMaterial.colorBase.y,
-						defaultMaterial.colorBase.z,
-						defaultMaterial.colorBase.w
-					],
-					colorMap: this.defaultTexture,
-					glossMap: this.defaultTexture,
-					heightMap: this.defaultTexture,
-					normalMap: this.defaultTexture,
-					shininess: defaultMaterial.shininess
+					ambientColor: toArray4(defaultColor),
+					ambientMap: this.defaultMap,
+					diffuseColor: toArray4(defaultColor),
+					diffuseMap: this.defaultMap,
+					heightMap: this.defaultMap,
+					normalMap: this.defaultMap,
+					reflectionMap: this.defaultMap,
+					shininess: defaultShininess,
+					specularColor: toArray4(defaultColor),
+					specularMap: this.defaultMap
 				};
 			}
 
 			meshes.push({
 				colors: mesh.colors !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.colors, color => [color.x, color.y, color.z, color.w])))
+					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.colors, toArray4))
 					: undefined,
 				coords: mesh.coords !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.coords, coord => [coord.x, coord.y])))
+					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.coords, toArray2))
 					: undefined,
 				count: mesh.triangles.length * 3,
-				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(flatMap(mesh.triangles, indices => indices))),
+				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, toArrayBuffer(Uint16Array, mesh.triangles, indices => indices)),
 				material: material,
 				normals: mesh.normals !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.normals, normal => [normal.x, normal.y, normal.z])))
+					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.normals, toArray3))
 					: undefined,
-				points: createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.points, point => [point.x, point.y, point.z]))),
+				points: createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.points, toArray3)),
 				tangents: mesh.tangents !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, new Float32Array(flatMap(mesh.tangents, tangent => [tangent.x, tangent.y, tangent.z])))
+					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.tangents, toArray3))
 					: undefined
 			});
 		}

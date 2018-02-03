@@ -8,12 +8,16 @@ struct Light
 	vec3 position;
 };
 
-uniform vec4 colorBase;
-uniform sampler2D colorMap;
-uniform sampler2D glossMap;
+uniform vec4 ambientColor;
+uniform sampler2D ambientMap;
+uniform vec4 diffuseColor;
+uniform sampler2D diffuseMap;
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
+uniform sampler2D reflectionMap;
 uniform float shininess;
+uniform vec4 specularColor;
+uniform sampler2D specularMap;
 
 uniform Light light0;
 uniform Light light1;
@@ -37,7 +41,7 @@ varying vec3 light2direction;
 vec2 getCoord(in vec2 initialCoord, in vec3 cameraDirection, float parallaxScale, float parallaxBias) {
 	float parallaxHeight = texture2D(heightMap, initialCoord).r;
 
-	return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * cameraDirection.xy;
+	return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * cameraDirection.xy / cameraDirection.z;
 }
 
 vec3 getLight(in vec2 coord, in vec3 normal, in vec3 cameraDirection, in vec3 lightDirection) {
@@ -45,10 +49,10 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 cameraDirection, in vec3 li
 
 	if (useDiffuse) {
 		vec3 diffuseLight = vec3(0.6, 0.6, 0.6);
-		vec3 diffuseMaterial = texture2D(colorMap, coord).rgb; // FIXME: should use diffuseMap here
+		vec3 diffuseMaterial = texture2D(diffuseMap, coord).rgb;
 		float diffusePower = max(dot(normal, lightDirection), 0.0);
 
-		lightColor += diffuseLight * diffuseMaterial * diffusePower;
+		lightColor += diffuseColor.rgb * diffuseLight * diffuseMaterial * diffusePower;
 	}
 
 	if (useSpecular) {
@@ -68,10 +72,10 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 cameraDirection, in vec3 li
 		}
 
 		vec3 specularLight = vec3(1.0, 1.0, 1.0);
-		vec3 specularMaterial = texture2D(colorMap, coord).rgb; // FIXME: should use specularMap here
-		float specularPower = pow(specularCosine, shininess) * texture2D(glossMap, coord).r;
+		vec3 specularMaterial = texture2D(specularMap, coord).rgb;
+		float specularPower = pow(specularCosine, shininess) * texture2D(reflectionMap, coord).r;
 
-		lightColor += specularLight * specularMaterial * specularPower;
+		lightColor += specularColor.rgb * specularLight * specularMaterial * specularPower;
 	}
 
 	return lightColor;
@@ -84,7 +88,7 @@ void main(void) {
 	vec2 mapCoord;
 
 	if (useHeightMap)
-		mapCoord = getCoord(coord, cameraDirection, 0.04, 0.03);
+		mapCoord = getCoord(coord, cameraDirection, 0.04, 0.02);
 	else
 		mapCoord = coord;
 
@@ -94,7 +98,7 @@ void main(void) {
 		lightNormal = normalize(normal);
 
 	if (useAmbient)
-		lightColor += vec3(0.3, 0.3, 0.3) * colorBase.rgb * texture2D(colorMap, mapCoord).rgb;
+		lightColor += vec3(0.3, 0.3, 0.3) * ambientColor.rgb * texture2D(ambientMap, mapCoord).rgb;
 
 	if (light0.enabled)
 		lightColor += getLight(mapCoord, lightNormal, cameraDirection, normalize(light0direction));
@@ -105,5 +109,5 @@ void main(void) {
 	if (light2.enabled)
 		lightColor += getLight(mapCoord, lightNormal, cameraDirection, normalize(light2direction));
 
-	gl_FragColor = vec4(lightColor, colorBase.a); // FIXME: alpha shouldn't be used here
+	gl_FragColor = vec4(lightColor, ambientColor.a); // FIXME: alpha shouldn't be used here
 }

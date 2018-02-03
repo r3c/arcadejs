@@ -35,11 +35,11 @@ const fsSource = `
 	varying highp vec4 vColor;
 	varying highp vec2 vCoord;
 
-	uniform highp vec4 colorBase;
-	uniform sampler2D colorMap;
+	uniform highp vec4 ambientColor;
+	uniform sampler2D ambientMap;
 
 	void main(void) {
-		gl_FragColor = vColor * colorBase * texture2D(colorMap, vCoord);
+		gl_FragColor = vColor * ambientColor * texture2D(ambientMap, vCoord);
 	}
 `;
 
@@ -72,8 +72,8 @@ const prepare = async () => {
 		},
 		draw: {
 			binding: {
-				colorBase: shader.declareUniformValue("colorBase", gl => gl.uniform4fv),
-				colorMap: shader.declareUniformValue("colorMap", gl => gl.uniform1i),
+				ambientColor: shader.declareUniformValue("ambientColor", gl => gl.uniform4fv),
+				ambientMap: shader.declareUniformValue("ambientMap", gl => gl.uniform1i),
 				colors: shader.declareAttribute("color", 4, float),
 				coords: shader.declareAttribute("coord", 2, float),
 				modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),

@@ -1,4 +1,5 @@
 import * as display from "../display";
+import * as functional from "../type/functional";
 import * as math from "../math";
 import * as model from "../model";
 
@@ -15,7 +16,7 @@ interface Image {
 }
 
 interface Material {
-	colorMap: ImageData
+	ambientMap?: ImageData
 }
 
 interface Mesh {
@@ -45,8 +46,6 @@ const defaultCoord = {
 	y: 0
 };
 
-const defaultMaterial = model.defaultMaterial;
-
 const lerpScalar = (min: number, max: number, ratio: number) => {
 	return min + (max - min) * ratio;
 };
@@ -67,7 +66,7 @@ const lerpVector4 = (min: math.Vector4, max: math.Vector4, ratio: number) => {
 	}
 };
 
-const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, material: Material | undefined) => {
+const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, material: Material) => {
 	if (y < 0 || y >= image.height)
 		return;
 
@@ -111,9 +110,9 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 		const colorIndex = depthIndex * 4;
 
 		// Ambient map
-		if (material !== undefined && material.colorMap !== undefined) {
+		if (material.ambientMap !== undefined) {
 			const coord = lerpVector2(begin.coord, end.coord, ratio);
-			const image = material.colorMap;
+			const image = material.ambientMap;
 
 			const x = ~~(coord.x * image.width) % image.width;
 			const y = ~~(coord.y * image.height) % image.height;
@@ -137,7 +136,7 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 /*
 ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
 */
-const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material: Material | undefined) => {
+const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material: Material) => {
 	// Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
 	if (v1.point.y > v2.point.y)
 		[v1, v2] = [v2, v1];
@@ -333,17 +332,10 @@ class Renderer {
 		for (const mesh of model.meshes) {
 			const name = mesh.materialName;
 
-			let material: Material;
-
-			if (name !== undefined && materials[name] !== undefined)
-				material = materials[name];
-			else
-				material = defaultMaterial;
-
 			meshes.push({
 				colors: mesh.colors,
 				coords: mesh.coords,
-				material: material,
+				material: name !== undefined ? functional.coalesce(materials[name], {}) : {},
 				normals: mesh.normals,
 				points: mesh.points,
 				triangles: mesh.triangles

@@ -99,10 +99,11 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		},
 		drawCube: {
 			binding: {
-				colorBase: cubeShader.declareUniformValue("colorBase", gl => gl.uniform4fv),
-				colorMap: cubeShader.declareUniformValue("colorMap", gl => gl.uniform1i),
+				ambientColor: cubeShader.declareUniformValue("ambientColor", gl => gl.uniform4fv),
+				ambientMap: cubeShader.declareUniformValue("ambientMap", gl => gl.uniform1i),
 				coords: cubeShader.declareAttribute("coords", 2, float),
-				glossMap: cubeShader.declareUniformValue("glossMap", gl => gl.uniform1i),
+				diffuseColor: cubeShader.declareUniformValue("diffuseColor", gl => gl.uniform4fv),
+				diffuseMap: cubeShader.declareUniformValue("diffuseMap", gl => gl.uniform1i),
 				heightMap: cubeShader.declareUniformValue("heightMap", gl => gl.uniform1i),
 				modelViewMatrix: cubeShader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
 				normalMap: cubeShader.declareUniformValue("normalMap", gl => gl.uniform1i),
@@ -110,7 +111,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 				normals: cubeShader.declareAttribute("normals", 3, float),
 				points: cubeShader.declareAttribute("points", 3, float),
 				projectionMatrix: cubeShader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
+				reflectionMap: cubeShader.declareUniformValue("reflectionMap", gl => gl.uniform1i),
 				shininess: cubeShader.declareUniformValue("shininess", gl => gl.uniform1f),
+				specularColor: cubeShader.declareUniformValue("specularColor", gl => gl.uniform4fv),
+				specularMap: cubeShader.declareUniformValue("specularMap", gl => gl.uniform1i),
 				tangents: cubeShader.declareAttribute("tangents", 3, float)
 			},
 			meshes: renderer.load(cubeModel),

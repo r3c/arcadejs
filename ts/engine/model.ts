@@ -1,9 +1,9 @@
+import * as functional from "./type/functional";
 import * as io from "./io";
 import * as json from "./model/loaders/json";
 import * as math from "./math";
 import * as mesh from "./model/mesh";
 import * as obj from "./model/loaders/obj";
-import * as scalar from "./type/scalar";
 import * as tds from "./model/loaders/3ds";
 
 interface Config {
@@ -33,15 +33,6 @@ interface Shift {
 	y?: number,
 	z?: number
 }
-
-const defaultMaterial: mesh.Material = {
-	colorBase: mesh.defaultColor,
-	colorMap: mesh.defaultMap,
-	glossMap: mesh.defaultMap,
-	heightMap: mesh.defaultMap,
-	normalMap: mesh.defaultMap,
-	shininess: 1
-};
 
 /*
 ** Based on:
@@ -117,11 +108,11 @@ const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config 
 
 	for (const mesh of model.meshes) {
 		const scale = config.scale || {};
-		const scaleX = { x: scalar.coalesce(scale.xx, 1), y: scalar.coalesce(scale.xy, 0), z: scalar.coalesce(scale.xz, 0) };
-		const scaleY = { x: scalar.coalesce(scale.yx, 0), y: scalar.coalesce(scale.yy, 1), z: scalar.coalesce(scale.yz, 0) };
-		const scaleZ = { x: scalar.coalesce(scale.zx, 0), y: scalar.coalesce(scale.zy, 0), z: scalar.coalesce(scale.zz, 1) };
+		const scaleX = { x: functional.coalesce(scale.xx, 1), y: functional.coalesce(scale.xy, 0), z: functional.coalesce(scale.xz, 0) };
+		const scaleY = { x: functional.coalesce(scale.yx, 0), y: functional.coalesce(scale.yy, 1), z: functional.coalesce(scale.yz, 0) };
+		const scaleZ = { x: functional.coalesce(scale.zx, 0), y: functional.coalesce(scale.zy, 0), z: functional.coalesce(scale.zz, 1) };
 		const shift = config.shift || {};
-		const shiftVector = { x: scalar.coalesce(shift.x, 0), y: scalar.coalesce(shift.y, 0), z: scalar.coalesce(shift.z, 0) };
+		const shiftVector = { x: functional.coalesce(shift.x, 0), y: functional.coalesce(shift.y, 0), z: functional.coalesce(shift.z, 0) };
 		const shiftZero = { x: 0, y: 0, z: 0 };
 
 		// Displace points
@@ -155,4 +146,4 @@ const fromOBJ = (url: string, config?: Config) => {
 	return finalize(obj.load(url), config);
 };
 
-export { Model, defaultMaterial, from3DS, fromJSON, fromOBJ };
+export { Model, from3DS, fromJSON, fromOBJ };

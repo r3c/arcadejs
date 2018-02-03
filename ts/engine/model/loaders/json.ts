@@ -87,26 +87,26 @@ const toMapOf = async <T>(name: string, instance: any, converter: (name: string,
 	return map;
 };
 
-const toMaterial = async (name: string, instance: any, directory: string) => {
+const toMaterial = async (name: string, instance: any, directory: string): Promise<mesh.Material> => {
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "material");
 
 	return {
-		colorBase: instance.colorBase !== undefined
-			? toColor(`${name}.colorBase`, instance.colorBase)
+		ambientColor: instance.ambientColor !== undefined
+			? toColor(`${name}.ambientColor`, instance.ambientColor)
 			: mesh.defaultColor,
-		colorMap: instance.colorMap !== undefined
-			? await mesh.loadImage(toString(`${name}.colorMap`, path.combine(directory, instance.colorMap)))
-			: mesh.defaultMap,
-		glossMap: instance.glossMap !== undefined
-			? await mesh.loadImage(toString(`${name}.glossMap`, path.combine(directory, instance.glossMap)))
-			: mesh.defaultMap,
+		ambientMap: instance.ambientMap !== undefined
+			? await mesh.loadImage(toString(`${name}.ambientMap`, path.combine(directory, instance.ambientMap)))
+			: undefined,
 		heightMap: instance.heightMap !== undefined
 			? await mesh.loadImage(toString(`${name}.heightMap`, path.combine(directory, instance.heightMap)))
-			: mesh.defaultMap,
+			: undefined,
 		normalMap: instance.normalMap !== undefined
 			? await mesh.loadImage(toString(`${name}.normalMap`, path.combine(directory, instance.normalMap)))
-			: mesh.defaultMap,
+			: undefined,
+		reflectionMap: instance.reflectionMap !== undefined
+			? await mesh.loadImage(toString(`${name}.reflectionMap`, path.combine(directory, instance.reflectionMap)))
+			: undefined,
 		shininess: instance.shininess !== undefined
 			? toInteger(`${name}.shininess`, instance.shininess)
 			: 1

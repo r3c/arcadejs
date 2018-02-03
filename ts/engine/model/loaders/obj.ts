@@ -41,7 +41,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 4 || current === undefined)
 					throw invalidLine(fileName, line, "ambient color");
 
-				current.colorBase = parseVector4(fields);
+				current.ambientColor = parseVector4(fields);
 
 				break;
 
@@ -49,7 +49,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 4 || current === undefined)
 					throw invalidLine(fileName, line, "diffuse color");
 
-				/*current.diffuseColor = */parseVector4(fields);
+				current.diffuseColor = parseVector4(fields);
 
 				break;
 
@@ -58,7 +58,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 4 || current === undefined)
 					throw invalidLine(fileName, line, "specular color");
 
-				/*current.specularColor = */parseVector4(fields);
+				current.specularColor = parseVector4(fields);
 
 				break;
 
@@ -74,7 +74,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "ambient map");
 
-				current.colorMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.ambientMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -82,7 +82,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "diffuse map");
 
-				/*current.diffuseMap = */fields[1];
+				current.diffuseMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -90,7 +90,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "specular map");
 
-				/*current.specularMap = */fields[1];
+				current.reflectionMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -114,14 +114,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2)
 					throw invalidLine(fileName, line, "material");
 
-				const material = {
-					colorBase: mesh.defaultColor,
-					colorMap: mesh.defaultMap,
-					glossMap: mesh.defaultMap,
-					heightMap: mesh.defaultMap,
-					normalMap: mesh.defaultMap,
-					shininess: 1
-				};
+				const material = {};
 
 				materials[fields[1]] = material;
 				current = material;

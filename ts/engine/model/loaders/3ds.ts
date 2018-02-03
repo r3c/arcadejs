@@ -75,14 +75,7 @@ const readEdit = async (context: Context, end: number, chunk: number, state: Mod
 
 		case 0xafff: // DIT_MATERIAL
 			const { material, name } = await scan(context, end, readMaterial, {
-				material: {
-					colorBase: mesh.defaultColor,
-					colorMap: mesh.defaultMap,
-					glossMap: mesh.defaultMap,
-					heightMap: mesh.defaultMap,
-					normalMap: mesh.defaultMap,
-					shininess: 1
-				},
+				material: {},
 				name: ""
 			});
 
@@ -111,14 +104,18 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa010: // Ambient color
-			state.material.colorBase = await scan(context, end, readColor, mesh.defaultColor);
+			state.material.ambientColor = await scan(context, end, readColor, mesh.defaultColor);
 
 			break;
 
 		case 0xa020: // Diffuse color
+			state.material.diffuseColor = await scan(context, end, readColor, mesh.defaultColor);
+
 			break;
 
 		case 0xa030: // Specular color
+			state.material.specularColor = await scan(context, end, readColor, mesh.defaultColor);
+
 			break;
 
 		case 0xa040: // Shininess
@@ -127,18 +124,20 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa200: // Texture 1
-			state.material.colorMap = await scan(context, end, readMaterialMap, mesh.defaultMap);
+			state.material.ambientMap = await scan(context, end, readMaterialMap, undefined);
 
 			break;
 
 		case 0xa204: // Specular map
+			state.material.specularMap = await scan(context, end, readMaterialMap, undefined);
+
 			break;
 
 		case 0xa230: // Bump map
 			break;
 
-		case 0xa33c: // Gloss map
-			state.material.glossMap = await scan(context, end, readMaterialMap, mesh.defaultMap);
+		case 0xa33c: // Reflection map
+			state.material.reflectionMap = await scan(context, end, readMaterialMap, undefined);
 
 			break;
 	}
@@ -146,7 +145,7 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 	return state;
 };
 
-const readMaterialMap = async (context: Context, end: number, chunk: number, state: ImageData) => {
+const readMaterialMap = async (context: Context, end: number, chunk: number, state: ImageData | undefined) => {
 	switch (chunk) {
 		case 0xa300:
 			return mesh.loadImage(path.combine(context.directory, context.reader.readStringZero()));

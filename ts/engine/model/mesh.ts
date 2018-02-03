@@ -1,12 +1,16 @@
 import * as math from "../math";
 
 interface Material {
-	colorBase: math.Vector4,
-	colorMap: ImageData,
-	glossMap: ImageData,
-	heightMap: ImageData,
-	normalMap: ImageData,
-	shininess: number
+	ambientColor?: math.Vector4,
+	ambientMap?: ImageData,
+	diffuseColor?: math.Vector4,
+	diffuseMap?: ImageData,
+	heightMap?: ImageData,
+	normalMap?: ImageData,
+	reflectionMap?: ImageData,
+	shininess?: number,
+	specularColor?: math.Vector4,
+	specularMap?: ImageData
 }
 
 interface Mesh {
@@ -25,8 +29,6 @@ const defaultColor = {
 	z: 1,
 	w: 1
 };
-
-const defaultMap = new ImageData(new Uint8ClampedArray([255, 255, 255, 2550]), 1, 1);
 
 const loadImage = async (url: string) => {
 	return new Promise<ImageData>((resolve, reject) => {
@@ -54,4 +56,4 @@ const loadImage = async (url: string) => {
 	});
 };
 
-export { Material, Mesh, defaultColor, defaultMap, loadImage }
+export { Material, Mesh, defaultColor, loadImage }
