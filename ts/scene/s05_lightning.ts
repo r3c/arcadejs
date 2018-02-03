@@ -70,18 +70,18 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const renderer = new webgl.Renderer(runtime.screen.context);
 
-	const cubeModel = await model.fromJSON("./res/s04/cube.json");
+	const cubeModel = await model.fromJSON("./res/model/cube.json");
 	const cubeShader = new webgl.Shader(
 		runtime.screen.context,
-		await io.readURL(io.StringFormat, "./res/s06/cube.vert"),
-		await io.readURL(io.StringFormat, "./res/s06/cube.frag")
+		await io.readURL(io.StringFormat, "./res/shader/forward-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/forward-fragment.glsl")
 	);
 
-	const spotModel = await model.fromOBJ("./res/mesh/sphere.obj", { scale: { xx: 0.2, yy: 0.2, zz: 0.2 } });
+	const spotModel = await model.fromOBJ("./res/model/sphere.obj", { scale: { xx: 0.2, yy: 0.2, zz: 0.2 } });
 	const spotShader = new webgl.Shader(
 		runtime.screen.context,
-		await io.readURL(io.StringFormat, "./res/s06/spot.vert"),
-		await io.readURL(io.StringFormat, "./res/s06/spot.frag")
+		await io.readURL(io.StringFormat, "./res/shader/basic-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/basic-fragment.glsl")
 	);
 
 	const bulbs = [0, 1, 2].map(i => ({

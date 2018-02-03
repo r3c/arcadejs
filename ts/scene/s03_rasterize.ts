@@ -9,21 +9,32 @@ import * as software from "../engine/render/software";
 /*
 ** What changed?
 ** - Constant mesh data structure is now loaded from a JSON file
-** - Mesh defines per-vertex color used to interpolate face colors
+** - Mesh #1 defines per-vertex color used to interpolate face colors
+** - Mesh #2 defines ambient map used to interpolate face texture
 */
+
+interface Configuration {
+	useTexture: boolean
+}
 
 interface State {
 	camera: {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
-	cube: software.Mesh[],
+	cubeWithColor: software.Mesh[],
+	cubeWithTexture: software.Mesh[],
 	input: controller.Input,
 	projection: math.Matrix,
-	renderer: software.Renderer
+	renderer: software.Renderer,
+	tweak: application.Tweak<Configuration>
 }
 
-const prepare = async () => {
+const configuration = {
+	useTexture: false
+};
+
+const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.Context2DScreen);
 	const renderer = new software.Renderer(runtime.screen);
 
@@ -32,10 +43,12 @@ const prepare = async () => {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
-		cube: renderer.load(await model.fromJSON("./res/s03/cube.json")),
+		cubeWithColor: renderer.load(await model.fromJSON("./res/model/cube-color.json")),
+		cubeWithTexture: renderer.load(await model.fromJSON("./res/model/cube.json")),
 		input: runtime.input,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		renderer: renderer
+		renderer: renderer,
+		tweak: tweak
 	};
 };
 
@@ -48,8 +61,10 @@ const render = (state: State) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
+	const model = state.tweak.useTexture ? state.cubeWithTexture : state.cubeWithColor;
+
 	renderer.clear();
-	renderer.draw(state.cube, state.projection, view, software.DrawMode.Default);
+	renderer.draw(model, state.projection, view, software.DrawMode.Default);
 };
 
 const update = (state: State, dt: number) => {
@@ -72,6 +87,7 @@ const update = (state: State, dt: number) => {
 };
 
 const scenario = {
+	configuration: configuration,
 	prepare: prepare,
 	render: render,
 	update: update
