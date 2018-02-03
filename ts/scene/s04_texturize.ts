@@ -68,7 +68,7 @@ const update = (state: State, dt: number) => {
 	}
 
 	camera.position.z += wheel;
-};;
+};
 
 const scenario = {
 	prepare: prepare,
