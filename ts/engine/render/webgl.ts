@@ -20,12 +20,12 @@ interface Binding {
 	diffuseColor?: ShaderUniform<number[]>,
 	diffuseMap?: ShaderUniform<number>,
 	heightMap?: ShaderUniform<number>,
-	modelViewMatrix: ShaderUniform<number[]>,
+	modelViewMatrix: ShaderUniform<Float32Array>,
 	normalMap?: ShaderUniform<number>,
-	normalMatrix?: ShaderUniform<number[]>,
+	normalMatrix?: ShaderUniform<Float32Array>,
 	normals?: ShaderAttribute,
 	points: ShaderAttribute,
-	projectionMatrix: ShaderUniform<number[]>,
+	projectionMatrix: ShaderUniform<Float32Array>,
 	reflectionMap?: ShaderUniform<number>,
 	shininess?: ShaderUniform<number>,
 	specularColor?: ShaderUniform<number[]>,
@@ -215,7 +215,7 @@ class Renderer {
 				shader.setTexture(binding.normalMap, material.normalMap, textureIndex++);
 
 			if (binding.normalMatrix !== undefined)
-				shader.setUniform(binding.normalMatrix, modelView.getTransposedInverse3x3());
+				shader.setUniform(binding.normalMatrix, new Float32Array(modelView.getTransposedInverse3x3()));
 
 			if (binding.reflectionMap !== undefined)
 				shader.setTexture(binding.reflectionMap, material.reflectionMap, textureIndex++);
@@ -229,8 +229,8 @@ class Renderer {
 			if (binding.specularMap !== undefined)
 				shader.setTexture(binding.specularMap, material.specularMap, textureIndex++);
 
-			shader.setUniform(binding.modelViewMatrix, modelView.getValues());
-			shader.setUniform(binding.projectionMatrix, projection.getValues());
+			shader.setUniform(binding.modelViewMatrix, new Float32Array(modelView.getValues()));
+			shader.setUniform(binding.projectionMatrix, new Float32Array(projection.getValues()));
 
 			// Perform draw call
 			shader.draw(mesh.indices, mesh.count);

@@ -78,7 +78,7 @@ class Matrix {
 		];
 	}
 
-	public getValues() {
+	public getValues(): Iterable<number> {
 		return this.values;
 	}
 
