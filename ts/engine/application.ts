@@ -74,14 +74,17 @@ const configure = <T>(configuration: T) => {
 const createCheckbox = (caption: string, value: number, change: (value: number) => void) => {
 	const container = document.createElement("span");
 	const checkbox = document.createElement("input");
+	const update = () => change(checkbox.checked ? 1 : 0);
 
 	container.appendChild(checkbox);
 	container.appendChild(document.createTextNode(caption));
 	container.className = 'container';
 
 	checkbox.checked = value !== 0;
-	checkbox.onchange = () => change(checkbox.checked ? 1 : 0);
+	checkbox.onchange = update;
 	checkbox.type = "checkbox";
+
+	update();
 
 	return container;
 };
@@ -89,6 +92,7 @@ const createCheckbox = (caption: string, value: number, change: (value: number) 
 const createSelect = (caption: string, choices: string[], value: number, change: (value: number) => void) => {
 	const container = document.createElement("span");
 	const select = document.createElement("select");
+	const update = () => change(select.selectedIndex);
 
 	container.appendChild(select);
 
@@ -97,7 +101,7 @@ const createSelect = (caption: string, choices: string[], value: number, change:
 
 	container.className = 'container';
 
-	select.onchange = () => change(select.selectedIndex);
+	select.onchange = update;
 
 	for (let i = 0; i < choices.length; ++i) {
 		const option = document.createElement("option");
@@ -108,39 +112,12 @@ const createSelect = (caption: string, choices: string[], value: number, change:
 		select.options.add(option);
 	}
 
+	update();
+
 	return container;
 };
 
-const initialize = (processes: Process[]) => {
-	const sceneContainer = document.getElementById("scenes");
-
-	if (sceneContainer === null)
-		throw Error("missing scene container");
-
-	let tick: ((dt: number) => void) | undefined = undefined;
-	let time = new Date().getTime();
-
-	sceneContainer.appendChild(createSelect("", processes.map(p => p.name), 0, value => {
-		const process = processes[value];
-
-		tick = undefined;
-
-		process
-			.start()
-			.then(() => tick = process.tick);
-	}));
-
-	return setInterval(() => {
-		const now = new Date().getTime();
-
-		if (tick !== undefined)
-			tick(now - time);
-
-		time = now;
-	}, 30);
-};
-
-const prepare = <TConfiguration, TState>(name: string, scene: Scenario<TConfiguration, TState>) => {
+const declare = <TConfiguration, TState>(name: string, scene: Scenario<TConfiguration, TState>) => {
 	let state: TState;
 
 	return {
@@ -154,6 +131,39 @@ const prepare = <TConfiguration, TState>(name: string, scene: Scenario<TConfigur
 			setTimeout(() => scene.render(state), 0);
 		}
 	};
+};
+
+const initialize = (processes: Process[]) => {
+	const sceneContainer = document.getElementById("scenes");
+
+	if (sceneContainer === null)
+		throw Error("missing scene container");
+
+	let tick: ((dt: number) => void) | undefined = undefined;
+	let time = new Date().getTime();
+
+	const enable = (value: number) => {
+		const process = processes[value];
+
+		tick = undefined;
+
+		if (process !== undefined) {
+			process
+				.start()
+				.then(() => tick = process.tick);
+		}
+	};
+
+	sceneContainer.appendChild(createSelect("", processes.map(p => p.name), 0, enable));
+
+	return setInterval(() => {
+		const now = new Date().getTime();
+
+		if (tick !== undefined)
+			tick(Math.min(now - time, 1000));
+
+		time = now;
+	}, 30);
 };
 
 const runtime = <T extends display.Screen>(screenConstructor: ScreenConstructor<T>) => {
@@ -171,4 +181,4 @@ const runtime = <T extends display.Screen>(screenConstructor: ScreenConstructor<
 	};
 };
 
-export { Tweak, initialize, prepare, runtime };
+export { Tweak, initialize, declare, runtime };
