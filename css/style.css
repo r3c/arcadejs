@@ -11,10 +11,22 @@ html {
 	height:	100%;
 }
 
-.control {
+.console {
 	display:		flex;
 	align-items:	center;
 	padding:		16px;
+}
+
+.console div:nth-child(1) {
+	flex:	initial;
+}
+
+.console div:nth-child(2) {
+	flex:	auto;
+}
+
+.console div:nth-child(3) {
+	flex:	initial;
 }
 
 .control input,

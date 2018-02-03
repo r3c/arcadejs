@@ -1,5 +1,5 @@
 
-interface BufferConstructor<T> {
+interface FormatConstructor<T> {
 	new(request: XMLHttpRequest): T;
 
 	readonly responseType: XMLHttpRequestResponseType;
@@ -134,16 +134,16 @@ class BinaryReader {
 	}
 }
 
-const readURL = async <T>(buffer: BufferConstructor<Format<T>>, url: string) => {
+const readURL = async <T>(format: FormatConstructor<Format<T>>, url: string) => {
 	return new Promise<T>((resolve, reject) => {
 		const request = new XMLHttpRequest();
 
 		request.open("GET", url, true);
-		request.responseType = buffer.responseType;
+		request.responseType = format.responseType;
 
 		request.onabort = event => reject(`request aborted on ${url}`);
 		request.onerror = event => reject(`request failed on ${url}`);
-		request.onload = event => resolve(new buffer(request).data);
+		request.onload = event => resolve(new format(request).data);
 
 		request.send(null);
 	});

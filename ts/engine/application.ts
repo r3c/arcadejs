@@ -4,7 +4,7 @@ import * as display from "./display";
 interface Process {
 	name: string,
 	start: () => Promise<void>,
-	tick: (dt: number) => void
+	step: (dt: number) => void
 }
 
 interface Runtime<T extends display.Screen> {
@@ -125,7 +125,7 @@ const declare = <TConfiguration, TState>(name: string, scene: Scenario<TConfigur
 		start: async () => {
 			state = await scene.prepare(configure(scene.configuration || <TConfiguration>{}));
 		},
-		tick: (dt: number) => {
+		step: (dt: number) => {
 			scene.update(state, dt);
 
 			setTimeout(() => scene.render(state), 0);
@@ -134,36 +134,58 @@ const declare = <TConfiguration, TState>(name: string, scene: Scenario<TConfigur
 };
 
 const initialize = (processes: Process[]) => {
+	const frameContainer = document.getElementById("frames");
+
+	if (frameContainer === null)
+		throw Error("missing frame container");
+
 	const sceneContainer = document.getElementById("scenes");
 
 	if (sceneContainer === null)
 		throw Error("missing scene container");
 
-	let tick: ((dt: number) => void) | undefined = undefined;
+	let frames = 0;
+	let elapsed = 0;
+	let step: ((dt: number) => void) | undefined = undefined;
 	let time = new Date().getTime();
 
 	const enable = (value: number) => {
 		const process = processes[value];
 
-		tick = undefined;
+		step = undefined;
 
 		if (process !== undefined) {
 			process
 				.start()
-				.then(() => tick = process.tick);
+				.then(() => step = process.step);
 		}
+	};
+
+	const tick = () => {
+		const now = new Date().getTime();
+		const dt = now - time;
+
+		elapsed += dt;
+		time = now;
+
+		if (step !== undefined)
+			step(Math.min(dt, 1000));
+
+		if (elapsed > 1000) {
+			frameContainer.innerText = Math.round(frames * 1000 / elapsed) + ' fps';
+
+			elapsed = 0;
+			frames = 0;
+		}
+
+		++frames;
+
+		window.requestAnimationFrame(tick);
 	};
 
 	sceneContainer.appendChild(createSelect("", processes.map(p => p.name), 0, enable));
 
-	return setInterval(() => {
-		const now = new Date().getTime();
-
-		if (tick !== undefined)
-			tick(Math.min(now - time, 1000));
-
-		time = now;
-	}, 30);
+	tick();
 };
 
 const runtime = <T extends display.Screen>(screenConstructor: ScreenConstructor<T>) => {
