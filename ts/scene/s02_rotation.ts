@@ -3,6 +3,11 @@ import * as display from "../engine/display";
 import * as math from "../engine/math";
 import * as software from "../engine/render/software";
 
+/*
+** What changed?
+** - Numeric "rotation" angle is used to recompute cube coordinates on each frame
+*/
+
 interface State {
 	projection: math.Matrix,
 	renderer: software.Renderer,
@@ -20,10 +25,10 @@ const prepare = async () => {
 };
 
 const render = (state: State) => {
-	const distance = -8;
+	const distance = -5;
 	const orbitate = state.rotation;
 	const pi = Math.PI;
-	const range = 2;
+	const range = 1;
 	const rotate = state.rotation * 2;
 	const size = Math.sqrt(2) / 2;
 
