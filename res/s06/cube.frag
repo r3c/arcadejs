@@ -1,28 +1,83 @@
-varying highp vec4 vColor;
-varying highp vec2 vCoord;
-varying highp vec3 vNormal;
+#ifdef GL_ES
+precision highp float;
+#endif
 
-uniform highp vec4 colorBase;
+struct Light
+{
+	bool enabled;
+	vec3 position;
+};
+
+varying vec3 vCamera;
+varying vec4 vColor;
+varying vec2 vCoord;
+varying vec3 vNormal;
+varying vec3 vPoint;
+
+uniform vec4 colorBase;
 uniform sampler2D colorMap;
 
-uniform highp vec3 lightDirection;
-uniform bool lightEnabled;
+uniform Light light0;
+uniform Light light1;
+uniform Light light2;
+
+uniform bool useAmbient;
+uniform bool useDiffuse;
+uniform bool useSpecular;
+
+vec3 getLight(in vec3 normal, in vec3 cameraDirection, in vec3 lightDirection) {
+	vec3 lightColor = vec3(0, 0, 0);
+
+	if (useAmbient) {
+		vec3 ambientColor = vec3(0.3, 0.3, 0.3);
+
+		lightColor += ambientColor;
+	}
+
+	if (useDiffuse) {
+		vec3 diffuseColor = vec3(0.6, 0.6, 0.6);
+		float diffusePower = max(dot(normal, lightDirection), 0.0);
+
+		lightColor += diffuseColor * diffusePower;
+	}
+
+	if (useSpecular) {
+		float specularCosine;
+
+		if (true) {
+			// Blinn-Phong model
+			vec3 cameraLightMidway = normalize(cameraDirection + lightDirection);
+
+			specularCosine = max(dot(normal, cameraLightMidway), 0.0);
+		}
+		else {
+			// Phong model
+			vec3 specularReflection = normalize(normal * dot(normal, lightDirection) * 2.0 - lightDirection);
+
+			specularCosine = max(dot(specularReflection, cameraDirection), 0.0);
+		}
+
+		vec3 specularColor = vec3(0.9, 0.9, 0.9);
+		float specularPower = pow(specularCosine, 100.0);
+
+		lightColor += specularColor * specularPower;
+	}
+
+	return lightColor;
+}
 
 void main(void) {
-	highp vec4 lightColor;
+	vec3 lightColor = vec3(0, 0, 0);
+	vec3 normal = normalize(vNormal);
 
-	if (lightEnabled) {
-		highp vec3 ambientLightColor = vec3(0.3, 0.3, 0.3);
-		highp vec3 diffuseLightColor = vec3(1, 1, 1);
-		highp vec3 diffuseLightDirection = normalize(lightDirection);
+	if (light0.enabled)
+		lightColor += getLight(normal, normalize(vCamera), normalize(light0.position - vPoint));
 
-		highp float directional = max(dot(vNormal, diffuseLightDirection), 0.0);
+	if (light1.enabled)
+		lightColor += getLight(normal, normalize(vCamera), normalize(light1.position - vPoint));
 
-		lightColor = vec4(ambientLightColor + (diffuseLightColor * directional), 1.0);
-	}
-	else {
-		lightColor = vec4(1, 1, 1, 1);
-	}
+	if (light2.enabled)
+		lightColor += getLight(normal, normalize(vCamera), normalize(light2.position - vPoint));
 
-	gl_FragColor = vColor * colorBase * lightColor * texture2D(colorMap, vCoord);
+	gl_FragColor = vColor * colorBase * vec4(lightColor, 1.0) * texture2D(colorMap, vCoord);
 }

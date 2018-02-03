@@ -51,23 +51,9 @@ const computeNormals = (triangles: [number, number, number][], points: math.Vect
 		const point2 = points[index2];
 		const point3 = points[index3];
 
-		const u = {
-			x: point1.x - point2.x,
-			y: point1.y - point2.y,
-			z: point1.z - point2.z
-		};
-
-		const v = {
-			x: point3.x - point2.x,
-			y: point3.y - point2.y,
-			z: point3.z - point2.z
-		};
-
-		const normal = math.Vector.normalize3({
-			x: u.y * v.z - u.z * v.y,
-			y: u.z * v.x - u.x * v.z,
-			z: u.x * v.y - u.y * v.x
-		});
+		const normal = math.Vector.normalize3(math.Vector.cross(
+			math.Vector.substract3(point3, point2),
+			math.Vector.substract3(point1, point2)));
 
 		normals[index1] = normal;
 		normals[index2] = normal;

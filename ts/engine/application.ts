@@ -77,10 +77,12 @@ const configure = (definitions: DefinitionMap) => {
 				break;
 
 			case DefinitionType.Select:
-				tweakContainer.appendChild(createSelect(definition.choices || [], definition.default, change));
+				tweakContainer.appendChild(createSelect(definition.caption, definition.choices || [], definition.default, change));
 
 				break;
 		}
+
+		tweakContainer.appendChild(document.createTextNode(" "));
 
 		options[key] = definition.default;
 	}
@@ -102,11 +104,12 @@ const createCheckbox = (caption: string, value: number, change: (value: number) 
 	return container;
 };
 
-const createSelect = (choices: string[], value: number, change: (value: number) => void) => {
+const createSelect = (caption: string, choices: string[], value: number, change: (value: number) => void) => {
 	const container = document.createElement("span");
 	const select = document.createElement("select");
 	const submit = document.createElement("input");
 
+	container.appendChild(document.createTextNode(caption));
 	container.appendChild(select);
 	container.appendChild(submit);
 
@@ -135,7 +138,7 @@ const initialize = (processes: Process[]) => {
 	let tick: ((dt: number) => void) | undefined = undefined;
 	let time = new Date().getTime();
 
-	sceneContainer.appendChild(createSelect(processes.map(p => p.name), 0, value => {
+	sceneContainer.appendChild(createSelect("Scene:", processes.map(p => p.name), 0, value => {
 		const process = processes[value];
 
 		tick = undefined;

@@ -29,21 +29,47 @@ interface State {
 	},
 	input: controller.Input,
 	light: {
-		direction: webgl.ShaderUniform<number[]>,
-		enabled: webgl.ShaderUniform<number>,
-		ry: number,
-		rz: number
-	}
+		bulbs: {
+			enabled: webgl.ShaderUniform<number>,
+			positionUniform: webgl.ShaderUniform<number[]>,
+			position: math.Vector3
+		}[],
+		move: number,
+		useAmbient: webgl.ShaderUniform<number>,
+		useDiffuse: webgl.ShaderUniform<number>,
+		useSpecular: webgl.ShaderUniform<number>
+	},
 	options: application.OptionMap,
 	projection: math.Matrix,
 	renderer: webgl.Renderer
 }
 
 const definitions = {
-	light: {
-		caption: "Enable light",
+	move: {
+		caption: "Move lights",
 		type: application.DefinitionType.Checkbox,
 		default: 1
+	},
+	lights: {
+		caption: "Number of lights:",
+		type: application.DefinitionType.Select,
+		choices: ["0", "1", "2", "3"],
+		default: 1
+	},
+	useAmbient: {
+		caption: "Ambient light",
+		type: application.DefinitionType.Checkbox,
+		default: 1
+	},
+	useDiffuse: {
+		caption: "Diffuse light",
+		type: application.DefinitionType.Checkbox,
+		default: 0
+	},
+	useSpecular: {
+		caption: "Specular light",
+		type: application.DefinitionType.Checkbox,
+		default: 0
 	}
 };
 
@@ -58,12 +84,18 @@ const prepare = async (options: application.OptionMap) => {
 		await io.readURL(io.StringFormat, "./res/s06/cube.frag")
 	);
 
-	const spotModel = await model.fromJSON("./res/s04/cube.json", { scale: { xx: 0.1, yy: 0.1, zz: 0.1 } });
+	const spotModel = await model.fromOBJ("./res/mesh/sphere.obj", { scale: { xx: 0.2, yy: 0.2, zz: 0.2 } });
 	const spotShader = new webgl.Shader(
 		runtime.screen.context,
 		await io.readURL(io.StringFormat, "./res/s06/spot.vert"),
 		await io.readURL(io.StringFormat, "./res/s06/spot.frag")
 	);
+
+	const bulbs = [0, 1, 2].map(i => ({
+		enabled: cubeShader.declareUniformValue("light" + i + ".enabled", gl => gl.uniform1i),
+		positionUniform: cubeShader.declareUniformValue("light" + i + ".position", gl => gl.uniform3fv),
+		position: { x: 0, y: 0, z: 0 }
+	}));
 
 	const float = runtime.screen.context.FLOAT;
 
@@ -98,10 +130,11 @@ const prepare = async (options: application.OptionMap) => {
 		},
 		input: runtime.input,
 		light: {
-			direction: cubeShader.declareUniformValue("lightDirection", gl => gl.uniform3fv),
-			enabled: cubeShader.declareUniformValue("lightEnabled", gl => gl.uniform1i),
-			ry: Math.PI * 0.3,
-			rz: Math.PI * -0.2
+			bulbs: bulbs,
+			move: 0,
+			useAmbient: cubeShader.declareUniformValue("useAmbient", gl => gl.uniform1i),
+			useDiffuse: cubeShader.declareUniformValue("useDiffuse", gl => gl.uniform1i),
+			useSpecular: cubeShader.declareUniformValue("useSpecular", gl => gl.uniform1i)
 		},
 		options: options,
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
@@ -121,41 +154,46 @@ const render = (state: State) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
-	const viewCube = view;
-
-	const viewSpot = view
-		.rotate({ x: 0, y: 1, z: 0 }, light.ry)
-		.rotate({ x: 0, y: 0, z: 1 }, light.rz)
-		.translate({ x: 3, y: 0, z: 0 });
-
-	const lightDirection = viewSpot.transform({ x: 1, y: 0, z: 0, w: 0 });
-
 	renderer.clear();
+
+	// Draw light bulbs
+	state.drawSpot.shader.activate();
+
+	for (let i = 0; i < Math.min(light.bulbs.length, state.options["lights"]); ++i) {
+		const bulb = light.bulbs[i];
+
+		renderer.draw(state.drawSpot.shader, state.drawSpot.binding, state.drawSpot.meshes, state.projection, view.translate(bulb.position));
+	}
 
 	// Draw cube
 	state.drawCube.shader.activate();
-	state.drawCube.shader.setUniform(light.direction, [lightDirection.x, lightDirection.y, lightDirection.z]);
-	state.drawCube.shader.setUniform(light.enabled, state.options["light"]);
 
-	renderer.draw(state.drawCube.shader, state.drawCube.binding, state.drawCube.meshes, state.projection, viewCube);
+	light.bulbs.forEach((bulb, i) => state.drawCube.shader.setUniform(bulb.enabled, i < state.options["lights"] ? 1 : 0));
 
-	// Draw light spot
-	state.drawSpot.shader.activate();
+	state.drawCube.shader.setUniform(light.useAmbient, state.options["useAmbient"]);
+	state.drawCube.shader.setUniform(light.useDiffuse, state.options["useDiffuse"]);
+	state.drawCube.shader.setUniform(light.useSpecular, state.options["useSpecular"]);
 
-	renderer.draw(state.drawSpot.shader, state.drawSpot.binding, state.drawSpot.meshes, state.projection, viewSpot);
+	for (const bulb of light.bulbs) {
+		const position = view.transform({
+			x: bulb.position.x,
+			y: bulb.position.y,
+			z: bulb.position.z,
+			w: 1
+		});
+
+		state.drawCube.shader.setUniform(bulb.positionUniform, [position.x, position.y, position.z]);
+	}
+
+	renderer.draw(state.drawCube.shader, state.drawCube.binding, state.drawCube.meshes, state.projection, view);
 };
 
 const update = (state: State, dt: number) => {
+	// Move camera
 	const camera = state.camera;
 	const input = state.input;
-	const light = state.light;
 	const movement = input.fetchMovement();
 	const wheel = input.fetchWheel();
-
-	if (input.isPressed("mousemiddle")) {
-		light.ry += movement.x / 64;
-		light.rz += movement.y / 64;
-	}
 
 	if (input.isPressed("mouseleft")) {
 		camera.position.x += movement.x / 64;
@@ -168,6 +206,24 @@ const update = (state: State, dt: number) => {
 	}
 
 	camera.position.z += wheel;
+
+	// Update light bulb positions
+	const light = state.light;
+
+	if (state.options["move"]) {
+		light.move += dt * 0.00003;
+	}
+
+	for (let i = 0; i < state.light.bulbs.length; ++i) {
+		const pitch = light.move * (((i + 1) * 17) % 23);
+		const yaw = light.move * (((i + 1) * 7) % 13);
+
+		state.light.bulbs[i].position = math.Vector.scale3({
+			x: Math.cos(yaw) * Math.cos(pitch),
+			y: Math.sin(yaw) * Math.cos(pitch),
+			z: Math.sin(pitch)
+		}, 2);
+	}
 };
 
 const scenario = {
