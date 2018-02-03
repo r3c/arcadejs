@@ -40,16 +40,16 @@ interface State {
 	input: controller.Input,
 	light: {
 		bulbs: {
-			enabled: webgl.ShaderUniform<number>,
-			positionUniform: webgl.ShaderUniform<number[]>,
+			enabled: webgl.UniformValue<number>,
+			positionUniform: webgl.UniformValue<number[]>,
 			position: math.Vector3
 		}[],
 		move: number,
-		useAmbient: webgl.ShaderUniform<number>,
-		useDiffuse: webgl.ShaderUniform<number>,
-		useHeightMap: webgl.ShaderUniform<number>,
-		useNormalMap: webgl.ShaderUniform<number>,
-		useSpecular: webgl.ShaderUniform<number>
+		useAmbient: webgl.UniformValue<number>,
+		useDiffuse: webgl.UniformValue<number>,
+		useHeightMap: webgl.UniformValue<number>,
+		useNormalMap: webgl.UniformValue<number>,
+		useSpecular: webgl.UniformValue<number>
 	},
 	projection: math.Matrix,
 	renderer: webgl.Renderer,
@@ -85,8 +85,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	);
 
 	const bulbs = [0, 1, 2].map(i => ({
-		enabled: cubeShader.declareUniformValue("light" + i + ".enabled", gl => gl.uniform1i),
-		positionUniform: cubeShader.declareUniformValue("light" + i + ".position", gl => gl.uniform3fv),
+		enabled: cubeShader.declareValue("light" + i + ".enabled", gl => gl.uniform1i),
+		positionUniform: cubeShader.declareValue("light" + i + ".position", gl => gl.uniform3fv),
 		position: { x: 0, y: 0, z: 0 }
 	}));
 
@@ -99,22 +99,22 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		},
 		drawCube: {
 			binding: {
-				ambientColor: cubeShader.declareUniformValue("ambientColor", gl => gl.uniform4fv),
-				ambientMap: cubeShader.declareUniformValue("ambientMap", gl => gl.uniform1i),
+				ambientColor: cubeShader.declareValue("ambientColor", gl => gl.uniform4fv),
+				ambientMap: cubeShader.declareTexture("ambientMap"),
 				coords: cubeShader.declareAttribute("coords", 2, float),
-				diffuseColor: cubeShader.declareUniformValue("diffuseColor", gl => gl.uniform4fv),
-				diffuseMap: cubeShader.declareUniformValue("diffuseMap", gl => gl.uniform1i),
-				heightMap: cubeShader.declareUniformValue("heightMap", gl => gl.uniform1i),
-				modelViewMatrix: cubeShader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-				normalMap: cubeShader.declareUniformValue("normalMap", gl => gl.uniform1i),
-				normalMatrix: cubeShader.declareUniformMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
+				diffuseColor: cubeShader.declareValue("diffuseColor", gl => gl.uniform4fv),
+				diffuseMap: cubeShader.declareTexture("diffuseMap"),
+				heightMap: cubeShader.declareTexture("heightMap"),
+				modelViewMatrix: cubeShader.declareMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				normalMap: cubeShader.declareTexture("normalMap"),
+				normalMatrix: cubeShader.declareMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
 				normals: cubeShader.declareAttribute("normals", 3, float),
 				points: cubeShader.declareAttribute("points", 3, float),
-				projectionMatrix: cubeShader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-				reflectionMap: cubeShader.declareUniformValue("reflectionMap", gl => gl.uniform1i),
-				shininess: cubeShader.declareUniformValue("shininess", gl => gl.uniform1f),
-				specularColor: cubeShader.declareUniformValue("specularColor", gl => gl.uniform4fv),
-				specularMap: cubeShader.declareUniformValue("specularMap", gl => gl.uniform1i),
+				projectionMatrix: cubeShader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
+				reflectionMap: cubeShader.declareTexture("reflectionMap"),
+				shininess: cubeShader.declareValue("shininess", gl => gl.uniform1f),
+				specularColor: cubeShader.declareValue("specularColor", gl => gl.uniform4fv),
+				specularMap: cubeShader.declareTexture("specularMap"),
 				tangents: cubeShader.declareAttribute("tangents", 3, float)
 			},
 			meshes: renderer.load(cubeModel),
@@ -122,9 +122,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		},
 		drawSpot: {
 			binding: {
-				modelViewMatrix: spotShader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				modelViewMatrix: spotShader.declareMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
 				points: spotShader.declareAttribute("points", 3, float),
-				projectionMatrix: spotShader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
+				projectionMatrix: spotShader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
 			meshes: renderer.load(spotModel),
 			shader: spotShader,
@@ -133,11 +133,11 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		light: {
 			bulbs: bulbs,
 			move: 0,
-			useAmbient: cubeShader.declareUniformValue("useAmbient", gl => gl.uniform1i),
-			useDiffuse: cubeShader.declareUniformValue("useDiffuse", gl => gl.uniform1i),
-			useNormalMap: cubeShader.declareUniformValue("useNormalMap", gl => gl.uniform1i),
-			useHeightMap: cubeShader.declareUniformValue("useHeightMap", gl => gl.uniform1i),
-			useSpecular: cubeShader.declareUniformValue("useSpecular", gl => gl.uniform1i)
+			useAmbient: cubeShader.declareValue("useAmbient", gl => gl.uniform1i),
+			useDiffuse: cubeShader.declareValue("useDiffuse", gl => gl.uniform1i),
+			useNormalMap: cubeShader.declareValue("useNormalMap", gl => gl.uniform1i),
+			useHeightMap: cubeShader.declareValue("useHeightMap", gl => gl.uniform1i),
+			useSpecular: cubeShader.declareValue("useSpecular", gl => gl.uniform1i)
 		},
 		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: renderer,
@@ -160,24 +160,20 @@ const render = (state: State) => {
 	renderer.clear();
 
 	// Draw light bulbs
-	state.drawSpot.shader.activate();
-
 	for (let i = 0; i < Math.min(light.bulbs.length, state.tweak.nbLights); ++i) {
 		const bulb = light.bulbs[i];
 
-		renderer.draw(state.drawSpot.shader, state.drawSpot.binding, state.drawSpot.meshes, state.projection, view.translate(bulb.position));
+		state.drawSpot.shader.draw(state.drawSpot.binding, state.drawSpot.meshes, state.projection, view.translate(bulb.position));
 	}
 
 	// Draw cube
-	state.drawCube.shader.activate();
+	light.bulbs.forEach((bulb, i) => bulb.enabled.set(i < state.tweak.nbLights ? 1 : 0));
 
-	light.bulbs.forEach((bulb, i) => state.drawCube.shader.setUniform(bulb.enabled, i < state.tweak.nbLights ? 1 : 0));
-
-	state.drawCube.shader.setUniform(light.useAmbient, state.tweak.useAmbient);
-	state.drawCube.shader.setUniform(light.useDiffuse, state.tweak.useDiffuse);
-	state.drawCube.shader.setUniform(light.useHeightMap, state.tweak.useHeightMap);
-	state.drawCube.shader.setUniform(light.useNormalMap, state.tweak.useNormalMap);
-	state.drawCube.shader.setUniform(light.useSpecular, state.tweak.useSpecular);
+	light.useAmbient.set(state.tweak.useAmbient);
+	light.useDiffuse.set(state.tweak.useDiffuse);
+	light.useHeightMap.set(state.tweak.useHeightMap);
+	light.useNormalMap.set(state.tweak.useNormalMap);
+	light.useSpecular.set(state.tweak.useSpecular);
 
 	for (const bulb of light.bulbs) {
 		const position = view.transform({
@@ -187,10 +183,10 @@ const render = (state: State) => {
 			w: 1
 		});
 
-		state.drawCube.shader.setUniform(bulb.positionUniform, [position.x, position.y, position.z]);
+		bulb.positionUniform.set([position.x, position.y, position.z]);
 	}
 
-	renderer.draw(state.drawCube.shader, state.drawCube.binding, state.drawCube.meshes, state.projection, view);
+	state.drawCube.shader.draw(state.drawCube.binding, state.drawCube.meshes, state.projection, view);
 };
 
 const update = (state: State, dt: number) => {

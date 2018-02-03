@@ -72,12 +72,12 @@ const prepare = async () => {
 		},
 		draw: {
 			binding: {
-				ambientColor: shader.declareUniformValue("ambientColor", gl => gl.uniform4fv),
-				ambientMap: shader.declareUniformValue("ambientMap", gl => gl.uniform1i),
+				ambientColor: shader.declareValue("ambientColor", gl => gl.uniform4fv),
+				ambientMap: shader.declareTexture("ambientMap"),
 				colors: shader.declareAttribute("color", 4, float),
 				coords: shader.declareAttribute("coord", 2, float),
-				modelViewMatrix: shader.declareUniformMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-				projectionMatrix: shader.declareUniformMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
+				modelViewMatrix: shader.declareMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
+				projectionMatrix: shader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
 				points: shader.declareAttribute("point", 3, float)
 			},
 			meshes: renderer.load(await model.fromJSON("./res/model/cube.json")),
@@ -101,10 +101,7 @@ const render = (state: State) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
 	renderer.clear();
-
-	draw.shader.activate();
-
-	renderer.draw(draw.shader, draw.binding, draw.meshes, state.projection, view);
+	draw.shader.draw(draw.binding, draw.meshes, state.projection, view);
 };
 
 const update = (state: State, dt: number) => {

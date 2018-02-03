@@ -2,35 +2,28 @@ import * as functional from "../type/functional";
 import * as math from "../math";
 import * as model from "../model";
 
-interface ShaderAttribute {
-	location: number,
-	size: number,
-	type: number
-}
-
 type ShaderUniformMatrix<T> = (location: WebGLUniformLocation, transpose: boolean, value: T) => void;
 type ShaderUniformValue<T> = (location: WebGLUniformLocation, value: T) => void;
-type ShaderUniform<T> = (gl: WebGLRenderingContext, value: T) => void;
 
 interface Binding {
-	ambientColor?: ShaderUniform<number[]>,
-	ambientMap?: ShaderUniform<number>,
-	colors?: ShaderAttribute,
-	coords?: ShaderAttribute,
-	diffuseColor?: ShaderUniform<number[]>,
-	diffuseMap?: ShaderUniform<number>,
-	heightMap?: ShaderUniform<number>,
-	modelViewMatrix: ShaderUniform<Float32Array>,
-	normalMap?: ShaderUniform<number>,
-	normalMatrix?: ShaderUniform<Float32Array>,
-	normals?: ShaderAttribute,
-	points: ShaderAttribute,
-	projectionMatrix: ShaderUniform<Float32Array>,
-	reflectionMap?: ShaderUniform<number>,
-	shininess?: ShaderUniform<number>,
-	specularColor?: ShaderUniform<number[]>,
-	specularMap?: ShaderUniform<number>,
-	tangents?: ShaderAttribute
+	ambientColor?: UniformValue<number[]>,
+	ambientMap?: UniformTexture,
+	colors?: Attribute,
+	coords?: Attribute,
+	diffuseColor?: UniformValue<number[]>,
+	diffuseMap?: UniformTexture,
+	heightMap?: UniformTexture,
+	modelViewMatrix: UniformValue<Float32Array>,
+	normalMap?: UniformTexture,
+	normalMatrix?: UniformValue<Float32Array>,
+	normals?: Attribute,
+	points: Attribute,
+	projectionMatrix: UniformValue<Float32Array>,
+	reflectionMap?: UniformTexture,
+	shininess?: UniformValue<number>,
+	specularColor?: UniformValue<number[]>,
+	specularMap?: UniformTexture,
+	tangents?: Attribute
 }
 
 interface Material {
@@ -92,18 +85,18 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	return buffer;
 };
 
-const createTexture = (gl: WebGLRenderingContext, image: ImageData, quality: Quality) => {
+const createTextureImage = (gl: WebGLRenderingContext, image: ImageData, quality: Quality) => {
 	const isPowerOf2 = (value: number) => {
 		return ((value - 1) & value) === 0;
 	};
+
+	if (!isPowerOf2(image.width) || !isPowerOf2(image.height))
+		throw Error("image doesn't have power-of-2 dimensions");
 
 	const texture = gl.createTexture();
 
 	if (texture === null)
 		throw Error("texture creation failed");
-
-	if (!isPowerOf2(image.width) || !isPowerOf2(image.height))
-		throw Error("image doesn't have power-of-2 dimensions");
 
 	gl.bindTexture(gl.TEXTURE_2D, texture);
 	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
@@ -126,6 +119,32 @@ const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
 const toArray4 = (input: math.Vector4) => [input.x, input.y, input.z, input.w];
 const toArrayBuffer = <T, U>(constructor: { new(items: number[]): T }, items: U[], toArray: (input: U) => number[]) => new constructor(functional.flatten(items.map(toArray)));
 
+class Attribute {
+	private readonly gl: WebGLRenderingContext;
+	private readonly location: number;
+	private readonly size: number;
+	private readonly type: number;
+
+	public constructor(gl: WebGLRenderingContext, location: number, size: number, type: number) {
+		this.gl = gl;
+		this.location = location;
+		this.size = size;
+		this.type = type;
+	}
+
+	public clear() {
+		this.gl.disableVertexAttribArray(this.location);
+	}
+
+	public set(buffer: WebGLBuffer) {
+		const gl = this.gl;
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+		gl.vertexAttribPointer(this.location, this.size, this.type, false, 0, 0);
+		gl.enableVertexAttribArray(this.location);
+	}
+}
+
 class Renderer {
 	private readonly defaultMap: WebGLTexture;
 	private readonly gl: WebGLRenderingContext;
@@ -143,7 +162,7 @@ class Renderer {
 		gl.depthFunc(gl.LEQUAL);
 		gl.clearDepth(1.0);
 
-		this.defaultMap = createTexture(gl, blankImage, quality);
+		this.defaultMap = createTextureImage(gl, blankImage, quality);
 		this.gl = gl;
 		this.quality = quality;
 	}
@@ -153,89 +172,6 @@ class Renderer {
 
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	};
-
-	public draw(shader: Shader, binding: Binding, meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix) {
-		for (const mesh of meshes) {
-			const material = mesh.material;
-
-			// Bind colors vector if defined and supported
-			if (binding.colors !== undefined) {
-				if (mesh.colors === undefined)
-					throw invalidAttributeBinding("colors");
-
-				shader.setAttribute(binding.colors, mesh.colors);
-			}
-
-			// Bind coords vector if defined and supported
-			if (binding.coords !== undefined) {
-				if (mesh.coords === undefined)
-					throw invalidAttributeBinding("coords");
-
-				shader.setAttribute(binding.coords, mesh.coords);
-			}
-
-			// Bind face normals if defined and supported
-			if (binding.normals !== undefined) {
-				if (mesh.normals === undefined)
-					throw invalidAttributeBinding("normals");
-
-				shader.setAttribute(binding.normals, mesh.normals);
-			}
-
-			// Bind face tangents if defined and supported
-			if (binding.tangents !== undefined) {
-				if (mesh.tangents === undefined)
-					throw invalidAttributeBinding("tangents");
-
-				shader.setAttribute(binding.tangents, mesh.tangents);
-			}
-
-			// Bind points vector
-			shader.setAttribute(binding.points, mesh.points);
-
-			// Bind known uniforms if supported
-			let textureIndex = 0;
-
-			if (binding.ambientColor !== undefined)
-				shader.setUniform(binding.ambientColor, material.ambientColor);
-
-			if (binding.ambientMap !== undefined)
-				shader.setTexture(binding.ambientMap, material.ambientMap, textureIndex++);
-
-			if (binding.diffuseColor !== undefined)
-				shader.setUniform(binding.diffuseColor, material.diffuseColor);
-
-			if (binding.diffuseMap !== undefined)
-				shader.setTexture(binding.diffuseMap, material.diffuseMap, textureIndex++);
-
-			if (binding.heightMap !== undefined)
-				shader.setTexture(binding.heightMap, material.heightMap, textureIndex++);
-
-			if (binding.normalMap !== undefined)
-				shader.setTexture(binding.normalMap, material.normalMap, textureIndex++);
-
-			if (binding.normalMatrix !== undefined)
-				shader.setUniform(binding.normalMatrix, new Float32Array(modelView.getTransposedInverse3x3()));
-
-			if (binding.reflectionMap !== undefined)
-				shader.setTexture(binding.reflectionMap, material.reflectionMap, textureIndex++);
-
-			if (binding.shininess !== undefined)
-				shader.setUniform(binding.shininess, material.shininess);
-
-			if (binding.specularColor !== undefined)
-				shader.setUniform(binding.specularColor, material.specularColor);
-
-			if (binding.specularMap !== undefined)
-				shader.setTexture(binding.specularMap, material.specularMap, textureIndex++);
-
-			shader.setUniform(binding.modelViewMatrix, new Float32Array(modelView.getValues()));
-			shader.setUniform(binding.projectionMatrix, new Float32Array(projection.getValues()));
-
-			// Perform draw call
-			shader.draw(mesh.indices, mesh.count);
-		}
-	}
 
 	public load(model: model.Model) {
 		const definitions = model.materials || {};
@@ -254,15 +190,15 @@ class Renderer {
 
 					const ambientColor = definition.ambientColor || defaultColor;
 					const ambientMap = definition.ambientMap !== undefined
-						? createTexture(gl, definition.ambientMap, this.quality)
+						? createTextureImage(gl, definition.ambientMap, this.quality)
 						: this.defaultMap;
 					const diffuseColor = definition.diffuseColor || ambientColor;
 					const diffuseMap = definition.diffuseMap !== undefined
-						? createTexture(gl, definition.diffuseMap, this.quality)
+						? createTextureImage(gl, definition.diffuseMap, this.quality)
 						: ambientMap;
 					const specularColor = definition.specularColor || diffuseColor;
 					const specularMap = definition.specularMap !== undefined
-						? createTexture(gl, definition.specularMap, this.quality)
+						? createTextureImage(gl, definition.specularMap, this.quality)
 						: diffuseMap;
 
 					materials[name] = {
@@ -271,13 +207,13 @@ class Renderer {
 						diffuseColor: toArray4(diffuseColor),
 						diffuseMap: diffuseMap,
 						heightMap: definition.heightMap !== undefined
-							? createTexture(gl, definition.heightMap, this.quality)
+							? createTextureImage(gl, definition.heightMap, this.quality)
 							: this.defaultMap,
 						normalMap: definition.normalMap !== undefined
-							? createTexture(gl, definition.normalMap, this.quality)
+							? createTextureImage(gl, definition.normalMap, this.quality)
 							: this.defaultMap,
 						reflectionMap: definition.reflectionMap !== undefined
-							? createTexture(gl, definition.reflectionMap, this.quality)
+							? createTextureImage(gl, definition.reflectionMap, this.quality)
 							: this.defaultMap,
 						shininess: functional.coalesce(definition.shininess, defaultShininess),
 						specularColor: toArray4(specularColor),
@@ -352,75 +288,135 @@ class Shader {
 		this.program = program;
 	}
 
-	public activate() {
-		this.gl.useProgram(this.program);
-	}
-
-	public declareAttribute(name: string, size: number, type: number): ShaderAttribute {
-		const location = this.gl.getAttribLocation(this.program, name);
+	public declareAttribute(name: string, size: number, type: number): Attribute {
+		const gl = this.gl;
+		const location = gl.getAttribLocation(this.program, name);
 
 		if (location === -1)
 			throw Error(`cound not find location for attribute "${name}"`);
 
-		return {
-			location: location,
-			size: size,
-			type: type
-		};
+		return new Attribute(gl, location, size, type);
 	}
 
-	public declareUniformMatrix<T>(name: string, method: (gl: WebGLRenderingContext) => ShaderUniformMatrix<T>): ShaderUniform<T> {
-		const location = this.gl.getUniformLocation(this.program, name);
+	public declareMatrix<T>(name: string, method: (gl: WebGLRenderingContext) => ShaderUniformMatrix<T>): UniformValue<T> {
+		const gl = this.gl;
+		const location = gl.getUniformLocation(this.program, name);
 
 		if (location === null)
 			throw Error(`cound not find location for matrix uniform "${name}"`);
 
-		const assign = method(this.gl);
+		const assign = method(gl);
 
-		return (gl, value) => assign.call(gl, location, false, value);
+		return new UniformValue(gl, this.program, (value: T) => assign.call(gl, location, false, value));
 	}
 
-	public declareUniformValue<T>(name: string, method: (gl: WebGLRenderingContext) => ShaderUniformValue<T>): ShaderUniform<T> {
-		const location = this.gl.getUniformLocation(this.program, name);
+	public declareTexture(name: string): UniformTexture {
+		const gl = this.gl;
+		const location = gl.getUniformLocation(this.program, name);
+
+		if (location === null)
+			throw Error(`cound not find location for texture uniform "${name}"`);
+
+		return new UniformTexture(gl, this.program, location);
+	}
+
+	public declareValue<T>(name: string, method: (gl: WebGLRenderingContext) => ShaderUniformValue<T>): UniformValue<T> {
+		const gl = this.gl;
+		const location = gl.getUniformLocation(this.program, name);
 
 		if (location === null)
 			throw Error(`cound not find location for vector uniform "${name}"`);
 
-		const assign = method(this.gl);
+		const assign = method(gl);
 
-		return (gl, value) => assign.call(gl, location, value);
+		return new UniformValue(gl, this.program, (value: T) => assign.call(gl, location, value));
 	}
 
-	public draw(indices: WebGLBuffer, count: number) {
-		const gl = this.gl;
+	public draw(binding: Binding, meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix) {
+		for (const mesh of meshes) {
+			const material = mesh.material;
 
-		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
-		gl.drawElements(gl.TRIANGLES, count, gl.UNSIGNED_SHORT, 0);
-	}
+			// Bind colors vector if defined and supported
+			if (binding.colors !== undefined) {
+				if (mesh.colors === undefined)
+					throw invalidAttributeBinding("colors");
 
-	public setAttribute(attribute: ShaderAttribute, buffer?: WebGLBuffer) {
-		const gl = this.gl;
+				binding.colors.set(mesh.colors);
+			}
 
-		if (buffer !== undefined) {
-			gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-			gl.vertexAttribPointer(attribute.location, attribute.size, attribute.type, false, 0, 0);
-			gl.enableVertexAttribArray(attribute.location);
+			// Bind coords vector if defined and supported
+			if (binding.coords !== undefined) {
+				if (mesh.coords === undefined)
+					throw invalidAttributeBinding("coords");
+
+				binding.coords.set(mesh.coords);
+			}
+
+			// Bind face normals if defined and supported
+			if (binding.normals !== undefined) {
+				if (mesh.normals === undefined)
+					throw invalidAttributeBinding("normals");
+
+				binding.normals.set(mesh.normals);
+			}
+
+			// Bind face tangents if defined and supported
+			if (binding.tangents !== undefined) {
+				if (mesh.tangents === undefined)
+					throw invalidAttributeBinding("tangents");
+
+				binding.tangents.set(mesh.tangents);
+			}
+
+			// Bind points vector
+			binding.points.set(mesh.points);
+
+			// Bind known uniforms if supported
+			let textureIndex = 0;
+
+			if (binding.ambientColor !== undefined)
+				binding.ambientColor.set(material.ambientColor);
+
+			if (binding.ambientMap !== undefined)
+				binding.ambientMap.set(material.ambientMap, textureIndex++);
+
+			if (binding.diffuseColor !== undefined)
+				binding.diffuseColor.set(material.diffuseColor);
+
+			if (binding.diffuseMap !== undefined)
+				binding.diffuseMap.set(material.diffuseMap, textureIndex++);
+
+			if (binding.heightMap !== undefined)
+				binding.heightMap.set(material.heightMap, textureIndex++);
+
+			if (binding.normalMap !== undefined)
+				binding.normalMap.set(material.normalMap, textureIndex++);
+
+			if (binding.normalMatrix !== undefined)
+				binding.normalMatrix.set(new Float32Array(modelView.getTransposedInverse3x3()));
+
+			if (binding.reflectionMap !== undefined)
+				binding.reflectionMap.set(material.reflectionMap, textureIndex++);
+
+			if (binding.shininess !== undefined)
+				binding.shininess.set(material.shininess);
+
+			if (binding.specularColor !== undefined)
+				binding.specularColor.set(material.specularColor);
+
+			if (binding.specularMap !== undefined)
+				binding.specularMap.set(material.specularMap, textureIndex++);
+
+			binding.modelViewMatrix.set(new Float32Array(modelView.getValues()));
+			binding.projectionMatrix.set(new Float32Array(projection.getValues()));
+
+			// Perform draw call
+			const gl = this.gl;
+
+			gl.useProgram(this.program);
+			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indices);
+			gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
 		}
-		else
-			gl.disableVertexAttribArray(attribute.location);
-	}
-
-	public setTexture(uniform: ShaderUniform<number>, texture: WebGLTexture, index: number) {
-		const gl = this.gl;
-
-		gl.activeTexture(gl.TEXTURE0 + index);
-		gl.bindTexture(gl.TEXTURE_2D, texture);
-
-		uniform(gl, index);
-	}
-
-	public setUniform<T>(uniform: ShaderUniform<T>, value: T) {
-		uniform(this.gl, value);
 	}
 
 	private static compile(gl: WebGLRenderingContext, shaderType: number, source: string) {
@@ -444,4 +440,45 @@ class Shader {
 	}
 }
 
-export { Binding, Mesh, Renderer, Shader, ShaderUniform }
+class UniformTexture {
+	private readonly gl: WebGLRenderingContext;
+	private readonly location: WebGLUniformLocation;
+	private readonly program: WebGLProgram;
+
+	public constructor(gl: WebGLRenderingContext, program: WebGLProgram, location: WebGLUniformLocation) {
+		this.gl = gl;
+		this.location = location;
+		this.program = program;
+	}
+
+	public set(texture: WebGLTexture, index: number) {
+		const gl = this.gl;
+
+		gl.useProgram(this.program);
+		gl.activeTexture(gl.TEXTURE0 + index);
+		gl.bindTexture(gl.TEXTURE_2D, texture);
+		gl.uniform1i(this.location, index);
+	}
+}
+
+class UniformValue<T> {
+	private readonly assign: (value: T) => void;
+	private readonly gl: WebGLRenderingContext;
+	private readonly program: WebGLProgram;
+
+	public constructor(gl: WebGLRenderingContext, program: WebGLProgram, assign: (value: T) => void) {
+		this.assign = assign;
+		this.gl = gl;
+		this.program = program;
+	}
+
+	public set(value: T) {
+		const gl = this.gl;
+
+		gl.useProgram(this.program);
+
+		this.assign(value);
+	}
+}
+
+export { Binding, Mesh, Renderer, Shader, UniformValue }
