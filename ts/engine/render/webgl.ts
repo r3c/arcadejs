@@ -1,4 +1,4 @@
-import * as functional from "../type/functional";
+import * as functional from "../language/functional";
 import * as math from "../math";
 import * as model from "../model";
 
