@@ -13,33 +13,33 @@ import * as webgl from "../engine/render/webgl";
 */
 
 const vsSource = `
-	attribute vec4 color;
-	attribute vec2 coord;
-	attribute vec4 point;
+	attribute vec4 colors;
+	attribute vec2 coords;
+	attribute vec4 points;
 
 	uniform mat4 modelViewMatrix;
 	uniform mat4 projectionMatrix;
 
-	varying highp vec4 vColor;
-	varying highp vec2 vCoord;
+	varying highp vec4 color;
+	varying highp vec2 coord;
 
 	void main(void) {
-		vColor = color;
-		vCoord = coord;
+		color = colors;
+		coord = coords;
 
-		gl_Position = projectionMatrix * modelViewMatrix * point;
+		gl_Position = projectionMatrix * modelViewMatrix * points;
 	}
 `;
 
 const fsSource = `
-	varying highp vec4 vColor;
-	varying highp vec2 vCoord;
+	varying highp vec4 color;
+	varying highp vec2 coord;
 
 	uniform highp vec4 ambientColor;
 	uniform sampler2D ambientMap;
 
 	void main(void) {
-		gl_FragColor = vColor * ambientColor * texture2D(ambientMap, vCoord);
+		gl_FragColor = color * ambientColor * texture2D(ambientMap, coord);
 	}
 `;
 
@@ -60,10 +60,10 @@ interface State {
 
 const prepare = async () => {
 	const runtime = application.runtime(display.WebGLScreen);
+	const gl = runtime.screen.context;
 
-	const float = runtime.screen.context.FLOAT;
-	const renderer = new webgl.Renderer(runtime.screen.context);
-	const shader = new webgl.Shader(runtime.screen.context, vsSource, fsSource);
+	const renderer = new webgl.Renderer(gl);
+	const shader = new webgl.Shader(gl, vsSource, fsSource);
 
 	return {
 		camera: {
@@ -74,11 +74,11 @@ const prepare = async () => {
 			binding: {
 				ambientColor: shader.declareValue("ambientColor", gl => gl.uniform4fv),
 				ambientMap: shader.declareTexture("ambientMap"),
-				colors: shader.declareAttribute("color", 4, float),
-				coords: shader.declareAttribute("coord", 2, float),
+				colors: shader.declareAttribute("colors", 4, gl.FLOAT),
+				coords: shader.declareAttribute("coords", 2, gl.FLOAT),
 				modelViewMatrix: shader.declareMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
 				projectionMatrix: shader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-				points: shader.declareAttribute("point", 3, float)
+				points: shader.declareAttribute("points", 3, gl.FLOAT)
 			},
 			meshes: renderer.load(await model.fromJSON("./res/model/cube.json")),
 			shader: shader

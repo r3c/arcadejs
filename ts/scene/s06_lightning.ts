@@ -68,18 +68,20 @@ const configuration = {
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
-	const renderer = new webgl.Renderer(runtime.screen.context);
+	const gl = runtime.screen.context;
+
+	const renderer = new webgl.Renderer(gl);
 
 	const cubeModel = await model.fromJSON("./res/model/cube.json");
 	const cubeShader = new webgl.Shader(
-		runtime.screen.context,
+		gl,
 		await io.readURL(io.StringFormat, "./res/shader/forward-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./res/shader/forward-fragment.glsl")
 	);
 
 	const spotModel = await model.fromOBJ("./res/model/sphere.obj", { scale: { xx: 0.2, yy: 0.2, zz: 0.2 } });
 	const spotShader = new webgl.Shader(
-		runtime.screen.context,
+		gl,
 		await io.readURL(io.StringFormat, "./res/shader/basic-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./res/shader/basic-fragment.glsl")
 	);
@@ -90,8 +92,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		position: { x: 0, y: 0, z: 0 }
 	}));
 
-	const float = runtime.screen.context.FLOAT;
-
 	return {
 		camera: {
 			position: { x: 0, y: 0, z: -5 },
@@ -101,21 +101,21 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			binding: {
 				ambientColor: cubeShader.declareValue("ambientColor", gl => gl.uniform4fv),
 				ambientMap: cubeShader.declareTexture("ambientMap"),
-				coords: cubeShader.declareAttribute("coords", 2, float),
+				coords: cubeShader.declareAttribute("coords", 2, gl.FLOAT),
 				diffuseColor: cubeShader.declareValue("diffuseColor", gl => gl.uniform4fv),
 				diffuseMap: cubeShader.declareTexture("diffuseMap"),
 				heightMap: cubeShader.declareTexture("heightMap"),
 				modelViewMatrix: cubeShader.declareMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
 				normalMap: cubeShader.declareTexture("normalMap"),
 				normalMatrix: cubeShader.declareMatrix("normalMatrix", gl => gl.uniformMatrix3fv),
-				normals: cubeShader.declareAttribute("normals", 3, float),
-				points: cubeShader.declareAttribute("points", 3, float),
+				normals: cubeShader.declareAttribute("normals", 3, gl.FLOAT),
+				points: cubeShader.declareAttribute("points", 3, gl.FLOAT),
 				projectionMatrix: cubeShader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
 				reflectionMap: cubeShader.declareTexture("reflectionMap"),
 				shininess: cubeShader.declareValue("shininess", gl => gl.uniform1f),
 				specularColor: cubeShader.declareValue("specularColor", gl => gl.uniform4fv),
 				specularMap: cubeShader.declareTexture("specularMap"),
-				tangents: cubeShader.declareAttribute("tangents", 3, float)
+				tangents: cubeShader.declareAttribute("tangents", 3, gl.FLOAT)
 			},
 			meshes: renderer.load(cubeModel),
 			shader: cubeShader
@@ -123,7 +123,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		drawSpot: {
 			binding: {
 				modelViewMatrix: spotShader.declareMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-				points: spotShader.declareAttribute("points", 3, float),
+				points: spotShader.declareAttribute("points", 3, gl.FLOAT),
 				projectionMatrix: spotShader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 			},
 			meshes: renderer.load(spotModel),
