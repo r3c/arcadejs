@@ -28,15 +28,15 @@ interface Binding {
 
 interface Material {
 	ambientColor: number[],
-	ambientMap: WebGLTexture,
+	ambientMap: WebGLTexture | undefined,
 	diffuseColor: number[],
-	diffuseMap: WebGLTexture,
-	heightMap: WebGLTexture,
-	normalMap: WebGLTexture,
-	reflectionMap: WebGLTexture,
+	diffuseMap: WebGLTexture | undefined,
+	heightMap: WebGLTexture | undefined,
+	normalMap: WebGLTexture | undefined,
+	reflectionMap: WebGLTexture | undefined,
 	shininess: number,
 	specularColor: number[],
-	specularMap: WebGLTexture
+	specularMap: WebGLTexture | undefined
 }
 
 interface Mesh {
@@ -133,14 +133,8 @@ const createTextureImage = (gl: WebGLRenderingContext, image: ImageData, quality
 	return texture;
 };
 
-const invalidAttributeBinding = (name: string) => {
-	return Error(`cannot draw a mesh with no ${name} attribute when shader expects one`);
-};
-
-const toArray2 = (input: math.Vector2) => [input.x, input.y];
-const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
-const toArray4 = (input: math.Vector4) => [input.x, input.y, input.z, input.w];
-const toArrayBuffer = <T, U>(constructor: { new(items: number[]): T }, items: U[], toArray: (input: U) => number[]) => new constructor(functional.flatten(items.map(toArray)));
+const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
+const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
 class Attribute {
 	private readonly gl: WebGLRenderingContext;
@@ -169,13 +163,9 @@ class Attribute {
 }
 
 class Renderer {
-	private readonly defaultMap: WebGLTexture;
 	private readonly gl: WebGLRenderingContext;
-	private readonly quality: Quality;
 
-	public constructor(gl: WebGLRenderingContext, quality: Quality = defaultQuality) {
-		const blankImage = new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1);
-
+	public constructor(gl: WebGLRenderingContext) {
 		gl.clearColor(0, 0, 0, 1);
 
 		gl.enable(gl.CULL_FACE);
@@ -185,16 +175,21 @@ class Renderer {
 		gl.depthFunc(gl.LEQUAL);
 		gl.clearDepth(1.0);
 
-		this.defaultMap = createTextureImage(gl, blankImage, quality);
 		this.gl = gl;
-		this.quality = quality;
 	}
 
-	public load(model: model.Model) {
+	public load(model: model.Model, quality: Quality = defaultQuality) {
 		const definitions = model.materials || {};
 		const gl = this.gl;
 		const materials: { [name: string]: Material } = {};
 		const meshes: Mesh[] = [];
+
+		const toArray2 = (input: math.Vector2) => [input.x, input.y];
+		const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
+		const toArray4 = (input: math.Vector4) => [input.x, input.y, input.z, input.w];
+		const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
+		const toColorMap = (image: ImageData) => createTextureImage(gl, image, quality);
+		const toIndices = (indices: [number, number, number]) => indices;
 
 		for (const mesh of model.meshes) {
 			const name = mesh.materialName;
@@ -206,32 +201,20 @@ class Renderer {
 					const definition = definitions[name];
 
 					const ambientColor = definition.ambientColor || defaultColor;
-					const ambientMap = definition.ambientMap !== undefined
-						? createTextureImage(gl, definition.ambientMap, this.quality)
-						: this.defaultMap;
+					const ambientMap = functional.map(definition.ambientMap, toColorMap);
 					const diffuseColor = definition.diffuseColor || ambientColor;
-					const diffuseMap = definition.diffuseMap !== undefined
-						? createTextureImage(gl, definition.diffuseMap, this.quality)
-						: ambientMap;
+					const diffuseMap = functional.map(definition.diffuseMap, toColorMap) || ambientMap;
 					const specularColor = definition.specularColor || diffuseColor;
-					const specularMap = definition.specularMap !== undefined
-						? createTextureImage(gl, definition.specularMap, this.quality)
-						: diffuseMap;
+					const specularMap = functional.map(definition.specularMap, toColorMap) || diffuseMap;
 
 					materials[name] = {
 						ambientColor: toArray4(ambientColor),
 						ambientMap: ambientMap,
 						diffuseColor: toArray4(diffuseColor),
 						diffuseMap: diffuseMap,
-						heightMap: definition.heightMap !== undefined
-							? createTextureImage(gl, definition.heightMap, this.quality)
-							: this.defaultMap,
-						normalMap: definition.normalMap !== undefined
-							? createTextureImage(gl, definition.normalMap, this.quality)
-							: this.defaultMap,
-						reflectionMap: definition.reflectionMap !== undefined
-							? createTextureImage(gl, definition.reflectionMap, this.quality)
-							: this.defaultMap,
+						heightMap: functional.map(definition.heightMap, toColorMap),
+						normalMap: functional.map(definition.normalMap, toColorMap),
+						reflectionMap: functional.map(definition.reflectionMap, toColorMap),
 						shininess: functional.coalesce(definition.shininess, defaultShininess),
 						specularColor: toArray4(specularColor),
 						specularMap: specularMap
@@ -243,35 +226,27 @@ class Renderer {
 			else {
 				material = {
 					ambientColor: toArray4(defaultColor),
-					ambientMap: this.defaultMap,
+					ambientMap: undefined,
 					diffuseColor: toArray4(defaultColor),
-					diffuseMap: this.defaultMap,
-					heightMap: this.defaultMap,
-					normalMap: this.defaultMap,
-					reflectionMap: this.defaultMap,
+					diffuseMap: undefined,
+					heightMap: undefined,
+					normalMap: undefined,
+					reflectionMap: undefined,
 					shininess: defaultShininess,
 					specularColor: toArray4(defaultColor),
-					specularMap: this.defaultMap
+					specularMap: undefined
 				};
 			}
 
 			meshes.push({
-				colors: mesh.colors !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.colors, toArray4))
-					: undefined,
-				coords: mesh.coords !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.coords, toArray2))
-					: undefined,
+				colors: functional.map(mesh.colors, toBuffer(Float32Array, toArray4, gl.ARRAY_BUFFER)),
+				coords: functional.map(mesh.coords, toBuffer(Float32Array, toArray2, gl.ARRAY_BUFFER)),
 				count: mesh.triangles.length * 3,
-				indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, toArrayBuffer(Uint16Array, mesh.triangles, indices => indices)),
+				indices: toBuffer(Uint16Array, toIndices, gl.ELEMENT_ARRAY_BUFFER)(mesh.triangles),
 				material: material,
-				normals: mesh.normals !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.normals, toArray3))
-					: undefined,
-				points: createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.points, toArray3)),
-				tangents: mesh.tangents !== undefined
-					? createBuffer(gl, gl.ARRAY_BUFFER, toArrayBuffer(Float32Array, mesh.tangents, toArray3))
-					: undefined
+				normals: functional.map(mesh.normals, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)),
+				points: toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)(mesh.points),
+				tangents: functional.map(mesh.tangents, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER))
 			});
 		}
 
@@ -458,26 +433,46 @@ class Target {
 				if (binding.ambientColor !== undefined)
 					binding.ambientColor.set(material.ambientColor);
 
-				if (binding.ambientMap !== undefined)
+				if (binding.ambientMap !== undefined) {
+					if (material.ambientMap === undefined)
+						throw invalidUniformBinding("ambientMap");
+
 					binding.ambientMap.set(material.ambientMap, textureIndex++);
+				}
 
 				if (binding.diffuseColor !== undefined)
 					binding.diffuseColor.set(material.diffuseColor);
 
-				if (binding.diffuseMap !== undefined)
+				if (binding.diffuseMap !== undefined) {
+					if (material.diffuseMap === undefined)
+						throw invalidUniformBinding("diffuseMap");
+
 					binding.diffuseMap.set(material.diffuseMap, textureIndex++);
+				}
 
-				if (binding.heightMap !== undefined)
+				if (binding.heightMap !== undefined) {
+					if (material.heightMap === undefined)
+						throw invalidUniformBinding("heightMap");
+
 					binding.heightMap.set(material.heightMap, textureIndex++);
+				}
 
-				if (binding.normalMap !== undefined)
+				if (binding.normalMap !== undefined) {
+					if (material.normalMap === undefined)
+						throw invalidUniformBinding("normalMap");
+
 					binding.normalMap.set(material.normalMap, textureIndex++);
+				}
 
 				if (binding.normalMatrix !== undefined)
 					binding.normalMatrix.set(new Float32Array(stride.modelView.getTransposedInverse3x3()));
 
-				if (binding.reflectionMap !== undefined)
+				if (binding.reflectionMap !== undefined) {
+					if (material.reflectionMap === undefined)
+						throw invalidUniformBinding("reflectionMap");
+
 					binding.reflectionMap.set(material.reflectionMap, textureIndex++);
+				}
 
 				if (binding.shininess !== undefined)
 					binding.shininess.set(material.shininess);
@@ -485,8 +480,12 @@ class Target {
 				if (binding.specularColor !== undefined)
 					binding.specularColor.set(material.specularColor);
 
-				if (binding.specularMap !== undefined)
+				if (binding.specularMap !== undefined) {
+					if (material.specularMap === undefined)
+						throw invalidUniformBinding("specularMap");
+
 					binding.specularMap.set(material.specularMap, textureIndex++);
+				}
 
 				binding.modelViewMatrix.set(new Float32Array(stride.modelView.getValues()));
 				binding.projectionMatrix.set(new Float32Array(this.projection.getValues()));

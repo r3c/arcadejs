@@ -108,7 +108,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 					projectionMatrix: bulbShader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv)
 				},
 				meshes: renderer.load(bulbModel),
-				shader: bulbShader,
+				shader: bulbShader
 			},
 			cube: {
 				binding: {
