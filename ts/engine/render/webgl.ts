@@ -166,14 +166,11 @@ class Renderer {
 	private readonly gl: WebGLRenderingContext;
 
 	public constructor(gl: WebGLRenderingContext) {
-		gl.clearColor(0, 0, 0, 1);
-
 		gl.enable(gl.CULL_FACE);
 		gl.cullFace(gl.BACK);
 
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthFunc(gl.LEQUAL);
-		gl.clearDepth(1.0);
 
 		this.gl = gl;
 	}
@@ -350,6 +347,8 @@ class Target {
 	private readonly framebuffer: WebGLFramebuffer | null;
 	private readonly gl: WebGLRenderingContext;
 
+	private clearColor: math.Vector4;
+	private clearDepth: number;
 	private projection: math.Matrix;
 	private renderColor: WebGLTexture | undefined;
 	private renderDepth: WebGLRenderbuffer | undefined;
@@ -370,6 +369,8 @@ class Target {
 	}
 
 	private constructor(gl: WebGLRenderingContext, framebuffer: WebGLFramebuffer | null, width: number, height: number) {
+		this.clearColor = { x: 0, y: 0, z: 0, w: 1 };
+		this.clearDepth = 1;
 		this.framebuffer = framebuffer;
 		this.gl = gl;
 
@@ -381,6 +382,9 @@ class Target {
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
+
+		gl.clearColor(this.clearColor.x, this.clearColor.y, this.clearColor.z, this.clearColor.z);
+		gl.clearDepth(this.clearDepth);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 		for (const stride of strides) {
@@ -509,6 +513,14 @@ class Target {
 			throw Error("cannot get depth buffer on non-buffered target");
 
 		return this.renderDepth;
+	}
+
+	public setClearColor(r: number, g: number, b: number, a: number) {
+		this.clearColor = { x: r, y: g, z: b, w: a };
+	}
+
+	public setClearDepth(depth: number) {
+		this.clearDepth = depth;
 	}
 
 	public setSize(width: number, height: number) {
