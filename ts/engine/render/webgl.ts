@@ -39,10 +39,6 @@ interface Material {
 	specularMap: WebGLTexture
 }
 
-interface MaterialMap {
-	[name: string]: Material
-}
-
 interface Mesh {
 	colors: WebGLBuffer | undefined,
 	coords: WebGLBuffer | undefined,
@@ -57,6 +53,17 @@ interface Mesh {
 interface Quality {
 	textureElementLinear: boolean,
 	textureMipmapLinear: boolean
+}
+
+interface Stride {
+	modelView: math.Matrix,
+	subject: Subject
+}
+
+interface Subject {
+	shader: Shader,
+	binding: Binding,
+	meshes: Mesh[]
 }
 
 const defaultColor = {
@@ -83,6 +90,22 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	gl.bufferData(target, values, gl.STATIC_DRAW);
 
 	return buffer;
+};
+
+const createTextureBlank = (gl: WebGLRenderingContext, width: number, height: number) => {
+	const texture = gl.createTexture();
+
+	if (texture === null)
+		throw Error("texture creation failed");
+
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+	gl.bindTexture(gl.TEXTURE_2D, null);
+
+	return texture;
 };
 
 const createTextureImage = (gl: WebGLRenderingContext, image: ImageData, quality: Quality) => {
@@ -167,16 +190,10 @@ class Renderer {
 		this.quality = quality;
 	}
 
-	public clear() {
-		const gl = this.gl;
-
-		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-	};
-
 	public load(model: model.Model) {
 		const definitions = model.materials || {};
 		const gl = this.gl;
-		const materials: MaterialMap = {};
+		const materials: { [name: string]: Material } = {};
 		const meshes: Mesh[] = [];
 
 		for (const mesh of model.meshes) {
@@ -263,8 +280,9 @@ class Renderer {
 }
 
 class Shader {
+	public readonly program: WebGLProgram;
+
 	private readonly gl: WebGLRenderingContext;
-	private readonly program: WebGLProgram;
 
 	public constructor(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
 		const program = gl.createProgram();
@@ -332,93 +350,6 @@ class Shader {
 		return new UniformValue(gl, this.program, (value: T) => assign.call(gl, location, value));
 	}
 
-	public draw(binding: Binding, meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix) {
-		for (const mesh of meshes) {
-			const material = mesh.material;
-
-			// Bind colors vector if defined and supported
-			if (binding.colors !== undefined) {
-				if (mesh.colors === undefined)
-					throw invalidAttributeBinding("colors");
-
-				binding.colors.set(mesh.colors);
-			}
-
-			// Bind coords vector if defined and supported
-			if (binding.coords !== undefined) {
-				if (mesh.coords === undefined)
-					throw invalidAttributeBinding("coords");
-
-				binding.coords.set(mesh.coords);
-			}
-
-			// Bind face normals if defined and supported
-			if (binding.normals !== undefined) {
-				if (mesh.normals === undefined)
-					throw invalidAttributeBinding("normals");
-
-				binding.normals.set(mesh.normals);
-			}
-
-			// Bind face tangents if defined and supported
-			if (binding.tangents !== undefined) {
-				if (mesh.tangents === undefined)
-					throw invalidAttributeBinding("tangents");
-
-				binding.tangents.set(mesh.tangents);
-			}
-
-			// Bind points vector
-			binding.points.set(mesh.points);
-
-			// Bind known uniforms if supported
-			let textureIndex = 0;
-
-			if (binding.ambientColor !== undefined)
-				binding.ambientColor.set(material.ambientColor);
-
-			if (binding.ambientMap !== undefined)
-				binding.ambientMap.set(material.ambientMap, textureIndex++);
-
-			if (binding.diffuseColor !== undefined)
-				binding.diffuseColor.set(material.diffuseColor);
-
-			if (binding.diffuseMap !== undefined)
-				binding.diffuseMap.set(material.diffuseMap, textureIndex++);
-
-			if (binding.heightMap !== undefined)
-				binding.heightMap.set(material.heightMap, textureIndex++);
-
-			if (binding.normalMap !== undefined)
-				binding.normalMap.set(material.normalMap, textureIndex++);
-
-			if (binding.normalMatrix !== undefined)
-				binding.normalMatrix.set(new Float32Array(modelView.getTransposedInverse3x3()));
-
-			if (binding.reflectionMap !== undefined)
-				binding.reflectionMap.set(material.reflectionMap, textureIndex++);
-
-			if (binding.shininess !== undefined)
-				binding.shininess.set(material.shininess);
-
-			if (binding.specularColor !== undefined)
-				binding.specularColor.set(material.specularColor);
-
-			if (binding.specularMap !== undefined)
-				binding.specularMap.set(material.specularMap, textureIndex++);
-
-			binding.modelViewMatrix.set(new Float32Array(modelView.getValues()));
-			binding.projectionMatrix.set(new Float32Array(projection.getValues()));
-
-			// Perform draw call
-			const gl = this.gl;
-
-			gl.useProgram(this.program);
-			gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indices);
-			gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
-		}
-	}
-
 	private static compile(gl: WebGLRenderingContext, shaderType: number, source: string) {
 		const shader = gl.createShader(shaderType);
 
@@ -437,6 +368,191 @@ class Shader {
 		}
 
 		return shader;
+	}
+}
+
+class Target {
+	private readonly framebuffer: WebGLFramebuffer | null;
+	private readonly gl: WebGLRenderingContext;
+
+	private projection: math.Matrix;
+	private renderColor: WebGLTexture | undefined;
+	private renderDepth: WebGLRenderbuffer | undefined;
+	private viewHeight: number;
+	private viewWidth: number;
+
+	public static createBuffer(gl: WebGLRenderingContext, width: number, height: number) {
+		const framebuffer = gl.createFramebuffer();
+
+		if (framebuffer === null)
+			throw Error("could not create framebuffer");
+
+		return new this(gl, framebuffer, width, height);
+	}
+
+	public static createScreen(gl: WebGLRenderingContext, width: number, height: number) {
+		return new this(gl, null, width, height);
+	}
+
+	private constructor(gl: WebGLRenderingContext, framebuffer: WebGLFramebuffer | null, width: number, height: number) {
+		this.framebuffer = framebuffer;
+		this.gl = gl;
+
+		this.setSize(width, height);
+	}
+
+	public draw(strides: Stride[]) {
+		const gl = this.gl;
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+		for (const stride of strides) {
+			const subject = stride.subject;
+
+			gl.useProgram(subject.shader.program);
+
+			for (const mesh of subject.meshes) {
+				const binding = subject.binding;
+				const material = mesh.material;
+
+				// Bind colors vector if defined and supported
+				if (binding.colors !== undefined) {
+					if (mesh.colors === undefined)
+						throw invalidAttributeBinding("colors");
+
+					binding.colors.set(mesh.colors);
+				}
+
+				// Bind coords vector if defined and supported
+				if (binding.coords !== undefined) {
+					if (mesh.coords === undefined)
+						throw invalidAttributeBinding("coords");
+
+					binding.coords.set(mesh.coords);
+				}
+
+				// Bind face normals if defined and supported
+				if (binding.normals !== undefined) {
+					if (mesh.normals === undefined)
+						throw invalidAttributeBinding("normals");
+
+					binding.normals.set(mesh.normals);
+				}
+
+				// Bind face tangents if defined and supported
+				if (binding.tangents !== undefined) {
+					if (mesh.tangents === undefined)
+						throw invalidAttributeBinding("tangents");
+
+					binding.tangents.set(mesh.tangents);
+				}
+
+				// Bind points vector
+				binding.points.set(mesh.points);
+
+				// Bind known and supported uniforms
+				let textureIndex = 0;
+
+				if (binding.ambientColor !== undefined)
+					binding.ambientColor.set(material.ambientColor);
+
+				if (binding.ambientMap !== undefined)
+					binding.ambientMap.set(material.ambientMap, textureIndex++);
+
+				if (binding.diffuseColor !== undefined)
+					binding.diffuseColor.set(material.diffuseColor);
+
+				if (binding.diffuseMap !== undefined)
+					binding.diffuseMap.set(material.diffuseMap, textureIndex++);
+
+				if (binding.heightMap !== undefined)
+					binding.heightMap.set(material.heightMap, textureIndex++);
+
+				if (binding.normalMap !== undefined)
+					binding.normalMap.set(material.normalMap, textureIndex++);
+
+				if (binding.normalMatrix !== undefined)
+					binding.normalMatrix.set(new Float32Array(stride.modelView.getTransposedInverse3x3()));
+
+				if (binding.reflectionMap !== undefined)
+					binding.reflectionMap.set(material.reflectionMap, textureIndex++);
+
+				if (binding.shininess !== undefined)
+					binding.shininess.set(material.shininess);
+
+				if (binding.specularColor !== undefined)
+					binding.specularColor.set(material.specularColor);
+
+				if (binding.specularMap !== undefined)
+					binding.specularMap.set(material.specularMap, textureIndex++);
+
+				binding.modelViewMatrix.set(new Float32Array(stride.modelView.getValues()));
+				binding.projectionMatrix.set(new Float32Array(this.projection.getValues()));
+
+				// Perform draw call
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indices);
+				gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
+			}
+		}
+	}
+
+	public getColor() {
+		if (this.renderColor === undefined)
+			throw Error("cannot get color buffer on non-buffered target");
+
+		return this.renderColor;
+	}
+
+	public getDepth() {
+		if (this.renderDepth === undefined)
+			throw Error("cannot get depth buffer on non-buffered target");
+
+		return this.renderDepth;
+	}
+
+	public setSize(width: number, height: number) {
+		const gl = this.gl;
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+
+		let renderColor: WebGLTexture | null;
+		let renderDepth: WebGLRenderbuffer | null;
+
+		if (this.framebuffer !== null) {
+			// Color buffer
+			renderColor = createTextureBlank(gl, width, height);
+
+			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, renderColor, 0);
+
+			// Depth buffer
+			renderDepth = gl.createRenderbuffer();
+
+			if (renderDepth === null)
+				throw Error("cannot create render buffer");
+
+			gl.bindRenderbuffer(gl.RENDERBUFFER, renderDepth);
+			gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+			gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderDepth)
+		}
+		else {
+			renderColor = null;
+			renderDepth = null;
+		}
+
+		// Save configuration
+		if (this.renderColor !== undefined)
+			gl.deleteTexture(this.renderColor);
+
+		if (this.renderDepth !== undefined)
+			gl.deleteRenderbuffer(this.renderDepth);
+
+		this.projection = math.Matrix.createPerspective(45, width / height, 0.1, 100);
+		this.renderColor = renderColor || undefined;
+		this.renderDepth = renderDepth || undefined;
+		this.viewHeight = height;
+		this.viewWidth = width;
 	}
 }
 
@@ -481,4 +597,4 @@ class UniformValue<T> {
 	}
 }
 
-export { Binding, Mesh, Renderer, Shader, UniformValue }
+export { Binding, Mesh, Renderer, Shader, Subject, Target, UniformValue }

@@ -48,14 +48,9 @@ interface State {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
-	draw: {
-		binding: webgl.Binding,
-		meshes: webgl.Mesh[],
-		shader: webgl.Shader
-	},
 	input: controller.Input,
-	projection: math.Matrix,
-	renderer: webgl.Renderer
+	subject: webgl.Subject,
+	target: webgl.Target
 }
 
 const prepare = async () => {
@@ -70,7 +65,8 @@ const prepare = async () => {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
-		draw: {
+		input: runtime.input,
+		subject: {
 			binding: {
 				ambientColor: shader.declareValue("ambientColor", gl => gl.uniform4fv),
 				ambientMap: shader.declareTexture("ambientMap"),
@@ -83,16 +79,14 @@ const prepare = async () => {
 			meshes: renderer.load(await model.fromJSON("./res/model/cube.json")),
 			shader: shader
 		},
-		input: runtime.input,
-		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		renderer: renderer
+		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
 	};
 };
 
 const render = (state: State) => {
 	const camera = state.camera;
-	const draw = state.draw;
-	const renderer = state.renderer;
+	const subject = state.subject;
+	const target = state.target;
 
 	const view = math.Matrix
 		.createIdentity()
@@ -100,8 +94,10 @@ const render = (state: State) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
 
-	renderer.clear();
-	draw.shader.draw(draw.binding, draw.meshes, state.projection, view);
+	target.draw([{
+		modelView: view,
+		subject: subject
+	}]);
 };
 
 const update = (state: State, dt: number) => {
