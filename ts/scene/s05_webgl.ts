@@ -49,7 +49,7 @@ interface State {
 		rotation: math.Vector3
 	},
 	input: controller.Input,
-	subject: webgl.Subject,
+	subject: webgl.Subject<void>,
 	target: webgl.Target
 }
 
@@ -58,7 +58,17 @@ const prepare = async () => {
 	const gl = runtime.screen.context;
 
 	const renderer = new webgl.Renderer(gl);
-	const shader = new webgl.Shader(gl, vsSource, fsSource);
+	const shader = new webgl.Shader<void>(gl, vsSource, fsSource);
+
+	shader.bindAttribute("colors", 4, gl.FLOAT, mesh => mesh.colors);
+	shader.bindAttribute("coords", 2, gl.FLOAT, mesh => mesh.coords);
+	shader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
+
+	shader.bindMaterialProperty("ambientColor", gl => gl.uniform4fv, material => material.ambientColor);
+	shader.bindMaterialTexture("ambientMap", material => material.ambientMap);
+
+	shader.bindMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelViewMatrix);
+	shader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
 
 	return {
 		camera: {
@@ -67,15 +77,6 @@ const prepare = async () => {
 		},
 		input: runtime.input,
 		subject: {
-			binding: {
-				ambientColor: shader.declareValue("ambientColor", gl => gl.uniform4fv),
-				ambientMap: shader.declareTexture("ambientMap"),
-				colors: shader.declareAttribute("colors", 4, gl.FLOAT),
-				coords: shader.declareAttribute("coords", 2, gl.FLOAT),
-				modelViewMatrix: shader.declareMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv),
-				projectionMatrix: shader.declareMatrix("projectionMatrix", gl => gl.uniformMatrix4fv),
-				points: shader.declareAttribute("points", 3, gl.FLOAT)
-			},
 			meshes: renderer.load(await model.fromJSON("./res/model/cube.json")),
 			shader: shader
 		},
@@ -97,7 +98,7 @@ const render = (state: State) => {
 	target.draw([{
 		modelView: view,
 		subject: subject
-	}]);
+	}], undefined);
 };
 
 const update = (state: State, dt: number) => {
