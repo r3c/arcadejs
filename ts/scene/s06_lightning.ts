@@ -29,19 +29,21 @@ interface SceneState {
 	},
 	input: controller.Input,
 	light: ShaderState,
+	models: {
+		bulb: webgl.Mesh[],
+		cube: webgl.Mesh[],
+		ground: webgl.Mesh[]
+	},
 	move: number,
-	subjects: {
-		bulb: webgl.Subject<ShaderState>,
-		cube: webgl.Subject<ShaderState>
+	shaders: {
+		basic: webgl.Shader<ShaderState>,
+		light: webgl.Shader<ShaderState>
 	},
 	target: webgl.Target
 }
 
 interface ShaderState {
-	bulbs: {
-		positionModelView: math.Vector3,
-		positionWorld: math.Vector3
-	}[],
+	bulbs: math.Vector3[],
 	tweak: application.Tweak<Configuration>
 }
 
@@ -61,65 +63,65 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const renderer = new webgl.Renderer(gl);
 
-	const bulbModel = await model.fromOBJ("./res/model/sphere.obj", { scale: { xx: 0.2, yy: 0.2, zz: 0.2 } });
-	const bulbShader = new webgl.Shader<ShaderState>(
+	// Setup shaders
+	const basicShader = new webgl.Shader<ShaderState>(
 		gl,
 		await io.readURL(io.StringFormat, "./res/shader/basic-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./res/shader/basic-fragment.glsl")
 	);
 
-	bulbShader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
+	basicShader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
 
-	bulbShader.bindMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelViewMatrix);
-	bulbShader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
+	basicShader.bindMatrix("modelMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelMatrix);
+	basicShader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
+	basicShader.bindMatrix("viewMatrix", gl => gl.uniformMatrix4fv, transform => transform.viewMatrix);
 
-	const cubeModel = await model.fromJSON("./res/model/cube.json");
-	const cubeShader = new webgl.Shader<ShaderState>(
+	const lightShader = new webgl.Shader<ShaderState>(
 		gl,
 		await io.readURL(io.StringFormat, "./res/shader/forward-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./res/shader/forward-fragment.glsl")
 	);
 
-	cubeShader.bindAttribute("coords", 2, gl.FLOAT, mesh => mesh.coords);
-	cubeShader.bindAttribute("normals", 3, gl.FLOAT, mesh => mesh.normals);
-	cubeShader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
-	cubeShader.bindAttribute("tangents", 3, gl.FLOAT, mesh => mesh.tangents);
+	lightShader.bindAttribute("coords", 2, gl.FLOAT, mesh => mesh.coords);
+	lightShader.bindAttribute("normals", 3, gl.FLOAT, mesh => mesh.normals);
+	lightShader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
+	lightShader.bindAttribute("tangents", 3, gl.FLOAT, mesh => mesh.tangents);
 
-	cubeShader.bindGlobalProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
-	cubeShader.bindGlobalProperty("useDiffuse", gl => gl.uniform1i, state => state.tweak.useDiffuse);
-	cubeShader.bindGlobalProperty("useHeightMap", gl => gl.uniform1i, state => state.tweak.useHeightMap);
-	cubeShader.bindGlobalProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
-	cubeShader.bindGlobalProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
+	lightShader.bindGlobalProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
+	lightShader.bindGlobalProperty("useDiffuse", gl => gl.uniform1i, state => state.tweak.useDiffuse);
+	lightShader.bindGlobalProperty("useHeightMap", gl => gl.uniform1i, state => state.tweak.useHeightMap);
+	lightShader.bindGlobalProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
+	lightShader.bindGlobalProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
 
-	cubeShader.bindMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelViewMatrix);
-	cubeShader.bindMatrix("normalMatrix", gl => gl.uniformMatrix3fv, transform => transform.normalMatrix);
-	cubeShader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
+	lightShader.bindMatrix("modelMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelMatrix);
+	lightShader.bindMatrix("normalMatrix", gl => gl.uniformMatrix3fv, transform => transform.normalMatrix);
+	lightShader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
+	lightShader.bindMatrix("viewMatrix", gl => gl.uniformMatrix4fv, transform => transform.viewMatrix);
 
-	cubeShader.bindMaterialProperty("ambientColor", gl => gl.uniform4fv, material => material.ambientColor);
-	cubeShader.bindMaterialTexture("ambientMap", material => material.ambientMap);
-	cubeShader.bindMaterialProperty("diffuseColor", gl => gl.uniform4fv, material => material.diffuseColor);
-	cubeShader.bindMaterialTexture("diffuseMap", material => material.diffuseMap);
-	cubeShader.bindMaterialTexture("heightMap", material => material.heightMap);
-	cubeShader.bindMaterialTexture("normalMap", material => material.normalMap);
-	cubeShader.bindMaterialTexture("reflectionMap", material => material.reflectionMap);
-	cubeShader.bindMaterialProperty("shininess", gl => gl.uniform1f, material => material.shininess);
-	cubeShader.bindMaterialProperty("specularColor", gl => gl.uniform4fv, material => material.specularColor);
-	cubeShader.bindMaterialTexture("specularMap", material => material.specularMap);
+	lightShader.bindMaterialProperty("ambientColor", gl => gl.uniform4fv, material => material.ambientColor);
+	lightShader.bindMaterialTexture("ambientMap", material => material.ambientMap);
+	lightShader.bindMaterialProperty("diffuseColor", gl => gl.uniform4fv, material => material.diffuseColor);
+	lightShader.bindMaterialTexture("diffuseMap", material => material.diffuseMap);
+	lightShader.bindMaterialTexture("heightMap", material => material.heightMap);
+	lightShader.bindMaterialTexture("normalMap", material => material.normalMap);
+	lightShader.bindMaterialTexture("reflectionMap", material => material.reflectionMap);
+	lightShader.bindMaterialProperty("shininess", gl => gl.uniform1f, material => material.shininess);
+	lightShader.bindMaterialProperty("specularColor", gl => gl.uniform4fv, material => material.specularColor);
+	lightShader.bindMaterialTexture("specularMap", material => material.specularMap);
 
-	const bulbs = [0, 1, 2].map(i => ({
-		positionModelView: { x: 0, y: 0, z: 0 },
-		positionWorld: { x: 0, y: 0, z: 0 }
-	}));
+	const bulbs = [0, 1, 2].map(i => ({ x: 0, y: 0, z: 0 }));
 
 	for (const index of [0, 1, 2]) {
-		cubeShader.bindGlobalProperty("light" + index + ".enabled", gl => gl.uniform1i, state => index < state.tweak.nbLights ? 1 : 0);
-		cubeShader.bindGlobalProperty("light" + index + ".position", gl => gl.uniform3fv, state => {
-			const position = state.bulbs[index].positionModelView;
-
-			return [position.x, position.y, position.z];
-		});
+		lightShader.bindGlobalProperty("light" + index + ".enabled", gl => gl.uniform1i, state => index < state.tweak.nbLights ? 1 : 0);
+		lightShader.bindGlobalProperty("light" + index + ".position", gl => gl.uniform3fv, state => [state.bulbs[index].x, state.bulbs[index].y, state.bulbs[index].z]);
 	}
 
+	// Load models
+	const bulbModel = await model.fromOBJ("./res/model/sphere.obj", { scale: { xx: 0.2, yy: 0.2, zz: 0.2 } });
+	const cubeModel = await model.fromJSON("./res/model/cube.json");
+	const groundModel = await model.fromJSON("./res/model/ground.json");
+
+	// Create state
 	return {
 		camera: {
 			position: { x: 0, y: 0, z: -5 },
@@ -130,16 +132,15 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			bulbs: bulbs,
 			tweak: tweak
 		},
+		models: {
+			bulb: renderer.load(bulbModel),
+			cube: renderer.load(cubeModel),
+			ground: renderer.load(groundModel)
+		},
 		move: 0,
-		subjects: {
-			bulb: {
-				meshes: renderer.load(bulbModel),
-				shader: bulbShader
-			},
-			cube: {
-				meshes: renderer.load(cubeModel),
-				shader: cubeShader
-			}
+		shaders: {
+			basic: basicShader,
+			light: lightShader
 		},
 		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
 	};
@@ -148,37 +149,36 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 const render = (state: SceneState) => {
 	const camera = state.camera;
 	const light = state.light;
-	const subjects = state.subjects;
+	const models = state.models;
+	const shaders = state.shaders;
 	const target = state.target;
 
-	const view = math.Matrix
+	const cameraView = math.Matrix
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
-
-	// Set uniforms
-	for (const bulb of light.bulbs) {
-		bulb.positionModelView = view.transform({
-			x: bulb.positionWorld.x,
-			y: bulb.positionWorld.y,
-			z: bulb.positionWorld.z,
-			w: 1
-		});
-	}
+		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Draw scene
 	const bulbs = light.bulbs.slice(0, light.tweak.nbLights).map(bulb => ({
-		modelView: view.translate(bulb.positionWorld),
-		subject: state.subjects.bulb
+		meshes: models.bulb,
+		modelMatrix: math.Matrix.createIdentity().translate(bulb),
+		shader: shaders.basic
 	}));
 
-	const cube = [{
-		modelView: view,
-		subject: state.subjects.cube
-	}];
+	const cube = {
+		meshes: models.cube,
+		modelMatrix: math.Matrix.createIdentity(),
+		shader: shaders.light
+	};
 
-	target.draw(bulbs.concat(cube), light);
+	const ground = {
+		meshes: models.ground,
+		modelMatrix: math.Matrix.createIdentity().translate({x: 0, y: -1.5, z: 0}),
+		shader: shaders.light
+	};
+
+	target.draw(bulbs.concat([cube, ground]), cameraView, light);
 };
 
 const update = (state: SceneState, dt: number) => {
@@ -211,7 +211,7 @@ const update = (state: SceneState, dt: number) => {
 		const pitch = state.move * (((i + 1) * 17) % 23);
 		const yaw = state.move * (((i + 1) * 7) % 13);
 
-		light.bulbs[i].positionWorld = math.Vector.scale3({
+		light.bulbs[i] = math.Vector.scale3({
 			x: Math.cos(yaw) * Math.cos(pitch),
 			y: Math.sin(yaw) * Math.cos(pitch),
 			z: Math.sin(pitch)

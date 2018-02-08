@@ -31,20 +31,17 @@ interface Quality {
 	textureMipmapLinear: boolean
 }
 
-interface Stride<T> {
-	modelView: math.Matrix,
-	subject: Subject<T>
-}
-
 interface Subject<T> {
 	shader: Shader<T>,
-	meshes: Mesh[]
+	meshes: Mesh[],
+	modelMatrix: math.Matrix
 }
 
 interface Transform {
-	modelViewMatrix: Float32Array,
+	modelMatrix: Float32Array,
 	normalMatrix: Float32Array,
-	projectionMatrix: Float32Array
+	projectionMatrix: Float32Array,
+	viewMatrix: Float32Array
 }
 
 const defaultColor = {
@@ -407,7 +404,7 @@ abstract class Target {
 		this.gl = gl;
 	}
 
-	public draw<T>(strides: Stride<T>[], state: T) {
+	public draw<T>(subjects: Subject<T>[], viewMatrix: math.Matrix, state: T) {
 		const gl = this.gl;
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.getFramebuffer());
@@ -417,13 +414,13 @@ abstract class Target {
 		gl.clearDepth(this.clearDepth);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-		for (const stride of strides) {
-			const subject = stride.subject;
+		for (const subject of subjects) {
 			const shader = subject.shader;
 			const transform = {
-				modelViewMatrix: new Float32Array(stride.modelView.getValues()),
-				normalMatrix: new Float32Array(stride.modelView.getTransposedInverse3x3()),
-				projectionMatrix: new Float32Array(this.projection.getValues())
+				modelMatrix: new Float32Array(subject.modelMatrix.getValues()),
+				normalMatrix: new Float32Array(viewMatrix.compose(subject.modelMatrix).getTransposedInverse3x3()),
+				projectionMatrix: new Float32Array(this.projection.getValues()),
+				viewMatrix: new Float32Array(viewMatrix.getValues())
 			};
 
 			gl.useProgram(shader.program);

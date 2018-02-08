@@ -13,9 +13,10 @@ attribute vec3 normals;
 attribute vec3 points;
 attribute vec3 tangents;
 
-uniform mat4 modelViewMatrix;
+uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
 
 uniform Light light0;
 uniform Light light1;
@@ -33,7 +34,7 @@ varying vec3 light1direction;
 varying vec3 light2direction;
 
 void main(void) {
-	vec4 pointWorld = modelViewMatrix * vec4(points, 1.0);
+	vec4 pointWorld = viewMatrix * modelMatrix * vec4(points, 1.0);
 	vec3 cameraWorld = -pointWorld.xyz;
 
 	coord = coords;
@@ -44,21 +45,21 @@ void main(void) {
 	vec3 b = cross(n, t);
 
 	if (useNormalMap) {
-		vec3 light0directionWorld = normalize(light0.position - point);
-		vec3 light1directionWorld = normalize(light1.position - point);
-		vec3 light2directionWorld = normalize(light2.position - point);
+		vec3 light0directionCamera = normalize((viewMatrix * vec4(light0.position, 1.0)).xyz - point);
+		vec3 light1directionCamera = normalize((viewMatrix * vec4(light1.position, 1.0)).xyz - point);
+		vec3 light2directionCamera = normalize((viewMatrix * vec4(light2.position, 1.0)).xyz - point);
 
-		light0direction = vec3(dot(light0directionWorld, t), dot(light0directionWorld, b), dot(light0directionWorld, n));
-		light1direction = vec3(dot(light1directionWorld, t), dot(light1directionWorld, b), dot(light1directionWorld, n));
-		light2direction = vec3(dot(light2directionWorld, t), dot(light2directionWorld, b), dot(light2directionWorld, n));
+		light0direction = vec3(dot(light0directionCamera, t), dot(light0directionCamera, b), dot(light0directionCamera, n));
+		light1direction = vec3(dot(light1directionCamera, t), dot(light1directionCamera, b), dot(light1directionCamera, n));
+		light2direction = vec3(dot(light2directionCamera, t), dot(light2directionCamera, b), dot(light2directionCamera, n));
 
 		camera = vec3(dot(cameraWorld, t), dot(cameraWorld, b), dot(cameraWorld, n));
 		normal = vec3(0.0, 0.0, 1.0);
 	}
 	else {
-		light0direction = light0.position - point;
-		light1direction = light1.position - point;
-		light2direction = light2.position - point;
+		light0direction = (viewMatrix * vec4(light0.position, 1.0)).xyz - point;
+		light1direction = (viewMatrix * vec4(light1.position, 1.0)).xyz - point;
+		light2direction = (viewMatrix * vec4(light2.position, 1.0)).xyz - point;
 
 		camera = cameraWorld;
 		normal = n;

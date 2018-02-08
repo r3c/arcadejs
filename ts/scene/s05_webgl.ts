@@ -17,8 +17,9 @@ const vsSource = `
 	attribute vec2 coords;
 	attribute vec4 points;
 
-	uniform mat4 modelViewMatrix;
+	uniform mat4 modelMatrix;
 	uniform mat4 projectionMatrix;
+	uniform mat4 viewMatrix;
 
 	varying highp vec4 color;
 	varying highp vec2 coord;
@@ -27,7 +28,7 @@ const vsSource = `
 		color = colors;
 		coord = coords;
 
-		gl_Position = projectionMatrix * modelViewMatrix * points;
+		gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
 	}
 `;
 
@@ -49,7 +50,8 @@ interface State {
 		rotation: math.Vector3
 	},
 	input: controller.Input,
-	subject: webgl.Subject<void>,
+	model: webgl.Mesh[],
+	shader: webgl.Shader<void>,
 	target: webgl.Target
 }
 
@@ -67,8 +69,9 @@ const prepare = async () => {
 	shader.bindMaterialProperty("ambientColor", gl => gl.uniform4fv, material => material.ambientColor);
 	shader.bindMaterialTexture("ambientMap", material => material.ambientMap);
 
-	shader.bindMatrix("modelViewMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelViewMatrix);
+	shader.bindMatrix("modelMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelMatrix);
 	shader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
+	shader.bindMatrix("viewMatrix", gl => gl.uniformMatrix4fv, transform => transform.viewMatrix);
 
 	return {
 		camera: {
@@ -76,29 +79,29 @@ const prepare = async () => {
 			rotation: { x: 0, y: 0, z: 0 }
 		},
 		input: runtime.input,
-		subject: {
-			meshes: renderer.load(await model.fromJSON("./res/model/cube.json")),
-			shader: shader
-		},
+		model: renderer.load(await model.fromJSON("./res/model/cube.json")),
+		shader: shader,
 		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
 	};
 };
 
 const render = (state: State) => {
 	const camera = state.camera;
-	const subject = state.subject;
 	const target = state.target;
 
-	const view = math.Matrix
+	const viewMatrix = math.Matrix
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
+		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	target.draw([{
-		modelView: view,
-		subject: subject
-	}], undefined);
+	const cube = {
+		meshes: state.model,
+		modelMatrix: math.Matrix.createIdentity(),
+		shader: state.shader
+	};
+
+	target.draw([cube], viewMatrix, undefined);
 };
 
 const update = (state: State, dt: number) => {
