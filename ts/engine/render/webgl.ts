@@ -431,38 +431,37 @@ class Shader<TCallState> {
 	}
 }
 
-abstract class Target {
-	protected readonly gl: WebGLRenderingContext;
+class Target {
+	private readonly gl: WebGLRenderingContext;
 
 	private clearColor: math.Vector4;
 	private clearDepth: number;
+	private framebuffer: WebGLFramebuffer | null;
+	private renderColorTexture: WebGLTexture | null;
+	private renderColorRenderbuffer: WebGLRenderbuffer | null;
+	private renderDepthTexture: WebGLTexture | null;
+	private renderDepthRenderbuffer: WebGLRenderbuffer | null;
 	private viewHeight: number;
 	private viewWidth: number;
 
-	public static createBuffer(gl: WebGLRenderingContext, width: number, height: number) {
-		const framebuffer = gl.createFramebuffer();
-
-		if (framebuffer === null)
-			throw Error("could not create framebuffer");
-
-		return new BufferTarget(gl, framebuffer, width, height);
-	}
-
-	public static createScreen(gl: WebGLRenderingContext, width: number, height: number) {
-		return new ScreenTarget(gl, width, height);
-	}
-
-	protected constructor(gl: WebGLRenderingContext, width: number, height: number) {
+	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
 		this.clearColor = { x: 0, y: 0, z: 0, w: 1 };
 		this.clearDepth = 1;
+		this.framebuffer = null;
 		this.gl = gl;
+		this.renderColorTexture = null;
+		this.renderColorRenderbuffer = null;
+		this.renderDepthTexture = null;
+		this.renderDepthRenderbuffer = null;
+		this.viewHeight = height;
+		this.viewWidth = width;
 	}
 
 	public clear() {
 		const gl = this.gl;
 
 		// FIXME: this introduces an implicit state between "clear" and "draw" calls
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.getFramebuffer());
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
 		gl.clearColor(this.clearColor.x, this.clearColor.y, this.clearColor.z, this.clearColor.z);
@@ -561,81 +560,115 @@ abstract class Target {
 		this.clearDepth = depth;
 	}
 
-	public setSize(width: number, height: number) {
-		this.viewHeight = height;
-		this.viewWidth = width;
+	public setupColorRenderbuffer() {
+		const gl = this.gl;
+
+		this.clearColorAttachment();
+
+		const framebuffer = this.setupFramebuffer();
+		const renderbuffer = createRenderbuffer(gl, this.viewHeight, this.viewHeight, false);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderbuffer)
+
+		this.renderColorRenderbuffer = renderbuffer;
+
+		return renderbuffer;
 	}
 
-	protected abstract getFramebuffer(): WebGLFramebuffer | null;
-}
+	public setupColorTexture() {
+		const gl = this.gl;
 
-class BufferTarget extends Target {
-	private readonly framebuffer: WebGLFramebuffer;
+		this.clearColorAttachment();
 
-	private renderColor: WebGLTexture;
-	private renderDepth: WebGLTexture;
+		const framebuffer = this.setupFramebuffer();
+		const texture = createTextureBlank(gl, this.viewWidth, this.viewHeight, false);
 
-	public constructor(gl: WebGLRenderingContext, framebuffer: WebGLFramebuffer, width: number, height: number) {
-		super(gl, width, height);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+		this.renderColorTexture = texture;
+
+		return texture;
+	}
+
+	public setupDepthRenderbuffer() {
+		const gl = this.gl;
+
+		this.clearDepthAttachment();
+
+		const framebuffer = this.setupFramebuffer();
+		const renderbuffer = createRenderbuffer(gl, this.viewHeight, this.viewHeight, true);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer)
+
+		this.renderDepthRenderbuffer = renderbuffer;
+
+		return renderbuffer;
+	}
+
+	public setupDepthTexture() {
+		const gl = this.gl;
+
+		this.clearDepthAttachment();
+
+		const framebuffer = this.setupFramebuffer();
+		const texture = createTextureBlank(gl, this.viewWidth, this.viewHeight, true);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, texture, 0);
+
+		this.renderDepthTexture = texture;
+
+		return texture;
+	}
+
+	private clearColorAttachment() {
+		const gl = this.gl;
+
+		if (this.renderColorRenderbuffer !== null) {
+			gl.deleteRenderbuffer(this.renderColorRenderbuffer);
+
+			this.renderColorRenderbuffer = null;
+		}
+
+		if (this.renderColorTexture !== null) {
+			gl.deleteTexture(this.renderColorTexture);
+
+			this.renderColorTexture = null;
+		}
+	}
+
+	private clearDepthAttachment() {
+		const gl = this.gl;
+
+		if (this.renderDepthRenderbuffer !== null) {
+			gl.deleteRenderbuffer(this.renderDepthRenderbuffer);
+
+			this.renderDepthRenderbuffer = null;
+		}
+
+		if (this.renderDepthTexture !== null) {
+			gl.deleteTexture(this.renderDepthTexture);
+
+			this.renderDepthTexture = null;
+		}
+	}
+
+	private setupFramebuffer() {
+		if (this.framebuffer !== null)
+			return this.framebuffer;
+
+		const framebuffer = this.gl.createFramebuffer();
+
+		if (framebuffer === null)
+			throw Error("could not create framebuffer");
 
 		this.framebuffer = framebuffer;
 
-		this.setSize(width, height);
-	}
-
-	public getColor() {
-		return this.renderColor;
-	}
-
-	public getDepth() {
-		return this.renderDepth;
-	}
-
-	public setSize(width: number, height: number) {
-		const gl = this.gl;
-
-		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
-
-		// Color buffer
-		const renderColor = createTextureBlank(gl, width, height, false);
-
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, renderColor, 0);
-
-		// Depth buffer
-		//const renderDepth = createRenderbuffer(gl, width, height, true);
-		const renderDepth = createTextureBlank(gl, width, height, true);
-
-		//gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderDepth)
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, renderDepth, 0);
-
-		// Save configuration
-		if (this.renderColor !== undefined)
-			gl.deleteTexture(this.renderColor);
-
-		if (this.renderDepth !== undefined)
-			gl.deleteRenderbuffer(this.renderDepth);
-
-		this.renderColor = renderColor;
-		this.renderDepth = renderDepth;
-
-		super.setSize(width, height);
-	}
-
-	protected getFramebuffer() {
-		return this.framebuffer;
+		return framebuffer;
 	}
 }
 
-class ScreenTarget extends Target {
-	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
-		super(gl, width, height);
-
-		this.setSize(width, height);
-	}
-
-	protected getFramebuffer() {
-		return null;
-	}
-}
-
-export { BufferTarget, Geometry, Mesh, Model, ScreenTarget, Shader, Subject, Target, loadModel }
+export { Geometry, Mesh, Model, Shader, Subject, Target, loadModel }

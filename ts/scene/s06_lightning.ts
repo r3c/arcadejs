@@ -145,7 +145,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			basic: basicShader,
 			light: lightShader
 		},
-		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),
+		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),
 		tweak: tweak
 	};
 };

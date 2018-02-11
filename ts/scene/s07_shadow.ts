@@ -78,10 +78,11 @@ interface SceneState {
 		light: webgl.Shader<LightCallState>,
 		shadow: webgl.Shader<ShadowCallState>,
 	},
+	shadowMap: WebGLTexture,
 	shadowProjectionMatrix: math.Matrix,
 	targets: {
-		buffer: webgl.BufferTarget,
-		screen: webgl.ScreenTarget
+		buffer: webgl.Target,
+		screen: webgl.Target
 	},
 	tweak: application.Tweak<Configuration>
 }
@@ -100,8 +101,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const gl = runtime.screen.context;
 
-	const buffer = webgl.Target.createBuffer(gl, 1024, 1024);
-	const screen = webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
+	const buffer = new webgl.Target(gl, 1024, 1024);
+	const screen = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(
@@ -189,6 +190,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			light: lightShader,
 			shadow: shadowShader
 		},
+		shadowMap: buffer.setupDepthTexture(),
 		shadowProjectionMatrix: math.Matrix.createOrthographic(-10, 10, -10, 10, -10, 20),
 		targets: {
 			buffer: buffer,
@@ -266,7 +268,7 @@ const render = (state: SceneState) => {
 	targets.screen.draw(shaders.light, [cube, ground], {
 		direction: { x: shadowView.getValue(2), y: shadowView.getValue(6), z: shadowView.getValue(10) },
 		projectionMatrix: state.screenProjectionMatrix,
-		shadowMap: targets.buffer.getDepth(),
+		shadowMap: state.shadowMap,
 		shadowProjectionMatrix: state.shadowProjectionMatrix,
 		shadowViewMatrix: shadowView,
 		tweak: state.tweak,
@@ -283,7 +285,7 @@ const render = (state: SceneState) => {
 		gl.disable(gl.DEPTH_TEST);
 		targets.screen.draw(shaders.debug, [debug], {
 			projectionMatrix: state.screenProjectionMatrix,
-			shadowMap: targets.buffer.getDepth(),
+			shadowMap: state.shadowMap,
 			viewMatrix: math.Matrix.createIdentity()
 		});
 		gl.enable(gl.DEPTH_TEST);
