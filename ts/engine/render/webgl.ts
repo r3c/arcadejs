@@ -1,6 +1,6 @@
 import * as functional from "../language/functional";
 import * as matrix from "../math/matrix";
-import * as model from "../model";
+import * as model from "../graphic/model";
 import * as vector from "../math/vector";
 
 interface Geometry {

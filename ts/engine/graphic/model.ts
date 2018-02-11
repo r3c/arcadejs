@@ -1,11 +1,11 @@
-import * as functional from "./language/functional";
-import * as io from "./io";
-import * as json from "./model/loaders/json";
-import * as matrix from "./math/matrix";
-import * as mesh from "./model/mesh";
-import * as obj from "./model/loaders/obj";
-import * as tds from "./model/loaders/3ds";
-import * as vector from "./math/vector";
+import * as functional from "../language/functional";
+import * as io from "../io";
+import * as json from "./loaders/json";
+import * as matrix from "../math/matrix";
+import * as mesh from "./mesh";
+import * as obj from "./loaders/obj";
+import * as tds from "./loaders/3ds";
+import * as vector from "../math/vector";
 
 interface Config {
 	transform?: matrix.Matrix4
