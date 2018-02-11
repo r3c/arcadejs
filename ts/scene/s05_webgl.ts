@@ -56,7 +56,7 @@ interface SceneState {
 	},
 	gl: WebGLRenderingContext,
 	input: controller.Input,
-	model: webgl.Mesh[],
+	model: webgl.Model,
 	projectionMatrix: math.Matrix,
 	shader: webgl.Shader<CallState>,
 	target: webgl.Target
@@ -67,14 +67,14 @@ const prepare = async () => {
 	const gl = runtime.screen.context;
 	const shader = new webgl.Shader<CallState>(gl, vsSource, fsSource);
 
-	shader.bindPerMeshAttribute("colors", 4, gl.FLOAT, state => state.mesh.colors);
-	shader.bindPerMeshAttribute("coords", 2, gl.FLOAT, state => state.mesh.coords);
-	shader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
+	shader.bindPerGeometryAttribute("colors", 4, gl.FLOAT, state => state.geometry.colors);
+	shader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	shader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
 	shader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
 	shader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
 
-	shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
+	shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	shader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
@@ -105,7 +105,7 @@ const render = (state: SceneState) => {
 
 	const cube = {
 		matrix: math.Matrix.createIdentity(),
-		meshes: state.model
+		model: state.model
 	};
 
 	gl.enable(gl.CULL_FACE);

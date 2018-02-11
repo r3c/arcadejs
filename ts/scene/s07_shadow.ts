@@ -67,9 +67,9 @@ interface SceneState {
 	gl: WebGLRenderingContext,
 	input: controller.Input,
 	models: {
-		cube: webgl.Mesh[],
-		debug: webgl.Mesh[],
-		ground: webgl.Mesh[]
+		cube: webgl.Model,
+		debug: webgl.Model,
+		ground: webgl.Model
 	},
 	move: number,
 	screenProjectionMatrix: math.Matrix,
@@ -110,12 +110,12 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./res/shader/debug-depth-fragment.glsl")
 	);
 
-	debugShader.bindPerMeshAttribute("coords", 2, gl.FLOAT, state => state.mesh.coords);
-	debugShader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
+	debugShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
 	debugShader.bindPerCallTexture("ambientMap", state => state.shadowMap);
 
-	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
+	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	debugShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	debugShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
@@ -125,10 +125,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./res/shader/shadow-fragment.glsl")
 	);
 
-	lightShader.bindPerMeshAttribute("coords", 2, gl.FLOAT, state => state.mesh.coords);
-	lightShader.bindPerMeshAttribute("normals", 3, gl.FLOAT, state => state.mesh.normals);
-	lightShader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
-	lightShader.bindPerMeshAttribute("tangents", 3, gl.FLOAT, state => state.mesh.tangents);
+	lightShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	lightShader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
+	lightShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	lightShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
 	lightShader.bindPerCallProperty("lightDirection", gl => gl.uniform3fv, state => [state.direction.x, state.direction.y, state.direction.z]);
 	lightShader.bindPerCallProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
@@ -138,8 +138,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerCallProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
 	lightShader.bindPerCallTexture("shadowMap", state => state.shadowMap);
 
-	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
-	lightShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.model.matrix).getTransposedInverse3x3());
+	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	lightShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
 	lightShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	lightShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 	lightShader.bindPerCallMatrix("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
@@ -158,9 +158,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const shadowShader = new webgl.Shader<ShadowCallState>(gl, shadowVsSource, shadowFsSource);
 
-	shadowShader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
+	shadowShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	shadowShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
+	shadowShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	shadowShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shadowShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
@@ -222,12 +222,12 @@ const render = (state: SceneState) => {
 
 	const shadowCube = {
 		matrix: cubeModelMatrix,
-		meshes: models.cube
+		model: models.cube
 	};
 
 	const shadowGround = {
 		matrix: groundModelMatrix,
-		meshes: models.ground
+		model: models.ground
 	};
 
 	gl.enable(gl.CULL_FACE);
@@ -254,12 +254,12 @@ const render = (state: SceneState) => {
 
 	const cube = {
 		matrix: cubeModelMatrix,
-		meshes: models.cube
+		model: models.cube
 	};
 
 	const ground = {
 		matrix: groundModelMatrix,
-		meshes: models.ground
+		model: models.ground
 	};
 
 	targets.screen.clear();
@@ -277,7 +277,7 @@ const render = (state: SceneState) => {
 	if (state.tweak.showDebug) {
 		const debug = {
 			matrix: math.Matrix.createIdentity().translate({ x: 3, y: -2, z: -8 }),
-			meshes: models.debug
+			model: models.debug
 		};
 
 		gl.disable(gl.DEPTH_TEST);

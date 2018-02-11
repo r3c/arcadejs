@@ -39,9 +39,9 @@ interface SceneState {
 	gl: WebGLRenderingContext,
 	input: controller.Input,
 	models: {
-		bulb: webgl.Mesh[],
-		cube: webgl.Mesh[],
-		ground: webgl.Mesh[]
+		bulb: webgl.Model,
+		cube: webgl.Model,
+		ground: webgl.Model
 	},
 	move: number,
 	projectionMatrix: math.Matrix,
@@ -74,9 +74,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./res/shader/basic-fragment.glsl")
 	);
 
-	basicShader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
+	basicShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	basicShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
+	basicShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	basicShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	basicShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
@@ -86,10 +86,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./res/shader/forward-fragment.glsl")
 	);
 
-	lightShader.bindPerMeshAttribute("coords", 2, gl.FLOAT, state => state.mesh.coords);
-	lightShader.bindPerMeshAttribute("normals", 3, gl.FLOAT, state => state.mesh.normals);
-	lightShader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
-	lightShader.bindPerMeshAttribute("tangents", 3, gl.FLOAT, state => state.mesh.tangents);
+	lightShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	lightShader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
+	lightShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	lightShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
 	lightShader.bindPerCallProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
 	lightShader.bindPerCallProperty("useDiffuse", gl => gl.uniform1i, state => state.tweak.useDiffuse);
@@ -97,8 +97,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerCallProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
 	lightShader.bindPerCallProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
 
-	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
-	lightShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.model.matrix).getTransposedInverse3x3());
+	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	lightShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
 	lightShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	lightShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
@@ -166,17 +166,17 @@ const render = (state: SceneState) => {
 	// Draw scene
 	const bulbs = state.bulbs.slice(0, state.tweak.nbLights).map(bulb => ({
 		matrix: math.Matrix.createIdentity().translate(bulb),
-		meshes: models.bulb
+		model: models.bulb
 	}));
 
 	const cube = {
 		matrix: math.Matrix.createIdentity(),
-		meshes: models.cube
+		model: models.cube
 	};
 
 	const ground = {
 		matrix: math.Matrix.createIdentity().translate({x: 0, y: -1.5, z: 0}),
-		meshes: models.ground
+		model: models.ground
 	};
 
 	const callState = {

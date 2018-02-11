@@ -2,6 +2,23 @@ import * as functional from "../language/functional";
 import * as math from "../math";
 import * as model from "../model";
 
+interface Geometry {
+	colors: WebGLBuffer | undefined,
+	coords: WebGLBuffer | undefined,
+	count: number,
+	indices: WebGLBuffer,
+	normals: WebGLBuffer | undefined,
+	points: WebGLBuffer,
+	tangents: WebGLBuffer | undefined
+}
+
+interface GeometryState<TCallState> {
+	call: TCallState,
+	geometry: Geometry,
+	material: Material,
+	subject: Subject
+}
+
 interface Material {
 	ambientColor: number[],
 	ambientMap: WebGLTexture | undefined,
@@ -18,40 +35,31 @@ interface Material {
 interface MaterialState<TCallState> {
 	call: TCallState,
 	material: Material,
-	model: Model
+	subject: Subject
 }
 
 interface Mesh {
-	colors: WebGLBuffer | undefined,
-	coords: WebGLBuffer | undefined,
-	count: number,
-	indices: WebGLBuffer,
-	material: Material,
-	normals: WebGLBuffer | undefined,
-	points: WebGLBuffer,
-	tangents: WebGLBuffer | undefined
-}
-
-interface MeshState<TCallState> {
-	call: TCallState,
-	material: Material,
-	mesh: Mesh,
-	model: Model
+	geometries: Geometry[],
+	material: Material
 }
 
 interface Model {
-	matrix: math.Matrix,
 	meshes: Mesh[]
-}
-
-interface ModelState<TCallState> {
-	call: TCallState,
-	model: Model
 }
 
 interface Quality {
 	textureElementLinear: boolean,
 	textureMipmapLinear: boolean
+}
+
+interface Subject {
+	matrix: math.Matrix,
+	model: Model
+}
+
+interface SubjectState<TCallState> {
+	call: TCallState,
+	subject: Subject
 }
 
 const defaultColor = {
@@ -147,12 +155,12 @@ const createTextureImage = (gl: WebGLRenderingContext, image: ImageData, quality
 };
 
 const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
+const invalidMaterial = (name: string) => Error(`cannot use unknown material "${name}" on mesh`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
-const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quality = defaultQuality) => {
+const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quality = defaultQuality): Model => {
 	const definitions = model.materials || {};
-	const materials: { [name: string]: Material } = {};
-	const meshes: Mesh[] = [];
+	const meshes: { [name: string]: Mesh } = {};
 
 	const toArray2 = (input: math.Vector2) => [input.x, input.y];
 	const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
@@ -164,10 +172,13 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	for (const mesh of model.meshes) {
 		const name = mesh.materialName;
 
-		let material: Material;
+		let geometries = [];
 
-		if (name !== undefined && definitions[name] !== undefined) {
-			if (materials[name] === undefined) {
+		if (name !== undefined) {
+			if (definitions[name] === undefined)
+				throw invalidMaterial(name);
+
+			if (meshes[name] === undefined) {
 				const definition = definitions[name];
 
 				const ambientColor = definition.ambientColor || defaultColor;
@@ -177,50 +188,66 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				const specularColor = definition.specularColor || diffuseColor;
 				const specularMap = functional.map(definition.specularMap, toColorMap) || diffuseMap;
 
-				materials[name] = {
-					ambientColor: toArray4(ambientColor),
-					ambientMap: ambientMap,
-					diffuseColor: toArray4(diffuseColor),
-					diffuseMap: diffuseMap,
-					heightMap: functional.map(definition.heightMap, toColorMap),
-					normalMap: functional.map(definition.normalMap, toColorMap),
-					reflectionMap: functional.map(definition.reflectionMap, toColorMap),
-					shininess: functional.coalesce(definition.shininess, defaultShininess),
-					specularColor: toArray4(specularColor),
-					specularMap: specularMap
+				meshes[name] = {
+					geometries: [],
+					material: {
+						ambientColor: toArray4(ambientColor),
+						ambientMap: ambientMap,
+						diffuseColor: toArray4(diffuseColor),
+						diffuseMap: diffuseMap,
+						heightMap: functional.map(definition.heightMap, toColorMap),
+						normalMap: functional.map(definition.normalMap, toColorMap),
+						reflectionMap: functional.map(definition.reflectionMap, toColorMap),
+						shininess: functional.coalesce(definition.shininess, defaultShininess),
+						specularColor: toArray4(specularColor),
+						specularMap: specularMap
+					}
 				}
 			}
 
-			material = materials[name];
+			geometries = meshes[name].geometries;
 		}
 		else {
-			material = {
-				ambientColor: toArray4(defaultColor),
-				ambientMap: undefined,
-				diffuseColor: toArray4(defaultColor),
-				diffuseMap: undefined,
-				heightMap: undefined,
-				normalMap: undefined,
-				reflectionMap: undefined,
-				shininess: defaultShininess,
-				specularColor: toArray4(defaultColor),
-				specularMap: undefined
-			};
+			if (meshes[""] === undefined) {
+				meshes[""] = {
+					geometries: [],
+					material: {
+						ambientColor: toArray4(defaultColor),
+						ambientMap: undefined,
+						diffuseColor: toArray4(defaultColor),
+						diffuseMap: undefined,
+						heightMap: undefined,
+						normalMap: undefined,
+						reflectionMap: undefined,
+						shininess: defaultShininess,
+						specularColor: toArray4(defaultColor),
+						specularMap: undefined
+					}
+				};
+			}
+
+			geometries = meshes[""].geometries;
 		}
 
-		meshes.push({
+		geometries.push({
 			colors: functional.map(mesh.colors, toBuffer(Float32Array, toArray4, gl.ARRAY_BUFFER)),
 			coords: functional.map(mesh.coords, toBuffer(Float32Array, toArray2, gl.ARRAY_BUFFER)),
 			count: mesh.triangles.length * 3,
 			indices: toBuffer(Uint16Array, toIndices, gl.ELEMENT_ARRAY_BUFFER)(mesh.triangles),
-			material: material,
 			normals: functional.map(mesh.normals, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)),
 			points: toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)(mesh.points),
 			tangents: functional.map(mesh.tangents, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER))
 		});
 	}
 
-	return meshes;
+	const result = [];
+
+	for (const name in meshes)
+		result.push(meshes[name]);
+
+	return {
+		meshes: result
+	};
 };
 
 interface AttributeBinding<T> {
@@ -249,8 +276,8 @@ class Shader<TCallState> {
 	private readonly perCallTextureBindings: TextureBinding<TCallState>[];
 	private readonly perMaterialTextureBindings: TextureBinding<MaterialState<TCallState>>[];
 	private readonly perMaterialPropertyBindings: UniformBinding<MaterialState<TCallState>>[];
-	private readonly perMeshAttributeBindings: AttributeBinding<MeshState<TCallState>>[];
-	private readonly perModelPropertyBindings: UniformBinding<ModelState<TCallState>>[];
+	private readonly perGeometryAttributeBindings: AttributeBinding<GeometryState<TCallState>>[];
+	private readonly perModelPropertyBindings: UniformBinding<SubjectState<TCallState>>[];
 
 	public constructor(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
 		const program = gl.createProgram();
@@ -275,7 +302,7 @@ class Shader<TCallState> {
 		this.perCallTextureBindings = [];
 		this.perMaterialPropertyBindings = [];
 		this.perMaterialTextureBindings = [];
-		this.perMeshAttributeBindings = [];
+		this.perGeometryAttributeBindings = [];
 		this.perModelPropertyBindings = [];
 		this.program = program;
 	}
@@ -301,6 +328,18 @@ class Shader<TCallState> {
 		});
 	}
 
+	public bindPerGeometryAttribute(name: string, size: number, type: number, getter: (state: GeometryState<TCallState>) => WebGLBuffer | undefined) {
+		const location = this.findAttribute(name);
+
+		this.perGeometryAttributeBindings.push({
+			getter: getter,
+			location: location,
+			name: name,
+			size: size,
+			type: type
+		});
+	}
+
 	public bindPerMaterialProperty<TValue>(name: string, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>, getter: (state: MaterialState<TCallState>) => TValue) {
 		this.perMaterialPropertyBindings.push(this.declareUniform(name, assign, getter));
 	}
@@ -315,23 +354,11 @@ class Shader<TCallState> {
 		});
 	}
 
-	public bindPerMeshAttribute(name: string, size: number, type: number, getter: (state: MeshState<TCallState>) => WebGLBuffer | undefined) {
-		const location = this.findAttribute(name);
-
-		this.perMeshAttributeBindings.push({
-			getter: getter,
-			location: location,
-			name: name,
-			size: size,
-			type: type
-		});
-	}
-
-	public bindPerModelMatrix(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: ModelState<TCallState>) => Iterable<number>) {
+	public bindPerModelMatrix(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: SubjectState<TCallState>) => Iterable<number>) {
 		const location = this.findUniform(name);
 		const method = assign(this.gl);
 
-		this.perModelPropertyBindings.push((gl: WebGLRenderingContext, state: ModelState<TCallState>) => method.call(gl, location, false, new Float32Array(getter(state))));
+		this.perModelPropertyBindings.push((gl: WebGLRenderingContext, state: SubjectState<TCallState>) => method.call(gl, location, false, new Float32Array(getter(state))));
 	}
 
 	public getPerCallPropertyBindings(): Iterable<UniformBinding<TCallState>> {
@@ -342,6 +369,10 @@ class Shader<TCallState> {
 		return this.perCallTextureBindings;
 	}
 
+	public getPerGeometryAttributeBindings(): Iterable<AttributeBinding<GeometryState<TCallState>>> {
+		return this.perGeometryAttributeBindings;
+	}
+
 	public getPerMaterialPropertyBindings(): Iterable<UniformBinding<MaterialState<TCallState>>> {
 		return this.perMaterialPropertyBindings;
 	}
@@ -350,11 +381,7 @@ class Shader<TCallState> {
 		return this.perMaterialTextureBindings;
 	}
 
-	public getPerMeshAttributeBindings(): Iterable<AttributeBinding<MeshState<TCallState>>> {
-		return this.perMeshAttributeBindings;
-	}
-
-	public getPerModelPropertyBindings(): Iterable<UniformBinding<MeshState<TCallState>>> {
+	public getPerModelPropertyBindings(): Iterable<UniformBinding<SubjectState<TCallState>>> {
 		return this.perModelPropertyBindings;
 	}
 
@@ -443,18 +470,18 @@ abstract class Target {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	}
 
-	public draw<T>(shader: Shader<T>, models: Model[], callState: T) {
+	public draw<T>(shader: Shader<T>, subjects: Subject[], callState: T) {
 		const gl = this.gl;
 
 		// Enable shader program
 		gl.useProgram(shader.program);
 
 		// Assign per-call uniforms
-		const state = {
+		const state: GeometryState<T> = {
 			call: callState,
+			geometry: <Geometry><any>undefined,
 			material: <Material><any>undefined,
-			mesh: <Mesh><any>undefined,
-			model: <Model><any>undefined
+			subject: <Subject><any>undefined
 		};
 
 		let callTextureIndex = 0;
@@ -475,17 +502,16 @@ abstract class Target {
 			++callTextureIndex;
 		}
 
-		for (const model of models) {
-			state.model = model;
+		for (const subject of subjects) {
+			state.subject = subject;
 
 			for (const binding of shader.getPerModelPropertyBindings())
 				binding(gl, state);
 
-			for (const mesh of model.meshes) {
+			for (const mesh of subject.model.meshes) {
 				let materialTextureIndex = callTextureIndex;
 
 				state.material = mesh.material;
-				state.mesh = mesh;
 
 				// Assign per-material uniforms
 				for (const binding of shader.getPerMaterialTextureBindings()) {
@@ -493,7 +519,7 @@ abstract class Target {
 
 					if (texture === undefined)
 						throw invalidUniformBinding(binding.name);
-		
+
 					gl.activeTexture(gl.TEXTURE0 + materialTextureIndex);
 					gl.bindTexture(gl.TEXTURE_2D, texture);
 					gl.uniform1i(binding.location, materialTextureIndex);
@@ -504,21 +530,25 @@ abstract class Target {
 				for (const binding of shader.getPerMaterialPropertyBindings())
 					binding(gl, state);
 
-				// Assign per-mesh attributes
-				for (const binding of shader.getPerMeshAttributeBindings()) {
-					const buffer = binding.getter(state);
+				for (const geometry of mesh.geometries) {
+					state.geometry = geometry;
 
-					if (buffer === undefined)
-						throw invalidAttributeBinding(binding.name);
+					// Assign per-geometry attributes
+					for (const binding of shader.getPerGeometryAttributeBindings()) {
+						const buffer = binding.getter(state);
 
-					gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-					gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, 0, 0);
-					gl.enableVertexAttribArray(binding.location);
+						if (buffer === undefined)
+							throw invalidAttributeBinding(binding.name);
+
+						gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+						gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, 0, 0);
+						gl.enableVertexAttribArray(binding.location);
+					}
+
+					// Perform draw call
+					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geometry.indices);
+					gl.drawElements(gl.TRIANGLES, geometry.count, gl.UNSIGNED_SHORT, 0);
 				}
-
-				// Perform draw call
-				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.indices);
-				gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
 			}
 		}
 	}
@@ -608,4 +638,4 @@ class ScreenTarget extends Target {
 	}
 }
 
-export { BufferTarget, Mesh, ScreenTarget, Shader, Model, Target, loadModel }
+export { BufferTarget, Geometry, Mesh, Model, ScreenTarget, Shader, Subject, Target, loadModel }
