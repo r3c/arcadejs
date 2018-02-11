@@ -2,8 +2,9 @@ import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
 import * as io from "../engine/io";
-import * as math from "../engine/math";
+import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/model";
+import * as vector from "../engine/math/vector";
 import * as webgl from "../engine/render/webgl";
 
 /*
@@ -39,30 +40,30 @@ interface Configuration {
 }
 
 interface DebugCallState {
-	projectionMatrix: math.Matrix,
+	projectionMatrix: matrix.Matrix4,
 	shadowMap: WebGLTexture,
-	viewMatrix: math.Matrix
+	viewMatrix: matrix.Matrix4
 }
 
 interface LightCallState {
-	direction: math.Vector3,
-	projectionMatrix: math.Matrix,
+	direction: vector.Vector3,
+	projectionMatrix: matrix.Matrix4,
 	shadowMap: WebGLTexture,
-	shadowProjectionMatrix: math.Matrix,
-	shadowViewMatrix: math.Matrix,
+	shadowProjectionMatrix: matrix.Matrix4,
+	shadowViewMatrix: matrix.Matrix4,
 	tweak: application.Tweak<Configuration>,
-	viewMatrix: math.Matrix
+	viewMatrix: matrix.Matrix4
 }
 
 interface ShadowCallState {
-	projectionMatrix: math.Matrix,
-	viewMatrix: math.Matrix
+	projectionMatrix: matrix.Matrix4,
+	viewMatrix: matrix.Matrix4
 }
 
 interface SceneState {
 	camera: {
-		position: math.Vector3,
-		rotation: math.Vector3
+		position: vector.Vector3,
+		rotation: vector.Vector3
 	},
 	gl: WebGLRenderingContext,
 	input: controller.Input,
@@ -72,14 +73,14 @@ interface SceneState {
 		ground: webgl.Model
 	},
 	move: number,
-	screenProjectionMatrix: math.Matrix,
+	screenProjectionMatrix: matrix.Matrix4,
 	shaders: {
 		debug: webgl.Shader<DebugCallState>,
 		light: webgl.Shader<LightCallState>,
 		shadow: webgl.Shader<ShadowCallState>,
 	},
 	shadowMap: WebGLTexture,
-	shadowProjectionMatrix: math.Matrix,
+	shadowProjectionMatrix: matrix.Matrix4,
 	targets: {
 		buffer: webgl.Target,
 		screen: webgl.Target
@@ -184,14 +185,14 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			ground: webgl.loadModel(gl, groundModel)
 		},
 		move: 0,
-		screenProjectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		screenProjectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shaders: {
 			debug: debugShader,
 			light: lightShader,
 			shadow: shadowShader
 		},
 		shadowMap: buffer.setupDepthTexture(),
-		shadowProjectionMatrix: math.Matrix.createOrthographic(-10, 10, -10, 10, -10, 20),
+		shadowProjectionMatrix: matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20),
 		targets: {
 			buffer: buffer,
 			screen: screen
@@ -207,16 +208,16 @@ const render = (state: SceneState) => {
 	const shaders = state.shaders;
 	const targets = state.targets;
 
-	const cubeModelMatrix = math.Matrix
+	const cubeModelMatrix = matrix.Matrix4
 		.createIdentity()
 		.rotate({ x: 0, y: 1, z: 0 }, state.move * 5);
 
-	const groundModelMatrix = math.Matrix
+	const groundModelMatrix = matrix.Matrix4
 		.createIdentity()
 		.translate({ x: 0, y: -1.5, z: 0 });
 
 	// Draw shadow map
-	const shadowView = math.Matrix
+	const shadowView = matrix.Matrix4
 		.createIdentity()
 		.translate({ x: 0, y: 0, z: -10 })
 		.rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 1 / 6)
@@ -248,7 +249,7 @@ const render = (state: SceneState) => {
 	gl.cullFace(gl.BACK);
 
 	// Draw scene
-	const cameraView = math.Matrix
+	const cameraView = matrix.Matrix4
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
@@ -278,7 +279,7 @@ const render = (state: SceneState) => {
 	// Draw debug
 	if (state.tweak.showDebug) {
 		const debug = {
-			matrix: math.Matrix.createIdentity().translate({ x: 3, y: -2, z: -8 }),
+			matrix: matrix.Matrix4.createIdentity().translate({ x: 3, y: -2, z: -8 }),
 			model: models.debug
 		};
 
@@ -286,7 +287,7 @@ const render = (state: SceneState) => {
 		targets.screen.draw(shaders.debug, [debug], {
 			projectionMatrix: state.screenProjectionMatrix,
 			shadowMap: state.shadowMap,
-			viewMatrix: math.Matrix.createIdentity()
+			viewMatrix: matrix.Matrix4.createIdentity()
 		});
 		gl.enable(gl.DEPTH_TEST);
 	}

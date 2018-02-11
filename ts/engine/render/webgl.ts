@@ -1,6 +1,7 @@
 import * as functional from "../language/functional";
-import * as math from "../math";
+import * as matrix from "../math/matrix";
 import * as model from "../model";
+import * as vector from "../math/vector";
 
 interface Geometry {
 	colors: WebGLBuffer | undefined,
@@ -53,7 +54,7 @@ interface Quality {
 }
 
 interface Subject {
-	matrix: math.Matrix,
+	matrix: matrix.Matrix4,
 	model: Model
 }
 
@@ -162,9 +163,9 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	const definitions = model.materials || {};
 	const meshes: { [name: string]: Mesh } = {};
 
-	const toArray2 = (input: math.Vector2) => [input.x, input.y];
-	const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
-	const toArray4 = (input: math.Vector4) => [input.x, input.y, input.z, input.w];
+	const toArray2 = (input: vector.Vector2) => [input.x, input.y];
+	const toArray3 = (input: vector.Vector3) => [input.x, input.y, input.z];
+	const toArray4 = (input: vector.Vector4) => [input.x, input.y, input.z, input.w];
 	const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
 	const toColorMap = (image: ImageData) => createTextureImage(gl, image, quality);
 	const toIndices = (indices: [number, number, number]) => indices;
@@ -434,7 +435,7 @@ class Shader<TCallState> {
 class Target {
 	private readonly gl: WebGLRenderingContext;
 
-	private clearColor: math.Vector4;
+	private clearColor: vector.Vector4;
 	private clearDepth: number;
 	private framebuffer: WebGLFramebuffer | null;
 	private renderColorTexture: WebGLTexture | null;

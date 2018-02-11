@@ -1,7 +1,7 @@
 import * as io from "../../io";
-import * as math from "../../math";
 import * as mesh from "../mesh";
 import * as path from "../../fs/path";
+import * as vector from "../../math/vector";
 
 interface WavefrontOBJBatchMap {
 	[key: string]: number
@@ -125,12 +125,12 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 };
 
 const loadObject = async (data: string, fileName: string) => {
-	const coords = new Array<math.Vector2>();
+	const coords = new Array<vector.Vector2>();
 	const groups: WavefrontOBJGroup[] = [];
 	const materials: { [name: string]: mesh.Material } = {};
 	const meshes: mesh.Mesh[] = [];
-	const normals = new Array<math.Vector3>();
-	const points = new Array<math.Vector3>();
+	const normals = new Array<vector.Vector3>();
+	const points = new Array<vector.Vector3>();
 
 	let mustStartNew = true;
 	let mustUseMaterial: string | undefined = undefined;

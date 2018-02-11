@@ -1,6 +1,7 @@
+import * as vector from "./vector";
 
-class Matrix {
-	private static readonly identity: Matrix = new Matrix([
+class Matrix4 {
+	private static readonly identity: Matrix4 = new Matrix4([
 		1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0,
@@ -13,7 +14,7 @@ class Matrix {
 	** Create new identity matrix (actually returns a static immutable instance).
 	*/
 	public static createIdentity() {
-		return Matrix.identity;
+		return Matrix4.identity;
 	}
 
 	/*
@@ -25,7 +26,7 @@ class Matrix {
 		const dy = yMax - yMin;
 		const dz = zMax - zMin;
 
-		return new Matrix([
+		return new Matrix4([
 			2 / dx, 0, 0, 0,
 			0, 2 / dy, 0, 0,
 			0, 0, -2 / dz, 0,
@@ -41,7 +42,7 @@ class Matrix {
 		var f = 1.0 / Math.tan(angle * Math.PI / 360.0);
 		var q = 1 / (zMin - zMax);
 
-		return new Matrix([
+		return new Matrix4([
 			f / ratio, 0, 0, 0,
 			0, f, 0, 0,
 			0, 0, (zMax + zMin) * q, -1,
@@ -53,8 +54,8 @@ class Matrix {
 		this.values = values;
 	}
 
-	public compose(other: Matrix) {
-		return new Matrix(Matrix.multiply(this.values, other.values));
+	public compose(other: Matrix4) {
+		return new Matrix4(Matrix4.multiply(this.values, other.values));
 	}
 
 	public getTransposedInverse3x3() {
@@ -94,7 +95,7 @@ class Matrix {
 	** Rotate matrix around an arbitrary axis
 	** From: https://fr.wikipedia.org/wiki/Matrice_de_rotation#Matrices_de_rotation_dans_le_cas_g%C3%A9n%C3%A9ral
 	*/
-	public rotate(axis: Vector3, angle: number) {
+	public rotate(axis: vector.Vector3, angle: number) {
 		// Normalized axis
 		const modInv = 1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
 		const x = axis.x * modInv;
@@ -113,7 +114,7 @@ class Matrix {
 		const ySin = y * sin;
 		const zSin = z * sin;
 
-		return new Matrix(Matrix.multiply(this.values, [
+		return new Matrix4(Matrix4.multiply(this.values, [
 			xCos * x + cos, xCos * y - zSin, xCos * z + ySin, 0,
 			xCos * y + zSin, yCos * y + cos, yCos * z - xSin, 0,
 			xCos * z - ySin, yCos * z + xSin, zCos * z + cos, 0,
@@ -121,8 +122,8 @@ class Matrix {
 		]));
 	}
 
-	public scale(vector: Vector3) {
-		return new Matrix(Matrix.multiply(this.values, [
+	public scale(vector: vector.Vector3) {
+		return new Matrix4(Matrix4.multiply(this.values, [
 			vector.x, 0, 0, 0,
 			0, vector.y, 0, 0,
 			0, 0, vector.z, 0,
@@ -130,7 +131,7 @@ class Matrix {
 		]));
 	}
 
-	public transform(vertex: Vector4) {
+	public transform(vertex: vector.Vector4) {
 		const m = this.values;
 
 		return {
@@ -141,8 +142,8 @@ class Matrix {
 		};
 	}
 
-	public translate(vector: Vector3) {
-		return new Matrix(Matrix.multiply(this.values, [
+	public translate(vector: vector.Vector3) {
+		return new Matrix4(Matrix4.multiply(this.values, [
 			1, 0, 0, 0,
 			0, 1, 0, 0,
 			0, 0, 1, 0,
@@ -172,82 +173,4 @@ class Matrix {
 	}
 }
 
-interface Vector2 {
-	x: number,
-	y: number
-}
-
-interface Vector3 {
-	x: number,
-	y: number,
-	z: number
-}
-
-interface Vector4 {
-	x: number,
-	y: number,
-	z: number,
-	w: number
-}
-
-class Vector {
-	public static add3(lhs: Vector3, rhs: Vector3) {
-		return {
-			x: lhs.x + rhs.x,
-			y: lhs.y + rhs.y,
-			z: lhs.z + rhs.z
-		};
-	}
-
-	public static cross(lhs: Vector3, rhs: Vector3) {
-		return {
-			x: lhs.y * rhs.z - lhs.z * rhs.y,
-			y: lhs.z * rhs.x - lhs.x * rhs.z,
-			z: lhs.x * rhs.y - lhs.y * rhs.x
-		};
-	}
-
-	public static dot3(lhs: Vector3, rhs: Vector3) {
-		return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
-	}
-
-	public static normalize3(vector: Vector3) {
-		const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
-
-		if (length === 0)
-			return vector;
-
-		const invLength = 1 / length;
-
-		return {
-			x: vector.x * invLength,
-			y: vector.y * invLength,
-			z: vector.z * invLength
-		};
-	}
-
-	public static scale3(vector: Vector3, factor: number) {
-		return {
-			x: vector.x * factor,
-			y: vector.y * factor,
-			z: vector.z * factor
-		};
-	}
-
-	public static substract2(lhs: Vector2, rhs: Vector2) {
-		return {
-			x: lhs.x - rhs.x,
-			y: lhs.y - rhs.y
-		};
-	}
-
-	public static substract3(lhs: Vector3, rhs: Vector3) {
-		return {
-			x: lhs.x - rhs.x,
-			y: lhs.y - rhs.y,
-			z: lhs.z - rhs.z
-		};
-	}
-}
-
-export { Matrix, Vector, Vector2, Vector3, Vector4 };
+export { Matrix4 };

@@ -1,25 +1,25 @@
-import * as math from "../math";
+import * as vector from "../math/vector";
 
 interface Material {
-	ambientColor?: math.Vector4,
+	ambientColor?: vector.Vector4,
 	ambientMap?: ImageData,
-	diffuseColor?: math.Vector4,
+	diffuseColor?: vector.Vector4,
 	diffuseMap?: ImageData,
 	heightMap?: ImageData,
 	normalMap?: ImageData,
 	reflectionMap?: ImageData,
 	shininess?: number,
-	specularColor?: math.Vector4,
+	specularColor?: vector.Vector4,
 	specularMap?: ImageData
 }
 
 interface Mesh {
-	colors?: math.Vector4[],
-	coords?: math.Vector2[],
+	colors?: vector.Vector4[],
+	coords?: vector.Vector2[],
 	materialName?: string,
-	normals?: math.Vector3[],
-	points: math.Vector3[],
-	tangents?: math.Vector3[],
+	normals?: vector.Vector3[],
+	points: vector.Vector3[],
+	tangents?: vector.Vector3[],
 	triangles: [number, number, number][]
 }
 

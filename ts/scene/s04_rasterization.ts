@@ -2,9 +2,10 @@ import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
 import * as io from "../engine/io";
-import * as math from "../engine/math";
+import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/model";
 import * as software from "../engine/render/software";
+import * as vector from "../engine/math/vector";
 
 /*
 ** What changed?
@@ -19,13 +20,13 @@ interface Configuration {
 
 interface State {
 	camera: {
-		position: math.Vector3,
-		rotation: math.Vector3
+		position: vector.Vector3,
+		rotation: vector.Vector3
 	},
 	cubeWithColor: software.Mesh[],
 	cubeWithTexture: software.Mesh[],
 	input: controller.Input,
-	projection: math.Matrix,
+	projection: matrix.Matrix4,
 	renderer: software.Renderer,
 	tweak: application.Tweak<Configuration>
 }
@@ -46,7 +47,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		cubeWithColor: renderer.load(await model.fromJSON("./res/model/cube-color.json")),
 		cubeWithTexture: renderer.load(await model.fromJSON("./res/model/cube.json")),
 		input: runtime.input,
-		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		projection: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: renderer,
 		tweak: tweak
 	};
@@ -55,7 +56,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 const render = (state: State) => {
 	const camera = state.camera;
 	const renderer = state.renderer;
-	const view = math.Matrix
+	const view = matrix.Matrix4
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)

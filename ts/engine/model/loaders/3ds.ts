@@ -1,7 +1,7 @@
 import * as io from "../../io";
-import * as math from "../../math";
 import * as mesh from "../mesh";
 import * as path from "../../fs/path";
+import * as vector from "../../math/vector";
 
 /*
 ** Implementation based on:
@@ -37,7 +37,7 @@ const load = async (url: string) => {
 	});
 };
 
-const readColor = async (context: Context, end: number, chunk: number, state: math.Vector4) => {
+const readColor = async (context: Context, end: number, chunk: number, state: vector.Vector4) => {
 	switch (chunk) {
 		case 0x0010: // COL_RGB
 		case 0x0013: // COL_UNK

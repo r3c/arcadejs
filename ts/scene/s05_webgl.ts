@@ -2,8 +2,9 @@ import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
 import * as io from "../engine/io";
-import * as math from "../engine/math";
+import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/model";
+import * as vector from "../engine/math/vector";
 import * as webgl from "../engine/render/webgl";
 
 /*
@@ -45,19 +46,19 @@ const fsSource = `
 `;
 
 interface CallState {
-	projectionMatrix: math.Matrix,
-	viewMatrix: math.Matrix
+	projectionMatrix: matrix.Matrix4,
+	viewMatrix: matrix.Matrix4
 }
 
 interface SceneState {
 	camera: {
-		position: math.Vector3,
-		rotation: math.Vector3
+		position: vector.Vector3,
+		rotation: vector.Vector3
 	},
 	gl: WebGLRenderingContext,
 	input: controller.Input,
 	model: webgl.Model,
-	projectionMatrix: math.Matrix,
+	projectionMatrix: matrix.Matrix4,
 	shader: webgl.Shader<CallState>,
 	target: webgl.Target
 }
@@ -86,7 +87,7 @@ const prepare = async () => {
 		gl: gl,
 		input: runtime.input,
 		model: webgl.loadModel(gl, await model.fromJSON("./res/model/cube.json")),
-		projectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shader: shader,
 		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
 	};
@@ -97,14 +98,14 @@ const render = (state: SceneState) => {
 	const gl = state.gl;
 	const target = state.target;
 
-	const viewMatrix = math.Matrix
+	const viewMatrix = matrix.Matrix4
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	const cube = {
-		matrix: math.Matrix.createIdentity(),
+		matrix: matrix.Matrix4.createIdentity(),
 		model: state.model
 	};
 

@@ -1,6 +1,6 @@
 import * as application from "../engine/application";
 import * as display from "../engine/display";
-import * as math from "../engine/math";
+import * as matrix from "../engine/math/matrix";
 import * as software from "../engine/render/software";
 
 /*
@@ -9,7 +9,7 @@ import * as software from "../engine/render/software";
 */
 
 interface State {
-	projection: math.Matrix,
+	projection: matrix.Matrix4,
 	renderer: software.Renderer,
 	rotation: number
 }
@@ -18,7 +18,7 @@ const prepare = async () => {
 	const runtime = application.runtime(display.Context2DScreen);
 
 	return {
-		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		projection: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: new software.Renderer(runtime.screen),
 		rotation: 0
 	};
@@ -72,7 +72,7 @@ const render = (state: State) => {
 	});
 
 	renderer.clear();
-	renderer.draw(meshes, state.projection, math.Matrix.createIdentity(), software.DrawMode.Wire);
+	renderer.draw(meshes, state.projection, matrix.Matrix4.createIdentity(), software.DrawMode.Wire);
 };
 
 const update = (state: State, dt: number) => {

@@ -1,8 +1,9 @@
 import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
-import * as math from "../engine/math";
+import * as matrix from "../engine/math/matrix";
 import * as software from "../engine/render/software";
+import * as vector from "../engine/math/vector";
 
 /*
 ** What changed?
@@ -14,12 +15,12 @@ import * as software from "../engine/render/software";
 
 interface State {
 	camera: {
-		position: math.Vector3,
-		rotation: math.Vector3
+		position: vector.Vector3,
+		rotation: vector.Vector3
 	},
 	cube: software.Mesh[],
 	input: controller.Input,
-	projection: math.Matrix,
+	projection: matrix.Matrix4,
 	renderer: software.Renderer
 }
 
@@ -63,7 +64,7 @@ const prepare = async () => {
 		},
 		cube: cube,
 		input: runtime.input,
-		projection: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		projection: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: renderer
 	};
 };
@@ -71,7 +72,7 @@ const prepare = async () => {
 const render = (state: State) => {
 	const camera = state.camera;
 	const renderer = state.renderer;
-	const view = math.Matrix
+	const view = matrix.Matrix4
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)

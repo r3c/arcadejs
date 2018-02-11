@@ -1,7 +1,7 @@
 import * as io from "../../io";
-import * as math from "../../math";
 import * as mesh from "../mesh";
 import * as path from "../../fs/path";
+import * as vector from "../../math/vector";
 
 const load = async (urlOrData: any) => {
 	let directory: string;
@@ -39,7 +39,7 @@ const toArrayOf = <T>(name: string, instance: any, converter: (name: string, ite
 	return (<any[]>instance).map((v, i) => converter(name + "[" + i + "]", v));
 };
 
-const toColor = (name: string, instance: any): math.Vector4 => {
+const toColor = (name: string, instance: any): vector.Vector4 => {
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "rgb(a) color");
 
@@ -51,7 +51,7 @@ const toColor = (name: string, instance: any): math.Vector4 => {
 	};
 };
 
-const toCoord = (name: string, instance: any): math.Vector2 => {
+const toCoord = (name: string, instance: any): vector.Vector2 => {
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "texture coordinate");
 
@@ -145,7 +145,7 @@ const toTuple3 = <T>(name: string, instance: any, converter: (name: string, item
 	];
 };
 
-const toVertex = (name: string, instance: any): math.Vector3 => {
+const toVertex = (name: string, instance: any): vector.Vector3 => {
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "vertex");
 

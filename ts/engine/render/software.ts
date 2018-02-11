@@ -1,7 +1,8 @@
 import * as display from "../display";
 import * as functional from "../language/functional";
-import * as math from "../math";
+import * as matrix from "../math/matrix";
 import * as model from "../model";
+import * as vector from "../math/vector";
 
 enum DrawMode {
 	Default,
@@ -20,18 +21,18 @@ interface Material {
 }
 
 interface Mesh {
-	colors: math.Vector4[] | undefined,
-	coords: math.Vector2[] | undefined,
+	colors: vector.Vector4[] | undefined,
+	coords: vector.Vector2[] | undefined,
 	material: Material,
-	normals: math.Vector3[] | undefined,
-	points: math.Vector3[],
+	normals: vector.Vector3[] | undefined,
+	points: vector.Vector3[],
 	triangles: [number, number, number][]
 }
 
 interface Vertex {
-	color: math.Vector4,
-	coord: math.Vector2,
-	point: math.Vector3
+	color: vector.Vector4,
+	coord: vector.Vector2,
+	point: vector.Vector3
 }
 
 const defaultColor = {
@@ -50,14 +51,14 @@ const lerpScalar = (min: number, max: number, ratio: number) => {
 	return min + (max - min) * ratio;
 };
 
-const lerpVector2 = (min: math.Vector2, max: math.Vector2, ratio: number) => {
+const lerpVector2 = (min: vector.Vector2, max: vector.Vector2, ratio: number) => {
 	return {
 		x: lerpScalar(min.x, max.x, ratio),
 		y: lerpScalar(min.y, max.y, ratio)
 	}
 };
 
-const lerpVector4 = (min: math.Vector4, max: math.Vector4, ratio: number) => {
+const lerpVector4 = (min: vector.Vector4, max: vector.Vector4, ratio: number) => {
 	return {
 		x: lerpScalar(min.x, max.x, ratio),
 		y: lerpScalar(min.y, max.y, ratio),
@@ -168,7 +169,7 @@ const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material
 	}
 };
 
-const wireLine = (image: Image, begin: math.Vector3, end: math.Vector3) => {
+const wireLine = (image: Image, begin: vector.Vector3, end: vector.Vector3) => {
 	let x0 = ~~begin.x;
 	const x1 = ~~end.x;
 	let y0 = ~~begin.y;
@@ -211,7 +212,7 @@ const wireTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
 	wireLine(image, v2.point, v3.point);
 };
 
-const projectToScreen = (modelViewProjection: math.Matrix, halfWidth: number, halfHeight: number, position: math.Vector3) => {
+const projectToScreen = (modelViewProjection: matrix.Matrix4, halfWidth: number, halfHeight: number, position: vector.Vector3) => {
 	const point = modelViewProjection.transform({
 		x: position.x,
 		y: position.y,
@@ -272,7 +273,7 @@ class Renderer {
 		screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 	}
 
-	public draw(meshes: Mesh[], projection: math.Matrix, modelView: math.Matrix, drawMode: DrawMode) {
+	public draw(meshes: Mesh[], projection: matrix.Matrix4, modelView: matrix.Matrix4, drawMode: DrawMode) {
 		const screen = this.screen;
 		const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 

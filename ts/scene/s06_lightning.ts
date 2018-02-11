@@ -2,8 +2,9 @@ import * as application from "../engine/application";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
 import * as io from "../engine/io";
-import * as math from "../engine/math";
+import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/model";
+import * as vector from "../engine/math/vector";
 import * as webgl from "../engine/render/webgl";
 
 /*
@@ -24,17 +25,17 @@ interface Configuration {
 }
 
 interface CallState {
-	lightPositions: math.Vector3[],
-	projectionMatrix: math.Matrix,
+	lightPositions: vector.Vector3[],
+	projectionMatrix: matrix.Matrix4,
 	tweak: application.Tweak<Configuration>,
-	viewMatrix: math.Matrix
+	viewMatrix: matrix.Matrix4
 }
 
 interface SceneState {
-	bulbs: math.Vector3[],
+	bulbs: vector.Vector3[],
 	camera: {
-		position: math.Vector3,
-		rotation: math.Vector3
+		position: vector.Vector3,
+		rotation: vector.Vector3
 	},
 	gl: WebGLRenderingContext,
 	input: controller.Input,
@@ -44,7 +45,7 @@ interface SceneState {
 		ground: webgl.Model
 	},
 	move: number,
-	projectionMatrix: math.Matrix,
+	projectionMatrix: matrix.Matrix4,
 	shaders: {
 		basic: webgl.Shader<CallState>,
 		light: webgl.Shader<CallState>
@@ -121,7 +122,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	}
 
 	// Load models
-	const bulbModel = await model.fromOBJ("./res/model/sphere.obj", { transform: math.Matrix.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const bulbModel = await model.fromOBJ("./res/model/sphere.obj", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 	const cubeModel = await model.fromJSON("./res/model/cube.json");
 	const groundModel = await model.fromJSON("./res/model/ground.json");
 
@@ -140,7 +141,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			ground: webgl.loadModel(gl, groundModel)
 		},
 		move: 0,
-		projectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shaders: {
 			basic: basicShader,
 			light: lightShader
@@ -157,7 +158,7 @@ const render = (state: SceneState) => {
 	const shaders = state.shaders;
 	const target = state.target;
 
-	const cameraView = math.Matrix
+	const cameraView = matrix.Matrix4
 		.createIdentity()
 		.translate(camera.position)
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
@@ -165,17 +166,17 @@ const render = (state: SceneState) => {
 
 	// Draw scene
 	const bulbs = state.bulbs.slice(0, state.tweak.nbLights).map(bulb => ({
-		matrix: math.Matrix.createIdentity().translate(bulb),
+		matrix: matrix.Matrix4.createIdentity().translate(bulb),
 		model: models.bulb
 	}));
 
 	const cube = {
-		matrix: math.Matrix.createIdentity(),
+		matrix: matrix.Matrix4.createIdentity(),
 		model: models.cube
 	};
 
 	const ground = {
-		matrix: math.Matrix.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
+		matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 		model: models.ground
 	};
 
@@ -224,7 +225,7 @@ const update = (state: SceneState, dt: number) => {
 		const pitch = state.move * (((i + 1) * 17) % 23);
 		const yaw = state.move * (((i + 1) * 7) % 13);
 
-		state.bulbs[i] = math.Vector.scale3({
+		state.bulbs[i] = vector.Vector3.scale({
 			x: Math.cos(yaw) * Math.cos(pitch),
 			y: Math.sin(yaw) * Math.cos(pitch),
 			z: Math.sin(pitch)

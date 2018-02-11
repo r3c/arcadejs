@@ -1,6 +1,5 @@
 import * as application from "../engine/application";
 import * as display from "../engine/display";
-import * as math from "../engine/math";
 import * as software from "../engine/render/software";
 
 interface State {
