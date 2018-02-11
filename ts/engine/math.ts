@@ -182,6 +182,14 @@ interface Vector4 {
 }
 
 class Vector {
+	public static add3(lhs: Vector3, rhs: Vector3) {
+		return {
+			x: lhs.x + rhs.x,
+			y: lhs.y + rhs.y,
+			z: lhs.z + rhs.z
+		};
+	}
+
 	public static cross(lhs: Vector3, rhs: Vector3) {
 		return {
 			x: lhs.y * rhs.z - lhs.z * rhs.y,
@@ -190,8 +198,17 @@ class Vector {
 		};
 	}
 
+	public static dot3(lhs: Vector3, rhs: Vector3) {
+		return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+	}
+
 	public static normalize3(vector: Vector3) {
-		const invLength = 1 / Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+		const length = Math.sqrt(vector.x * vector.x + vector.y * vector.y + vector.z * vector.z);
+
+		if (length === 0)
+			return vector;
+
+		const invLength = 1 / length;
 
 		return {
 			x: vector.x * invLength,

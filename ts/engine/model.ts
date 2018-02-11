@@ -39,21 +39,24 @@ interface Shift {
 ** http://www.iquilezles.org/www/articles/normals/normals.htm
 */
 const computeNormals = (triangles: [number, number, number][], points: math.Vector3[]) => {
-	const normals = [];
+	const normals = functional.range(points.length, i => ({ x: 0, y: 0, z: 0 }));
 
 	for (const [index1, index2, index3] of triangles) {
 		const point1 = points[index1];
 		const point2 = points[index2];
 		const point3 = points[index3];
 
-		const normal = math.Vector.normalize3(math.Vector.cross(
+		const normal = math.Vector.cross(
 			math.Vector.substract3(point3, point2),
-			math.Vector.substract3(point1, point2)));
+			math.Vector.substract3(point1, point2));
 
-		normals[index1] = normal;
-		normals[index2] = normal;
-		normals[index3] = normal;
+		normals[index1] = math.Vector.add3(normals[index1], normal);
+		normals[index2] = math.Vector.add3(normals[index2], normal);
+		normals[index3] = math.Vector.add3(normals[index3], normal);
 	}
+
+	for (let i = 0; i < normals.length; ++i)
+		normals[i] = math.Vector.normalize3(normals[i]);
 
 	return normals;
 };
@@ -61,9 +64,10 @@ const computeNormals = (triangles: [number, number, number][], points: math.Vect
 /*
 ** Based on:
 ** http://fabiensanglard.net/bumpMapping/index.php
+** http://www.terathon.com/code/tangent.html
 */
-const computeTangents = (triangles: [number, number, number][], points: math.Vector3[], coords: math.Vector2[]) => {
-	const tangents = [];
+const computeTangents = (triangles: [number, number, number][], points: math.Vector3[], coords: math.Vector2[], normals: math.Vector3[]) => {
+	const tangents = functional.range(normals.length, i => ({ x: 0, y: 0, z: 0 }));
 
 	for (const [index1, index2, index3] of triangles) {
 		const coord1 = coords[index1];
@@ -80,15 +84,25 @@ const computeTangents = (triangles: [number, number, number][], points: math.Vec
 
 		const coef = 1 / (c1.x * c2.y - c2.x * c1.y);
 
-		const tangent = math.Vector.normalize3({
+		const tangent = {
 			x: coef * (p1.x * c2.y - p2.x * c1.y),
 			y: coef * (p1.y * c2.y - p2.y * c1.y),
 			z: coef * (p1.z * c2.y - p2.z * c1.y)
-		});
+		};
 
-		tangents[index1] = tangent;
-		tangents[index2] = tangent;
-		tangents[index3] = tangent;
+		tangents[index1] = math.Vector.add3(tangents[index1], tangent);
+		tangents[index2] = math.Vector.add3(tangents[index2], tangent);
+		tangents[index3] = math.Vector.add3(tangents[index3], tangent);
+	}
+
+	for (let i = 0; i < normals.length; ++i) {
+		const n = normals[i];
+		const t = tangents[i];
+
+		// Gram-Schmidt orthogonalize: t' = normalize(t - n * dot(n, t));
+		tangents[i] = math.Vector.normalize3(
+			math.Vector.substract3(t, math.Vector.scale3(n, math.Vector.dot3(n, t)))
+		);
 	}
 
 	return tangents;
@@ -128,7 +142,7 @@ const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config 
 		if (mesh.tangents !== undefined)
 			mesh.tangents = mesh.tangents.map(tangent => math.Vector.normalize3(displaceVertex(tangent, scaleX, scaleY, scaleZ, shiftZero)));
 		else if (mesh.coords !== undefined)
-			mesh.tangents = computeTangents(mesh.triangles, mesh.points, mesh.coords);
+			mesh.tangents = computeTangents(mesh.triangles, mesh.points, mesh.coords, mesh.normals);
 	}
 
 	return model;
