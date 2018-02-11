@@ -20,23 +20,26 @@ uniform bool useHeightMap;
 uniform bool useNormalMap;
 uniform bool useSpecular;
 
-varying vec3 camera;
 varying vec2 coord;
+varying vec3 eye;
+varying vec3 lightDirectionTransformed;
 varying vec3 normal;
 varying vec3 point;
+varying vec3 shadow;
 
-varying vec4 shadowPos;
+vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirection, float parallaxScale, float parallaxBias) {
+	if (useHeightMap) {
+		float parallaxHeight = texture2D(heightMap, initialCoord).r;
 
-varying vec3 lightDirectionFinal;
-
-vec2 getCoord(in vec2 initialCoord, in vec3 cameraDirection, float parallaxScale, float parallaxBias) {
-	float parallaxHeight = texture2D(heightMap, initialCoord).r;
-
-	return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * cameraDirection.xy / cameraDirection.z;
+		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirection.xy / eyeDirection.z;
+	}
+	else {
+		return initialCoord;
+	}
 }
 
-vec3 getLight(in vec2 coord, in vec3 normal, in vec3 cameraDirection, in vec3 lightDirection) {
-	float lightAngle = dot(normal, lightDirection);
+vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirectionTransformed) {
+	float lightAngle = dot(normal, lightDirectionTransformed);
 	vec3 lightColor = vec3(0, 0, 0);
 
 	if (lightAngle > 0.0) {
@@ -53,15 +56,15 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 cameraDirection, in vec3 li
 
 			if (true) {
 				// Blinn-Phong model
-				vec3 cameraLightMidway = normalize(cameraDirection + lightDirection);
+				vec3 cameraLightMidway = normalize(eyeDirection + lightDirectionTransformed);
 
 				specularCosine = max(dot(normal, cameraLightMidway), 0.0);
 			}
 			else {
 				// Phong model
-				vec3 specularReflection = normalize(normal * lightAngle * 2.0 - lightDirection);
+				vec3 specularReflection = normalize(normal * lightAngle * 2.0 - lightDirectionTransformed);
 
-				specularCosine = max(dot(specularReflection, cameraDirection), 0.0);
+				specularCosine = max(dot(specularReflection, eyeDirection), 0.0);
 			}
 
 			vec3 specularLight = vec3(1.0, 1.0, 1.0);
@@ -75,29 +78,28 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 cameraDirection, in vec3 li
 	return lightColor;
 }
 
+vec3 getNormal(in vec3 initialNormal, in vec2 coord) {
+	if (useNormalMap) {
+		// Initial normal is always (0, 0, 1) here and can be safely ignored, see vertex shader
+		return normalize(2.0 * texture2D(normalMap, coord).rgb - 1.0);
+	}
+	else {
+		return normalize(initialNormal);
+	}
+}
+
 void main(void) {
-	vec3 cameraDirection = normalize(camera);
+	vec3 eyeDirection = normalize(eye);
+	vec2 modifiedCoord = getCoord(coord, eyeDirection, 0.04, 0.02);
+	vec3 modifiedNormal = getNormal(normal, modifiedCoord);
+
 	vec3 lightColor = vec3(0, 0, 0);
-	vec3 lightNormal;
-	vec2 mapCoord;
-
-	if (useHeightMap)
-		mapCoord = getCoord(coord, cameraDirection, 0.04, 0.02);
-	else
-		mapCoord = coord;
-
-	if (useNormalMap)
-		lightNormal = normalize(2.0 * texture2D(normalMap, mapCoord).rgb - 1.0);
-	else
-		lightNormal = normalize(normal);
 
 	if (useAmbient)
-		lightColor += vec3(0.2, 0.2, 0.2) * ambientColor.rgb * texture2D(ambientMap, mapCoord).rgb;
+		lightColor += vec3(0.2, 0.2, 0.2) * ambientColor.rgb * texture2D(ambientMap, modifiedCoord).rgb;
 
-	vec3 depth = shadowPos.xyz / shadowPos.w;
+	if (texture2D(shadowMap, shadow.xy).r > shadow.z)
+		lightColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirectionTransformed));
 
-	if (texture2D(shadowMap, depth.xy).r > depth.z)
-		lightColor += getLight(mapCoord, lightNormal, cameraDirection, normalize(lightDirectionFinal));
-
-	gl_FragColor = vec4(lightColor, ambientColor.a); // FIXME: alpha shouldn't be used here
+	gl_FragColor = vec4(lightColor, 1.0);
 }

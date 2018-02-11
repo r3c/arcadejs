@@ -29,6 +29,7 @@ const shadowFsSource = `
 `;
 
 interface Configuration {
+	animate: boolean,
 	useAmbient: boolean,
 	useDiffuse: boolean,
 	useSpecular: boolean,
@@ -50,6 +51,7 @@ interface SceneState {
 		debug: webgl.Mesh[],
 		ground: webgl.Mesh[]
 	},
+	move: number,
 	shaders: {
 		debug: webgl.Shader<ShaderState>,
 		light: webgl.Shader<ShaderState>,
@@ -70,6 +72,7 @@ interface ShaderState {
 }
 
 const configuration = {
+	animate: true,
 	useAmbient: true,
 	useDiffuse: false,
 	useSpecular: false,
@@ -174,6 +177,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			debug: renderer.load(debugModel),
 			ground: renderer.load(groundModel)
 		},
+		move: 0,
 		shaders: {
 			debug: debugShader,
 			light: lightShader,
@@ -196,7 +200,7 @@ const render = (state: SceneState) => {
 
 	const cubeModelMatrix = math.Matrix
 		.createIdentity()
-		.rotate({ x: 0, y: 1, z: 0 }, new Date().getTime() * 0.001);
+		.rotate({ x: 0, y: 1, z: 0 }, state.move * 5);
 
 	const groundModelMatrix = math.Matrix
 		.createIdentity()
@@ -206,8 +210,8 @@ const render = (state: SceneState) => {
 	const shadowView = math.Matrix
 		.createIdentity()
 		.translate({ x: 0, y: 0, z: -10 })
-		.rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 1 / 8)
-		.rotate({ x: 0, y: 1, z: 0 }, Math.PI * new Date().getTime() * 0.0001);
+		.rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 1 / 6)
+		.rotate({ x: 0, y: 1, z: 0 }, state.move * 7);
 
 	const shadowCube = {
 		meshes: models.cube,
@@ -286,6 +290,11 @@ const update = (state: SceneState, dt: number) => {
 	}
 
 	camera.position.z += wheel;
+
+	// Update animation state
+	if (state.light.tweak.animate) {
+		state.move += dt * 0.00003;
+	}
 };
 
 const scenario = {

@@ -24,46 +24,49 @@ uniform Light light2;
 
 uniform bool useNormalMap;
 
-varying vec3 camera;
-varying vec2 coord;
-varying vec3 normal;
-varying vec3 point;
+varying vec2 coord; // Texture coordinate
+varying vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
+varying vec3 light0Direction; // Direction of light 0 in same space than eye vector
+varying vec3 light1Direction; // Direction of light 1 in same space than eye vector
+varying vec3 light2Direction; // Direction of light 2 in same space than eye vector
+varying vec3 normal; // Normal at point in same space than eye vector
+varying vec3 point; // Point position in camera space
 
-varying vec3 light0direction;
-varying vec3 light1direction;
-varying vec3 light2direction;
+vec3 toCameraPosition(in vec3 worldPosition) {
+	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
+}
 
 void main(void) {
-	vec4 pointWorld = viewMatrix * modelMatrix * vec4(points, 1.0);
-	vec3 cameraWorld = -pointWorld.xyz;
+	vec4 pointCamera = viewMatrix * modelMatrix * vec4(points, 1.0);
+	vec3 eyeDirectionCamera = normalize(-pointCamera.xyz);
 
 	coord = coords;
-	point = pointWorld.xyz;
+	point = pointCamera.xyz;
 
 	vec3 n = normalize(normalMatrix * normals);
 	vec3 t = normalize(normalMatrix * tangents);
 	vec3 b = cross(n, t);
 
 	if (useNormalMap) {
-		vec3 light0directionCamera = normalize((viewMatrix * vec4(light0.position, 1.0)).xyz - point);
-		vec3 light1directionCamera = normalize((viewMatrix * vec4(light1.position, 1.0)).xyz - point);
-		vec3 light2directionCamera = normalize((viewMatrix * vec4(light2.position, 1.0)).xyz - point);
+		vec3 light0DirectionCamera = normalize(toCameraPosition(light0.position) - point);
+		vec3 light1DirectionCamera = normalize(toCameraPosition(light1.position) - point);
+		vec3 light2DirectionCamera = normalize(toCameraPosition(light2.position) - point);
 
-		light0direction = vec3(dot(light0directionCamera, t), dot(light0directionCamera, b), dot(light0directionCamera, n));
-		light1direction = vec3(dot(light1directionCamera, t), dot(light1directionCamera, b), dot(light1directionCamera, n));
-		light2direction = vec3(dot(light2directionCamera, t), dot(light2directionCamera, b), dot(light2directionCamera, n));
+		light0Direction = vec3(dot(light0DirectionCamera, t), dot(light0DirectionCamera, b), dot(light0DirectionCamera, n));
+		light1Direction = vec3(dot(light1DirectionCamera, t), dot(light1DirectionCamera, b), dot(light1DirectionCamera, n));
+		light2Direction = vec3(dot(light2DirectionCamera, t), dot(light2DirectionCamera, b), dot(light2DirectionCamera, n));
 
-		camera = vec3(dot(cameraWorld, t), dot(cameraWorld, b), dot(cameraWorld, n));
+		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
 		normal = vec3(0.0, 0.0, 1.0);
 	}
 	else {
-		light0direction = (viewMatrix * vec4(light0.position, 1.0)).xyz - point;
-		light1direction = (viewMatrix * vec4(light1.position, 1.0)).xyz - point;
-		light2direction = (viewMatrix * vec4(light2.position, 1.0)).xyz - point;
+		light0Direction = toCameraPosition(light0.position) - point;
+		light1Direction = toCameraPosition(light1.position) - point;
+		light2Direction = toCameraPosition(light2.position) - point;
 
-		camera = cameraWorld;
+		eye = eyeDirectionCamera;
 		normal = n;
 	}
 
-	gl_Position = projectionMatrix * pointWorld;
+	gl_Position = projectionMatrix * pointCamera;
 }

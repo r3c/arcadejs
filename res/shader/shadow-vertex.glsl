@@ -2,6 +2,13 @@
 precision highp float;
 #endif
 
+const mat4 texUnitConverter = mat4(
+	0.5, 0.0, 0.0, 0.0,
+	0.0, 0.5, 0.0, 0.0,
+	0.0, 0.0, 0.5, 0.0,
+	0.5, 0.5, 0.5, 1.0
+);
+
 struct Light
 {
 	bool enabled;
@@ -24,44 +31,44 @@ uniform mat4 shadowViewMatrix;
 uniform vec3 lightDirection;
 uniform bool useNormalMap;
 
-varying vec3 camera;
-varying vec2 coord;
-varying vec3 normal;
-varying vec3 point;
+varying vec2 coord; // Texture coordinate
+varying vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
+varying vec3 lightDirectionTransformed; // Direction of light in same space than eye vector
+varying vec3 normal; // Normal at point in same space than eye vector
+varying vec3 point; // Point position in camera space
+varying vec3 shadow; // Light intersection point in camera space
 
-const mat4 texUnitConverter = mat4(0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.5, 0.5, 1.0);
-
-varying vec4 shadowPos;
-
-varying vec3 lightDirectionFinal;
+vec3 toCameraDirection(in vec3 worldDirection) {
+	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
+}
 
 void main(void) {
-	vec4 pointWorld = viewMatrix * modelMatrix * vec4(points, 1.0);
-	vec3 cameraWorld = -pointWorld.xyz;
+	vec4 pointCamera = viewMatrix * modelMatrix * vec4(points, 1.0);
+	vec3 eyeDirectionCamera = -pointCamera.xyz;
+	vec4 shadowVector = texUnitConverter * shadowProjectionMatrix * shadowViewMatrix * modelMatrix * vec4(points, 1.0);
 
 	coord = coords;
-	point = pointWorld.xyz;
+	point = pointCamera.xyz;
+	shadow = shadowVector.xyz;
 
 	vec3 n = normalize(normalMatrix * normals);
 	vec3 t = normalize(normalMatrix * tangents);
 	vec3 b = cross(n, t);
 
 	if (useNormalMap) {
-		vec3 lightDirectionCamera = normalize((viewMatrix * vec4(lightDirection, 0.0)).xyz);
+		vec3 lightDirectionCamera = normalize(toCameraDirection(lightDirection));
 
-		lightDirectionFinal = vec3(dot(lightDirectionCamera, t), dot(lightDirectionCamera, b), dot(lightDirectionCamera, n));
+		lightDirectionTransformed = vec3(dot(lightDirectionCamera, t), dot(lightDirectionCamera, b), dot(lightDirectionCamera, n));
 
-		camera = vec3(dot(cameraWorld, t), dot(cameraWorld, b), dot(cameraWorld, n));
+		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
 		normal = vec3(0.0, 0.0, 1.0);
 	}
 	else {
-		lightDirectionFinal = normalize((viewMatrix * vec4(lightDirection, 0.0)).xyz);
+		lightDirectionTransformed = normalize(toCameraDirection(lightDirection));
 
-		camera = cameraWorld;
+		eye = eyeDirectionCamera;
 		normal = n;
 	}
 
-	shadowPos =  texUnitConverter * shadowProjectionMatrix * shadowViewMatrix * modelMatrix * vec4(points, 1.0);
-
-	gl_Position = projectionMatrix * pointWorld;
+	gl_Position = projectionMatrix * pointCamera;
 }

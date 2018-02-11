@@ -1,0 +1,4 @@
+- Do not repeat model matrix for successive rendering passes
+- Allow reading projection matrix, possibly by moving it out of target
+- Merge Target implementations in a single class with "setColorTexture" / "setDepthTexture" methods
+- Reject unknown material names when loading model
