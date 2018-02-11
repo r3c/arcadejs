@@ -15,6 +15,12 @@ interface Material {
 	specularMap: WebGLTexture | undefined
 }
 
+interface MaterialState<TCallState> {
+	call: TCallState,
+	material: Material,
+	model: Model
+}
+
 interface Mesh {
 	colors: WebGLBuffer | undefined,
 	coords: WebGLBuffer | undefined,
@@ -26,22 +32,26 @@ interface Mesh {
 	tangents: WebGLBuffer | undefined
 }
 
+interface MeshState<TCallState> {
+	call: TCallState,
+	material: Material,
+	mesh: Mesh,
+	model: Model
+}
+
+interface Model {
+	matrix: math.Matrix,
+	meshes: Mesh[]
+}
+
+interface ModelState<TCallState> {
+	call: TCallState,
+	model: Model
+}
+
 interface Quality {
 	textureElementLinear: boolean,
 	textureMipmapLinear: boolean
-}
-
-interface Subject<T> {
-	shader: Shader<T>,
-	meshes: Mesh[],
-	modelMatrix: math.Matrix
-}
-
-interface Transform {
-	modelMatrix: Float32Array,
-	normalMatrix: Float32Array,
-	projectionMatrix: Float32Array,
-	viewMatrix: Float32Array
 }
 
 const defaultColor = {
@@ -246,16 +256,16 @@ type UniformBinding<T> = (gl: WebGLRenderingContext, source: T) => void;
 type UniformMatrixSetter<T> = (location: WebGLUniformLocation, transpose: boolean, value: T) => void;
 type UniformValueSetter<T> = (location: WebGLUniformLocation, value: T) => void;
 
-class Shader<TState> {
+class Shader<TCallState> {
 	public readonly program: WebGLProgram;
 
 	private readonly gl: WebGLRenderingContext;
-	private readonly globalPropertyBindings: UniformBinding<TState>[];
-	private readonly globalTextureBindings: TextureBinding<TState>[];
-	private readonly materialTextureBindings: TextureBinding<Material>[];
-	private readonly materialPropertyBindings: UniformBinding<Material>[];
-	private readonly meshAttributeBindings: AttributeBinding<Mesh>[];
-	private readonly strideBindings: UniformBinding<Transform>[];
+	private readonly perCallPropertyBindings: UniformBinding<TCallState>[];
+	private readonly perCallTextureBindings: TextureBinding<TCallState>[];
+	private readonly perMaterialTextureBindings: TextureBinding<MaterialState<TCallState>>[];
+	private readonly perMaterialPropertyBindings: UniformBinding<MaterialState<TCallState>>[];
+	private readonly perMeshAttributeBindings: AttributeBinding<MeshState<TCallState>>[];
+	private readonly perModelPropertyBindings: UniformBinding<ModelState<TCallState>>[];
 
 	public constructor(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
 		const program = gl.createProgram();
@@ -276,19 +286,54 @@ class Shader<TState> {
 		}
 
 		this.gl = gl;
-		this.globalPropertyBindings = [];
-		this.globalTextureBindings = [];
-		this.materialPropertyBindings = [];
-		this.materialTextureBindings = [];
-		this.meshAttributeBindings = [];
+		this.perCallPropertyBindings = [];
+		this.perCallTextureBindings = [];
+		this.perMaterialPropertyBindings = [];
+		this.perMaterialTextureBindings = [];
+		this.perMeshAttributeBindings = [];
+		this.perModelPropertyBindings = [];
 		this.program = program;
-		this.strideBindings = [];
 	}
 
-	public bindAttribute(name: string, size: number, type: number, getter: (mesh: Mesh) => WebGLBuffer | undefined) {
+	public bindPerCallMatrix(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: TCallState) => Iterable<number>) {
+		const location = this.findUniform(name);
+		const method = assign(this.gl);
+
+		this.perCallPropertyBindings.push((gl: WebGLRenderingContext, state: TCallState) => method.call(gl, location, false, new Float32Array(getter(state))));
+	}
+
+	public bindPerCallProperty<TValue>(name: string, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>, getter: (state: TCallState) => TValue) {
+		this.perCallPropertyBindings.push(this.declareUniform(name, assign, getter));
+	}
+
+	public bindPerCallTexture(name: string, getter: (state: TCallState) => WebGLTexture | undefined) {
+		const location = this.findUniform(name);
+
+		this.perCallTextureBindings.push({
+			getter: getter,
+			location: location,
+			name: name
+		});
+	}
+
+	public bindPerMaterialProperty<TValue>(name: string, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>, getter: (state: MaterialState<TCallState>) => TValue) {
+		this.perMaterialPropertyBindings.push(this.declareUniform(name, assign, getter));
+	}
+
+	public bindPerMaterialTexture(name: string, getter: (state: MaterialState<TCallState>) => WebGLTexture | undefined) {
+		const location = this.findUniform(name);
+
+		this.perMaterialTextureBindings.push({
+			getter: getter,
+			location: location,
+			name: name
+		});
+	}
+
+	public bindPerMeshAttribute(name: string, size: number, type: number, getter: (state: MeshState<TCallState>) => WebGLBuffer | undefined) {
 		const location = this.findAttribute(name);
 
-		this.meshAttributeBindings.push({
+		this.perMeshAttributeBindings.push({
 			getter: getter,
 			location: location,
 			name: name,
@@ -297,70 +342,35 @@ class Shader<TState> {
 		});
 	}
 
-	public bindGlobalMatrix(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: TState) => Float32Array) {
+	public bindPerModelMatrix(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: ModelState<TCallState>) => Iterable<number>) {
 		const location = this.findUniform(name);
 		const method = assign(this.gl);
 
-		this.globalPropertyBindings.push((gl: WebGLRenderingContext, source: TState) => method.call(gl, location, false, getter(source)));
+		this.perModelPropertyBindings.push((gl: WebGLRenderingContext, state: ModelState<TCallState>) => method.call(gl, location, false, new Float32Array(getter(state))));
 	}
 
-	public bindGlobalProperty<TValue>(name: string, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>, getter: (state: TState) => TValue) {
-		this.globalPropertyBindings.push(this.declareUniform(name, assign, getter));
+	public getPerCallPropertyBindings(): Iterable<UniformBinding<TCallState>> {
+		return this.perCallPropertyBindings;
 	}
 
-	public bindGlobalTexture(name: string, getter: (state: TState) => WebGLTexture | undefined) {
-		const location = this.findUniform(name);
-
-		this.globalTextureBindings.push({
-			getter: getter,
-			location: location,
-			name: name
-		});
+	public getPerCallTextureBindings(): Iterable<TextureBinding<TCallState>> {
+		return this.perCallTextureBindings;
 	}
 
-	public bindMaterialProperty<TValue>(name: string, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>, getter: (material: Material) => TValue) {
-		this.materialPropertyBindings.push(this.declareUniform(name, assign, getter));
+	public getPerMaterialPropertyBindings(): Iterable<UniformBinding<MaterialState<TCallState>>> {
+		return this.perMaterialPropertyBindings;
 	}
 
-	public bindMaterialTexture(name: string, getter: (material: Material) => WebGLTexture | undefined) {
-		const location = this.findUniform(name);
-
-		this.materialTextureBindings.push({
-			getter: getter,
-			location: location,
-			name: name
-		});
+	public getPerMaterialTextureBindings(): Iterable<TextureBinding<MaterialState<TCallState>>> {
+		return this.perMaterialTextureBindings;
 	}
 
-	public bindMatrix(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (transform: Transform) => Float32Array) {
-		const location = this.findUniform(name);
-		const method = assign(this.gl);
-
-		this.strideBindings.push((gl: WebGLRenderingContext, source: Transform) => method.call(gl, location, false, getter(source)));
+	public getPerMeshAttributeBindings(): Iterable<AttributeBinding<MeshState<TCallState>>> {
+		return this.perMeshAttributeBindings;
 	}
 
-	public getGlobalPropertyBindings(): Iterable<UniformBinding<TState>> {
-		return this.globalPropertyBindings;
-	}
-
-	public getGlobalTextureBindings(): Iterable<TextureBinding<TState>> {
-		return this.globalTextureBindings;
-	}
-
-	public getMaterialPropertyBindings(): Iterable<UniformBinding<Material>> {
-		return this.materialPropertyBindings;
-	}
-
-	public getMaterialTextureBindings(): Iterable<TextureBinding<Material>> {
-		return this.materialTextureBindings;
-	}
-
-	public getMeshAttributeBindings(): Iterable<AttributeBinding<Mesh>> {
-		return this.meshAttributeBindings;
-	}
-
-	public getStrideBindings(): Iterable<UniformBinding<Transform>> {
-		return this.strideBindings;
+	public getPerModelPropertyBindings(): Iterable<UniformBinding<MeshState<TCallState>>> {
+		return this.perModelPropertyBindings;
 	}
 
 	private declareUniform<TSource, TValue>(name: string, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>, getter: (source: TSource) => TValue) {
@@ -414,7 +424,6 @@ abstract class Target {
 
 	private clearColor: math.Vector4;
 	private clearDepth: number;
-	public projection: math.Matrix; // FIXME/ should be private
 	private viewHeight: number;
 	private viewWidth: number;
 
@@ -449,48 +458,53 @@ abstract class Target {
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	}
 
-	public draw<T>(subjects: Subject<T>[], viewMatrix: math.Matrix, state: T) {
+	public draw<T>(shader: Shader<T>, models: Model[], callState: T) {
 		const gl = this.gl;
 
-		for (const subject of subjects) {
-			const shader = subject.shader;
-			const transform = {
-				modelMatrix: new Float32Array(subject.modelMatrix.getValues()),
-				normalMatrix: new Float32Array(viewMatrix.compose(subject.modelMatrix).getTransposedInverse3x3()),
-				projectionMatrix: new Float32Array(this.projection.getValues()),
-				viewMatrix: new Float32Array(viewMatrix.getValues())
-			};
+		// Enable shader program
+		gl.useProgram(shader.program);
 
-			gl.useProgram(shader.program);
+		// Assign per-call uniforms
+		const state = {
+			call: callState,
+			material: <Material><any>undefined,
+			mesh: <Mesh><any>undefined,
+			model: <Model><any>undefined
+		};
 
-			// Assign per-stride uniforms
-			let globalTextureIndex = 0;
+		let callTextureIndex = 0;
 
-			for (const binding of shader.getGlobalPropertyBindings())
+		for (const binding of shader.getPerCallPropertyBindings())
+			binding(gl, callState);
+
+		for (const binding of shader.getPerCallTextureBindings()) {
+			const texture = binding.getter(callState);
+
+			if (texture === undefined)
+				throw invalidUniformBinding(binding.name);
+
+			gl.activeTexture(gl.TEXTURE0 + callTextureIndex);
+			gl.bindTexture(gl.TEXTURE_2D, texture);
+			gl.uniform1i(binding.location, callTextureIndex);
+
+			++callTextureIndex;
+		}
+
+		for (const model of models) {
+			state.model = model;
+
+			for (const binding of shader.getPerModelPropertyBindings())
 				binding(gl, state);
 
-			for (const binding of shader.getGlobalTextureBindings()) {
-				const texture = binding.getter(state);
+			for (const mesh of model.meshes) {
+				let materialTextureIndex = callTextureIndex;
 
-				if (texture === undefined)
-					throw invalidUniformBinding(binding.name);
-	
-				gl.activeTexture(gl.TEXTURE0 + globalTextureIndex);
-				gl.bindTexture(gl.TEXTURE_2D, texture);
-				gl.uniform1i(binding.location, globalTextureIndex);
-
-				++globalTextureIndex;
-			}
-
-			for (const binding of shader.getStrideBindings())
-				binding(gl, transform);
-
-			for (const mesh of subject.meshes) {
-				let materialTextureIndex = globalTextureIndex;
+				state.material = mesh.material;
+				state.mesh = mesh;
 
 				// Assign per-material uniforms
-				for (const binding of shader.getMaterialTextureBindings()) {
-					const texture = binding.getter(mesh.material);
+				for (const binding of shader.getPerMaterialTextureBindings()) {
+					const texture = binding.getter(state);
 
 					if (texture === undefined)
 						throw invalidUniformBinding(binding.name);
@@ -502,12 +516,12 @@ abstract class Target {
 					++materialTextureIndex;
 				}
 
-				for (const binding of shader.getMaterialPropertyBindings())
-					binding(gl, mesh.material);
+				for (const binding of shader.getPerMaterialPropertyBindings())
+					binding(gl, state);
 
 				// Assign per-mesh attributes
-				for (const binding of shader.getMeshAttributeBindings()) {
-					const buffer = binding.getter(mesh);
+				for (const binding of shader.getPerMeshAttributeBindings()) {
+					const buffer = binding.getter(state);
 
 					if (buffer === undefined)
 						throw invalidAttributeBinding(binding.name);
@@ -533,9 +547,6 @@ abstract class Target {
 	}
 
 	public setSize(width: number, height: number) {
-		this.projection = width === height // FIXME: big hack, "width === height" means "we're using a texture buffer here"
-			? math.Matrix.createOrthographic(-10, 10, -10, 10, -10, 20)
-			: math.Matrix.createPerspective(45, width / height, 0.1, 100);
 		this.viewHeight = height;
 		this.viewWidth = width;
 	}
@@ -612,4 +623,4 @@ class ScreenTarget extends Target {
 	}
 }
 
-export { BufferTarget, Mesh, Renderer, ScreenTarget, Shader, Subject, Target }
+export { BufferTarget, Mesh, Renderer, ScreenTarget, Shader, Model, Target }

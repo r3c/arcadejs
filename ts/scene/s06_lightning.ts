@@ -8,12 +8,13 @@ import * as webgl from "../engine/render/webgl";
 
 /*
 ** What changed?
-** - Simple directional (diffuse) lightning has been added to the scene
+** - Directional (diffuse) and reflective (specular) lightning has been added to the scene
+** - Shader supports tangent space transform for normal and height mapping
 ** - Scene uses two different shaders loaded from external files
 */
 
 interface Configuration {
-	moveLights: boolean,
+	animate: boolean,
 	nbLights: string[],
 	useAmbient: boolean,
 	useDiffuse: boolean,
@@ -22,33 +23,37 @@ interface Configuration {
 	useHeightMap: boolean
 }
 
+interface CallState {
+	lightPositions: math.Vector3[],
+	projectionMatrix: math.Matrix,
+	tweak: application.Tweak<Configuration>,
+	viewMatrix: math.Matrix
+}
+
 interface SceneState {
+	bulbs: math.Vector3[],
 	camera: {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
 	input: controller.Input,
-	light: ShaderState,
 	models: {
 		bulb: webgl.Mesh[],
 		cube: webgl.Mesh[],
 		ground: webgl.Mesh[]
 	},
 	move: number,
+	projectionMatrix: math.Matrix,
 	shaders: {
-		basic: webgl.Shader<ShaderState>,
-		light: webgl.Shader<ShaderState>
+		basic: webgl.Shader<CallState>,
+		light: webgl.Shader<CallState>
 	},
-	target: webgl.Target
-}
-
-interface ShaderState {
-	bulbs: math.Vector3[],
+	target: webgl.Target,
 	tweak: application.Tweak<Configuration>
 }
 
 const configuration = {
-	moveLights: true,
+	animate: true,
 	nbLights: ["0", ".1", "2", "3"],
 	useAmbient: true,
 	useDiffuse: false,
@@ -64,56 +69,56 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const renderer = new webgl.Renderer(gl);
 
 	// Setup shaders
-	const basicShader = new webgl.Shader<ShaderState>(
+	const basicShader = new webgl.Shader<CallState>(
 		gl,
 		await io.readURL(io.StringFormat, "./res/shader/basic-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./res/shader/basic-fragment.glsl")
 	);
 
-	basicShader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
+	basicShader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
 
-	basicShader.bindMatrix("modelMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelMatrix);
-	basicShader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
-	basicShader.bindMatrix("viewMatrix", gl => gl.uniformMatrix4fv, transform => transform.viewMatrix);
+	basicShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
+	basicShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	basicShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	const lightShader = new webgl.Shader<ShaderState>(
+	const lightShader = new webgl.Shader<CallState>(
 		gl,
 		await io.readURL(io.StringFormat, "./res/shader/forward-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./res/shader/forward-fragment.glsl")
 	);
 
-	lightShader.bindAttribute("coords", 2, gl.FLOAT, mesh => mesh.coords);
-	lightShader.bindAttribute("normals", 3, gl.FLOAT, mesh => mesh.normals);
-	lightShader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
-	lightShader.bindAttribute("tangents", 3, gl.FLOAT, mesh => mesh.tangents);
+	lightShader.bindPerMeshAttribute("coords", 2, gl.FLOAT, state => state.mesh.coords);
+	lightShader.bindPerMeshAttribute("normals", 3, gl.FLOAT, state => state.mesh.normals);
+	lightShader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
+	lightShader.bindPerMeshAttribute("tangents", 3, gl.FLOAT, state => state.mesh.tangents);
 
-	lightShader.bindGlobalProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
-	lightShader.bindGlobalProperty("useDiffuse", gl => gl.uniform1i, state => state.tweak.useDiffuse);
-	lightShader.bindGlobalProperty("useHeightMap", gl => gl.uniform1i, state => state.tweak.useHeightMap);
-	lightShader.bindGlobalProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
-	lightShader.bindGlobalProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
+	lightShader.bindPerCallProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
+	lightShader.bindPerCallProperty("useDiffuse", gl => gl.uniform1i, state => state.tweak.useDiffuse);
+	lightShader.bindPerCallProperty("useHeightMap", gl => gl.uniform1i, state => state.tweak.useHeightMap);
+	lightShader.bindPerCallProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
+	lightShader.bindPerCallProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
 
-	lightShader.bindMatrix("modelMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelMatrix);
-	lightShader.bindMatrix("normalMatrix", gl => gl.uniformMatrix3fv, transform => transform.normalMatrix);
-	lightShader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
-	lightShader.bindMatrix("viewMatrix", gl => gl.uniformMatrix4fv, transform => transform.viewMatrix);
+	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
+	lightShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.model.matrix).getTransposedInverse3x3());
+	lightShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	lightShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	lightShader.bindMaterialProperty("ambientColor", gl => gl.uniform4fv, material => material.ambientColor);
-	lightShader.bindMaterialTexture("ambientMap", material => material.ambientMap);
-	lightShader.bindMaterialProperty("diffuseColor", gl => gl.uniform4fv, material => material.diffuseColor);
-	lightShader.bindMaterialTexture("diffuseMap", material => material.diffuseMap);
-	lightShader.bindMaterialTexture("heightMap", material => material.heightMap);
-	lightShader.bindMaterialTexture("normalMap", material => material.normalMap);
-	lightShader.bindMaterialTexture("reflectionMap", material => material.reflectionMap);
-	lightShader.bindMaterialProperty("shininess", gl => gl.uniform1f, material => material.shininess);
-	lightShader.bindMaterialProperty("specularColor", gl => gl.uniform4fv, material => material.specularColor);
-	lightShader.bindMaterialTexture("specularMap", material => material.specularMap);
+	lightShader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
+	lightShader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
+	lightShader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
+	lightShader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
+	lightShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
+	lightShader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
+	lightShader.bindPerMaterialTexture("reflectionMap", state => state.material.reflectionMap);
+	lightShader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
+	lightShader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
+	lightShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
 
 	const bulbs = [0, 1, 2].map(i => ({ x: 0, y: 0, z: 0 }));
 
 	for (const index of [0, 1, 2]) {
-		lightShader.bindGlobalProperty("light" + index + ".enabled", gl => gl.uniform1i, state => index < state.tweak.nbLights ? 1 : 0);
-		lightShader.bindGlobalProperty("light" + index + ".position", gl => gl.uniform3fv, state => [state.bulbs[index].x, state.bulbs[index].y, state.bulbs[index].z]);
+		lightShader.bindPerCallProperty("light" + index + ".enabled", gl => gl.uniform1i, state => index < state.tweak.nbLights ? 1 : 0);
+		lightShader.bindPerCallProperty("light" + index + ".position", gl => gl.uniform3fv, state => [state.lightPositions[index].x, state.lightPositions[index].y, state.lightPositions[index].z]);
 	}
 
 	// Load models
@@ -123,32 +128,30 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	// Create state
 	return {
+		bulbs: bulbs,
 		camera: {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
 		input: runtime.input,
-		light: {
-			bulbs: bulbs,
-			tweak: tweak
-		},
 		models: {
 			bulb: renderer.load(bulbModel),
 			cube: renderer.load(cubeModel),
 			ground: renderer.load(groundModel)
 		},
 		move: 0,
+		projectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shaders: {
 			basic: basicShader,
 			light: lightShader
 		},
-		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
+		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),
+		tweak: tweak
 	};
 };
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
-	const light = state.light;
 	const models = state.models;
 	const shaders = state.shaders;
 	const target = state.target;
@@ -160,26 +163,31 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Draw scene
-	const bulbs = light.bulbs.slice(0, light.tweak.nbLights).map(bulb => ({
-		meshes: models.bulb,
-		modelMatrix: math.Matrix.createIdentity().translate(bulb),
-		shader: shaders.basic
+	const bulbs = state.bulbs.slice(0, state.tweak.nbLights).map(bulb => ({
+		matrix: math.Matrix.createIdentity().translate(bulb),
+		meshes: models.bulb
 	}));
 
 	const cube = {
-		meshes: models.cube,
-		modelMatrix: math.Matrix.createIdentity(),
-		shader: shaders.light
+		matrix: math.Matrix.createIdentity(),
+		meshes: models.cube
 	};
 
 	const ground = {
-		meshes: models.ground,
-		modelMatrix: math.Matrix.createIdentity().translate({x: 0, y: -1.5, z: 0}),
-		shader: shaders.light
+		matrix: math.Matrix.createIdentity().translate({x: 0, y: -1.5, z: 0}),
+		meshes: models.ground
+	};
+
+	const callState = {
+		lightPositions: state.bulbs,
+		projectionMatrix: state.projectionMatrix,
+		tweak: state.tweak,
+		viewMatrix: cameraView
 	};
 
 	target.clear();
-	target.draw(bulbs.concat([cube, ground]), cameraView, light);
+	target.draw(shaders.basic, bulbs, callState);
+	target.draw(shaders.light, [cube, ground], callState);
 };
 
 const update = (state: SceneState, dt: number) => {
@@ -202,17 +210,15 @@ const update = (state: SceneState, dt: number) => {
 	camera.position.z += wheel;
 
 	// Update light bulb positions
-	const light = state.light;
-
-	if (light.tweak.moveLights) {
+	if (state.tweak.animate) {
 		state.move += dt * 0.00003;
 	}
 
-	for (let i = 0; i < light.bulbs.length; ++i) {
+	for (let i = 0; i < state.bulbs.length; ++i) {
 		const pitch = state.move * (((i + 1) * 17) % 23);
 		const yaw = state.move * (((i + 1) * 7) % 13);
 
-		light.bulbs[i] = math.Vector.scale3({
+		state.bulbs[i] = math.Vector.scale3({
 			x: Math.cos(yaw) * Math.cos(pitch),
 			y: Math.sin(yaw) * Math.cos(pitch),
 			z: Math.sin(pitch)

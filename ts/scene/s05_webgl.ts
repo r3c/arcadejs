@@ -44,14 +44,20 @@ const fsSource = `
 	}
 `;
 
-interface State {
+interface CallState {
+	projectionMatrix: math.Matrix,
+	viewMatrix: math.Matrix
+}
+
+interface SceneState {
 	camera: {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
 	input: controller.Input,
 	model: webgl.Mesh[],
-	shader: webgl.Shader<void>,
+	projectionMatrix: math.Matrix,
+	shader: webgl.Shader<CallState>,
 	target: webgl.Target
 }
 
@@ -60,18 +66,18 @@ const prepare = async () => {
 	const gl = runtime.screen.context;
 
 	const renderer = new webgl.Renderer(gl);
-	const shader = new webgl.Shader<void>(gl, vsSource, fsSource);
+	const shader = new webgl.Shader<CallState>(gl, vsSource, fsSource);
 
-	shader.bindAttribute("colors", 4, gl.FLOAT, mesh => mesh.colors);
-	shader.bindAttribute("coords", 2, gl.FLOAT, mesh => mesh.coords);
-	shader.bindAttribute("points", 3, gl.FLOAT, mesh => mesh.points);
+	shader.bindPerMeshAttribute("colors", 4, gl.FLOAT, state => state.mesh.colors);
+	shader.bindPerMeshAttribute("coords", 2, gl.FLOAT, state => state.mesh.coords);
+	shader.bindPerMeshAttribute("points", 3, gl.FLOAT, state => state.mesh.points);
 
-	shader.bindMaterialProperty("ambientColor", gl => gl.uniform4fv, material => material.ambientColor);
-	shader.bindMaterialTexture("ambientMap", material => material.ambientMap);
+	shader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
+	shader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
 
-	shader.bindMatrix("modelMatrix", gl => gl.uniformMatrix4fv, transform => transform.modelMatrix);
-	shader.bindMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, transform => transform.projectionMatrix);
-	shader.bindMatrix("viewMatrix", gl => gl.uniformMatrix4fv, transform => transform.viewMatrix);
+	shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.model.matrix.getValues());
+	shader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	return {
 		camera: {
@@ -80,12 +86,13 @@ const prepare = async () => {
 		},
 		input: runtime.input,
 		model: renderer.load(await model.fromJSON("./res/model/cube.json")),
+		projectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shader: shader,
 		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
 	};
 };
 
-const render = (state: State) => {
+const render = (state: SceneState) => {
 	const camera = state.camera;
 	const target = state.target;
 
@@ -96,16 +103,18 @@ const render = (state: State) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	const cube = {
-		meshes: state.model,
-		modelMatrix: math.Matrix.createIdentity(),
-		shader: state.shader
+		matrix: math.Matrix.createIdentity(),
+		meshes: state.model
 	};
 
 	target.clear();
-	target.draw([cube], viewMatrix, undefined);
+	target.draw(state.shader, [cube], {
+		projectionMatrix: state.projectionMatrix,
+		viewMatrix: viewMatrix
+	});
 };
 
-const update = (state: State, dt: number) => {
+const update = (state: SceneState, dt: number) => {
 	const camera = state.camera;
 	const input = state.input;
 	const movement = input.fetchMovement();
