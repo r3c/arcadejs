@@ -8,3 +8,4 @@ DONE
 - Do not repeat model matrix for successive rendering passes
 - Reject unknown material names when loading model
 - Merge Target implementations in a single class with "setColorTexture" / "setDepthTexture" methods
+- Fix vertices rotation when loading model

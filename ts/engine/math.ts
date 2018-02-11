@@ -121,6 +121,15 @@ class Matrix {
 		]));
 	}
 
+	public scale(vector: Vector3) {
+		return new Matrix(Matrix.multiply(this.values, [
+			vector.x, 0, 0, 0,
+			0, vector.y, 0, 0,
+			0, 0, vector.z, 0,
+			0, 0, 0, 1
+		]));
+	}
+
 	public transform(vertex: Vector4) {
 		const m = this.values;
 

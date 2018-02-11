@@ -7,31 +7,12 @@ import * as obj from "./model/loaders/obj";
 import * as tds from "./model/loaders/3ds";
 
 interface Config {
-	scale?: Scale
-	shift?: Shift
+	transform?: math.Matrix
 }
 
 interface Model {
 	materials?: { [key: string]: mesh.Material },
 	meshes: mesh.Mesh[]
-}
-
-interface Scale {
-	xx?: number,
-	xy?: number,
-	xz?: number,
-	yx?: number,
-	yy?: number,
-	yz?: number,
-	zx?: number,
-	zy?: number,
-	zz?: number
-}
-
-interface Shift {
-	x?: number,
-	y?: number,
-	z?: number
 }
 
 /*
@@ -108,39 +89,25 @@ const computeTangents = (triangles: [number, number, number][], points: math.Vec
 	return tangents;
 };
 
-const displaceVertex = (vertex: math.Vector3, scaleX: math.Vector3, scaleY: math.Vector3, scaleZ: math.Vector3, shift: math.Vector3) => {
-	return {
-		x: shift.x + scaleX.x * vertex.x + scaleX.y * vertex.y + scaleX.z * vertex.z,
-		y: shift.y + scaleY.x * vertex.x + scaleY.y * vertex.y + scaleY.z * vertex.z,
-		z: shift.z + scaleZ.x * vertex.x + scaleZ.y * vertex.y + scaleZ.z * vertex.z
-	};
-};
-
 const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config | undefined) => {
 	const config = configOrUndefined || {};
 	const model = await modelPromise;
 
 	for (const mesh of model.meshes) {
-		const scale = config.scale || {};
-		const scaleX = { x: functional.coalesce(scale.xx, 1), y: functional.coalesce(scale.xy, 0), z: functional.coalesce(scale.xz, 0) };
-		const scaleY = { x: functional.coalesce(scale.yx, 0), y: functional.coalesce(scale.yy, 1), z: functional.coalesce(scale.yz, 0) };
-		const scaleZ = { x: functional.coalesce(scale.zx, 0), y: functional.coalesce(scale.zy, 0), z: functional.coalesce(scale.zz, 1) };
-		const shift = config.shift || {};
-		const shiftVector = { x: functional.coalesce(shift.x, 0), y: functional.coalesce(shift.y, 0), z: functional.coalesce(shift.z, 0) };
-		const shiftZero = { x: 0, y: 0, z: 0 };
+		const transform = config.transform || math.Matrix.createIdentity();
 
-		// Displace points
-		mesh.points = mesh.points.map(point => displaceVertex(point, scaleX, scaleY, scaleZ, shiftVector));
+		// Transform points
+		mesh.points = mesh.points.map(point => transform.transform({ x: point.x, y: point.y, z: point.z, w: 1 }));
 
-		// Displace normals or compute them from vertices
+		// Transform normals or compute them from vertices
 		if (mesh.normals !== undefined)
-			mesh.normals = mesh.normals.map(normal => math.Vector.normalize3(displaceVertex(normal, scaleX, scaleY, scaleZ, shiftZero)));
+			mesh.normals = mesh.normals.map(normal => math.Vector.normalize3(transform.transform({ x: normal.x, y: normal.y, z: normal.z, w: 0 })));
 		else
 			mesh.normals = computeNormals(mesh.triangles, mesh.points);
 
-		// Displace tangents or compute them from vertices and texture coordinates
+		// Transform tangents or compute them from vertices, normals and texture coordinates
 		if (mesh.tangents !== undefined)
-			mesh.tangents = mesh.tangents.map(tangent => math.Vector.normalize3(displaceVertex(tangent, scaleX, scaleY, scaleZ, shiftZero)));
+			mesh.tangents = mesh.tangents.map(tangent => math.Vector.normalize3(transform.transform({ x: tangent.x, y: tangent.y, z: tangent.z, w: 0 })));
 		else if (mesh.coords !== undefined)
 			mesh.tangents = computeTangents(mesh.triangles, mesh.points, mesh.coords, mesh.normals);
 	}

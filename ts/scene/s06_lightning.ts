@@ -14,8 +14,8 @@ import * as webgl from "../engine/render/webgl";
 */
 
 interface Configuration {
-	animate: boolean,
 	nbLights: string[],
+	animate: boolean,
 	useAmbient: boolean,
 	useDiffuse: boolean,
 	useSpecular: boolean,
@@ -54,8 +54,8 @@ interface SceneState {
 }
 
 const configuration = {
-	animate: true,
 	nbLights: ["0", ".1", "2", "3"],
+	animate: true,
 	useAmbient: true,
 	useDiffuse: false,
 	useSpecular: false,
@@ -121,7 +121,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	}
 
 	// Load models
-	const bulbModel = await model.fromOBJ("./res/model/sphere.obj", { scale: { xx: 0.2, yy: 0.2, zz: 0.2 } });
+	const bulbModel = await model.fromOBJ("./res/model/sphere.obj", { transform: math.Matrix.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 	const cubeModel = await model.fromJSON("./res/model/cube.json");
 	const groundModel = await model.fromJSON("./res/model/ground.json");
 
@@ -175,7 +175,7 @@ const render = (state: SceneState) => {
 	};
 
 	const ground = {
-		matrix: math.Matrix.createIdentity().translate({x: 0, y: -1.5, z: 0}),
+		matrix: math.Matrix.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 		model: models.ground
 	};
 
