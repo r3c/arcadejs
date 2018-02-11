@@ -70,20 +70,46 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	return buffer;
 };
 
+const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: number, useFloat: boolean) => {
+	const renderbuffer = gl.createRenderbuffer();
+
+	if (renderbuffer === null)
+		throw Error("could not create render buffer");
+
+	gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+
+	if (useFloat)
+		gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+	else
+		throw Error("not implemented");
+
+	return renderbuffer;
+};
+
 const createTexture = (gl: WebGLRenderingContext) => {
 	const texture = gl.createTexture();
 
 	if (texture === null)
-		throw Error("texture creation failed");
+		throw Error("could not create texture");
 
 	return texture;
 };
 
-const createTextureBlank = (gl: WebGLRenderingContext, width: number, height: number) => {
+const createTextureBlank = (gl: WebGLRenderingContext, width: number, height: number, useFloat: boolean) => {
 	const texture = createTexture(gl);
 
 	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+	if (useFloat) {
+		if (!gl.getExtension("WEBGL_depth_texture"))
+			throw Error("depth texture WebGL extension is not available");
+
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, width, height, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_SHORT, null);
+	}
+	else
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -271,6 +297,13 @@ class Shader<TState> {
 		});
 	}
 
+	public bindGlobalMatrix(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: TState) => Float32Array) {
+		const location = this.findUniform(name);
+		const method = assign(this.gl);
+
+		this.globalPropertyBindings.push((gl: WebGLRenderingContext, source: TState) => method.call(gl, location, false, getter(source)));
+	}
+
 	public bindGlobalProperty<TValue>(name: string, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>, getter: (state: TState) => TValue) {
 		this.globalPropertyBindings.push(this.declareUniform(name, assign, getter));
 	}
@@ -381,7 +414,7 @@ abstract class Target {
 
 	private clearColor: math.Vector4;
 	private clearDepth: number;
-	private projection: math.Matrix;
+	public projection: math.Matrix; // FIXME/ should be private
 	private viewHeight: number;
 	private viewWidth: number;
 
@@ -404,15 +437,20 @@ abstract class Target {
 		this.gl = gl;
 	}
 
-	public draw<T>(subjects: Subject<T>[], viewMatrix: math.Matrix, state: T) {
+	public clear() {
 		const gl = this.gl;
 
+		// FIXME: this introduces an implicit state between "clear" and "draw" calls
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.getFramebuffer());
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
 		gl.clearColor(this.clearColor.x, this.clearColor.y, this.clearColor.z, this.clearColor.z);
 		gl.clearDepth(this.clearDepth);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	}
+
+	public draw<T>(subjects: Subject<T>[], viewMatrix: math.Matrix, state: T) {
+		const gl = this.gl;
 
 		for (const subject of subjects) {
 			const shader = subject.shader;
@@ -495,7 +533,9 @@ abstract class Target {
 	}
 
 	public setSize(width: number, height: number) {
-		this.projection = math.Matrix.createPerspective(45, width / height, 0.1, 100);
+		this.projection = width === height // FIXME: big hack, "width === height" means "we're using a texture buffer here"
+			? math.Matrix.createOrthographic(-10, 10, -10, 10, -10, 20)
+			: math.Matrix.createPerspective(45, width / height, 0.1, 100);
 		this.viewHeight = height;
 		this.viewWidth = width;
 	}
@@ -507,7 +547,7 @@ class BufferTarget extends Target {
 	private readonly framebuffer: WebGLFramebuffer;
 
 	private renderColor: WebGLTexture;
-	private renderDepth: WebGLRenderbuffer;
+	private renderDepth: WebGLTexture;
 
 	public constructor(gl: WebGLRenderingContext, framebuffer: WebGLFramebuffer, width: number, height: number) {
 		super(gl, width, height);
@@ -531,19 +571,16 @@ class BufferTarget extends Target {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 
 		// Color buffer
-		const renderColor = createTextureBlank(gl, width, height);
+		const renderColor = createTextureBlank(gl, width, height, false);
 
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, renderColor, 0);
 
 		// Depth buffer
-		const renderDepth = gl.createRenderbuffer();
+		//const renderDepth = createRenderbuffer(gl, width, height, true);
+		const renderDepth = createTextureBlank(gl, width, height, true);
 
-		if (renderDepth === null)
-			throw Error("cannot create render buffer");
-
-		gl.bindRenderbuffer(gl.RENDERBUFFER, renderDepth);
-		gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
-		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderDepth)
+		//gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderDepth)
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, renderDepth, 0);
 
 		// Save configuration
 		if (this.renderColor !== undefined)

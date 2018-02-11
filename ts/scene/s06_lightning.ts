@@ -178,6 +178,7 @@ const render = (state: SceneState) => {
 		shader: shaders.light
 	};
 
+	target.clear();
 	target.draw(bulbs.concat([cube, ground]), cameraView, light);
 };
 

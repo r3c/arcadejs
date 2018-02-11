@@ -21,11 +21,15 @@ class Matrix {
 	** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml
 	*/
 	public static createOrthographic(xMin: number, xMax: number, yMin: number, yMax: number, zMin: number, zMax: number) {
+		const dx = xMax - xMin;
+		const dy = yMax - yMin;
+		const dz = zMax - zMin;
+
 		return new Matrix([
-			2 / (xMax - xMin), 0, 0, 0,
-			0, 2 / (yMax - yMin), 0, 0,
-			0, 0, -2 / (zMax - zMin), 0,
-			-(xMax + xMin) / (xMax - xMin), -(yMax + yMin) / (yMax - yMin), -(zMax + zMin) / (zMax - zMin), 1
+			2 / dx, 0, 0, 0,
+			0, 2 / dy, 0, 0,
+			0, 0, -2 / dz, 0,
+			-(xMax + xMin) / dx, -(yMax + yMin) / dy, -(zMax + zMin) / dz, 1
 		]);
 	}
 
@@ -76,6 +80,10 @@ class Matrix {
 			(m[0] * m[6] - m[4] * m[2]) * -inverse,
 			(m[0] * m[5] - m[4] * m[1]) * inverse
 		];
+	}
+
+	public getValue(index: number) {
+		return this.values[index];
 	}
 
 	public getValues(): Iterable<number> {

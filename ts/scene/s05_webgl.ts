@@ -101,6 +101,7 @@ const render = (state: State) => {
 		shader: state.shader
 	};
 
+	target.clear();
 	target.draw([cube], viewMatrix, undefined);
 };
 
