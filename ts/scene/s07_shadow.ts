@@ -100,8 +100,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const gl = runtime.screen.context;
 
-	const renderer = new webgl.Renderer(gl);
-
 	const buffer = webgl.Target.createBuffer(gl, 1024, 1024);
 	const screen = webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 
@@ -180,9 +178,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		gl: gl,
 		input: runtime.input,
 		models: {
-			cube: renderer.load(cubeModel),
-			debug: renderer.load(debugModel),
-			ground: renderer.load(groundModel)
+			cube: webgl.loadModel(gl, cubeModel),
+			debug: webgl.loadModel(gl, debugModel),
+			ground: webgl.loadModel(gl, groundModel)
 		},
 		move: 0,
 		screenProjectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
@@ -232,13 +230,18 @@ const render = (state: SceneState) => {
 		meshes: models.ground
 	};
 
+	gl.enable(gl.CULL_FACE);
+	gl.enable(gl.DEPTH_TEST);
+
 	gl.colorMask(false, false, false, false);
 	gl.cullFace(gl.FRONT);
+
 	targets.buffer.clear();
 	targets.buffer.draw(shaders.shadow, [shadowCube, shadowGround], {
 		projectionMatrix: state.shadowProjectionMatrix,
 		viewMatrix: shadowView
 	});
+
 	gl.colorMask(true, true, true, true);
 	gl.cullFace(gl.BACK);
 

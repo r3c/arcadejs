@@ -54,6 +54,7 @@ interface SceneState {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
+	gl: WebGLRenderingContext,
 	input: controller.Input,
 	model: webgl.Mesh[],
 	projectionMatrix: math.Matrix,
@@ -64,8 +65,6 @@ interface SceneState {
 const prepare = async () => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const gl = runtime.screen.context;
-
-	const renderer = new webgl.Renderer(gl);
 	const shader = new webgl.Shader<CallState>(gl, vsSource, fsSource);
 
 	shader.bindPerMeshAttribute("colors", 4, gl.FLOAT, state => state.mesh.colors);
@@ -84,8 +83,9 @@ const prepare = async () => {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
+		gl: gl,
 		input: runtime.input,
-		model: renderer.load(await model.fromJSON("./res/model/cube.json")),
+		model: webgl.loadModel(gl, await model.fromJSON("./res/model/cube.json")),
 		projectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shader: shader,
 		target: webgl.Target.createScreen(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
@@ -94,6 +94,7 @@ const prepare = async () => {
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
+	const gl = state.gl;
 	const target = state.target;
 
 	const viewMatrix = math.Matrix
@@ -106,6 +107,11 @@ const render = (state: SceneState) => {
 		matrix: math.Matrix.createIdentity(),
 		meshes: state.model
 	};
+
+	gl.enable(gl.CULL_FACE);
+	gl.enable(gl.DEPTH_TEST);
+
+	gl.cullFace(gl.BACK);
 
 	target.clear();
 	target.draw(state.shader, [cube], {

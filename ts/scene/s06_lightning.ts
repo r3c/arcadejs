@@ -36,6 +36,7 @@ interface SceneState {
 		position: math.Vector3,
 		rotation: math.Vector3
 	},
+	gl: WebGLRenderingContext,
 	input: controller.Input,
 	models: {
 		bulb: webgl.Mesh[],
@@ -65,8 +66,6 @@ const configuration = {
 const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const gl = runtime.screen.context;
-
-	const renderer = new webgl.Renderer(gl);
 
 	// Setup shaders
 	const basicShader = new webgl.Shader<CallState>(
@@ -133,11 +132,12 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			position: { x: 0, y: 0, z: -5 },
 			rotation: { x: 0, y: 0, z: 0 }
 		},
+		gl: gl,
 		input: runtime.input,
 		models: {
-			bulb: renderer.load(bulbModel),
-			cube: renderer.load(cubeModel),
-			ground: renderer.load(groundModel)
+			bulb: webgl.loadModel(gl, bulbModel),
+			cube: webgl.loadModel(gl, cubeModel),
+			ground: webgl.loadModel(gl, groundModel)
 		},
 		move: 0,
 		projectionMatrix: math.Matrix.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
@@ -152,6 +152,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
+	const gl = state.gl;
 	const models = state.models;
 	const shaders = state.shaders;
 	const target = state.target;
@@ -184,6 +185,11 @@ const render = (state: SceneState) => {
 		tweak: state.tweak,
 		viewMatrix: cameraView
 	};
+
+	gl.enable(gl.CULL_FACE);
+	gl.enable(gl.DEPTH_TEST);
+
+	gl.cullFace(gl.BACK);
 
 	target.clear();
 	target.draw(shaders.basic, bulbs, callState);

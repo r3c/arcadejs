@@ -149,94 +149,79 @@ const createTextureImage = (gl: WebGLRenderingContext, image: ImageData, quality
 const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
-class Renderer {
-	private readonly gl: WebGLRenderingContext;
+const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quality = defaultQuality) => {
+	const definitions = model.materials || {};
+	const materials: { [name: string]: Material } = {};
+	const meshes: Mesh[] = [];
 
-	public constructor(gl: WebGLRenderingContext) {
-		gl.enable(gl.CULL_FACE);
-		gl.cullFace(gl.BACK);
+	const toArray2 = (input: math.Vector2) => [input.x, input.y];
+	const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
+	const toArray4 = (input: math.Vector4) => [input.x, input.y, input.z, input.w];
+	const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
+	const toColorMap = (image: ImageData) => createTextureImage(gl, image, quality);
+	const toIndices = (indices: [number, number, number]) => indices;
 
-		gl.enable(gl.DEPTH_TEST);
-		gl.depthFunc(gl.LEQUAL);
+	for (const mesh of model.meshes) {
+		const name = mesh.materialName;
 
-		this.gl = gl;
-	}
+		let material: Material;
 
-	public load(model: model.Model, quality: Quality = defaultQuality) {
-		const definitions = model.materials || {};
-		const gl = this.gl;
-		const materials: { [name: string]: Material } = {};
-		const meshes: Mesh[] = [];
+		if (name !== undefined && definitions[name] !== undefined) {
+			if (materials[name] === undefined) {
+				const definition = definitions[name];
 
-		const toArray2 = (input: math.Vector2) => [input.x, input.y];
-		const toArray3 = (input: math.Vector3) => [input.x, input.y, input.z];
-		const toArray4 = (input: math.Vector4) => [input.x, input.y, input.z, input.w];
-		const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
-		const toColorMap = (image: ImageData) => createTextureImage(gl, image, quality);
-		const toIndices = (indices: [number, number, number]) => indices;
+				const ambientColor = definition.ambientColor || defaultColor;
+				const ambientMap = functional.map(definition.ambientMap, toColorMap);
+				const diffuseColor = definition.diffuseColor || ambientColor;
+				const diffuseMap = functional.map(definition.diffuseMap, toColorMap) || ambientMap;
+				const specularColor = definition.specularColor || diffuseColor;
+				const specularMap = functional.map(definition.specularMap, toColorMap) || diffuseMap;
 
-		for (const mesh of model.meshes) {
-			const name = mesh.materialName;
-
-			let material: Material;
-
-			if (name !== undefined && definitions[name] !== undefined) {
-				if (materials[name] === undefined) {
-					const definition = definitions[name];
-
-					const ambientColor = definition.ambientColor || defaultColor;
-					const ambientMap = functional.map(definition.ambientMap, toColorMap);
-					const diffuseColor = definition.diffuseColor || ambientColor;
-					const diffuseMap = functional.map(definition.diffuseMap, toColorMap) || ambientMap;
-					const specularColor = definition.specularColor || diffuseColor;
-					const specularMap = functional.map(definition.specularMap, toColorMap) || diffuseMap;
-
-					materials[name] = {
-						ambientColor: toArray4(ambientColor),
-						ambientMap: ambientMap,
-						diffuseColor: toArray4(diffuseColor),
-						diffuseMap: diffuseMap,
-						heightMap: functional.map(definition.heightMap, toColorMap),
-						normalMap: functional.map(definition.normalMap, toColorMap),
-						reflectionMap: functional.map(definition.reflectionMap, toColorMap),
-						shininess: functional.coalesce(definition.shininess, defaultShininess),
-						specularColor: toArray4(specularColor),
-						specularMap: specularMap
-					}
+				materials[name] = {
+					ambientColor: toArray4(ambientColor),
+					ambientMap: ambientMap,
+					diffuseColor: toArray4(diffuseColor),
+					diffuseMap: diffuseMap,
+					heightMap: functional.map(definition.heightMap, toColorMap),
+					normalMap: functional.map(definition.normalMap, toColorMap),
+					reflectionMap: functional.map(definition.reflectionMap, toColorMap),
+					shininess: functional.coalesce(definition.shininess, defaultShininess),
+					specularColor: toArray4(specularColor),
+					specularMap: specularMap
 				}
-
-				material = materials[name];
-			}
-			else {
-				material = {
-					ambientColor: toArray4(defaultColor),
-					ambientMap: undefined,
-					diffuseColor: toArray4(defaultColor),
-					diffuseMap: undefined,
-					heightMap: undefined,
-					normalMap: undefined,
-					reflectionMap: undefined,
-					shininess: defaultShininess,
-					specularColor: toArray4(defaultColor),
-					specularMap: undefined
-				};
 			}
 
-			meshes.push({
-				colors: functional.map(mesh.colors, toBuffer(Float32Array, toArray4, gl.ARRAY_BUFFER)),
-				coords: functional.map(mesh.coords, toBuffer(Float32Array, toArray2, gl.ARRAY_BUFFER)),
-				count: mesh.triangles.length * 3,
-				indices: toBuffer(Uint16Array, toIndices, gl.ELEMENT_ARRAY_BUFFER)(mesh.triangles),
-				material: material,
-				normals: functional.map(mesh.normals, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)),
-				points: toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)(mesh.points),
-				tangents: functional.map(mesh.tangents, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER))
-			});
+			material = materials[name];
+		}
+		else {
+			material = {
+				ambientColor: toArray4(defaultColor),
+				ambientMap: undefined,
+				diffuseColor: toArray4(defaultColor),
+				diffuseMap: undefined,
+				heightMap: undefined,
+				normalMap: undefined,
+				reflectionMap: undefined,
+				shininess: defaultShininess,
+				specularColor: toArray4(defaultColor),
+				specularMap: undefined
+			};
 		}
 
-		return meshes;
+		meshes.push({
+			colors: functional.map(mesh.colors, toBuffer(Float32Array, toArray4, gl.ARRAY_BUFFER)),
+			coords: functional.map(mesh.coords, toBuffer(Float32Array, toArray2, gl.ARRAY_BUFFER)),
+			count: mesh.triangles.length * 3,
+			indices: toBuffer(Uint16Array, toIndices, gl.ELEMENT_ARRAY_BUFFER)(mesh.triangles),
+			material: material,
+			normals: functional.map(mesh.normals, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)),
+			points: toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER)(mesh.points),
+			tangents: functional.map(mesh.tangents, toBuffer(Float32Array, toArray3, gl.ARRAY_BUFFER))
+		});
 	}
-}
+
+	return meshes;
+};
 
 interface AttributeBinding<T> {
 	getter: (source: T) => WebGLBuffer | undefined,
@@ -623,4 +608,4 @@ class ScreenTarget extends Target {
 	}
 }
 
-export { BufferTarget, Mesh, Renderer, ScreenTarget, Shader, Model, Target }
+export { BufferTarget, Mesh, ScreenTarget, Shader, Model, Target, loadModel }
