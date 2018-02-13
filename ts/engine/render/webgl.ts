@@ -69,20 +69,22 @@ interface SubjectState<TCallState> {
 	subject: Subject
 }
 
-const defaultColor = {
-	x: 1,
-	y: 1,
-	z: 1,
-	w: 1
+const colorBlack = { x: 0, y: 0, z: 0, w: 1 };
+const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
+
+const qualityBuffer = {
+	textureFilterLinear: false,
+	textureMipmap: false,
+	textureMipmapLinear: false
 };
 
-const defaultQuality = {
+const qualityImage = {
 	textureFilterLinear: true,
 	textureMipmap: true,
 	textureMipmapLinear: false
 };
 
-const defaultShininess = 1;
+const shininessDefault = 1;
 
 const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
 	const buffer = gl.createBuffer();
@@ -174,7 +176,7 @@ const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with n
 const invalidMaterial = (name: string) => Error(`cannot use unknown material "${name}" on mesh`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
-const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quality = defaultQuality): Model => {
+const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quality = qualityImage): Model => {
 	const definitions = model.materials || {};
 	const meshes: { [name: string]: Mesh } = {};
 
@@ -197,7 +199,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 			if (meshes[name] === undefined) {
 				const definition = definitions[name];
 
-				const ambientColor = definition.ambientColor || defaultColor;
+				const ambientColor = definition.ambientColor || colorWhite;
 				const ambientMap = functional.map(definition.ambientMap, toColorMap);
 				const diffuseColor = definition.diffuseColor || ambientColor;
 				const diffuseMap = functional.map(definition.diffuseMap, toColorMap) || ambientMap;
@@ -214,7 +216,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 						heightMap: functional.map(definition.heightMap, toColorMap),
 						normalMap: functional.map(definition.normalMap, toColorMap),
 						reflectionMap: functional.map(definition.reflectionMap, toColorMap),
-						shininess: functional.coalesce(definition.shininess, defaultShininess),
+						shininess: functional.coalesce(definition.shininess, shininessDefault),
 						specularColor: toArray4(specularColor),
 						specularMap: specularMap
 					}
@@ -228,15 +230,15 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				meshes[""] = {
 					geometries: [],
 					material: {
-						ambientColor: toArray4(defaultColor),
+						ambientColor: toArray4(colorWhite),
 						ambientMap: undefined,
-						diffuseColor: toArray4(defaultColor),
+						diffuseColor: toArray4(colorWhite),
 						diffuseMap: undefined,
 						heightMap: undefined,
 						normalMap: undefined,
 						reflectionMap: undefined,
-						shininess: defaultShininess,
-						specularColor: toArray4(defaultColor),
+						shininess: shininessDefault,
+						specularColor: toArray4(colorWhite),
 						specularMap: undefined
 					}
 				};
@@ -449,6 +451,8 @@ class Shader<TCallState> {
 
 class Target {
 	private readonly gl: WebGLRenderingContext;
+	private readonly viewHeight: number;
+	private readonly viewWidth: number;
 
 	private clearColor: vector.Vector4;
 	private clearDepth: number;
@@ -457,11 +461,9 @@ class Target {
 	private renderColorRenderbuffer: WebGLRenderbuffer | null;
 	private renderDepthTexture: WebGLTexture | null;
 	private renderDepthRenderbuffer: WebGLRenderbuffer | null;
-	private viewHeight: number;
-	private viewWidth: number;
 
 	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
-		this.clearColor = { x: 0, y: 0, z: 0, w: 1 };
+		this.clearColor = colorBlack;
 		this.clearDepth = 1;
 		this.framebuffer = null;
 		this.gl = gl;
@@ -476,7 +478,7 @@ class Target {
 	public clear() {
 		const gl = this.gl;
 
-		// FIXME: this introduces an implicit state between "clear" and "draw" calls
+		// FIXME: this introduces an implicit shared state between "clear" and "draw" calls
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
@@ -577,79 +579,31 @@ class Target {
 	}
 
 	public setupColorRenderbuffer() {
-		const gl = this.gl;
-
 		this.clearColorAttachment();
+		this.renderColorRenderbuffer = this.setupRenderbuffer(this.gl.COLOR_ATTACHMENT0, false);
 
-		const framebuffer = this.setupFramebuffer();
-		const renderbuffer = createRenderbuffer(gl, this.viewHeight, this.viewHeight, false);
-
-		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderbuffer)
-
-		this.checkFramebuffer();
-		this.renderColorRenderbuffer = renderbuffer;
-
-		return renderbuffer;
+		return this.renderColorRenderbuffer;
 	}
 
 	public setupColorTexture() {
-		const gl = this.gl;
-
 		this.clearColorAttachment();
+		this.renderColorTexture = this.setupTexture(this.gl.COLOR_ATTACHMENT0, BufferFormat.RGBA8);
 
-		const framebuffer = this.setupFramebuffer();
-		const texture = createTexture(gl, this.viewWidth, this.viewHeight, BufferFormat.RGBA8, {
-			textureFilterLinear: false,
-			textureMipmap: false,
-			textureMipmapLinear: false
-		});
-
-		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-
-		this.checkFramebuffer();
-		this.renderColorTexture = texture;
-
-		return texture;
+		return this.renderColorTexture;
 	}
 
 	public setupDepthRenderbuffer() {
-		const gl = this.gl;
-
 		this.clearDepthAttachment();
+		this.renderDepthRenderbuffer = this.setupRenderbuffer(this.gl.DEPTH_ATTACHMENT, true);
 
-		const framebuffer = this.setupFramebuffer();
-		const renderbuffer = createRenderbuffer(gl, this.viewHeight, this.viewHeight, true);
-
-		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer)
-
-		this.checkFramebuffer();
-		this.renderDepthRenderbuffer = renderbuffer;
-
-		return renderbuffer;
+		return this.renderDepthRenderbuffer;
 	}
 
 	public setupDepthTexture() {
-		const gl = this.gl;
-
 		this.clearDepthAttachment();
+		this.renderDepthTexture = this.setupTexture(this.gl.DEPTH_ATTACHMENT, BufferFormat.Depth16);
 
-		const framebuffer = this.setupFramebuffer();
-		const texture = createTexture(gl, this.viewWidth, this.viewHeight, BufferFormat.Depth16, {
-			textureFilterLinear: false,
-			textureMipmap: false,
-			textureMipmapLinear: false
-		});
-
-		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, texture, 0);
-
-		this.checkFramebuffer();
-		this.renderDepthTexture = texture;
-
-		return texture;
+		return this.renderDepthTexture;
 	}
 
 	private clearColorAttachment() {
@@ -703,6 +657,32 @@ class Target {
 		this.framebuffer = framebuffer;
 
 		return framebuffer;
+	}
+
+	private setupRenderbuffer(attachment: number, useFloat: boolean) {
+		const framebuffer = this.setupFramebuffer();
+		const gl = this.gl;
+		const renderbuffer = createRenderbuffer(gl, this.viewHeight, this.viewHeight, useFloat);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, attachment, gl.RENDERBUFFER, renderbuffer)
+
+		this.checkFramebuffer();
+
+		return renderbuffer;
+	}
+
+	private setupTexture(attachment: number, format: BufferFormat) {
+		const framebuffer = this.setupFramebuffer();
+		const gl = this.gl;
+		const texture = createTexture(gl, this.viewWidth, this.viewHeight, format, qualityBuffer);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, texture, 0);
+
+		this.checkFramebuffer();
+
+		return texture;
 	}
 }
 
