@@ -20,6 +20,11 @@ interface GeometryState<TCallState> {
 	subject: Subject
 }
 
+enum BufferFormat {
+	Depth16,
+	RGBA8
+}
+
 interface Material {
 	ambientColor: number[],
 	ambientMap: WebGLTexture | undefined,
@@ -49,7 +54,8 @@ interface Model {
 }
 
 interface Quality {
-	textureElementLinear: boolean,
+	textureFilterLinear: boolean,
+	textureMipmap: boolean,
 	textureMipmapLinear: boolean
 }
 
@@ -71,7 +77,8 @@ const defaultColor = {
 };
 
 const defaultQuality = {
-	textureElementLinear: true,
+	textureFilterLinear: true,
+	textureMipmap: true,
 	textureMipmapLinear: false
 };
 
@@ -105,51 +112,59 @@ const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: nu
 	return renderbuffer;
 };
 
-const createTexture = (gl: WebGLRenderingContext) => {
+const createTexture = (gl: WebGLRenderingContext, width: number, height: number, format: BufferFormat, quality: Quality, pixels?: ArrayBufferView) => {
+	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
+
+	if (!isPowerOfTwo)
+		throw Error("image doesn't have power-of-2 dimensions");
+
 	const texture = gl.createTexture();
 
 	if (texture === null)
 		throw Error("could not create texture");
 
-	return texture;
-};
-
-const createTextureBlank = (gl: WebGLRenderingContext, width: number, height: number, useFloat: boolean) => {
-	const texture = createTexture(gl);
+	const textureFilter = quality.textureFilterLinear ? gl.LINEAR : gl.NEAREST;
 
 	gl.bindTexture(gl.TEXTURE_2D, texture);
 
-	if (useFloat) {
-		if (!gl.getExtension("WEBGL_depth_texture"))
-			throw Error("depth texture WebGL extension is not available");
+	let glFormat: number;
+	let glType: number;
 
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, width, height, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_SHORT, null);
+	switch (format) {
+		case BufferFormat.Depth16:
+			if (!gl.getExtension("WEBGL_depth_texture"))
+				throw Error("depth texture WebGL extension is not available");
+
+			glFormat = gl.DEPTH_COMPONENT;
+			glType = gl.UNSIGNED_SHORT;
+
+			break;
+
+		case BufferFormat.RGBA8:
+			glFormat = gl.RGBA;
+			glType = gl.UNSIGNED_BYTE;
+
+			break;
+
+		default:
+			throw Error(`invalid image format ${format}`);
 	}
-	else
-		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-	gl.bindTexture(gl.TEXTURE_2D, null);
+	gl.texImage2D(gl.TEXTURE_2D, 0, glFormat, width, height, 0, glFormat, glType, pixels || null);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, textureFilter);
 
-	return texture;
-};
+	if (quality.textureMipmap) {
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, quality.textureFilterLinear
+			? (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_LINEAR)
+			: (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_NEAREST : gl.NEAREST_MIPMAP_NEAREST));
+		gl.generateMipmap(gl.TEXTURE_2D);
+	}
+	else {
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, textureFilter);
+	}
 
-const createTextureImage = (gl: WebGLRenderingContext, image: ImageData, quality: Quality) => {
-	if (((image.height - 1) & image.height) !== 0 || ((image.width - 1) & image.width) !== 0)
-		throw Error("image doesn't have power-of-2 dimensions");
-
-	const texture = createTexture(gl);
-
-	gl.bindTexture(gl.TEXTURE_2D, texture);
-	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, quality.textureElementLinear ? gl.LINEAR : gl.NEAREST);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, quality.textureElementLinear
-		? (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_LINEAR)
-		: (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_NEAREST : gl.NEAREST_MIPMAP_NEAREST));
-	gl.generateMipmap(gl.TEXTURE_2D);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, isPowerOfTwo ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, isPowerOfTwo ? gl.REPEAT : gl.CLAMP_TO_EDGE);
 	gl.bindTexture(gl.TEXTURE_2D, null);
 
 	return texture;
@@ -167,7 +182,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	const toArray3 = (input: vector.Vector3) => [input.x, input.y, input.z];
 	const toArray4 = (input: vector.Vector4) => [input.x, input.y, input.z, input.w];
 	const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
-	const toColorMap = (image: ImageData) => createTextureImage(gl, image, quality);
+	const toColorMap = (image: ImageData) => createTexture(gl, image.width, image.height, BufferFormat.RGBA8, quality, image.data);
 	const toIndices = (indices: [number, number, number]) => indices;
 
 	for (const mesh of model.meshes) {
@@ -572,6 +587,7 @@ class Target {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderbuffer)
 
+		this.checkFramebuffer();
 		this.renderColorRenderbuffer = renderbuffer;
 
 		return renderbuffer;
@@ -583,11 +599,16 @@ class Target {
 		this.clearColorAttachment();
 
 		const framebuffer = this.setupFramebuffer();
-		const texture = createTextureBlank(gl, this.viewWidth, this.viewHeight, false);
+		const texture = createTexture(gl, this.viewWidth, this.viewHeight, BufferFormat.RGBA8, {
+			textureFilterLinear: false,
+			textureMipmap: false,
+			textureMipmapLinear: false
+		});
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
 
+		this.checkFramebuffer();
 		this.renderColorTexture = texture;
 
 		return texture;
@@ -604,6 +625,7 @@ class Target {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer)
 
+		this.checkFramebuffer();
 		this.renderDepthRenderbuffer = renderbuffer;
 
 		return renderbuffer;
@@ -615,11 +637,16 @@ class Target {
 		this.clearDepthAttachment();
 
 		const framebuffer = this.setupFramebuffer();
-		const texture = createTextureBlank(gl, this.viewWidth, this.viewHeight, true);
+		const texture = createTexture(gl, this.viewWidth, this.viewHeight, BufferFormat.Depth16, {
+			textureFilterLinear: false,
+			textureMipmap: false,
+			textureMipmapLinear: false
+		});
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, texture, 0);
 
+		this.checkFramebuffer();
 		this.renderDepthTexture = texture;
 
 		return texture;
@@ -655,6 +682,13 @@ class Target {
 
 			this.renderDepthTexture = null;
 		}
+	}
+
+	private checkFramebuffer() {
+		const gl = this.gl;
+
+		if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
+			throw Error("invalid framebuffer operation");
 	}
 
 	private setupFramebuffer() {
