@@ -5,6 +5,7 @@ import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as vector from "../engine/math/vector";
+import * as view from "./shared/view";
 import * as webgl from "../engine/render/webgl";
 
 /*
@@ -51,10 +52,7 @@ interface CallState {
 }
 
 interface SceneState {
-	camera: {
-		position: vector.Vector3,
-		rotation: vector.Vector3
-	},
+	camera: view.Camera,
 	gl: WebGLRenderingContext,
 	input: controller.Input,
 	model: webgl.Model,
@@ -80,10 +78,7 @@ const prepare = async () => {
 	shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	return {
-		camera: {
-			position: { x: 0, y: 0, z: -5 },
-			rotation: { x: 0, y: 0, z: 0 }
-		},
+		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
 		gl: gl,
 		input: runtime.input,
 		model: webgl.loadModel(gl, await model.fromJSON("./res/model/cube.json")),
@@ -122,22 +117,7 @@ const render = (state: SceneState) => {
 };
 
 const update = (state: SceneState, dt: number) => {
-	const camera = state.camera;
-	const input = state.input;
-	const movement = input.fetchMovement();
-	const wheel = input.fetchWheel();
-
-	if (input.isPressed("mouseleft")) {
-		camera.position.x += movement.x / 64;
-		camera.position.y -= movement.y / 64;
-	}
-
-	if (input.isPressed("mouseright")) {
-		camera.rotation.x -= movement.y / 64;
-		camera.rotation.y -= movement.x / 64;
-	}
-
-	camera.position.z += wheel;
+	state.camera.move(state.input);
 };
 
 const scenario = {

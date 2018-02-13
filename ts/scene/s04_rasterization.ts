@@ -6,12 +6,14 @@ import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as software from "../engine/render/software";
 import * as vector from "../engine/math/vector";
+import * as view from "./shared/view";
 
 /*
 ** What changed?
 ** - Constant mesh data structure is now loaded from a JSON file
 ** - Mesh #1 defines per-vertex color used to interpolate face colors
 ** - Mesh #2 defines ambient map used to interpolate face texture
+** - Method update simplified and uses shared camera code
 */
 
 interface Configuration {
@@ -19,10 +21,7 @@ interface Configuration {
 }
 
 interface State {
-	camera: {
-		position: vector.Vector3,
-		rotation: vector.Vector3
-	},
+	camera: view.Camera,
 	cubeWithColor: software.Mesh[],
 	cubeWithTexture: software.Mesh[],
 	input: controller.Input,
@@ -40,10 +39,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const renderer = new software.Renderer(runtime.screen);
 
 	return {
-		camera: {
-			position: { x: 0, y: 0, z: -5 },
-			rotation: { x: 0, y: 0, z: 0 }
-		},
+		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
 		cubeWithColor: renderer.load(await model.fromJSON("./res/model/cube-color.json")),
 		cubeWithTexture: renderer.load(await model.fromJSON("./res/model/cube.json")),
 		input: runtime.input,
@@ -69,22 +65,7 @@ const render = (state: State) => {
 };
 
 const update = (state: State, dt: number) => {
-	const camera = state.camera;
-	const input = state.input;
-	const movement = input.fetchMovement();
-	const wheel = input.fetchWheel();
-
-	if (input.isPressed("mouseleft")) {
-		camera.position.x += movement.x / 64;
-		camera.position.y -= movement.y / 64;
-	}
-
-	if (input.isPressed("mouseright")) {
-		camera.rotation.x -= movement.y / 64;
-		camera.rotation.y -= movement.x / 64;
-	}
-
-	camera.position.z += wheel;
+	state.camera.move(state.input);
 };
 
 const scenario = {

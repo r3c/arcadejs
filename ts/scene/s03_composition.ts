@@ -9,6 +9,7 @@ import * as vector from "../engine/math/vector";
 ** What changed?
 ** - New "camera" property in state to hold current camera position/rotation
 ** - New "input" instance referenced to read mouse position and button presses
+** - Method "update" change camera properties depending on input
 ** - Manually modified cube positions replaced by constant structure
 ** - Model loading is done only once instead of once per draw iteration
 */
