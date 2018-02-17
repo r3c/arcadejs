@@ -24,7 +24,6 @@ varying vec2 coord;
 varying vec3 eye;
 varying vec3 lightDirectionTransformed;
 varying vec3 normal;
-varying vec3 point;
 varying vec3 shadow;
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirection, float parallaxScale, float parallaxBias) {

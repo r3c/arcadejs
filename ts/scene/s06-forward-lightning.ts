@@ -117,8 +117,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
 	lightShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
 
-	const lights = functional.range(50, i => ({ position: { x: 0, y: 0, z: 0 } }));
-
 	for (const index of [0, 1, 2]) {
 		lightShader.bindPerCallProperty("light" + index + ".enabled", gl => gl.uniform1i, state => index < state.tweak.nbLights ? 1 : 0);
 		lightShader.bindPerCallProperty("light" + index + ".position", gl => gl.uniform3fv, state => [state.lightPositions[index].position.x, state.lightPositions[index].position.y, state.lightPositions[index].position.z]);
@@ -134,7 +132,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
 		gl: gl,
 		input: runtime.input,
-		lights: lights,
+		lights: functional.range(50, i => ({ position: { x: 0, y: 0, z: 0 } })),
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
 			ground: webgl.loadModel(gl, groundModel),

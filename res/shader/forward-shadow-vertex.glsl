@@ -35,7 +35,6 @@ varying vec2 coord; // Texture coordinate
 varying vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
 varying vec3 lightDirectionTransformed; // Direction of light in same space than eye vector
 varying vec3 normal; // Normal at point in same space than eye vector
-varying vec3 point; // Point position in camera space
 varying vec3 shadow; // Light intersection point in camera space
 
 vec3 toCameraDirection(in vec3 worldDirection) {
@@ -43,12 +42,13 @@ vec3 toCameraDirection(in vec3 worldDirection) {
 }
 
 void main(void) {
-	vec4 pointCamera = viewMatrix * modelMatrix * vec4(points, 1.0);
-	vec3 eyeDirectionCamera = -pointCamera.xyz;
+	vec4 point = viewMatrix * modelMatrix * vec4(points, 1.0);
+
+	vec3 pointCamera = point.xyz;
+	vec3 eyeDirectionCamera = -pointCamera;
 	vec4 shadowVector = texUnitConverter * shadowProjectionMatrix * shadowViewMatrix * modelMatrix * vec4(points, 1.0);
 
 	coord = coords;
-	point = pointCamera.xyz;
 	shadow = shadowVector.xyz;
 
 	vec3 n = normalize(normalMatrix * normals);
@@ -70,5 +70,5 @@ void main(void) {
 		normal = n;
 	}
 
-	gl_Position = projectionMatrix * pointCamera;
+	gl_Position = projectionMatrix * point;
 }

@@ -32,7 +32,6 @@ uniform bool useSpecular;
 varying vec2 coord;
 varying vec3 eye;
 varying vec3 normal;
-varying vec3 point;
 
 varying vec3 light0Direction;
 varying vec3 light1Direction;

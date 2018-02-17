@@ -439,10 +439,11 @@ class Shader<TCallState> {
 
 		if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 			const error = gl.getShaderInfoLog(shader);
+			const name = shaderType === gl.FRAGMENT_SHADER ? 'fragment' : (shaderType === gl.VERTEX_SHADER ? 'vertex' : 'unknown');
 
 			gl.deleteShader(shader);
 
-			throw Error(`could not compile shader: ${error}`);
+			throw Error(`could not compile ${name} shader: ${error}`);
 		}
 
 		return shader;
