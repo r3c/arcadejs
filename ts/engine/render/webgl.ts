@@ -117,8 +117,8 @@ const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: nu
 const createTexture = (gl: WebGLRenderingContext, width: number, height: number, format: BufferFormat, quality: Quality, pixels?: ArrayBufferView) => {
 	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
 
-	if (!isPowerOfTwo)
-		throw Error("image doesn't have power-of-2 dimensions");
+	if (quality.textureMipmap && !isPowerOfTwo)
+		throw Error("cannot generate mipmaps for non-power-of-2 image");
 
 	const texture = gl.createTexture();
 
