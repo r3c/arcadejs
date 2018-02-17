@@ -20,9 +20,9 @@ import * as webgl from "../engine/render/webgl";
 interface Configuration {
 	nbLights: string[],
 	animate: boolean,
-	useAmbient: boolean,
-	useDiffuse: boolean,
-	useSpecular: boolean,
+	applyAmbient: boolean,
+	applyDiffuse: boolean,
+	applySpecular: boolean,
 	useNormalMap: boolean,
 	useHeightMap: boolean
 }
@@ -61,9 +61,9 @@ interface SceneState {
 const configuration = {
 	nbLights: ["0", ".1", "2", "3"],
 	animate: false,
-	useAmbient: true,
-	useDiffuse: false,
-	useSpecular: false,
+	applyAmbient: true,
+	applyDiffuse: false,
+	applySpecular: false,
 	useNormalMap: false,
 	useHeightMap: false
 };
@@ -96,11 +96,11 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 	lightShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-	lightShader.bindPerCallProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
-	lightShader.bindPerCallProperty("useDiffuse", gl => gl.uniform1i, state => state.tweak.useDiffuse);
+	lightShader.bindPerCallProperty("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
+	lightShader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
+	lightShader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
 	lightShader.bindPerCallProperty("useHeightMap", gl => gl.uniform1i, state => state.tweak.useHeightMap);
 	lightShader.bindPerCallProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
-	lightShader.bindPerCallProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
 
 	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	lightShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());

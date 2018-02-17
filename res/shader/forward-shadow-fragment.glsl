@@ -14,11 +14,11 @@ uniform sampler2D shadowMap;
 uniform vec4 specularColor;
 uniform sampler2D specularMap;
 
-uniform bool useAmbient;
-uniform bool useDiffuse;
+uniform bool applyAmbient;
+uniform bool applyDiffuse;
+uniform bool applySpecular;
 uniform bool useHeightMap;
 uniform bool useNormalMap;
-uniform bool useSpecular;
 
 varying vec2 coord;
 varying vec3 eye;
@@ -42,7 +42,7 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 	vec3 lightColor = vec3(0, 0, 0);
 
 	if (lightAngle > 0.0) {
-		if (useDiffuse) {
+		if (applyDiffuse) {
 			vec3 diffuseLight = vec3(0.8, 0.8, 0.8);
 			vec3 diffuseMaterial = texture2D(diffuseMap, coord).rgb;
 			float diffusePower = lightAngle;
@@ -50,7 +50,7 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 			lightColor += diffuseColor.rgb * diffuseLight * diffuseMaterial * diffusePower;
 		}
 
-		if (useSpecular) {
+		if (applySpecular) {
 			float specularCosine;
 
 			if (true) {
@@ -94,7 +94,7 @@ void main(void) {
 
 	vec3 lightColor = vec3(0, 0, 0);
 
-	if (useAmbient)
+	if (applyAmbient)
 		lightColor += vec3(0.2, 0.2, 0.2) * ambientColor.rgb * texture2D(ambientMap, modifiedCoord).rgb;
 
 	if (texture2D(shadowMap, shadow.xy).r > shadow.z)

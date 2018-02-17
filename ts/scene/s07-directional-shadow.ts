@@ -16,9 +16,9 @@ import * as webgl from "../engine/render/webgl";
 
 interface Configuration {
 	animate: boolean,
-	useAmbient: boolean,
-	useDiffuse: boolean,
-	useSpecular: boolean,
+	applyAmbient: boolean,
+	applyDiffuse: boolean,
+	applySpecular: boolean,
 	useNormalMap: boolean,
 	useHeightMap: boolean,
 	showDebug: boolean
@@ -72,9 +72,9 @@ interface SceneState {
 
 const configuration = {
 	animate: true,
-	useAmbient: true,
-	useDiffuse: false,
-	useSpecular: false,
+	applyAmbient: true,
+	applyDiffuse: false,
+	applySpecular: false,
 	useNormalMap: false,
 	useHeightMap: false,
 	showDebug: false
@@ -116,11 +116,11 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
 	lightShader.bindPerCallProperty("lightDirection", gl => gl.uniform3fv, state => [state.direction.x, state.direction.y, state.direction.z]);
-	lightShader.bindPerCallProperty("useAmbient", gl => gl.uniform1i, state => state.tweak.useAmbient);
-	lightShader.bindPerCallProperty("useDiffuse", gl => gl.uniform1i, state => state.tweak.useDiffuse);
+	lightShader.bindPerCallProperty("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
+	lightShader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
+	lightShader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
 	lightShader.bindPerCallProperty("useHeightMap", gl => gl.uniform1i, state => state.tweak.useHeightMap);
 	lightShader.bindPerCallProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
-	lightShader.bindPerCallProperty("useSpecular", gl => gl.uniform1i, state => state.tweak.useSpecular);
 	lightShader.bindPerCallTexture("shadowMap", state => state.shadowMap);
 
 	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
