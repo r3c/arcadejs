@@ -5,6 +5,7 @@ import * as functional from "../engine/language/functional";
 import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
+import * as move from "./shared/move";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/render/webgl";
@@ -125,7 +126,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Load models
 	const cubeModel = await model.fromJSON("./res/model/cube.json");
 	const groundModel = await model.fromJSON("./res/model/ground.json");
-	const lightModel = await model.fromOBJ("./res/model/sphere.obj", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const lightModel = await model.fromJSON("./res/model/sphere.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 
 	// Create state
 	return {
@@ -198,18 +199,11 @@ const render = (state: SceneState) => {
 const update = (state: SceneState, dt: number) => {
 	// Update light positions
 	if (state.tweak.animate) {
-		state.move += dt * 0.00003;
+		state.move += dt * 0.00001;
 	}
 
 	for (let i = 0; i < state.lights.length; ++i) {
-		const pitch = state.move * (((i + 1) * 17) % 23);
-		const yaw = state.move * (((i + 1) * 7) % 13);
-
-		state.lights[i].position = vector.Vector3.scale({
-			x: Math.cos(yaw) * Math.cos(pitch),
-			y: Math.sin(yaw) * Math.cos(pitch),
-			z: Math.sin(pitch)
-		}, 2);
+		state.lights[i].position = move.rotate(i, state.move, 2);
 	}
 
 	// Move camera
