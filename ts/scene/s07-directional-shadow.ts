@@ -10,25 +10,9 @@ import * as webgl from "../engine/render/webgl";
 
 /*
 ** What changed?
+** - Scene is first rendered from light's point of view to a shadow map
+** - Then rendered a second time from camera's point of view, using this map for shadowing
 */
-
-const shadowVsSource = `
-	attribute vec4 points;
-
-	uniform mat4 modelMatrix;
-	uniform mat4 projectionMatrix;
-	uniform mat4 viewMatrix;
-
-	void main(void) {
-		gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
-	}
-`;
-
-const shadowFsSource = `
-	void main(void) {
-		gl_FragColor = vec4(1, 1, 1, 1);
-	}
-`;
 
 interface Configuration {
 	animate: boolean,
@@ -121,8 +105,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const lightShader = new webgl.Shader<LightCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/shadow-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/shadow-fragment.glsl")
+		await io.readURL(io.StringFormat, "./res/shader/forward-shadow-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/forward-shadow-fragment.glsl")
 	);
 
 	lightShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
@@ -156,7 +140,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
 	lightShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
 
-	const shadowShader = new webgl.Shader<ShadowCallState>(gl, shadowVsSource, shadowFsSource);
+	const shadowShader = new webgl.Shader<ShadowCallState>(gl,
+		await io.readURL(io.StringFormat, "./res/shader/shadow-directional-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/shadow-directional-fragment.glsl"));
 
 	shadowShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 

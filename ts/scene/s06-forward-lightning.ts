@@ -81,8 +81,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const lightShader = new webgl.Shader<CallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/forward-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/forward-fragment.glsl")
+		await io.readURL(io.StringFormat, "./res/shader/forward-light-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/forward-light-fragment.glsl")
 	);
 
 	lightShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
