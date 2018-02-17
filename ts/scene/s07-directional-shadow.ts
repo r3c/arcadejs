@@ -97,7 +97,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	debugShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	debugShader.bindPerCallTexture("ambientMap", state => state.shadowMap);
+	debugShader.bindPerCallProperty("mode", gl =>gl.uniform1i, state => 2);
+	debugShader.bindPerCallTexture("texture", state => state.shadowMap);
 
 	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	debugShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
