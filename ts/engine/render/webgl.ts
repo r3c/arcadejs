@@ -663,7 +663,7 @@ class Target {
 	private setupRenderbuffer(attachment: number, useFloat: boolean) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
-		const renderbuffer = createRenderbuffer(gl, this.viewHeight, this.viewHeight, useFloat);
+		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, useFloat);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, attachment, gl.RENDERBUFFER, renderbuffer)

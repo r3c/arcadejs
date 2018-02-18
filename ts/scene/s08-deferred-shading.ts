@@ -106,7 +106,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const depth = geometry1.setupDepthTexture();
 	const normalAndReflection = geometry2.setupColorTexture();
 
-	geometry2.setupDepthTexture(); // FIXME: replace with a renderbuffer
+	geometry2.setupDepthRenderbuffer();
 
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(
