@@ -86,7 +86,7 @@ interface SceneState {
 }
 
 const configuration = {
-	nbLights: [".1", "5", "10", "25"],
+	nbLights: [".5", "10", "25", "100"],
 	animate: true,
 	applyDiffuse: true,
 	applySpecular: true,
@@ -200,8 +200,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			const color = { x: 1.0 + 1.13983 * v, y: 1.0 - 0.39465 * u - 0.5806 * v, z: 1.0 + 2.03211 * u };
 
 			return {
-				colorDiffuse: vector.Vector3.scale(color, 0.3),
-				colorSpecular: vector.Vector3.scale(color, 0.6),
+				colorDiffuse: vector.Vector3.scale(color, 0.6),
+				colorSpecular: vector.Vector3.scale(color, 1.0),
 				position: { x: 0, y: 0, z: 0 },
 				radius: lightRadius
 			};
@@ -242,12 +242,8 @@ const render = (state: SceneState) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	gl.enable(gl.CULL_FACE);
-	gl.enable(gl.DEPTH_TEST);
-	gl.blendFunc(gl.ONE, gl.ONE);
-
 	// Pick active lights
-	const lights = state.lights.slice(0, [1, 5, 10, 25][state.tweak.nbLights] || 0);
+	const lights = state.lights.slice(0, [5, 10, 25, 100][state.tweak.nbLights] || 0);
 
 	// Draw scene geometries
 	const lightSubjects = lights.map(light => ({
@@ -265,8 +261,12 @@ const render = (state: SceneState) => {
 		model: models.ground
 	};
 
+	gl.enable(gl.CULL_FACE);
 	gl.cullFace(gl.BACK);
+
 	gl.disable(gl.BLEND);
+
+	gl.enable(gl.DEPTH_TEST);
 	gl.depthMask(true);
 
 	for (const pass of [{ number: 1, target: targets.geometry1 }, { number: 2, target: targets.geometry2 }]) {
@@ -282,21 +282,25 @@ const render = (state: SceneState) => {
 	}
 
 	// Draw scene lights
-	const sphereSubjects = lights.map(light => ({
-		matrix: matrix.Matrix4.createIdentity()
-			.translate(light.position)
-			.scale({ x: light.radius, y: light.radius, z: light.radius }),
-		model: models.sphere
-	}));
-
 	gl.cullFace(gl.FRONT);
-	gl.enable(gl.BLEND);
+
+	gl.disable(gl.DEPTH_TEST);
 	gl.depthMask(false);
+
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.ONE, gl.ONE);
 
 	targets.screen.clear();
 
 	for (const light of lights) {
-		targets.screen.draw(shaders.light, sphereSubjects, {
+		const subject = {
+			matrix: matrix.Matrix4.createIdentity()
+				.translate(light.position)
+				.scale({ x: light.radius, y: light.radius, z: light.radius }),
+			model: models.sphere
+		};
+
+		targets.screen.draw(shaders.light, [subject], {
 			albedoAndShininess: state.geometry.albedoAndShininess,
 			depth: state.geometry.depth,
 			light: light,
@@ -315,6 +319,7 @@ const render = (state: SceneState) => {
 		};
 
 		gl.cullFace(gl.BACK);
+
 		gl.disable(gl.BLEND);
 		gl.disable(gl.DEPTH_TEST);
 
