@@ -10,6 +10,9 @@ uniform sampler2D normalAndReflection;
 
 uniform bool applyDiffuse;
 uniform bool applySpecular;
+
+uniform vec3 lightColorDiffuse;
+uniform vec3 lightColorSpecular;
 uniform vec3 lightPosition;
 uniform float lightRadius;
 
@@ -20,16 +23,15 @@ vec3 getLight(in vec3 albedo, in float reflection, in float shininess, in vec3 n
 	vec3 lightColor = vec3(0, 0, 0);
 
 	if (lightAngle > 0.0) {
+		// Apply diffuse lightning
 		if (applyDiffuse) {
-			// Apply diffuse lightning
-			vec3 lightDiffuseColor = vec3(0.6, 0.6, 0.6);
-			float lightDiffusePower = lightAngle;
+			float lightPowerDiffuse = lightAngle;
 
-			lightColor += albedo * lightDiffuseColor * lightDiffusePower;
+			lightColor += albedo * lightColorDiffuse * lightPowerDiffuse;
 		}
 
+		// Apply specular lightning
 		if (applySpecular) {
-			// Apply specular lightning
 			float lightSpecularCosine;
 
 			if (true) {
@@ -45,10 +47,9 @@ vec3 getLight(in vec3 albedo, in float reflection, in float shininess, in vec3 n
 				lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
 			}
 
-			vec3 lightSpecularColor = vec3(1.0, 1.0, 1.0);
-			float lightSpecularPower = pow(lightSpecularCosine, shininess) * reflection;
+			float lightPowerSpecular = pow(lightSpecularCosine, shininess) * reflection;
 
-			lightColor += albedo * lightSpecularColor * lightSpecularPower;
+			lightColor += albedo * lightColorSpecular * lightPowerSpecular;
 		}
 	}
 
@@ -85,7 +86,7 @@ void main(void) {
 	vec3 lightDirection = normalize(lightPositionCamera - point);
 
 	float lightDistance = length(lightPositionCamera - point);
-	float lightPower = max(1.0 - (lightDistance * lightDistance) / (lightRadius * lightRadius), 0.0);
+	float lightPower = max(1.0 - lightDistance / lightRadius, 0.0);
 
 	vec3 color = getLight(albedo, reflection, shininess, normal, eyeDirection, lightDirection) * lightPower;
 

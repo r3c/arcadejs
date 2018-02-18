@@ -23,6 +23,8 @@ interface Configuration {
 }
 
 interface Light {
+	colorDiffuse: vector.Vector3,
+	colorSpecular: vector.Vector3,
 	position: vector.Vector3,
 	radius: number
 }
@@ -44,8 +46,7 @@ interface GeometryCallState {
 interface LightCallState {
 	albedoAndShininess: WebGLTexture,
 	depth: WebGLTexture,
-	lightPosition: vector.Vector3,
-	lightRadius: number,
+	light: Light,
 	normalAndReflection: WebGLTexture,
 	projectionMatrix: matrix.Matrix4,
 	tweak: application.Tweak<Configuration>,
@@ -164,10 +165,12 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerCallMatrix("inverseProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getInverse().getValues());
 	lightShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	lightShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-	lightShader.bindPerCallProperty("applyDiffuse", gl =>gl.uniform1i, state => state.tweak.applyDiffuse);
-	lightShader.bindPerCallProperty("applySpecular", gl =>gl.uniform1i, state => state.tweak.applySpecular);
-	lightShader.bindPerCallProperty("lightPosition", gl => gl.uniform3fv, state => [state.lightPosition.x, state.lightPosition.y, state.lightPosition.z]);
-	lightShader.bindPerCallProperty("lightRadius", gl => gl.uniform1f, state => state.lightRadius);
+	lightShader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
+	lightShader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
+	lightShader.bindPerCallProperty("lightColorDiffuse", gl => gl.uniform3fv, state => [state.light.colorDiffuse.x, state.light.colorDiffuse.y, state.light.colorDiffuse.z]);
+	lightShader.bindPerCallProperty("lightColorSpecular", gl => gl.uniform3fv, state => [state.light.colorSpecular.x, state.light.colorSpecular.y, state.light.colorSpecular.z]);
+	lightShader.bindPerCallProperty("lightPosition", gl => gl.uniform3fv, state => [state.light.position.x, state.light.position.y, state.light.position.z]);
+	lightShader.bindPerCallProperty("lightRadius", gl => gl.uniform1f, state => state.light.radius);
 	lightShader.bindPerCallTexture("albedoAndShininess", state => state.albedoAndShininess);
 	lightShader.bindPerCallTexture("depth", state => state.depth);
 	lightShader.bindPerCallTexture("normalAndReflection", state => state.normalAndReflection);
@@ -191,7 +194,18 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		},
 		gl: gl,
 		input: runtime.input,
-		lights: functional.range(100, i => ({ position: { x: 0, y: 0, z: 0 }, radius: lightRadius })),
+		lights: functional.range(100, i => {
+			const u = ((i * 1.17) % 2 - 1) * 0.436;
+			const v = ((i * 1.43) % 2 - 1) * 0.615;
+			const color = { x: 1.0 + 1.13983 * v, y: 1.0 - 0.39465 * u - 0.5806 * v, z: 1.0 + 2.03211 * u };
+
+			return {
+				colorDiffuse: vector.Vector3.scale(color, 0.3),
+				colorSpecular: vector.Vector3.scale(color, 0.6),
+				position: { x: 0, y: 0, z: 0 },
+				radius: lightRadius
+			};
+		}),
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
 			debug: webgl.loadModel(gl, debugModel),
@@ -285,8 +299,7 @@ const render = (state: SceneState) => {
 		targets.screen.draw(shaders.light, sphereSubjects, {
 			albedoAndShininess: state.geometry.albedoAndShininess,
 			depth: state.geometry.depth,
-			lightPosition: light.position,
-			lightRadius: light.radius,
+			light: light,
 			normalAndReflection: state.geometry.normalAndReflection,
 			projectionMatrix: state.projectionMatrix,
 			tweak: state.tweak,
