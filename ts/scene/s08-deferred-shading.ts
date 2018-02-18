@@ -176,7 +176,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerCallTexture("normalAndReflection", state => state.normalAndReflection);
 
 	// Load models
-	const lightRadius = 4;
+	const lightRadius = 6;
 
 	const cubeModel = await model.fromJSON("./res/model/cube.json");
 	const debugModel = await model.fromJSON("./res/model/debug.json");
@@ -335,7 +335,7 @@ const render = (state: SceneState) => {
 const update = (state: SceneState, dt: number) => {
 	// Update light positions
 	if (state.tweak.animate)
-		state.move += dt * 0.00001;
+		state.move += dt * 0.0001;
 
 	for (let i = 0; i < state.lights.length; ++i)
 		state.lights[i].position = move.rotate(i, state.move, 4);

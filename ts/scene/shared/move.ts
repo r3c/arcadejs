@@ -1,8 +1,9 @@
 import * as vector from "../../engine/math/vector";
 
 const rotate = (index: number, amount: number, radius: number) => {
-	const pitch = index / 17 * Math.PI + amount * (((index + 1) * 19) % 23);
-	const yaw = index / 29 * Math.PI + amount * (((index + 1) * 31) % 37);
+	const offset = index + 1;
+	const pitch = (offset * 11 % 41) / 41 * 2 * Math.PI + amount * ((offset * 17) % 47) / 47;
+	const yaw = (offset * 23 % 59) / 59 * 2 * Math.PI + amount * ((offset * 31) % 67) / 67;
 
 	return vector.Vector3.scale({
 		x: Math.cos(yaw) * Math.cos(pitch),
