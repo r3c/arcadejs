@@ -90,14 +90,15 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/debug-depth-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/debug-depth-fragment.glsl")
+		await io.readURL(io.StringFormat, "./res/shader/debug-texture-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/debug-texture-fragment.glsl")
 	);
 
 	debugShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	debugShader.bindPerCallProperty("mode", gl =>gl.uniform1i, state => 2);
+	debugShader.bindPerCallProperty("format", gl => gl.uniform1i, state => 0);
+	debugShader.bindPerCallProperty("source", gl => gl.uniform1i, state => 6);
 	debugShader.bindPerCallTexture("texture", state => state.shadowMap);
 
 	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());

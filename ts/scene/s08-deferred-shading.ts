@@ -30,8 +30,9 @@ interface Light {
 }
 
 interface DebugCallState {
-	mode: number,
+	format: number,
 	projectionMatrix: matrix.Matrix4,
+	source: number,
 	texture: WebGLTexture,
 	viewMatrix: matrix.Matrix4
 }
@@ -111,14 +112,15 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/debug-depth-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/debug-depth-fragment.glsl")
+		await io.readURL(io.StringFormat, "./res/shader/debug-texture-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/debug-texture-fragment.glsl")
 	);
 
 	debugShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	debugShader.bindPerCallProperty("mode", gl => gl.uniform1i, state => state.mode);
+	debugShader.bindPerCallProperty("format", gl => gl.uniform1i, state => state.format);
+	debugShader.bindPerCallProperty("source", gl => gl.uniform1i, state => state.source);
 	debugShader.bindPerCallTexture("texture", state => state.texture);
 
 	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
@@ -324,7 +326,8 @@ const render = (state: SceneState) => {
 		gl.disable(gl.DEPTH_TEST);
 
 		targets.screen.draw(shaders.debug, [debugSubject], {
-			mode: [0, 1, 0, 1, 2][state.tweak.debugMode - 1],
+			format: [0, 0, 1, 0, 0][state.tweak.debugMode - 1],
+			source: [1, 9, 3, 9, 6][state.tweak.debugMode - 1],
 			projectionMatrix: state.projectionMatrix,
 			texture: [state.geometry.albedoAndShininess, state.geometry.albedoAndShininess, state.geometry.normalAndReflection, state.geometry.normalAndReflection, state.geometry.depth][state.tweak.debugMode - 1],
 			viewMatrix: matrix.Matrix4.createIdentity()
