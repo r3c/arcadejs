@@ -30,7 +30,7 @@ vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionFace, float parallaxScal
 	}
 }
 
-vec3 getNormal(in vec2 coord) {
+vec2 getNormal(in vec3 normal, in vec2 coord) {
 	vec3 normalFace;
 
 	if (useNormalMap)
@@ -38,7 +38,11 @@ vec3 getNormal(in vec2 coord) {
 	else
 		normalFace = vec3(0.0, 0.0, 1.0);
 
-	return normalize(normalFace.x * tangent + normalFace.y * bitangent + normalFace.z * normal);
+	vec3 modifiedNormal = normalize(normalFace.x * tangent + normalFace.y * bitangent + normalFace.z * normal);
+
+	// Spheremap transform
+	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
+	return normalize(modifiedNormal.xy) * sqrt(-modifiedNormal.z * 0.5 + 0.5) * 0.5 + 0.5;
 }
 
 void main(void) {
@@ -48,12 +52,17 @@ void main(void) {
 
 	if (pass == 1) {
 		// Pass 1: pack ambient color and material shininess
-		gl_FragColor = vec4(ambientColor.rgb * texture2D(ambientMap, parallaxCoord).rgb, 1.0 / (shininess + 1.0));
+		vec3 albedo = ambientColor.rgb * texture2D(ambientMap, parallaxCoord).rgb;
+		float shininessPack = 1.0 / (shininess + 1.0);
+
+		gl_FragColor = vec4(albedo, shininessPack);
 	}
 	else if (pass == 2) {
 		// Pass 2: pack normal and material reflection
-		vec3 modifiedNormal = getNormal(parallaxCoord);
+		vec2 normalPack = getNormal(normal, parallaxCoord);
+		float reflection = texture2D(reflectionMap, parallaxCoord).r;
+		float unused = 0.0;
 
-		gl_FragColor = vec4(modifiedNormal.xyz * 0.5 + 0.5, texture2D(reflectionMap, parallaxCoord).r);
+		gl_FragColor = vec4(normalPack, unused, reflection);
 	}
 }

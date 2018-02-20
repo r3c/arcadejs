@@ -56,8 +56,14 @@ vec3 getLight(in vec3 albedo, in float reflection, in float shininess, in vec3 n
 	return lightColor;
 }
 
-vec3 getNormal(in vec2 coord) {
-	return normalize(texture2D(normalAndReflection, coord).rgb * 2.0 - 1.0);
+vec3 getNormal(in vec2 normalPack) {
+	// Spheremap transform
+	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
+	vec2 fenc = normalPack * 4.0 - 2.0;
+	float f = dot(fenc, fenc);
+	float g = sqrt(1.0 - f * 0.25);
+
+	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
 }
 
 vec3 getPoint(in vec2 coord) {
@@ -69,17 +75,20 @@ vec3 getPoint(in vec2 coord) {
 }
 
 void main(void) {
-	// Unpack geometry properties
 	vec2 coord = vec2(gl_FragCoord.x / 800.0, gl_FragCoord.y / 600.0); // FIXME: hard-coded
 
-	// Read geometry in camera space from buffers
-	vec3 normal = getNormal(coord);
-	vec3 point = getPoint(coord);
+	// Read samples from texture buffers
+	vec4 albedoAndShininessSample = texture2D(albedoAndShininess, coord);
+	vec4 normalAndReflectionSample = texture2D(normalAndReflection, coord);
 
-	// Read material properties from buffers
-	vec3 albedo = texture2D(albedoAndShininess, coord).rgb;
-	float reflection = texture2D(normalAndReflection, coord).a;
-	float shininess = 1.0 / texture2D(albedoAndShininess, coord).a - 1.0;
+	// Decode geometry and material properties from samples
+	vec3 albedo = albedoAndShininessSample.rgb;
+	vec3 normal = getNormal(normalAndReflectionSample.rg);
+	float reflection = normalAndReflectionSample.a;
+	float shininess = 1.0 / albedoAndShininessSample.a - 1.0;
+
+	// Compute point in camera space from fragment coord and depth buffer
+	vec3 point = getPoint(coord);
 
 	// Compute lightning
 	vec3 eyeDirection = normalize(-point);
