@@ -8,23 +8,23 @@ class Screen {
 		container.appendChild(canvas);
 
 		canvas.tabIndex = 1;
-		canvas.width = canvas.offsetWidth;
-		canvas.height = canvas.offsetHeight;
+		canvas.width = canvas.clientWidth;
+		canvas.height = canvas.clientHeight;
 		canvas.focus();
 
 		this.canvas = canvas;
 	}
 
 	public getHeight() {
-		return this.canvas.height;
+		return this.canvas.clientHeight;
 	}
 
 	public getRatio() {
-		return this.canvas.width / this.canvas.height;
+		return this.canvas.clientWidth / this.canvas.clientHeight;
 	}
 
 	public getWidth() {
-		return this.canvas.width;
+		return this.canvas.clientWidth;
 	}
 }
 
