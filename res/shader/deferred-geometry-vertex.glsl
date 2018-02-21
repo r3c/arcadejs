@@ -1,11 +1,13 @@
+#version 300 es
+
 #ifdef GL_ES
 precision highp float;
 #endif
 
-attribute vec2 coords;
-attribute vec3 normals;
-attribute vec3 points;
-attribute vec3 tangents;
+in vec2 coords;
+in vec3 normals;
+in vec3 points;
+in vec3 tangents;
 
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
@@ -15,11 +17,11 @@ uniform mat4 viewMatrix;
 uniform bool useHeightMap;
 uniform bool useNormalMap;
 
-varying vec3 bitangent; // Bitangent at point in camera space
-varying vec2 coord; // Texture coordinate
-varying vec3 normal; // Normal at point in camera space
-varying vec3 point; // Point position in camera space
-varying vec3 tangent; // Tangent at point in camera space
+out vec3 bitangent; // Bitangent at point in camera space
+out vec2 coord; // Texture coordinate
+out vec3 normal; // Normal at point in camera space
+out vec3 point; // Point position in camera space
+out vec3 tangent; // Tangent at point in camera space
 
 vec3 toCameraPosition(in vec3 worldPosition) {
 	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;

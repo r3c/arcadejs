@@ -54,7 +54,7 @@ class WebGLScreen extends Screen {
 		if (contextOrNull === null)
 			throw Error("cannot get WebGL context");
 
-		this.context = <WebGLRenderingContext>contextOrNull; // FIXME: no @type for webgl2 yet
+		this.context = <WebGLRenderingContext>contextOrNull; // FIXME: incomplete @type for WebGL2
 	}
 }
 

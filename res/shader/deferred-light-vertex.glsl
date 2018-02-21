@@ -1,4 +1,4 @@
-attribute vec4 points;
+#version 300 es
 
 uniform vec3 lightPosition;
 
@@ -6,7 +6,9 @@ uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-varying vec3 lightPositionCamera;
+in vec4 points;
+
+out vec3 lightPositionCamera;
 
 vec3 toCameraPosition(in vec3 worldPosition) {
 	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;

@@ -103,9 +103,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const geometry2 = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 	const screen = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 
-	const albedoAndShininess = geometry1.setupColorTexture();
+	const albedoAndShininess = geometry1.setupColorTexture(0);
 	const depth = geometry1.setupDepthTexture();
-	const normalAndReflection = geometry2.setupColorTexture();
+	const normalAndReflection = geometry2.setupColorTexture(0);
 
 	geometry2.setupDepthRenderbuffer();
 
@@ -120,8 +120,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
 	debugShader.bindPerCallProperty("format", gl => gl.uniform1i, state => state.format);
-	debugShader.bindPerCallProperty("source", gl => gl.uniform1i, state => state.source);
-	debugShader.bindPerCallTexture("texture", state => state.texture);
+	debugShader.bindPerCallProperty("scope", gl => gl.uniform1i, state => state.source);
+	debugShader.bindPerCallTexture("source", state => state.texture);
 
 	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	debugShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());

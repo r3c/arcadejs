@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -15,11 +17,6 @@ struct Light
 	vec3 position;
 };
 
-attribute vec2 coords;
-attribute vec3 normals;
-attribute vec3 points;
-attribute vec3 tangents;
-
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
@@ -31,11 +28,16 @@ uniform mat4 shadowViewMatrix;
 uniform vec3 lightDirection;
 uniform bool useNormalMap;
 
-varying vec2 coord; // Texture coordinate
-varying vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
-varying vec3 lightDirectionTransformed; // Direction of light in same space than eye vector
-varying vec3 normal; // Normal at point in same space than eye vector
-varying vec3 shadow; // Light intersection point in camera space
+in vec2 coords;
+in vec3 normals;
+in vec3 points;
+in vec3 tangents;
+
+out vec2 coord; // Texture coordinate
+out vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
+out vec3 lightDirectionTransformed; // Direction of light in same space than eye vector
+out vec3 normal; // Normal at point in same space than eye vector
+out vec3 shadow; // Light intersection point in camera space
 
 vec3 toCameraDirection(in vec3 worldDirection) {
 	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;

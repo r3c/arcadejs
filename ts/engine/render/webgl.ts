@@ -5,12 +5,7 @@ import * as vector from "../math/vector";
 
 interface Attachment {
 	renderbuffer: WebGLRenderbuffer | null,
-	texture: WebGLTexture | null
-}
-
-enum BufferFormat {
-	Depth16,
-	RGBA8
+	textures: WebGLTexture[] | null
 }
 
 interface Geometry {
@@ -64,6 +59,11 @@ interface Quality {
 	textureMipmapLinear: boolean
 }
 
+enum RenderbufferFormat {
+	Depth16,
+	RGBA
+}
+
 interface Subject {
 	matrix: matrix.Matrix4,
 	model: Model
@@ -72,6 +72,11 @@ interface Subject {
 interface SubjectState<TCallState> {
 	call: TCallState,
 	subject: Subject
+}
+
+enum TextureFormat {
+	Depth16,
+	RGBA8
 }
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 1 };
@@ -103,7 +108,7 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	return buffer;
 };
 
-const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: number, useFloat: boolean) => {
+const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: number, format: RenderbufferFormat, samples: number) => {
 	const renderbuffer = gl.createRenderbuffer();
 
 	if (renderbuffer === null)
@@ -111,15 +116,34 @@ const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: nu
 
 	gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
 
-	if (useFloat)
-		gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+	let glInternal: number;
+
+	switch (format) {
+		case RenderbufferFormat.Depth16:
+			glInternal = gl.DEPTH_COMPONENT16;
+
+			break;
+
+		case RenderbufferFormat.RGBA:
+			glInternal = gl.RGBA;
+
+			break;
+
+		default:
+			throw Error(`invalid renderbuffer format ${format}`);
+	}
+
+	if (samples > 1)
+		(<any>gl).renderbufferStorageMultisample(gl.RENDERBUFFER, samples, glInternal, width, height); // FIXME: incomplete @type for WebGL2
 	else
-		throw Error("not implemented");
+		gl.renderbufferStorage(gl.RENDERBUFFER, glInternal, width, height);
+
+	gl.bindRenderbuffer(gl.RENDERBUFFER, null);
 
 	return renderbuffer;
 };
 
-const createTexture = (gl: WebGLRenderingContext, width: number, height: number, format: BufferFormat, quality: Quality, pixels?: ArrayBufferView) => {
+const createTexture = (gl: WebGLRenderingContext, width: number, height: number, format: TextureFormat, quality: Quality, pixels?: ArrayBufferView) => {
 	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
 
 	if (quality.textureMipmap && !isPowerOfTwo)
@@ -139,7 +163,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 	let glType: number;
 
 	switch (format) {
-		case BufferFormat.Depth16:
+		case TextureFormat.Depth16:
 			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
 				throw Error("depth texture WebGL extension is not available");
 
@@ -149,7 +173,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 
 			break;
 
-		case BufferFormat.RGBA8:
+		case TextureFormat.RGBA8:
 			glFormat = gl.RGBA;
 			glInternal = gl.RGBA;
 			glType = gl.UNSIGNED_BYTE;
@@ -157,7 +181,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 			break;
 
 		default:
-			throw Error(`invalid image format ${format}`);
+			throw Error(`invalid texture format ${format}`);
 	}
 
 	gl.texImage2D(gl.TEXTURE_2D, 0, glInternal, width, height, 0, glFormat, glType, pixels || null);
@@ -192,7 +216,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	const toArray3 = (input: vector.Vector3) => [input.x, input.y, input.z];
 	const toArray4 = (input: vector.Vector4) => [input.x, input.y, input.z, input.w];
 	const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
-	const toColorMap = (image: ImageData) => createTexture(gl, image.width, image.height, BufferFormat.RGBA8, quality, image.data);
+	const toColorMap = (image: ImageData) => createTexture(gl, image.width, image.height, TextureFormat.RGBA8, quality, image.data);
 	const toIndices = (indices: [number, number, number]) => indices;
 
 	for (const mesh of model.meshes) {
@@ -479,12 +503,12 @@ class Target {
 
 		this.renderColor = {
 			renderbuffer: null,
-			texture: null
+			textures: null
 		};
 
 		this.renderDepth = {
 			renderbuffer: null,
-			texture: null
+			textures: null
 		};
 	}
 
@@ -592,40 +616,59 @@ class Target {
 	}
 
 	public setupColorRenderbuffer() {
-		return this.setupRenderbuffer(this.renderColor, this.gl.COLOR_ATTACHMENT0, false);
+		const gl = this.gl;
+
+		return this.setupRenderbuffer(this.renderColor, gl.COLOR_ATTACHMENT0, RenderbufferFormat.RGBA, 1);
 	}
 
-	public setupColorTexture() {
-		return this.setupTexture(this.renderColor, this.gl.COLOR_ATTACHMENT0, BufferFormat.RGBA8);
+	public setupColorTexture(layer: number) {
+		const gl = this.gl;
+		const texture = this.setupTexture(this.renderColor, layer, gl.COLOR_ATTACHMENT0, TextureFormat.RGBA8);
+
+		// Configure draw buffers
+		if (this.renderColor.textures !== null) {
+			gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+
+			const buffers = this.renderColor.textures.map((texture, index) => texture ? gl.COLOR_ATTACHMENT0 + index : gl.NONE);
+
+			(<any>gl).drawBuffers(buffers); // FIXME: incomplete @type for WebGL2
+
+			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+		}
+
+		return texture;
 	}
 
 	public setupDepthRenderbuffer() {
-		return this.setupRenderbuffer(this.renderDepth, this.gl.DEPTH_ATTACHMENT, true);
+		const gl = this.gl;
+
+		return this.setupRenderbuffer(this.renderDepth, gl.DEPTH_ATTACHMENT, RenderbufferFormat.Depth16, 1);
 	}
 
 	public setupDepthTexture() {
-		return this.setupTexture(this.renderDepth, this.gl.DEPTH_ATTACHMENT, BufferFormat.Depth16);
-	}
-
-	private clearAttachment(attachment: Attachment) {
 		const gl = this.gl;
 
+		return this.setupTexture(this.renderDepth, 0, gl.DEPTH_ATTACHMENT, TextureFormat.Depth16);
+	}
+
+	private static clearAttachment(gl: WebGLRenderingContext, attachment: Attachment) {
 		if (attachment.renderbuffer !== null) {
 			gl.deleteRenderbuffer(attachment.renderbuffer);
 
 			attachment.renderbuffer = null;
 		}
 
-		if (attachment.texture !== null) {
-			gl.deleteTexture(attachment.texture);
+		if (attachment.textures !== null) {
+			for (const texture of attachment.textures) {
+				if (texture !== null)
+					gl.deleteTexture(texture);
+			}
 
-			attachment.texture = null;
+			attachment.textures = null;
 		}
 	}
 
-	private checkFramebuffer() {
-		const gl = this.gl;
-
+	private static checkFramebuffer(gl: WebGLRenderingContext) {
 		if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
 			throw Error("invalid framebuffer operation");
 	}
@@ -644,36 +687,43 @@ class Target {
 		return framebuffer;
 	}
 
-	private setupRenderbuffer(attachment: Attachment, target: number, useFloat: boolean) {
+	private setupRenderbuffer(attachment: Attachment, target: number, format: RenderbufferFormat, samples: number) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
-		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, useFloat);
+		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, format, samples);
 
-		this.clearAttachment(attachment);
+		Target.clearAttachment(gl, attachment);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, target, gl.RENDERBUFFER, renderbuffer)
 
 		attachment.renderbuffer = renderbuffer;
 
-		this.checkFramebuffer();
+		Target.checkFramebuffer(gl);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 		return renderbuffer;
 	}
 
-	private setupTexture(attachment: Attachment, target: number, format: BufferFormat) {
+	private setupTexture(attachment: Attachment, layer: number, target: number, format: TextureFormat) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
 		const texture = createTexture(gl, this.viewWidth, this.viewHeight, format, qualityBuffer);
 
-		this.clearAttachment(attachment);
+		Target.clearAttachment(gl, attachment);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, target, gl.TEXTURE_2D, texture, 0);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, target + layer, gl.TEXTURE_2D, texture, 0);
 
-		attachment.texture = texture;
+		if (attachment.textures === null)
+			attachment.textures = [];
 
-		this.checkFramebuffer();
+		attachment.textures[layer] = texture;
+
+		Target.checkFramebuffer(gl);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 		return texture;
 	}

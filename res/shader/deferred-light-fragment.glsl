@@ -1,3 +1,5 @@
+#version 300 es
+
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -16,7 +18,9 @@ uniform vec3 lightColorSpecular;
 uniform vec3 lightPosition;
 uniform float lightRadius;
 
-varying vec3 lightPositionCamera;
+in vec3 lightPositionCamera;
+
+layout(location=0) out vec4 fragColor;
 
 vec3 getLight(in vec3 albedo, in float reflection, in float shininess, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection) {
 	float lightAngle = dot(normal, lightDirection);
@@ -67,7 +71,7 @@ vec3 getNormal(in vec2 normalPack) {
 }
 
 vec3 getPoint(in vec2 coord) {
-	float depthClip = texture2D(depth, coord).r;
+	float depthClip = texture(depth, coord).r;
 	vec4 pointClip = vec4(coord, depthClip, 1.0) * 2.0 - 1.0;
 	vec4 pointCamera = inverseProjectionMatrix * pointClip;
 
@@ -78,8 +82,8 @@ void main(void) {
 	vec2 coord = vec2(gl_FragCoord.x / 800.0, gl_FragCoord.y / 600.0); // FIXME: hard-coded
 
 	// Read samples from texture buffers
-	vec4 albedoAndShininessSample = texture2D(albedoAndShininess, coord);
-	vec4 normalAndReflectionSample = texture2D(normalAndReflection, coord);
+	vec4 albedoAndShininessSample = texture(albedoAndShininess, coord);
+	vec4 normalAndReflectionSample = texture(normalAndReflection, coord);
 
 	// Decode geometry and material properties from samples
 	vec3 albedo = albedoAndShininessSample.rgb;
@@ -99,5 +103,5 @@ void main(void) {
 
 	vec3 color = getLight(albedo, reflection, shininess, normal, eyeDirection, lightDirection) * lightPower;
 
-	gl_FragColor = vec4(color, 1.0);
+	fragColor = vec4(color, 1.0);
 }

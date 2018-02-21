@@ -1,13 +1,17 @@
+#version 300 es
+
 #ifdef GL_ES
 precision highp float;
 #endif
 
 uniform int format;
-uniform int source;
+uniform int scope;
 
-uniform sampler2D texture;
+uniform sampler2D source;
 
-varying vec2 coord;
+in vec2 coord;
+
+layout(location=0) out vec4 fragColor;
 
 // Spheremap transform
 // See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
@@ -20,68 +24,68 @@ vec3 decodeNormalSpheremap(in vec2 normalPack) {
 }
 
 void main(void) {
-	vec4 sample = texture2D(texture, coord);
+	vec4 raw = texture(source, coord);
 
 	// Read 1 byte, 4 possible configurations
-	if (source >= 6) {
+	if (scope >= 6) {
 		float value1;
 
-		if (source == 6) {
-			value1 = sample.r;
+		if (scope == 6) {
+			value1 = raw.r;
 		}
-		else if (source == 7) {
-			value1 = sample.g;
+		else if (scope == 7) {
+			value1 = raw.g;
 		}
-		else if (source == 8) {
-			value1 = sample.b;
+		else if (scope == 8) {
+			value1 = raw.b;
 		}
 		else {
-			value1 = sample.a;
+			value1 = raw.a;
 		}
 
 		if (format == 0) {
-			gl_FragColor = vec4(value1, value1, value1, 1.0);
+			fragColor = vec4(value1, value1, value1, 1.0);
 		}
 	}
 
 	// Read 2 bytes, 3 possible configurations
-	else if (source >= 3) {
+	else if (scope >= 3) {
 		vec2 value2;
 
-		if (source == 3) {
-			value2 = sample.rg;
+		if (scope == 3) {
+			value2 = raw.rg;
 		}
-		else if (source == 4) {
-			value2 = sample.gb;
+		else if (scope == 4) {
+			value2 = raw.gb;
 		}
 		else {
-			value2 = sample.ba;
+			value2 = raw.ba;
 		}
 
 		if (format == 0) {
-			gl_FragColor = vec4(value2, 0.0, 1.0);
+			fragColor = vec4(value2, 0.0, 1.0);
 		}
 		else if (format == 1) {
-			gl_FragColor = vec4(decodeNormalSpheremap(value2), 1.0);
+			fragColor = vec4(decodeNormalSpheremap(value2), 1.0);
 		}
 	}
 
 	// Read 3 bytes, 2 possible configurations
-	else if (source >= 1) {
+	else if (scope >= 1) {
 		vec3 value3;
 
-		if (source == 1) {
-			value3 = sample.rgb;
+		if (scope == 1) {
+			value3 = raw.rgb;
 		}
 		else {
-			value3 = sample.gba;
+			value3 = raw.gba;
 		}
 
-		gl_FragColor = vec4(value3, 1.0);
+		fragColor = vec4(value3, 1.0);
 	}
 
 	// Read 4 bytes, 1 possible configuration
 	else {
-		gl_FragColor = sample;
+		fragColor = raw;
 	}
 }
