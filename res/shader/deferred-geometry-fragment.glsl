@@ -21,7 +21,8 @@ in vec3 normal;
 in vec3 point;
 in vec3 tangent;
 
-layout(location=0) out vec4 fragColor;
+layout(location=0) out vec4 albedoAndShininess;
+layout(location=1) out vec4 normalAndReflection;
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionFace, float parallaxScale, float parallaxBias) {
 	if (useHeightMap) {
@@ -55,19 +56,15 @@ void main(void) {
 	vec2 parallaxCoord = getCoord(coord, eyeDirectionFace, 0.04, 0.02);
 
 	// Pass 1: pack ambient color and material shininess
-	if (pass == 1) {
-		vec3 albedo = ambientColor.rgb * texture(ambientMap, parallaxCoord).rgb;
-		float shininessPack = 1.0 / (shininess + 1.0);
+	vec3 albedo = ambientColor.rgb * texture(ambientMap, parallaxCoord).rgb;
+	float shininessPack = 1.0 / (shininess + 1.0);
 
-		fragColor = vec4(albedo, shininessPack);
-	}
+	albedoAndShininess = vec4(albedo, shininessPack);
 
 	// Pass 2: pack normal and material reflection
-	else if (pass == 2) {
-		vec2 normalPack = getNormal(normal, parallaxCoord);
-		float reflection = texture(reflectionMap, parallaxCoord).r;
-		float unused = 0.0;
+	vec2 normalPack = getNormal(normal, parallaxCoord);
+	float reflection = texture(reflectionMap, parallaxCoord).r;
+	float unused = 0.0;
 
-		fragColor = vec4(normalPack, unused, reflection);
-	}
+	normalAndReflection = vec4(normalPack, unused, reflection);
 }

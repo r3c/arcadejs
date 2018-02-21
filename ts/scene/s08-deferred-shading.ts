@@ -38,7 +38,6 @@ interface DebugCallState {
 }
 
 interface GeometryCallState {
-	pass: number,
 	projectionMatrix: matrix.Matrix4,
 	tweak: application.Tweak<Configuration>,
 	viewMatrix: matrix.Matrix4
@@ -79,8 +78,7 @@ interface SceneState {
 		light: webgl.Shader<LightCallState>
 	},
 	targets: {
-		geometry1: webgl.Target,
-		geometry2: webgl.Target,
+		geometry: webgl.Target,
 		screen: webgl.Target
 	},
 	tweak: application.Tweak<Configuration>
@@ -99,15 +97,12 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const gl = runtime.screen.context;
 
 	// Setup render targets
-	const geometry1 = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
-	const geometry2 = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
+	const geometry = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 	const screen = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 
-	const albedoAndShininess = geometry1.setupColorTexture(0);
-	const depth = geometry1.setupDepthTexture();
-	const normalAndReflection = geometry2.setupColorTexture(0);
-
-	geometry2.setupDepthRenderbuffer();
+	const albedoAndShininess = geometry.setupColorTexture(0);
+	const depth = geometry.setupDepthTexture();
+	const normalAndReflection = geometry.setupColorTexture(1);
 
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(
@@ -138,7 +133,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	geometryShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 	geometryShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-	geometryShader.bindPerCallProperty("pass", gl => gl.uniform1i, state => state.pass);
 	geometryShader.bindPerCallProperty("useHeightMap", gl => gl.uniform1i, state => 1);
 	geometryShader.bindPerCallProperty("useNormalMap", gl => gl.uniform1i, state => 1);
 
@@ -223,8 +217,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			light: lightShader
 		},
 		targets: {
-			geometry1: geometry1,
-			geometry2: geometry2,
+			geometry: geometry,
 			screen: screen
 		},
 		tweak: tweak
@@ -271,17 +264,14 @@ const render = (state: SceneState) => {
 	gl.enable(gl.DEPTH_TEST);
 	gl.depthMask(true);
 
-	for (const pass of [{ number: 1, target: targets.geometry1 }, { number: 2, target: targets.geometry2 }]) {
-		const callState = {
-			pass: pass.number,
-			projectionMatrix: state.projectionMatrix,
-			tweak: state.tweak,
-			viewMatrix: cameraView
-		};
+	const callState = {
+		projectionMatrix: state.projectionMatrix,
+		tweak: state.tweak,
+		viewMatrix: cameraView
+	};
 
-		pass.target.clear();
-		pass.target.draw(shaders.geometry, [cubeSubject, groundSubject].concat(lightSubjects), callState);
-	}
+	targets.geometry.clear();
+	targets.geometry.draw(shaders.geometry, [cubeSubject, groundSubject].concat(lightSubjects), callState);
 
 	// Draw scene lights
 	gl.cullFace(gl.FRONT);

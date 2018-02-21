@@ -5,7 +5,7 @@ import * as vector from "../math/vector";
 
 interface Attachment {
 	renderbuffer: WebGLRenderbuffer | null,
-	textures: WebGLTexture[] | null
+	textures: (WebGLTexture | undefined)[] | null
 }
 
 interface Geometry {
@@ -493,6 +493,8 @@ class Target {
 	private renderColor: Attachment;
 	private renderDepth: Attachment;
 
+	private buffers: number[];
+
 	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
 		this.clearColor = colorBlack;
 		this.clearDepth = 1;
@@ -522,6 +524,13 @@ class Target {
 		gl.clearColor(this.clearColor.x, this.clearColor.y, this.clearColor.z, this.clearColor.z);
 		gl.clearDepth(this.clearDepth);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	}
+
+	public dispose() {
+		const gl = this.gl;
+
+		Target.clearRenderbufferAttachments(gl, this.renderColor);
+		Target.clearTextureAttachments(gl, this.renderDepth);
 	}
 
 	public draw<T>(shader: Shader<T>, subjects: Subject[], callState: T) {
@@ -627,11 +636,13 @@ class Target {
 
 		// Configure draw buffers
 		if (this.renderColor.textures !== null) {
+			const buffers = this.renderColor.textures.map((texture, index) => texture !== undefined ? gl.COLOR_ATTACHMENT0 + index : gl.NONE);
+
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 
-			const buffers = this.renderColor.textures.map((texture, index) => texture ? gl.COLOR_ATTACHMENT0 + index : gl.NONE);
-
-			(<any>gl).drawBuffers(buffers); // FIXME: incomplete @type for WebGL2
+			// FIXME: this seems to cause a "operation requires zeroing texture data" in Firefox
+			// FIXME: incomplete @type for WebGL2
+			(<any>gl).drawBuffers(buffers);
 
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 		}
@@ -651,16 +662,18 @@ class Target {
 		return this.setupTexture(this.renderDepth, 0, gl.DEPTH_ATTACHMENT, TextureFormat.Depth16);
 	}
 
-	private static clearAttachment(gl: WebGLRenderingContext, attachment: Attachment) {
+	private static clearRenderbufferAttachments(gl: WebGLRenderingContext, attachment: Attachment) {
 		if (attachment.renderbuffer !== null) {
 			gl.deleteRenderbuffer(attachment.renderbuffer);
 
 			attachment.renderbuffer = null;
 		}
+	}
 
+	private static clearTextureAttachments(gl: WebGLRenderingContext, attachment: Attachment) {
 		if (attachment.textures !== null) {
 			for (const texture of attachment.textures) {
-				if (texture !== null)
+				if (texture !== undefined)
 					gl.deleteTexture(texture);
 			}
 
@@ -690,9 +703,13 @@ class Target {
 	private setupRenderbuffer(attachment: Attachment, target: number, format: RenderbufferFormat, samples: number) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
-		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, format, samples);
 
-		Target.clearAttachment(gl, attachment);
+		// Clear renderbuffer and all texture attachments (if any)
+		Target.clearRenderbufferAttachments(gl, attachment);
+		Target.clearTextureAttachments(gl, attachment);
+
+		// Create and register renderbuffer attachment
+		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, format, samples);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, target, gl.RENDERBUFFER, renderbuffer)
@@ -709,9 +726,19 @@ class Target {
 	private setupTexture(attachment: Attachment, layer: number, target: number, format: TextureFormat) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
-		const texture = createTexture(gl, this.viewWidth, this.viewHeight, format, qualityBuffer);
 
-		Target.clearAttachment(gl, attachment);
+		// Clear renderbuffer and concurrent texture attachments (if any)
+		Target.clearRenderbufferAttachments(gl, attachment);
+
+		if (attachment.textures !== null) {
+			const texture = attachment.textures[layer];
+
+			if (texture !== undefined)
+				gl.deleteTexture(texture);
+		}
+
+		// Create and register texture attachment
+		const texture = createTexture(gl, this.viewWidth, this.viewHeight, format, qualityBuffer);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, target + layer, gl.TEXTURE_2D, texture, 0);
