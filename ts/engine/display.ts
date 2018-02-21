@@ -34,7 +34,7 @@ class Context2DScreen extends Screen {
 	public constructor(container: HTMLElement) {
 		super(container);
 
-		const contextOrNull = this.canvas.getContext('2d');
+		const contextOrNull = this.canvas.getContext("2d");
 
 		if (contextOrNull === null)
 			throw Error("cannot get 2d context");
@@ -49,12 +49,12 @@ class WebGLScreen extends Screen {
 	public constructor(container: HTMLElement) {
 		super(container);
 
-		const contextOrNull = this.canvas.getContext('webgl');
+		const contextOrNull = this.canvas.getContext("webgl2");
 
 		if (contextOrNull === null)
 			throw Error("cannot get WebGL context");
 
-		this.context = contextOrNull;
+		this.context = <WebGLRenderingContext>contextOrNull; // FIXME: no @type for webgl2 yet
 	}
 }
 

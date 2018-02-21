@@ -3,6 +3,16 @@ import * as matrix from "../math/matrix";
 import * as model from "../graphic/model";
 import * as vector from "../math/vector";
 
+interface Attachment {
+	renderbuffer: WebGLRenderbuffer | null,
+	texture: WebGLTexture | null
+}
+
+enum BufferFormat {
+	Depth16,
+	RGBA8
+}
+
 interface Geometry {
 	colors: WebGLBuffer | undefined,
 	coords: WebGLBuffer | undefined,
@@ -18,11 +28,6 @@ interface GeometryState<TCallState> {
 	geometry: Geometry,
 	material: Material,
 	subject: Subject
-}
-
-enum BufferFormat {
-	Depth16,
-	RGBA8
 }
 
 interface Material {
@@ -130,20 +135,23 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 	gl.bindTexture(gl.TEXTURE_2D, texture);
 
 	let glFormat: number;
+	let glInternal: number;
 	let glType: number;
 
 	switch (format) {
 		case BufferFormat.Depth16:
-			if (!gl.getExtension("WEBGL_depth_texture"))
+			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
 				throw Error("depth texture WebGL extension is not available");
 
 			glFormat = gl.DEPTH_COMPONENT;
+			glInternal = gl.DEPTH_COMPONENT16;
 			glType = gl.UNSIGNED_SHORT;
 
 			break;
 
 		case BufferFormat.RGBA8:
 			glFormat = gl.RGBA;
+			glInternal = gl.RGBA;
 			glType = gl.UNSIGNED_BYTE;
 
 			break;
@@ -152,7 +160,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 			throw Error(`invalid image format ${format}`);
 	}
 
-	gl.texImage2D(gl.TEXTURE_2D, 0, glFormat, width, height, 0, glFormat, glType, pixels || null);
+	gl.texImage2D(gl.TEXTURE_2D, 0, glInternal, width, height, 0, glFormat, glType, pixels || null);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, textureFilter);
 
 	if (quality.textureMipmap) {
@@ -458,22 +466,26 @@ class Target {
 	private clearColor: vector.Vector4;
 	private clearDepth: number;
 	private framebuffer: WebGLFramebuffer | null;
-	private renderColorTexture: WebGLTexture | null;
-	private renderColorRenderbuffer: WebGLRenderbuffer | null;
-	private renderDepthTexture: WebGLTexture | null;
-	private renderDepthRenderbuffer: WebGLRenderbuffer | null;
+	private renderColor: Attachment;
+	private renderDepth: Attachment;
 
 	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
 		this.clearColor = colorBlack;
 		this.clearDepth = 1;
 		this.framebuffer = null;
 		this.gl = gl;
-		this.renderColorTexture = null;
-		this.renderColorRenderbuffer = null;
-		this.renderDepthTexture = null;
-		this.renderDepthRenderbuffer = null;
 		this.viewHeight = height;
 		this.viewWidth = width;
+
+		this.renderColor = {
+			renderbuffer: null,
+			texture: null
+		};
+
+		this.renderDepth = {
+			renderbuffer: null,
+			texture: null
+		};
 	}
 
 	public clear() {
@@ -580,62 +592,34 @@ class Target {
 	}
 
 	public setupColorRenderbuffer() {
-		this.clearColorAttachment();
-		this.renderColorRenderbuffer = this.setupRenderbuffer(this.gl.COLOR_ATTACHMENT0, false);
-
-		return this.renderColorRenderbuffer;
+		return this.setupRenderbuffer(this.renderColor, this.gl.COLOR_ATTACHMENT0, false);
 	}
 
 	public setupColorTexture() {
-		this.clearColorAttachment();
-		this.renderColorTexture = this.setupTexture(this.gl.COLOR_ATTACHMENT0, BufferFormat.RGBA8);
-
-		return this.renderColorTexture;
+		return this.setupTexture(this.renderColor, this.gl.COLOR_ATTACHMENT0, BufferFormat.RGBA8);
 	}
 
 	public setupDepthRenderbuffer() {
-		this.clearDepthAttachment();
-		this.renderDepthRenderbuffer = this.setupRenderbuffer(this.gl.DEPTH_ATTACHMENT, true);
-
-		return this.renderDepthRenderbuffer;
+		return this.setupRenderbuffer(this.renderDepth, this.gl.DEPTH_ATTACHMENT, true);
 	}
 
 	public setupDepthTexture() {
-		this.clearDepthAttachment();
-		this.renderDepthTexture = this.setupTexture(this.gl.DEPTH_ATTACHMENT, BufferFormat.Depth16);
-
-		return this.renderDepthTexture;
+		return this.setupTexture(this.renderDepth, this.gl.DEPTH_ATTACHMENT, BufferFormat.Depth16);
 	}
 
-	private clearColorAttachment() {
+	private clearAttachment(attachment: Attachment) {
 		const gl = this.gl;
 
-		if (this.renderColorRenderbuffer !== null) {
-			gl.deleteRenderbuffer(this.renderColorRenderbuffer);
+		if (attachment.renderbuffer !== null) {
+			gl.deleteRenderbuffer(attachment.renderbuffer);
 
-			this.renderColorRenderbuffer = null;
+			attachment.renderbuffer = null;
 		}
 
-		if (this.renderColorTexture !== null) {
-			gl.deleteTexture(this.renderColorTexture);
+		if (attachment.texture !== null) {
+			gl.deleteTexture(attachment.texture);
 
-			this.renderColorTexture = null;
-		}
-	}
-
-	private clearDepthAttachment() {
-		const gl = this.gl;
-
-		if (this.renderDepthRenderbuffer !== null) {
-			gl.deleteRenderbuffer(this.renderDepthRenderbuffer);
-
-			this.renderDepthRenderbuffer = null;
-		}
-
-		if (this.renderDepthTexture !== null) {
-			gl.deleteTexture(this.renderDepthTexture);
-
-			this.renderDepthTexture = null;
+			attachment.texture = null;
 		}
 	}
 
@@ -660,26 +644,34 @@ class Target {
 		return framebuffer;
 	}
 
-	private setupRenderbuffer(attachment: number, useFloat: boolean) {
+	private setupRenderbuffer(attachment: Attachment, target: number, useFloat: boolean) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
 		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, useFloat);
 
+		this.clearAttachment(attachment);
+
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, attachment, gl.RENDERBUFFER, renderbuffer)
+		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, target, gl.RENDERBUFFER, renderbuffer)
+
+		attachment.renderbuffer = renderbuffer;
 
 		this.checkFramebuffer();
 
 		return renderbuffer;
 	}
 
-	private setupTexture(attachment: number, format: BufferFormat) {
+	private setupTexture(attachment: Attachment, target: number, format: BufferFormat) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
 		const texture = createTexture(gl, this.viewWidth, this.viewHeight, format, qualityBuffer);
 
+		this.clearAttachment(attachment);
+
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, attachment, gl.TEXTURE_2D, texture, 0);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, target, gl.TEXTURE_2D, texture, 0);
+
+		attachment.texture = texture;
 
 		this.checkFramebuffer();
 
