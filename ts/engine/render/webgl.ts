@@ -59,9 +59,9 @@ interface Quality {
 	textureMipmapLinear: boolean
 }
 
-enum RenderbufferFormat {
+enum Storage {
 	Depth16,
-	RGBA
+	RGBA8
 }
 
 interface Subject {
@@ -72,11 +72,6 @@ interface Subject {
 interface SubjectState<TCallState> {
 	call: TCallState,
 	subject: Subject
-}
-
-enum TextureFormat {
-	Depth16,
-	RGBA8
 }
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 1 };
@@ -108,7 +103,7 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBu
 	return buffer;
 };
 
-const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: number, format: RenderbufferFormat, samples: number) => {
+const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: number, format: Storage, samples: number) => {
 	const renderbuffer = gl.createRenderbuffer();
 
 	if (renderbuffer === null)
@@ -119,12 +114,12 @@ const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: nu
 	let glInternal: number;
 
 	switch (format) {
-		case RenderbufferFormat.Depth16:
+		case Storage.Depth16:
 			glInternal = gl.DEPTH_COMPONENT16;
 
 			break;
 
-		case RenderbufferFormat.RGBA:
+		case Storage.RGBA8:
 			glInternal = gl.RGBA;
 
 			break;
@@ -143,7 +138,7 @@ const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: nu
 	return renderbuffer;
 };
 
-const createTexture = (gl: WebGLRenderingContext, width: number, height: number, format: TextureFormat, quality: Quality, pixels?: ArrayBufferView) => {
+const createTexture = (gl: WebGLRenderingContext, width: number, height: number, storage: Storage, quality: Quality, pixels?: ArrayBufferView) => {
 	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
 
 	if (quality.textureMipmap && !isPowerOfTwo)
@@ -162,8 +157,8 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 	let glInternal: number;
 	let glType: number;
 
-	switch (format) {
-		case TextureFormat.Depth16:
+	switch (storage) {
+		case Storage.Depth16:
 			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
 				throw Error("depth texture WebGL extension is not available");
 
@@ -173,7 +168,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 
 			break;
 
-		case TextureFormat.RGBA8:
+		case Storage.RGBA8:
 			glFormat = gl.RGBA;
 			glInternal = gl.RGBA;
 			glType = gl.UNSIGNED_BYTE;
@@ -181,7 +176,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 			break;
 
 		default:
-			throw Error(`invalid texture format ${format}`);
+			throw Error(`invalid texture format ${storage}`);
 	}
 
 	gl.texImage2D(gl.TEXTURE_2D, 0, glInternal, width, height, 0, glFormat, glType, pixels || null);
@@ -216,7 +211,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	const toArray3 = (input: vector.Vector3) => [input.x, input.y, input.z];
 	const toArray4 = (input: vector.Vector4) => [input.x, input.y, input.z, input.w];
 	const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
-	const toColorMap = (image: ImageData) => createTexture(gl, image.width, image.height, TextureFormat.RGBA8, quality, image.data);
+	const toColorMap = (image: ImageData) => createTexture(gl, image.width, image.height, Storage.RGBA8, quality, image.data);
 	const toIndices = (indices: [number, number, number]) => indices;
 
 	for (const mesh of model.meshes) {
@@ -487,28 +482,28 @@ class Target {
 	private readonly viewHeight: number;
 	private readonly viewWidth: number;
 
-	private clearColor: vector.Vector4;
-	private clearDepth: number;
+	private colorAttachment: Attachment;
+	private colorClear: vector.Vector4;
+	private depthAttachment: Attachment;
+	private depthClear: number;
 	private framebuffer: WebGLFramebuffer | null;
-	private renderColor: Attachment;
-	private renderDepth: Attachment;
 
 	private buffers: number[];
 
 	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
-		this.clearColor = colorBlack;
-		this.clearDepth = 1;
+		this.colorClear = colorBlack;
+		this.depthClear = 1;
 		this.framebuffer = null;
 		this.gl = gl;
 		this.viewHeight = height;
 		this.viewWidth = width;
 
-		this.renderColor = {
+		this.colorAttachment = {
 			renderbuffer: null,
 			textures: null
 		};
 
-		this.renderDepth = {
+		this.depthAttachment = {
 			renderbuffer: null,
 			textures: null
 		};
@@ -521,16 +516,16 @@ class Target {
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
-		gl.clearColor(this.clearColor.x, this.clearColor.y, this.clearColor.z, this.clearColor.z);
-		gl.clearDepth(this.clearDepth);
+		gl.clearColor(this.colorClear.x, this.colorClear.y, this.colorClear.z, this.colorClear.z);
+		gl.clearDepth(this.depthClear);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 	}
 
 	public dispose() {
 		const gl = this.gl;
 
-		Target.clearRenderbufferAttachments(gl, this.renderColor);
-		Target.clearTextureAttachments(gl, this.renderDepth);
+		Target.clearRenderbufferAttachments(gl, this.colorAttachment);
+		Target.clearTextureAttachments(gl, this.depthAttachment);
 	}
 
 	public draw<T>(shader: Shader<T>, subjects: Subject[], callState: T) {
@@ -617,26 +612,26 @@ class Target {
 	}
 
 	public setClearColor(r: number, g: number, b: number, a: number) {
-		this.clearColor = { x: r, y: g, z: b, w: a };
+		this.colorClear = { x: r, y: g, z: b, w: a };
 	}
 
 	public setClearDepth(depth: number) {
-		this.clearDepth = depth;
+		this.depthClear = depth;
 	}
 
-	public setupColorRenderbuffer() {
+	public setupColorRenderbuffer(storage: Storage) {
 		const gl = this.gl;
 
-		return this.setupRenderbuffer(this.renderColor, gl.COLOR_ATTACHMENT0, RenderbufferFormat.RGBA, 1);
+		return this.setupRenderbuffer(this.colorAttachment, gl.COLOR_ATTACHMENT0, storage, 1);
 	}
 
-	public setupColorTexture(layer: number) {
+	public setupColorTexture(storage: Storage, layer: number) {
 		const gl = this.gl;
-		const texture = this.setupTexture(this.renderColor, layer, gl.COLOR_ATTACHMENT0, TextureFormat.RGBA8);
+		const texture = this.setupTexture(this.colorAttachment, gl.COLOR_ATTACHMENT0, storage, layer);
 
 		// Configure draw buffers
-		if (this.renderColor.textures !== null) {
-			const buffers = this.renderColor.textures.map((texture, index) => texture !== undefined ? gl.COLOR_ATTACHMENT0 + index : gl.NONE);
+		if (this.colorAttachment.textures !== null) {
+			const buffers = this.colorAttachment.textures.map((texture, index) => texture !== undefined ? gl.COLOR_ATTACHMENT0 + index : gl.NONE);
 
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 
@@ -650,16 +645,16 @@ class Target {
 		return texture;
 	}
 
-	public setupDepthRenderbuffer() {
+	public setupDepthRenderbuffer(storage: Storage) {
 		const gl = this.gl;
 
-		return this.setupRenderbuffer(this.renderDepth, gl.DEPTH_ATTACHMENT, RenderbufferFormat.Depth16, 1);
+		return this.setupRenderbuffer(this.depthAttachment, gl.DEPTH_ATTACHMENT, storage, 1);
 	}
 
-	public setupDepthTexture() {
+	public setupDepthTexture(storage: Storage) {
 		const gl = this.gl;
 
-		return this.setupTexture(this.renderDepth, 0, gl.DEPTH_ATTACHMENT, TextureFormat.Depth16);
+		return this.setupTexture(this.depthAttachment, gl.DEPTH_ATTACHMENT, storage, 0);
 	}
 
 	private static clearRenderbufferAttachments(gl: WebGLRenderingContext, attachment: Attachment) {
@@ -700,7 +695,7 @@ class Target {
 		return framebuffer;
 	}
 
-	private setupRenderbuffer(attachment: Attachment, target: number, format: RenderbufferFormat, samples: number) {
+	private setupRenderbuffer(attachment: Attachment, target: number, storage: Storage, samples: number) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
 
@@ -709,7 +704,7 @@ class Target {
 		Target.clearTextureAttachments(gl, attachment);
 
 		// Create and register renderbuffer attachment
-		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, format, samples);
+		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, storage, samples);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferRenderbuffer(gl.FRAMEBUFFER, target, gl.RENDERBUFFER, renderbuffer)
@@ -723,7 +718,7 @@ class Target {
 		return renderbuffer;
 	}
 
-	private setupTexture(attachment: Attachment, layer: number, target: number, format: TextureFormat) {
+	private setupTexture(attachment: Attachment, target: number, storage: Storage, layer: number) {
 		const framebuffer = this.setupFramebuffer();
 		const gl = this.gl;
 
@@ -738,7 +733,7 @@ class Target {
 		}
 
 		// Create and register texture attachment
-		const texture = createTexture(gl, this.viewWidth, this.viewHeight, format, qualityBuffer);
+		const texture = createTexture(gl, this.viewWidth, this.viewHeight, storage, qualityBuffer);
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 		gl.framebufferTexture2D(gl.FRAMEBUFFER, target + layer, gl.TEXTURE_2D, texture, 0);
@@ -756,4 +751,4 @@ class Target {
 	}
 }
 
-export { Geometry, Mesh, Model, Shader, Subject, Target, loadModel }
+export { Geometry, Mesh, Model, Shader, Storage, Subject, Target, loadModel }

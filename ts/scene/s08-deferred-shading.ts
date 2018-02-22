@@ -100,9 +100,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const geometry = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 	const screen = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 
-	const albedoAndShininess = geometry.setupColorTexture(0);
-	const depth = geometry.setupDepthTexture();
-	const normalAndReflection = geometry.setupColorTexture(1);
+	const albedoAndShininess = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
+	const depth = geometry.setupDepthTexture(webgl.Storage.Depth16);
+	const normalAndReflection = geometry.setupColorTexture(webgl.Storage.RGBA8, 1);
 
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(

@@ -174,7 +174,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			light: lightShader,
 			shadow: shadowShader
 		},
-		shadowMap: buffer.setupDepthTexture(),
+		shadowMap: buffer.setupDepthTexture(webgl.Storage.Depth16),
 		shadowProjectionMatrix: matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20),
 		targets: {
 			buffer: buffer,
