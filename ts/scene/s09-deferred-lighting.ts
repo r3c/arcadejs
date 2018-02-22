@@ -44,10 +44,16 @@ interface GeometryCallState {
 }
 
 interface LightCallState {
-	albedoAndShininess: WebGLTexture,
-	depth: WebGLTexture,
+	depthBuffer: WebGLTexture,
 	light: Light,
-	normalAndReflection: WebGLTexture,
+	normalAndSpecularBuffer: WebGLTexture,
+	projectionMatrix: matrix.Matrix4,
+	tweak: application.Tweak<Configuration>,
+	viewMatrix: matrix.Matrix4
+}
+
+interface MaterialCallState {
+	lightBuffer: WebGLTexture,
 	projectionMatrix: matrix.Matrix4,
 	tweak: application.Tweak<Configuration>,
 	viewMatrix: matrix.Matrix4
@@ -55,9 +61,9 @@ interface LightCallState {
 
 interface SceneState {
 	buffers: {
-		albedoAndShininess: WebGLTexture,
 		depth: WebGLTexture,
-		normalAndReflection: WebGLTexture
+		light: WebGLTexture,
+		normalAndSpecular: WebGLTexture
 	},
 	camera: view.Camera,
 	gl: WebGLRenderingContext,
@@ -75,10 +81,12 @@ interface SceneState {
 	shaders: {
 		debug: webgl.Shader<DebugCallState>,
 		geometry: webgl.Shader<GeometryCallState>,
-		light: webgl.Shader<LightCallState>
+		light: webgl.Shader<LightCallState>,
+		material: webgl.Shader<MaterialCallState>
 	},
 	targets: {
 		geometry: webgl.Target,
+		light: webgl.Target,
 		screen: webgl.Target
 	},
 	tweak: application.Tweak<Configuration>
@@ -89,7 +97,7 @@ const configuration = {
 	animate: true,
 	applyDiffuse: true,
 	applySpecular: true,
-	debugMode: [".None", "Albedo", "Depth", "Normal", "Shininess", "Reflection"]
+	debugMode: [".None", "Depth", "Normal", "Shininess", "Reflection", "Diffuse light", "Specular light"]
 };
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
@@ -98,11 +106,12 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	// Setup render targets
 	const geometry = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
+	const light = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 	const screen = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 
-	const albedoAndShininessBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
 	const depthBuffer = geometry.setupDepthTexture(webgl.Storage.Depth16);
-	const normalAndReflectionBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 1);
+	const lightBuffer = light.setupColorTexture(webgl.Storage.RGBA8, 0);
+	const normalAndSpecularBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
 
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(
@@ -124,8 +133,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const geometryShader = new webgl.Shader<GeometryCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/deferred-shading-geometry-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/deferred-shading-geometry-fragment.glsl")
+		await io.readURL(io.StringFormat, "./res/shader/deferred-lighting-geometry-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/deferred-lighting-geometry-fragment.glsl")
 	);
 
 	geometryShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
@@ -141,8 +150,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	geometryShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	geometryShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	geometryShader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-	geometryShader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
 	geometryShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
 	geometryShader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
 	geometryShader.bindPerMaterialTexture("reflectionMap", state => state.material.reflectionMap);
@@ -150,8 +157,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const lightShader = new webgl.Shader<LightCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/deferred-shading-light-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/deferred-shading-light-fragment.glsl")
+		await io.readURL(io.StringFormat, "./res/shader/deferred-lighting-light-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/deferred-lighting-light-fragment.glsl")
 	);
 
 	lightShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
@@ -166,9 +173,30 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerCallProperty("lightColor", gl => gl.uniform3fv, state => [state.light.color.x, state.light.color.y, state.light.color.z]);
 	lightShader.bindPerCallProperty("lightPosition", gl => gl.uniform3fv, state => [state.light.position.x, state.light.position.y, state.light.position.z]);
 	lightShader.bindPerCallProperty("lightRadius", gl => gl.uniform1f, state => state.light.radius);
-	lightShader.bindPerCallTexture("albedoAndShininess", state => state.albedoAndShininess);
-	lightShader.bindPerCallTexture("depth", state => state.depth);
-	lightShader.bindPerCallTexture("normalAndReflection", state => state.normalAndReflection);
+	lightShader.bindPerCallTexture("depth", state => state.depthBuffer);
+	lightShader.bindPerCallTexture("normalAndSpecular", state => state.normalAndSpecularBuffer);
+
+	const materialShader = new webgl.Shader<MaterialCallState>(
+		gl,
+		await io.readURL(io.StringFormat, "./res/shader/deferred-lighting-material-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./res/shader/deferred-lighting-material-fragment.glsl")
+	);
+
+	materialShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	materialShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+
+	materialShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	materialShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	materialShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	materialShader.bindPerCallTexture("light", state => state.lightBuffer);
+
+	//materialShader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
+	//materialShader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
+	materialShader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
+	materialShader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
+	materialShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
+	materialShader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
+	materialShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
 
 	// Load models
 	const lightRadius = 6;
@@ -182,9 +210,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Create state
 	return {
 		buffers: {
-			albedoAndShininess: albedoAndShininessBuffer,
 			depth: depthBuffer,
-			normalAndReflection: normalAndReflectionBuffer
+			light: lightBuffer,
+			normalAndSpecular: normalAndSpecularBuffer
 		},
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
 		gl: gl,
@@ -208,10 +236,12 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		shaders: {
 			debug: debugShader,
 			geometry: geometryShader,
-			light: lightShader
+			light: lightShader,
+			material: materialShader
 		},
 		targets: {
 			geometry: geometry,
+			light: light,
 			screen: screen
 		},
 		tweak: tweak
@@ -234,7 +264,7 @@ const render = (state: SceneState) => {
 	// Pick active lights
 	const lights = state.lights.slice(0, [5, 10, 25, 100][state.tweak.nbLights] || 0);
 
-	// Draw scene geometries
+	// Draw geometries
 	const lightSubjects = lights.map(light => ({
 		matrix: matrix.Matrix4.createIdentity().translate(light.position),
 		model: models.light
@@ -258,16 +288,14 @@ const render = (state: SceneState) => {
 	gl.enable(gl.DEPTH_TEST);
 	gl.depthMask(true);
 
-	const callState = {
+	targets.geometry.clear();
+	targets.geometry.draw(shaders.geometry, [cubeSubject, groundSubject].concat(lightSubjects), {
 		projectionMatrix: state.projectionMatrix,
 		tweak: state.tweak,
 		viewMatrix: cameraView
-	};
+	});
 
-	targets.geometry.clear();
-	targets.geometry.draw(shaders.geometry, [cubeSubject, groundSubject].concat(lightSubjects), callState);
-
-	// Draw scene lights
+	// Draw lights
 	gl.cullFace(gl.FRONT);
 
 	gl.disable(gl.DEPTH_TEST);
@@ -276,7 +304,7 @@ const render = (state: SceneState) => {
 	gl.enable(gl.BLEND);
 	gl.blendFunc(gl.ONE, gl.ONE);
 
-	targets.screen.clear();
+	targets.light.clear();
 
 	for (const light of lights) {
 		const subject = {
@@ -286,16 +314,32 @@ const render = (state: SceneState) => {
 			model: models.sphere
 		};
 
-		targets.screen.draw(shaders.light, [subject], {
-			albedoAndShininess: state.buffers.albedoAndShininess,
-			depth: state.buffers.depth,
+		targets.light.draw(shaders.light, [subject], {
+			depthBuffer: state.buffers.depth,
 			light: light,
-			normalAndReflection: state.buffers.normalAndReflection,
+			normalAndSpecularBuffer: state.buffers.normalAndSpecular,
 			projectionMatrix: state.projectionMatrix,
 			tweak: state.tweak,
 			viewMatrix: cameraView
 		});
 	}
+
+	// Draw materials
+	gl.enable(gl.CULL_FACE);
+	gl.cullFace(gl.BACK);
+
+	gl.disable(gl.BLEND);
+
+	gl.enable(gl.DEPTH_TEST);
+	gl.depthMask(true);
+
+	targets.screen.clear();
+	targets.screen.draw(shaders.material, [cubeSubject, groundSubject].concat(lightSubjects), {
+		lightBuffer: state.buffers.light,
+		projectionMatrix: state.projectionMatrix,
+		tweak: state.tweak,
+		viewMatrix: cameraView
+	});
 
 	// Draw debug
 	if (state.tweak.debugMode !== 0) {
@@ -310,15 +354,17 @@ const render = (state: SceneState) => {
 		gl.disable(gl.DEPTH_TEST);
 
 		targets.screen.draw(shaders.debug, [debugSubject], {
-			format: [0, 0, 1, 0, 0][state.tweak.debugMode - 1],
-			scope: [1, 6, 3, 9, 9][state.tweak.debugMode - 1],
+			format: [0, 1, 0, 0, 0, 0][state.tweak.debugMode - 1],
+			scope: [6, 3, 8, 9, 1, 6][state.tweak.debugMode - 1],
 			projectionMatrix: state.projectionMatrix,
 			texture: [
-				state.buffers.albedoAndShininess,
 				state.buffers.depth,
-				state.buffers.normalAndReflection,
-				state.buffers.albedoAndShininess,
-				state.buffers.normalAndReflection][state.tweak.debugMode - 1],
+				state.buffers.normalAndSpecular,
+				state.buffers.normalAndSpecular,
+				state.buffers.normalAndSpecular,
+				state.buffers.light,
+				state.buffers.light
+			][state.tweak.debugMode - 1],
 			viewMatrix: matrix.Matrix4.createIdentity()
 		});
 	}

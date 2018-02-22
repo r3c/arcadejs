@@ -11,7 +11,6 @@ uniform sampler2D normalMap;
 uniform sampler2D reflectionMap;
 uniform float shininess;
 
-uniform int pass;
 uniform bool useHeightMap;
 uniform bool useNormalMap;
 
@@ -24,6 +23,16 @@ in vec3 tangent;
 layout(location=0) out vec4 albedoAndShininess;
 layout(location=1) out vec4 normalAndReflection;
 
+float encodeInteger(in float decoded) {
+	return decoded / 256.0;
+}
+
+vec2 encodeNormal(in vec3 decoded) {
+	// Spheremap transform
+	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
+	return normalize(decoded.xy) * sqrt(-decoded.z * 0.5 + 0.5) * 0.5 + 0.5;
+}
+
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionFace, float parallaxScale, float parallaxBias) {
 	if (useHeightMap) {
 		float parallaxHeight = texture(heightMap, initialCoord).r;
@@ -35,7 +44,7 @@ vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionFace, float parallaxScal
 	}
 }
 
-vec2 getNormal(in vec3 normal, in vec2 coord) {
+vec3 getNormal(in vec3 normal, in vec2 coord) {
 	vec3 normalFace;
 
 	if (useNormalMap)
@@ -43,11 +52,7 @@ vec2 getNormal(in vec3 normal, in vec2 coord) {
 	else
 		normalFace = vec3(0.0, 0.0, 1.0);
 
-	vec3 modifiedNormal = normalize(normalFace.x * tangent + normalFace.y * bitangent + normalFace.z * normal);
-
-	// Spheremap transform
-	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-	return normalize(modifiedNormal.xy) * sqrt(-modifiedNormal.z * 0.5 + 0.5) * 0.5 + 0.5;
+	return normalize(normalFace.x * tangent + normalFace.y * bitangent + normalFace.z * normal);
 }
 
 void main(void) {
@@ -55,14 +60,14 @@ void main(void) {
 	vec3 eyeDirectionFace = vec3(dot(eyeDirection, tangent), dot(eyeDirection, bitangent), dot(eyeDirection, normal));
 	vec2 parallaxCoord = getCoord(coord, eyeDirectionFace, 0.04, 0.02);
 
-	// Pass 1: pack ambient color and material shininess
+	// Color target 1: [ambient, ambient, ambient, shininess]
 	vec3 albedo = ambientColor.rgb * texture(ambientMap, parallaxCoord).rgb;
-	float shininessPack = 1.0 / (shininess + 1.0);
+	float shininessPack = encodeInteger(shininess);
 
 	albedoAndShininess = vec4(albedo, shininessPack);
 
-	// Pass 2: pack normal and material reflection
-	vec2 normalPack = getNormal(normal, parallaxCoord);
+	// Color target 2: [normal, normal, zero, reflection]
+	vec2 normalPack = encodeNormal(getNormal(normal, parallaxCoord));
 	float reflection = texture(reflectionMap, parallaxCoord).r;
 	float unused = 0.0;
 

@@ -8,6 +8,7 @@ import * as s05 from "./scene/s05-webgl-rendering";
 import * as s06 from "./scene/s06-forward-lightning";
 import * as s07 from "./scene/s07-directional-shadow";
 import * as s08 from "./scene/s08-deferred-shading";
+import * as s09 from "./scene/s09-deferred-lighting";
 
 application.initialize([
 	application.declare("s00: blank", s00.scenario),
@@ -18,5 +19,6 @@ application.initialize([
 	application.declare("s05: webgl rendering", s05.scenario),
 	application.declare("s06: forward lightning", s06.scenario),
 	application.declare("s07: directional shadow", s07.scenario),
-	application.declare("s08: deferred shading", s08.scenario)
+	application.declare("s08: deferred shading", s08.scenario),
+	application.declare("s09. deferred lighting", s09.scenario)
 ]);

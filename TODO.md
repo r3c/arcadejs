@@ -4,9 +4,8 @@ Arcade.js TODO file
 TODO
 ----
 
+- Fix lighting saturation in deferred lighting
 - Implement point light shadow maps
-- Implement deferred shading
-- Implement deferred lighing
 - Implement ambient occlusion
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
 
@@ -32,3 +31,5 @@ DONE
 - Reject unknown material names when loading model
 - Merge Target implementations in a single class with "setColorTexture" / "setDepthTexture" methods
 - Fix vertices rotation when loading model
+- Implement deferred shading
+- Implement deferred lighing

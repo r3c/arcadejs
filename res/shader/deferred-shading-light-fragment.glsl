@@ -13,8 +13,7 @@ uniform sampler2D normalAndReflection;
 uniform bool applyDiffuse;
 uniform bool applySpecular;
 
-uniform vec3 lightColorDiffuse;
-uniform vec3 lightColorSpecular;
+uniform vec3 lightColor;
 uniform vec3 lightPosition;
 uniform float lightRadius;
 
@@ -22,16 +21,30 @@ in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in vec3 albedo, in float reflection, in float shininess, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection) {
+float decodeInteger(in float encoded) {
+	return encoded * 256.0;
+}
+
+vec3 decodeNormal(in vec2 normalPack) {
+	// Spheremap transform
+	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
+	vec2 fenc = normalPack * 4.0 - 2.0;
+	float f = dot(fenc, fenc);
+	float g = sqrt(1.0 - f * 0.25);
+
+	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
+}
+
+vec3 getLight(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float reflection, in float shininess) {
 	float lightAngle = dot(normal, lightDirection);
-	vec3 lightColor = vec3(0, 0, 0);
+	vec3 lightOutput = vec3(0, 0, 0);
 
 	if (lightAngle > 0.0) {
 		// Apply diffuse lightning
 		if (applyDiffuse) {
 			float lightPowerDiffuse = lightAngle;
 
-			lightColor += albedo * lightColorDiffuse * lightPowerDiffuse;
+			lightOutput += lightColor * lightPowerDiffuse;
 		}
 
 		// Apply specular lightning
@@ -53,21 +66,11 @@ vec3 getLight(in vec3 albedo, in float reflection, in float shininess, in vec3 n
 
 			float lightPowerSpecular = pow(lightSpecularCosine, shininess) * reflection;
 
-			lightColor += albedo * lightColorSpecular * lightPowerSpecular;
+			lightOutput += lightColor * lightPowerSpecular;
 		}
 	}
 
-	return lightColor;
-}
-
-vec3 getNormal(in vec2 normalPack) {
-	// Spheremap transform
-	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-	vec2 fenc = normalPack * 4.0 - 2.0;
-	float f = dot(fenc, fenc);
-	float g = sqrt(1.0 - f * 0.25);
-
-	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
+	return lightOutput;
 }
 
 vec3 getPoint(in vec2 coord) {
@@ -87,9 +90,9 @@ void main(void) {
 
 	// Decode geometry and material properties from samples
 	vec3 albedo = albedoAndShininessSample.rgb;
-	vec3 normal = getNormal(normalAndReflectionSample.rg);
+	vec3 normal = decodeNormal(normalAndReflectionSample.rg);
 	float reflection = normalAndReflectionSample.a;
-	float shininess = 1.0 / albedoAndShininessSample.a - 1.0;
+	float shininess = decodeInteger(albedoAndShininessSample.a);
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(coord);
@@ -101,7 +104,7 @@ void main(void) {
 	float lightDistance = length(lightPositionCamera - point);
 	float lightPower = max(1.0 - lightDistance / lightRadius, 0.0);
 
-	vec3 color = getLight(albedo, reflection, shininess, normal, eyeDirection, lightDirection) * lightPower;
+	vec3 light = getLight(normal, lightDirection, eyeDirection, reflection, shininess) * lightPower;
 
-	fragColor = vec4(color, 1.0);
+	fragColor = vec4(albedo * light, 1.0);
 }
