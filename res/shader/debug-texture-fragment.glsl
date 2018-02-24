@@ -5,7 +5,7 @@ precision highp float;
 #endif
 
 uniform int format;
-uniform int scope;
+uniform int select;
 
 uniform sampler2D source;
 
@@ -24,68 +24,46 @@ vec3 decodeNormalSpheremap(in vec2 normalPack) {
 }
 
 void main(void) {
+	vec4 encoded;
 	vec4 raw = texture(source, coord);
 
-	// Read 1 byte, 4 possible configurations
-	if (scope >= 6) {
-		float value1;
-
-		if (scope == 6) {
-			value1 = raw.r;
-		}
-		else if (scope == 7) {
-			value1 = raw.g;
-		}
-		else if (scope == 8) {
-			value1 = raw.b;
-		}
-		else {
-			value1 = raw.a;
-		}
-
-		if (format == 0) {
-			fragColor = vec4(value1, value1, value1, 1.0);
-		}
-	}
-
-	// Read 2 bytes, 3 possible configurations
-	else if (scope >= 3) {
-		vec2 value2;
-
-		if (scope == 3) {
-			value2 = raw.rg;
-		}
-		else if (scope == 4) {
-			value2 = raw.gb;
-		}
-		else {
-			value2 = raw.ba;
-		}
-
-		if (format == 0) {
-			fragColor = vec4(value2, 0.0, 1.0);
-		}
-		else if (format == 1) {
-			fragColor = vec4(decodeNormalSpheremap(value2), 1.0);
-		}
-	}
+	// Read 4 bytes, 1 possible configuration
+	if (select == 0)
+		encoded = raw;
 
 	// Read 3 bytes, 2 possible configurations
-	else if (scope >= 1) {
-		vec3 value3;
+	else if (select == 1)
+		encoded = vec4(raw.rgb, 1.0);
+	else if (select == 2)
+		encoded = vec4(raw.gba, 1.0);
 
-		if (scope == 1) {
-			value3 = raw.rgb;
-		}
-		else {
-			value3 = raw.gba;
-		}
+	// Read 2 bytes, 3 possible configurations
+	else if (select == 3)
+		encoded = vec4(raw.rg, raw.rg);
+	else if (select == 4)
+		encoded = vec4(raw.gb, raw.gb);
+	else if (select == 5)
+		encoded = vec4(raw.ba, raw.ba);
 
-		fragColor = vec4(value3, 1.0);
-	}
+	// Read 1 byte, 4 possible configurations
+	else if (select == 6)
+		encoded = vec4(raw.r);
+	else if (select == 7)
+		encoded = vec4(raw.g);
+	else if (select == 8)
+		encoded = vec4(raw.b);
+	else if (select == 9)
+		encoded = vec4(raw.a);
 
-	// Read 4 bytes, 1 possible configuration
-	else {
-		fragColor = raw;
-	}
+	// Format output
+	if (format == 0)
+		fragColor = encoded;
+	else if (format == 1)
+		fragColor = vec4(encoded.rgb, 1.0);
+	else if (format == 2)
+		fragColor = vec4(encoded.rrr, 1.0);
+	else if (format == 3)
+		fragColor = vec4(decodeNormalSpheremap(encoded.rg), 1.0);
+	else if (format == 4)
+		fragColor = vec4(-log2(encoded.rgb), 1.0);
 }

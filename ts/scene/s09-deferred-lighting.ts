@@ -32,7 +32,7 @@ interface Light {
 interface DebugCallState {
 	format: number,
 	projectionMatrix: matrix.Matrix4,
-	scope: number,
+	select: number,
 	texture: WebGLTexture,
 	viewMatrix: matrix.Matrix4
 }
@@ -126,7 +126,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
 	debugShader.bindPerCallProperty("format", gl => gl.uniform1i, state => state.format);
-	debugShader.bindPerCallProperty("scope", gl => gl.uniform1i, state => state.scope);
+	debugShader.bindPerCallProperty("select", gl => gl.uniform1i, state => state.select);
 	debugShader.bindPerCallTexture("source", state => state.texture);
 
 	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
@@ -356,9 +356,9 @@ const render = (state: SceneState) => {
 		gl.disable(gl.DEPTH_TEST);
 
 		targets.screen.draw(shaders.debug, [debugSubject], {
-			format: [0, 1, 0, 0, 0, 0][state.tweak.debugMode - 1],
-			scope: [6, 3, 8, 9, 1, 6][state.tweak.debugMode - 1],
+			format: [2, 3, 2, 2, 4, 4][state.tweak.debugMode - 1],
 			projectionMatrix: state.projectionMatrix,
+			select: [6, 3, 8, 9, 1, 9][state.tweak.debugMode - 1],
 			texture: [
 				state.buffers.depth,
 				state.buffers.normalAndSpecular,
