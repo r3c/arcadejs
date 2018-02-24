@@ -1,7 +1,7 @@
-Arcade.js TODO file
-===================
+Arcade.js TODO
+==============
 
-TODO
+ToDo
 ----
 
 - Fix lighting saturation in deferred lighting
@@ -9,14 +9,14 @@ TODO
 - Implement ambient occlusion
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
 
-OPEN
+Open
 ----
 
 - Stencil buffer + full sphere instead of front face culling for deferred rendering?
   - http://ogldev.atspace.co.uk/www/tutorial37/tutorial37.html
   - https://learnopengl.com/Advanced-Lighting/Deferred-Shading
 
-DONE
+Done
 ----
 
 - Yield + errors in OBJ loader
