@@ -5,6 +5,7 @@ precision highp float;
 #endif
 
 uniform mat4 inverseProjectionMatrix;
+uniform vec2 viewportSize;
 
 uniform sampler2D depth;
 uniform sampler2D normalAndSpecular;
@@ -71,19 +72,19 @@ float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirect
 	return 0.0;
 }
 
-vec3 getPoint(in vec2 coord) {
-	float depthClip = texture(depth, coord).r;
-	vec4 pointClip = vec4(coord, depthClip, 1.0) * 2.0 - 1.0;
+vec3 getPoint(in float depthClip) {
+	vec4 pointClip = vec4(gl_FragCoord.xy / viewportSize, depthClip, 1.0) * 2.0 - 1.0;
 	vec4 pointCamera = inverseProjectionMatrix * pointClip;
 
 	return pointCamera.xyz / pointCamera.w;
 }
 
 void main(void) {
-	vec2 coord = vec2(gl_FragCoord.x / 800.0, gl_FragCoord.y / 600.0); // FIXME: hard-coded
+	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
 	// Read samples from texture buffers
-	vec4 normalAndSpecularSample = texture(normalAndSpecular, coord);
+	vec4 normalAndSpecularSample = texelFetch(normalAndSpecular, bufferCoord, 0);
+	vec4 depthSample = texelFetch(depth, bufferCoord, 0);
 
 	// Decode geometry and material properties from samples
 	vec3 normal = decodeNormal(normalAndSpecularSample.rg);
@@ -91,7 +92,7 @@ void main(void) {
 	float shininess = decodeInteger(normalAndSpecularSample.b);
 
 	// Compute point in camera space from fragment coord and depth buffer
-	vec3 point = getPoint(coord);
+	vec3 point = getPoint(depthSample.r);
 
 	// Compute lightning power
 	vec3 eyeDirection = normalize(-point);

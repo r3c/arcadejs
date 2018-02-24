@@ -49,7 +49,8 @@ interface LightCallState {
 	normalAndSpecularBuffer: WebGLTexture,
 	projectionMatrix: matrix.Matrix4,
 	tweak: application.Tweak<Configuration>,
-	viewMatrix: matrix.Matrix4
+	viewMatrix: matrix.Matrix4,
+	viewportSize: vector.Vector2
 }
 
 interface MaterialCallState {
@@ -78,6 +79,7 @@ interface SceneState {
 	},
 	move: number,
 	projectionMatrix: matrix.Matrix4,
+	screen: display.Screen,
 	shaders: {
 		debug: webgl.Shader<DebugCallState>,
 		geometry: webgl.Shader<GeometryCallState>,
@@ -175,6 +177,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerCallProperty("lightColor", gl => gl.uniform3fv, state => [state.light.color.x, state.light.color.y, state.light.color.z]);
 	lightShader.bindPerCallProperty("lightPosition", gl => gl.uniform3fv, state => [state.light.position.x, state.light.position.y, state.light.position.z]);
 	lightShader.bindPerCallProperty("lightRadius", gl => gl.uniform1f, state => state.light.radius);
+	lightShader.bindPerCallProperty("viewportSize", gl => gl.uniform2fv, state => [state.viewportSize.x, state.viewportSize.y]);
 	lightShader.bindPerCallTexture("depth", state => state.depthBuffer);
 	lightShader.bindPerCallTexture("normalAndSpecular", state => state.normalAndSpecularBuffer);
 
@@ -192,8 +195,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	materialShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 	materialShader.bindPerCallTexture("light", state => state.lightBuffer);
 
-	//materialShader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-	//materialShader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
 	materialShader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
 	materialShader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
 	materialShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
@@ -201,8 +202,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	materialShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
 
 	// Load models
-	const lightRadius = 6;
-
 	const cubeModel = await model.fromJSON("./res/model/cube.json");
 	const debugModel = await model.fromJSON("./res/model/debug.json");
 	const groundModel = await model.fromJSON("./res/model/ground.json");
@@ -223,7 +222,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			return {
 				color: color.createBright(i),
 				position: { x: 0, y: 0, z: 0 },
-				radius: lightRadius
+				radius: 4
 			};
 		}),
 		models: {
@@ -235,6 +234,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		},
 		move: 0,
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		screen: runtime.screen,
 		shaders: {
 			debug: debugShader,
 			geometry: geometryShader,
@@ -251,11 +251,13 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 };
 
 const render = (state: SceneState) => {
+	const buffers = state.buffers;
 	const camera = state.camera;
 	const gl = state.gl;
 	const models = state.models;
 	const shaders = state.shaders;
 	const targets = state.targets;
+	const tweak = state.tweak;
 
 	const cameraView = matrix.Matrix4
 		.createIdentity()
@@ -264,7 +266,7 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Pick active lights
-	const lights = state.lights.slice(0, [5, 10, 25, 100][state.tweak.nbLights] || 0);
+	const lights = state.lights.slice(0, [5, 10, 25, 100][tweak.nbLights] || 0);
 
 	// Draw geometries
 	const lightSubjects = lights.map(light => ({
@@ -293,7 +295,7 @@ const render = (state: SceneState) => {
 	targets.geometry.clear();
 	targets.geometry.draw(shaders.geometry, [cubeSubject, groundSubject].concat(lightSubjects), {
 		projectionMatrix: state.projectionMatrix,
-		tweak: state.tweak,
+		tweak: tweak,
 		viewMatrix: cameraView
 	});
 
@@ -317,12 +319,13 @@ const render = (state: SceneState) => {
 		};
 
 		targets.light.draw(shaders.light, [subject], {
-			depthBuffer: state.buffers.depth,
+			depthBuffer: buffers.depth,
 			light: light,
-			normalAndSpecularBuffer: state.buffers.normalAndSpecular,
+			normalAndSpecularBuffer: buffers.normalAndSpecular,
 			projectionMatrix: state.projectionMatrix,
-			tweak: state.tweak,
-			viewMatrix: cameraView
+			tweak: tweak,
+			viewMatrix: cameraView,
+			viewportSize: { x: state.screen.getWidth(), y: state.screen.getHeight() }
 		});
 	}
 
@@ -339,7 +342,7 @@ const render = (state: SceneState) => {
 	targets.screen.draw(shaders.material, [cubeSubject, groundSubject].concat(lightSubjects), {
 		lightBuffer: state.buffers.light,
 		projectionMatrix: state.projectionMatrix,
-		tweak: state.tweak,
+		tweak: tweak,
 		viewMatrix: cameraView
 	});
 
@@ -356,17 +359,17 @@ const render = (state: SceneState) => {
 		gl.disable(gl.DEPTH_TEST);
 
 		targets.screen.draw(shaders.debug, [debugSubject], {
-			format: [2, 3, 2, 2, 4, 4][state.tweak.debugMode - 1],
+			format: [2, 3, 2, 2, 4, 4][tweak.debugMode - 1],
 			projectionMatrix: state.projectionMatrix,
-			select: [6, 3, 8, 9, 1, 9][state.tweak.debugMode - 1],
+			select: [6, 3, 8, 9, 1, 9][tweak.debugMode - 1],
 			texture: [
-				state.buffers.depth,
-				state.buffers.normalAndSpecular,
-				state.buffers.normalAndSpecular,
-				state.buffers.normalAndSpecular,
-				state.buffers.light,
-				state.buffers.light
-			][state.tweak.debugMode - 1],
+				buffers.depth,
+				buffers.normalAndSpecular,
+				buffers.normalAndSpecular,
+				buffers.normalAndSpecular,
+				buffers.light,
+				buffers.light
+			][tweak.debugMode - 1],
 			viewMatrix: matrix.Matrix4.createIdentity()
 		});
 	}
