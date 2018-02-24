@@ -170,7 +170,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 
 		case Storage.RGBA8:
 			glFormat = gl.RGBA;
-			glInternal = gl.RGBA;
+			glInternal = (<any>gl).RGBA8; // FIXME: incomplete @type for WebGL2
 			glType = gl.UNSIGNED_BYTE;
 
 			break;
@@ -510,7 +510,7 @@ class Target {
 	public clear() {
 		const gl = this.gl;
 
-		// FIXME: this introduces an implicit shared state between "clear" and "draw" calls
+		// FIXME: binding framebuffer here (and only here) introduces an implicit shared state between "clear" and "draw" calls
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 

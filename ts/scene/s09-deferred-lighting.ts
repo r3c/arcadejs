@@ -109,6 +109,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const light = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 	const screen = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
 
+	light.setClearColor(1, 1, 1, 1);
+
 	const depthBuffer = geometry.setupDepthTexture(webgl.Storage.Depth16);
 	const lightBuffer = light.setupColorTexture(webgl.Storage.RGBA8, 0);
 	const normalAndSpecularBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
@@ -302,7 +304,7 @@ const render = (state: SceneState) => {
 	gl.depthMask(false);
 
 	gl.enable(gl.BLEND);
-	gl.blendFunc(gl.ONE, gl.ONE);
+	gl.blendFunc(gl.DST_COLOR, gl.ZERO);
 
 	targets.light.clear();
 

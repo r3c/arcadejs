@@ -38,7 +38,7 @@ vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirection, float parallaxScale, f
 void main(void) {
 	// Read light properties from texture buffers
 	vec2 bufferCoord = vec2(gl_FragCoord.x / 800.0, gl_FragCoord.y / 600.0); // FIXME: hard-coded
-	vec4 lightSample = texture(light, bufferCoord);
+	vec4 lightSample = -log2(texture(light, bufferCoord));
 
 	vec3 lightDiffuse = lightSample.rgb;
 	vec3 lightSpecular = lightSample.rgb * lightSample.a;

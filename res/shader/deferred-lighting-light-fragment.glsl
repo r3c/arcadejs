@@ -101,8 +101,8 @@ void main(void) {
 	float lightPower = max(1.0 - lightDistance / lightRadius, 0.0);
 
 	// Emit lighting parameters
-	fragColor = vec4(
+	fragColor = exp2(-vec4(
 		getLightDiffuse(normal, lightDirection) * lightPower,
 		getLightSpecular(normal, lightDirection, eyeDirection, reflection, shininess) * lightPower
-	);
+	));
 }
