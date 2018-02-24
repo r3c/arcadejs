@@ -488,8 +488,6 @@ class Target {
 	private depthClear: number;
 	private framebuffer: WebGLFramebuffer | null;
 
-	private buffers: number[];
-
 	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
 		this.colorClear = colorBlack;
 		this.depthClear = 1;
