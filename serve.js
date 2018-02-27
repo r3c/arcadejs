@@ -1,14 +1,8 @@
-const express = require("express")
-const path = require("path")
-const port = process.env.PORT || 3000
-const app = express()
+const express = require("express");
+const port = process.env.PORT || 8080;
+const app = express();
 
-app.use(express.static(__dirname + '/www'))
-
-app.get('*', function (request, response) {
-	response.sendFile(path.resolve(__dirname, 'www', 'index.html'));
-});
-
+app.use(express.static(__dirname + '/www'));
 app.listen(port);
 
-console.log("server started on port " + port);
+console.log("server started, open http://localhost:" + port + "/ in your browser.");
