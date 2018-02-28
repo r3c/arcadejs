@@ -152,8 +152,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const lightShader = new webgl.Shader<LightCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./glsl/deferred-shading-light-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./glsl/deferred-shading-light-fragment.glsl")
+		await io.readURL(io.StringFormat, "./glsl/deferred-shading-phong-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./glsl/deferred-shading-phong-fragment.glsl")
 	);
 
 	lightShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);

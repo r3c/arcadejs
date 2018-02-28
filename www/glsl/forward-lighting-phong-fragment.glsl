@@ -4,8 +4,7 @@
 precision highp float;
 #endif
 
-struct Light
-{
+struct Light {
 	bool enabled;
 	vec3 position;
 };
