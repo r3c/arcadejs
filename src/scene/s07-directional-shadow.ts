@@ -1,10 +1,10 @@
 import * as application from "../engine/application";
+import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
 import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
-import * as variant from "./shared/variant";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/render/webgl";
@@ -81,12 +81,7 @@ const configuration = {
 	showDebug: false
 };
 
-const getOptions = (tweak: application.Tweak<Configuration>): { [name: string]: boolean } => {
-	return {
-		"USE_HEIGHT_MAP": tweak.useHeightMap !== 0,
-		"USE_NORMAL_MAP": tweak.useNormalMap !== 0
-	};
-};
+const getOptions = (tweak: application.Tweak<Configuration>) => [tweak.useHeightMap !== 0, tweak.useNormalMap !== 0];
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
@@ -116,15 +111,18 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const vsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-vertex.glsl");
 	const fsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-fragment.glsl");
 
-	const lightShaders = variant.enumerate(getOptions(tweak)).map(flags => {
-		const shader = new webgl.Shader<LightCallState>(gl, vsShader, fsShader, flags);
+	const lightShaders = bitfield.enumerate(getOptions(tweak)).map(flags => {
+		const shader = new webgl.Shader<LightCallState>(gl, vsShader, fsShader, [
+			{ name: "USE_HEIGHT_MAP", value: flags[0] ? 1 : 0 },
+			{ name: "USE_NORMAL_MAP", value: flags[1] ? 1 : 0 }
+		]);
 
 		shader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
 		shader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
 		shader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 		shader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-		shader.bindPerCallProperty("lightDirection", gl => gl.uniform3fv, state => [state.direction.x, state.direction.y, state.direction.z]);
+		shader.bindPerCallProperty("lightDirection", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.direction));
 		shader.bindPerCallProperty("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
 		shader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
 		shader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
@@ -142,10 +140,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		shader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
 		shader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
 
-		if (flags.indexOf("USE_HEIGHT_MAP") !== -1)
+		if (flags[0])
 			shader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
 
-		if (flags.indexOf("USE_NORMAL_MAP") !== -1)
+		if (flags[1])
 			shader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
 
 		shader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
@@ -262,7 +260,7 @@ const render = (state: SceneState) => {
 	};
 
 	targets.screen.clear();
-	targets.screen.draw(shaders.lights[variant.index(getOptions(state.tweak))], [cube, ground], {
+	targets.screen.draw(shaders.lights[bitfield.index(getOptions(state.tweak))], [cube, ground], {
 		direction: { x: shadowView.getValue(2), y: shadowView.getValue(6), z: shadowView.getValue(10) },
 		projectionMatrix: state.screenProjectionMatrix,
 		shadowMap: state.shadowMap,

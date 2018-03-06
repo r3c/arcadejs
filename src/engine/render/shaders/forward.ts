@@ -1,0 +1,246 @@
+import * as matrix from "../../math/matrix";
+import * as vector from "../../math/vector";
+import * as webgl from "../webgl";
+
+const commonShader = `
+#define LIGHTING_MODE_AMBIENT 1
+#define LIGHTING_MODE_LAMBERT 2
+#define LIGHTING_MODE_PHONG 3
+
+struct PointLight {
+	vec3 diffuseColor;
+	vec3 position;
+	vec3 specularColor;
+};
+
+uniform PointLight pointLights[POINT_LIGHT_COUNT];`;
+
+const vertexShader = `
+uniform mat4 modelMatrix;
+uniform mat3 normalMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
+
+in vec2 coords;
+in vec3 normals;
+in vec3 points;
+in vec3 tangents;
+
+out vec2 coord; // Texture coordinate
+out vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
+out vec3 lightDirections[POINT_LIGHT_COUNT]; // Direction of lights in same space than eye vector
+out vec3 normal; // Normal at point in same space than eye vector
+
+vec3 toCameraPosition(in vec3 worldPosition) {
+	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
+}
+
+void main(void) {
+	vec4 point = viewMatrix * modelMatrix * vec4(points, 1.0);
+
+	vec3 pointCamera = point.xyz;
+	vec3 eyeDirectionCamera = normalize(-pointCamera);
+
+	coord = coords;
+
+	vec3 n = normalize(normalMatrix * normals);
+	vec3 t = normalize(normalMatrix * tangents);
+	vec3 b = cross(n, t);
+
+	#ifdef USE_NORMAL_MAP
+		vec3 light0DirectionCamera = normalize(toCameraPosition(pointLights[0].position) - pointCamera);
+		vec3 light1DirectionCamera = normalize(toCameraPosition(pointLights[1].position) - pointCamera);
+		vec3 light2DirectionCamera = normalize(toCameraPosition(pointLights[2].position) - pointCamera);
+
+		lightDirections[0] = vec3(dot(light0DirectionCamera, t), dot(light0DirectionCamera, b), dot(light0DirectionCamera, n));
+		lightDirections[1] = vec3(dot(light1DirectionCamera, t), dot(light1DirectionCamera, b), dot(light1DirectionCamera, n));
+		lightDirections[2] = vec3(dot(light2DirectionCamera, t), dot(light2DirectionCamera, b), dot(light2DirectionCamera, n));
+
+		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
+		normal = vec3(0.0, 0.0, 1.0);
+	#else
+		lightDirections[0] = toCameraPosition(pointLights[0].position) - pointCamera;
+		lightDirections[1] = toCameraPosition(pointLights[1].position) - pointCamera;
+		lightDirections[2] = toCameraPosition(pointLights[2].position) - pointCamera;
+
+		eye = eyeDirectionCamera;
+		normal = n;
+	#endif
+
+	gl_Position = projectionMatrix * point;
+}`;
+
+const fragmentShader = `
+uniform vec4 ambientColor;
+uniform sampler2D ambientMap;
+uniform vec4 diffuseColor;
+uniform sampler2D diffuseMap;
+uniform sampler2D heightMap;
+uniform sampler2D normalMap;
+uniform float shininess;
+uniform vec4 specularColor;
+uniform sampler2D specularMap;
+
+in vec2 coord;
+in vec3 eye;
+in vec3 lightDirections[POINT_LIGHT_COUNT];
+in vec3 normal;
+
+layout(location=0) out vec4 fragColor;
+
+vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirection, float parallaxScale, float parallaxBias) {
+	#ifdef USE_HEIGHT_MAP
+		float parallaxHeight = texture(heightMap, initialCoord).r;
+
+		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirection.xy / eyeDirection.z;
+	#else
+		return initialCoord;
+	#endif
+}
+
+vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in PointLight light) {
+	float lightAngle = dot(normal, lightDirection);
+	vec3 outputColor = vec3(0, 0, 0);
+
+	if (lightAngle > 0.0) {
+		if (LIGHTING_MODE >= LIGHTING_MODE_LAMBERT) {
+			vec3 diffuseMaterial = texture(diffuseMap, coord).rgb;
+			float diffusePower = lightAngle;
+
+			outputColor += diffuseColor.rgb * light.diffuseColor * diffuseMaterial * diffusePower;
+		}
+
+		if (LIGHTING_MODE >= LIGHTING_MODE_PHONG) {
+			float specularCosine;
+
+			if (true) {
+				// Blinn-Phong model
+				vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
+
+				specularCosine = max(dot(normal, cameraLightMidway), 0.0);
+			}
+			else {
+				// Phong model
+				vec3 specularReflection = normalize(normal * lightAngle * 2.0 - lightDirection);
+
+				specularCosine = max(dot(specularReflection, eyeDirection), 0.0);
+			}
+
+			vec3 specularMaterial = texture(specularMap, coord).rgb;
+			float specularPower = pow(specularCosine, shininess);
+
+			outputColor += specularColor.rgb * light.specularColor * specularMaterial * specularPower;
+		}
+	}
+
+	return outputColor;
+}
+
+vec3 getNormal(in vec3 initialNormal, in vec2 coord) {
+	#ifdef USE_NORMAL_MAP
+		// Initial normal is always (0, 0, 1) here and can be safely ignored, see vertex shader
+		return normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
+	#else
+		return normalize(initialNormal);
+	#endif
+}
+
+void main(void) {
+	vec3 eyeDirection = normalize(eye);
+	vec2 modifiedCoord = getCoord(coord, eyeDirection, 0.04, 0.02);
+	vec3 modifiedNormal = getNormal(normal, modifiedCoord);
+
+	vec3 outputColor = vec3(0, 0, 0);
+
+	if (LIGHTING_MODE >= LIGHTING_MODE_AMBIENT)
+		outputColor += vec3(0.3, 0.3, 0.3) * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
+
+	outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[0]), pointLights[0]);
+	outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[1]), pointLights[1]);
+	outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[2]), pointLights[2]);
+
+	fragColor = vec4(outputColor, 1.0);
+}`;
+
+interface Configuration {
+	lightingMode: LightingMode,
+	pointLightCount: number,
+	useHeightMap: boolean,
+	useNormalMap: boolean
+}
+
+enum LightingMode {
+	None,
+	Ambient,
+	Lambert,
+	Phong
+}
+
+interface PointLight {
+	diffuseColor: vector.Vector3,
+	position: vector.Vector3,
+	specularColor: vector.Vector3
+}
+
+interface State {
+	pointLights: PointLight[],
+	projectionMatrix: matrix.Matrix4,
+	viewMatrix: matrix.Matrix4
+}
+
+const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
+	const directives = [];
+
+	directives.push({ name: "LIGHTING_MODE", value: <number>configuration.lightingMode });
+	directives.push({ name: "POINT_LIGHT_COUNT", value: configuration.pointLightCount });
+
+	if (configuration.useHeightMap)
+		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
+
+	if (configuration.useNormalMap)
+		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
+
+	const shader = new webgl.Shader<State>(gl, commonShader + vertexShader, commonShader + fragmentShader, directives);
+
+	shader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	shader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
+	shader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	shader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
+
+	shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	shader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
+	shader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+
+	if (configuration.lightingMode >= LightingMode.Ambient) {
+		shader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
+		shader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
+	}
+
+	if (configuration.lightingMode >= LightingMode.Lambert) {
+		shader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
+		shader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
+	}
+
+	if (configuration.useHeightMap)
+		shader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
+
+	if (configuration.useNormalMap)
+		shader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
+
+	if (configuration.lightingMode >= LightingMode.Phong) {
+		shader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
+		shader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
+		shader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
+	}
+
+	for (let i = 0; i < configuration.pointLightCount; ++i) {
+		shader.bindPerCallProperty("pointLights[" + i + "].diffuseColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].diffuseColor));
+		shader.bindPerCallProperty("pointLights[" + i + "].position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].position));
+		shader.bindPerCallProperty("pointLights[" + i + "].specularColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].specularColor));
+	}
+
+	return shader;
+};
+
+export { Configuration, LightingMode, PointLight, State, load }

@@ -23,6 +23,10 @@ class Vector2 {
 			y: lhs.y - rhs.y
 		};
 	}
+
+	public static toArray(vector: Vector2) {
+		return [vector.x, vector.y];
+	}
 }
 
 class Vector3 {
@@ -75,6 +79,16 @@ class Vector3 {
 			y: lhs.y - rhs.y,
 			z: lhs.z - rhs.z
 		};
+	}
+
+	public static toArray(vector: Vector3) {
+		return [vector.x, vector.y, vector.z];
+	}
+}
+
+class Vector4 {
+	public static toArray(vector: Vector4) {
+		return [vector.x, vector.y, vector.z, vector.w];
 	}
 }
 

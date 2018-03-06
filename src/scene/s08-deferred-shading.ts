@@ -128,7 +128,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		gl,
 		await io.readURL(io.StringFormat, "./glsl/deferred-shading-geometry-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./glsl/deferred-shading-geometry-fragment.glsl"),
-		["USE_HEIGHT_MAP", "USE_NORMAL_MAP"]
+		[{ name: "USE_HEIGHT_MAP", value: 1 }, { name: "USE_NORMAL_MAP", value: 1 }]
 	);
 
 	geometryShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
@@ -163,10 +163,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 	lightShader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
 	lightShader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
-	lightShader.bindPerCallProperty("lightColor", gl => gl.uniform3fv, state => [state.light.color.x, state.light.color.y, state.light.color.z]);
-	lightShader.bindPerCallProperty("lightPosition", gl => gl.uniform3fv, state => [state.light.position.x, state.light.position.y, state.light.position.z]);
+	lightShader.bindPerCallProperty("lightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.color));
+	lightShader.bindPerCallProperty("lightPosition", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.position));
 	lightShader.bindPerCallProperty("lightRadius", gl => gl.uniform1f, state => state.light.radius);
-	lightShader.bindPerCallProperty("viewportSize", gl => gl.uniform2fv, state => [state.viewportSize.x, state.viewportSize.y]);
+	lightShader.bindPerCallProperty("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
 	lightShader.bindPerCallTexture("albedoAndShininess", state => state.albedoAndShininess);
 	lightShader.bindPerCallTexture("depth", state => state.depth);
 	lightShader.bindPerCallTexture("normalAndReflection", state => state.normalAndReflection);

@@ -1,12 +1,13 @@
 import * as application from "../engine/application";
+import * as basicTechnique from "../engine/render/shaders/basic";
+import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
+import * as forwardTechnique from "../engine/render/shaders/forward";
 import * as functional from "../engine/language/functional";
-import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as move from "./shared/move";
-import * as variant from "./shared/variant";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/render/webgl";
@@ -21,29 +22,16 @@ import * as webgl from "../engine/render/webgl";
 interface Configuration {
 	nbLights: string[],
 	animate: boolean,
-	applyAmbient: boolean,
-	applyDiffuse: boolean,
-	applySpecular: boolean,
+	lightingMode: string[],
 	useNormalMap: boolean,
 	useHeightMap: boolean
-}
-
-interface Light {
-	position: vector.Vector3
-}
-
-interface CallState {
-	lightPositions: Light[],
-	projectionMatrix: matrix.Matrix4,
-	tweak: application.Tweak<Configuration>,
-	viewMatrix: matrix.Matrix4
 }
 
 interface SceneState {
 	camera: view.Camera,
 	gl: WebGLRenderingContext,
 	input: controller.Input,
-	lights: Light[],
+	lightPositions: vector.Vector3[],
 	models: {
 		cube: webgl.Model,
 		ground: webgl.Model,
@@ -52,8 +40,8 @@ interface SceneState {
 	move: number,
 	projectionMatrix: matrix.Matrix4,
 	shaders: {
-		basic: webgl.Shader<CallState>,
-		lights: webgl.Shader<CallState>[]
+		basic: webgl.Shader<basicTechnique.State>,
+		lights: webgl.Shader<forwardTechnique.State>[]
 	},
 	target: webgl.Target,
 	tweak: application.Tweak<Configuration>
@@ -62,80 +50,32 @@ interface SceneState {
 const configuration = {
 	nbLights: ["0", ".1", "2", "3"],
 	animate: false,
-	applyAmbient: true,
-	applyDiffuse: false,
-	applySpecular: false,
+	lightingMode: ["None", ".Ambient", "Lambert", "Phong"],
 	useNormalMap: false,
 	useHeightMap: false
 };
 
-const getOptions = (tweak: application.Tweak<Configuration>): { [name: string]: boolean } => {
-	return {
-		"USE_HEIGHT_MAP": tweak.useHeightMap !== 0,
-		"USE_NORMAL_MAP": tweak.useNormalMap !== 0
-	};
-};
+const getOptions = (tweak: application.Tweak<Configuration>) => [
+	(tweak.lightingMode & 1) !== 0,
+	(tweak.lightingMode & 2) !== 0,
+	tweak.useHeightMap !== 0,
+	tweak.useNormalMap !== 0
+];
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const gl = runtime.screen.context;
 
 	// Setup basic shader
-	const basicShader = new webgl.Shader<CallState>(
-		gl,
-		await io.readURL(io.StringFormat, "./glsl/basic-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./glsl/basic-fragment.glsl")
-	);
-
-	basicShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
-
-	basicShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	basicShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	basicShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	const basicShader = basicTechnique.load(gl);
 
 	// Setup light shader variants
-	const vsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-phong-vertex.glsl");
-	const fsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-phong-fragment.glsl");
-
-	const lightShaders = variant.enumerate(getOptions(tweak)).map(flags => {
-		const shader = new webgl.Shader<CallState>(gl, vsShader, fsShader, flags);
-
-		shader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-		shader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
-		shader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
-		shader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
-
-		shader.bindPerCallProperty("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
-		shader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
-		shader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
-
-		shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-		shader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
-		shader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-		shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-
-		shader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-		shader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
-		shader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
-		shader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
-
-		if (flags.indexOf("USE_HEIGHT_MAP") !== -1)
-			shader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
-
-		if (flags.indexOf("USE_NORMAL_MAP") !== -1)
-			shader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
-
-		shader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
-		shader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
-		shader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
-
-		for (const index of [0, 1, 2]) {
-			shader.bindPerCallProperty("light" + index + ".enabled", gl => gl.uniform1i, state => index < state.tweak.nbLights ? 1 : 0);
-			shader.bindPerCallProperty("light" + index + ".position", gl => gl.uniform3fv, state => [state.lightPositions[index].position.x, state.lightPositions[index].position.y, state.lightPositions[index].position.z]);
-		}
-
-		return shader;
-	});
+	const lightShaders = bitfield.enumerate(getOptions(tweak)).map(flags => forwardTechnique.load(gl, {
+		lightingMode: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
+		pointLightCount: 3,
+		useHeightMap: flags[2],
+		useNormalMap: flags[3]
+	}));
 
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube.json");
@@ -147,7 +87,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
 		gl: gl,
 		input: runtime.input,
-		lights: functional.range(50, i => ({ position: { x: 0, y: 0, z: 0 } })),
+		lightPositions: functional.range(3, i => ({ x: 0, y: 0, z: 0 })),
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
 			ground: webgl.loadModel(gl, groundModel),
@@ -178,8 +118,8 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Draw scene
-	const lights = state.lights.slice(0, state.tweak.nbLights).map(light => ({
-		matrix: matrix.Matrix4.createIdentity().translate(light.position),
+	const lights = state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
+		matrix: matrix.Matrix4.createIdentity().translate(position),
 		model: models.light
 	}));
 
@@ -194,7 +134,11 @@ const render = (state: SceneState) => {
 	};
 
 	const callState = {
-		lightPositions: state.lights,
+		pointLights: state.lightPositions.map((position, index) => ({
+			diffuseColor: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0),
+			position: position,
+			specularColor: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0)
+		})),
 		projectionMatrix: state.projectionMatrix,
 		tweak: state.tweak,
 		viewMatrix: cameraView
@@ -207,7 +151,7 @@ const render = (state: SceneState) => {
 
 	target.clear();
 	target.draw(shaders.basic, lights, callState);
-	target.draw(shaders.lights[variant.index(getOptions(state.tweak))], [cube, ground], callState);
+	target.draw(shaders.lights[bitfield.index(getOptions(state.tweak))], [cube, ground], callState);
 };
 
 const update = (state: SceneState, dt: number) => {
@@ -215,8 +159,8 @@ const update = (state: SceneState, dt: number) => {
 	if (state.tweak.animate)
 		state.move += dt * 0.0001;
 
-	for (let i = 0; i < state.lights.length; ++i)
-		state.lights[i].position = move.rotate(i, state.move, 2);
+	for (let i = 0; i < state.lightPositions.length; ++i)
+		state.lightPositions[i] = move.rotate(i, state.move, 2);
 
 	// Move camera
 	state.camera.move(state.input);
