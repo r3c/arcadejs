@@ -97,16 +97,16 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./glsl/debug-texture-fragment.glsl")
 	);
 
-	debugShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	debugShader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	debugShader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	debugShader.bindPerCallProperty("format", gl => gl.uniform1i, state => 2);
-	debugShader.bindPerCallProperty("select", gl => gl.uniform1i, state => 6);
-	debugShader.bindPerCallTexture("source", state => state.shadowMap);
+	debugShader.bindPropertyPerTarget("format", gl => gl.uniform1i, state => 2);
+	debugShader.bindPropertyPerTarget("select", gl => gl.uniform1i, state => 6);
+	debugShader.bindTexturePerTarget("source", state => state.shadowMap);
 
-	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	debugShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	debugShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	debugShader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	debugShader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	debugShader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	const vsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-vertex.glsl");
 	const fsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-fragment.glsl");
@@ -117,38 +117,38 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			{ name: "USE_NORMAL_MAP", value: flags[1] ? 1 : 0 }
 		]);
 
-		shader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-		shader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
-		shader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
-		shader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
+		shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
+		shader.bindAttributePerGeometry("normals", 3, gl.FLOAT, state => state.geometry.normals);
+		shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+		shader.bindAttributePerGeometry("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-		shader.bindPerCallProperty("lightDirection", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.direction));
-		shader.bindPerCallProperty("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
-		shader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
-		shader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
-		shader.bindPerCallTexture("shadowMap", state => state.shadowMap);
+		shader.bindPropertyPerTarget("lightDirection", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.direction));
+		shader.bindPropertyPerTarget("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
+		shader.bindPropertyPerTarget("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
+		shader.bindPropertyPerTarget("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
+		shader.bindTexturePerTarget("shadowMap", state => state.shadowMap);
 
-		shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-		shader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
-		shader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-		shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-		shader.bindPerCallMatrix("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
-		shader.bindPerCallMatrix("shadowViewMatrix", gl => gl.uniformMatrix4fv, state => state.shadowViewMatrix.getValues());
+		shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+		shader.bindMatrixPerModel("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
+		shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+		shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+		shader.bindMatrixPerTarget("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
+		shader.bindMatrixPerTarget("shadowViewMatrix", gl => gl.uniformMatrix4fv, state => state.shadowViewMatrix.getValues());
 
-		shader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-		shader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
-		shader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
-		shader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
+		shader.bindPropertyPerMaterial("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
+		shader.bindTexturePerMaterial("ambientMap", state => state.material.ambientMap);
+		shader.bindPropertyPerMaterial("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
+		shader.bindTexturePerMaterial("diffuseMap", state => state.material.diffuseMap);
 
 		if (flags[0])
-			shader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
+			shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
 
 		if (flags[1])
-			shader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
+			shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
 
-		shader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
-		shader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
-		shader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
+		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
+		shader.bindPropertyPerMaterial("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
+		shader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
 
 		return shader;
 	});
@@ -157,11 +157,11 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./glsl/shadow-directional-vertex.glsl"),
 		await io.readURL(io.StringFormat, "./glsl/shadow-directional-fragment.glsl"));
 
-	shadowShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	shadowShader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	shadowShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	shadowShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	shadowShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	shadowShader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	shadowShader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	shadowShader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube.json");

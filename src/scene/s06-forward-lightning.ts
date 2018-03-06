@@ -1,9 +1,9 @@
 import * as application from "../engine/application";
-import * as basicTechnique from "../engine/render/shaders/basic";
+import * as basicRenderer from "../engine/render/renderers/basic";
 import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
-import * as forwardTechnique from "../engine/render/shaders/forward";
+import * as forwardRenderer from "../engine/render/renderers/forward";
 import * as functional from "../engine/language/functional";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
@@ -39,9 +39,9 @@ interface SceneState {
 	},
 	move: number,
 	projectionMatrix: matrix.Matrix4,
-	shaders: {
-		basic: webgl.Shader<basicTechnique.State>,
-		lights: webgl.Shader<forwardTechnique.State>[]
+	renderers: {
+		basic: basicRenderer.Renderer,
+		lights: forwardRenderer.Renderer[]
 	},
 	target: webgl.Target,
 	tweak: application.Tweak<Configuration>
@@ -66,17 +66,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const gl = runtime.screen.context;
 
-	// Setup basic shader
-	const basicShader = basicTechnique.load(gl);
-
-	// Setup light shader variants
-	const lightShaders = bitfield.enumerate(getOptions(tweak)).map(flags => forwardTechnique.load(gl, {
-		lightingMode: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
-		pointLightCount: 3,
-		useHeightMap: flags[2],
-		useNormalMap: flags[3]
-	}));
-
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube.json");
 	const groundModel = await model.fromJSON("./obj/ground.json");
@@ -95,9 +84,14 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		},
 		move: 0,
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		shaders: {
-			basic: basicShader,
-			lights: lightShaders
+		renderers: {
+			basic: new basicRenderer.Renderer(gl),
+			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardRenderer.Renderer(gl, {
+				lightingMode: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
+				pointLightCount: 3,
+				useHeightMap: flags[2],
+				useNormalMap: flags[3]
+			}))
 		},
 		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),
 		tweak: tweak
@@ -108,7 +102,7 @@ const render = (state: SceneState) => {
 	const camera = state.camera;
 	const gl = state.gl;
 	const models = state.models;
-	const shaders = state.shaders;
+	const renderers = state.renderers;
 	const target = state.target;
 
 	const cameraView = matrix.Matrix4
@@ -150,8 +144,9 @@ const render = (state: SceneState) => {
 	gl.cullFace(gl.BACK);
 
 	target.clear();
-	target.draw(shaders.basic, lights, callState);
-	target.draw(shaders.lights[bitfield.index(getOptions(state.tweak))], [cube, ground], callState);
+
+	renderers.basic.render(target, lights, callState);
+	renderers.lights[bitfield.index(getOptions(state.tweak))].render(target, [cube, ground], callState);
 };
 
 const update = (state: SceneState, dt: number) => {

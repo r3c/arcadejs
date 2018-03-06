@@ -124,16 +124,16 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./glsl/debug-texture-fragment.glsl")
 	);
 
-	debugShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	debugShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	debugShader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	debugShader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	debugShader.bindPerCallProperty("format", gl => gl.uniform1i, state => state.format);
-	debugShader.bindPerCallProperty("select", gl => gl.uniform1i, state => state.select);
-	debugShader.bindPerCallTexture("source", state => state.texture);
+	debugShader.bindPropertyPerTarget("format", gl => gl.uniform1i, state => state.format);
+	debugShader.bindPropertyPerTarget("select", gl => gl.uniform1i, state => state.select);
+	debugShader.bindTexturePerTarget("source", state => state.texture);
 
-	debugShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	debugShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	debugShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	debugShader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	debugShader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	debugShader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	const geometryShader = new webgl.Shader<GeometryCallState>(
 		gl,
@@ -142,20 +142,20 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		[{ name: "USE_HEIGHT_MAP", value: 1 }, { name: "USE_NORMAL_MAP", value: 1 }]
 	);
 
-	geometryShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	geometryShader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
-	geometryShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
-	geometryShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
+	geometryShader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	geometryShader.bindAttributePerGeometry("normals", 3, gl.FLOAT, state => state.geometry.normals);
+	geometryShader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+	geometryShader.bindAttributePerGeometry("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-	geometryShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	geometryShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
-	geometryShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	geometryShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	geometryShader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	geometryShader.bindMatrixPerModel("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
+	geometryShader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	geometryShader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	geometryShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
-	geometryShader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
-	geometryShader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
-	geometryShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
+	geometryShader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
+	geometryShader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
+	geometryShader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
+	geometryShader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
 
 	const lightShader = new webgl.Shader<LightCallState>(
 		gl,
@@ -163,21 +163,21 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./glsl/deferred-lighting-phong-fragment.glsl")
 	);
 
-	lightShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	lightShader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	lightShader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 
-	lightShader.bindPerCallMatrix("inverseProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getInverse().getValues());
-	lightShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	lightShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-	lightShader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
-	lightShader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
-	lightShader.bindPerCallProperty("lightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.color));
-	lightShader.bindPerCallProperty("lightPosition", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.position));
-	lightShader.bindPerCallProperty("lightRadius", gl => gl.uniform1f, state => state.light.radius);
-	lightShader.bindPerCallProperty("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
-	lightShader.bindPerCallTexture("depth", state => state.depthBuffer);
-	lightShader.bindPerCallTexture("normalAndSpecular", state => state.normalAndSpecularBuffer);
+	lightShader.bindMatrixPerTarget("inverseProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getInverse().getValues());
+	lightShader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	lightShader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	lightShader.bindPropertyPerTarget("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
+	lightShader.bindPropertyPerTarget("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
+	lightShader.bindPropertyPerTarget("lightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.color));
+	lightShader.bindPropertyPerTarget("lightPosition", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.position));
+	lightShader.bindPropertyPerTarget("lightRadius", gl => gl.uniform1f, state => state.light.radius);
+	lightShader.bindPropertyPerTarget("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
+	lightShader.bindTexturePerTarget("depth", state => state.depthBuffer);
+	lightShader.bindTexturePerTarget("normalAndSpecular", state => state.normalAndSpecularBuffer);
 
 	const materialShader = new webgl.Shader<MaterialCallState>(
 		gl,
@@ -185,19 +185,19 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		await io.readURL(io.StringFormat, "./glsl/deferred-lighting-material-fragment.glsl")
 	);
 
-	materialShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	materialShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+	materialShader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	materialShader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	materialShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	materialShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	materialShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-	materialShader.bindPerCallTexture("light", state => state.lightBuffer);
+	materialShader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	materialShader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	materialShader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	materialShader.bindTexturePerTarget("light", state => state.lightBuffer);
 
-	materialShader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
-	materialShader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
-	materialShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
-	materialShader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
-	materialShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
+	materialShader.bindPropertyPerMaterial("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
+	materialShader.bindTexturePerMaterial("diffuseMap", state => state.material.diffuseMap);
+	materialShader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
+	materialShader.bindPropertyPerMaterial("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
+	materialShader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
 
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube.json");

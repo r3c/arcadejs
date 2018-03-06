@@ -99,13 +99,13 @@ vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirection, float parallaxScale, f
 }
 
 vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in PointLight light) {
-	float lightAngle = dot(normal, lightDirection);
+	float lightNormalCosine = dot(normal, lightDirection);
 	vec3 outputColor = vec3(0, 0, 0);
 
-	if (lightAngle > 0.0) {
+	if (lightNormalCosine > 0.0) {
 		if (LIGHTING_MODE >= LIGHTING_MODE_LAMBERT) {
 			vec3 diffuseMaterial = texture(diffuseMap, coord).rgb;
-			float diffusePower = lightAngle;
+			float diffusePower = lightNormalCosine;
 
 			outputColor += diffuseColor.rgb * light.diffuseColor * diffuseMaterial * diffusePower;
 		}
@@ -113,18 +113,17 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 		if (LIGHTING_MODE >= LIGHTING_MODE_PHONG) {
 			float specularCosine;
 
-			if (true) {
-				// Blinn-Phong model
-				vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
+			#ifdef LIGHTING_MODE_PHONG_STANDARD
+				// Standard Phong model
+				vec3 reflectionDirection = normalize(normal * lightNormalCosine * 2.0 - lightDirection);
 
-				specularCosine = max(dot(normal, cameraLightMidway), 0.0);
-			}
-			else {
-				// Phong model
-				vec3 specularReflection = normalize(normal * lightAngle * 2.0 - lightDirection);
+				specularCosine = max(dot(reflectionDirection, eyeDirection), 0.0);
+			#else
+				// Blinn-Phong variant
+				vec3 halfwayDirection = normalize(eyeDirection + lightDirection);
 
-				specularCosine = max(dot(specularReflection, eyeDirection), 0.0);
-			}
+				specularCosine = max(dot(normal, halfwayDirection), 0.0);
+			#endif
 
 			vec3 specularMaterial = texture(specularMap, coord).rgb;
 			float specularPower = pow(specularCosine, shininess);
@@ -202,45 +201,57 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	const shader = new webgl.Shader<State>(gl, commonShader + vertexShader, commonShader + fragmentShader, directives);
 
-	shader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	shader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
-	shader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
-	shader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
+	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
+	shader.bindAttributePerGeometry("normals", 3, gl.FLOAT, state => state.geometry.normals);
+	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+	shader.bindAttributePerGeometry("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-	shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	shader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
-	shader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	shader.bindMatrixPerModel("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
+	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	if (configuration.lightingMode >= LightingMode.Ambient) {
-		shader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-		shader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
+		shader.bindPropertyPerMaterial("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
+		shader.bindTexturePerMaterial("ambientMap", state => state.material.ambientMap);
 	}
 
 	if (configuration.lightingMode >= LightingMode.Lambert) {
-		shader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
-		shader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
+		shader.bindPropertyPerMaterial("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
+		shader.bindTexturePerMaterial("diffuseMap", state => state.material.diffuseMap);
 	}
 
 	if (configuration.useHeightMap)
-		shader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
+		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
 
 	if (configuration.useNormalMap)
-		shader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
+		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
 
 	if (configuration.lightingMode >= LightingMode.Phong) {
-		shader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
-		shader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
-		shader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
+		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
+		shader.bindPropertyPerMaterial("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
+		shader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
 	}
 
 	for (let i = 0; i < configuration.pointLightCount; ++i) {
-		shader.bindPerCallProperty("pointLights[" + i + "].diffuseColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].diffuseColor));
-		shader.bindPerCallProperty("pointLights[" + i + "].position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].position));
-		shader.bindPerCallProperty("pointLights[" + i + "].specularColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].specularColor));
+		shader.bindPropertyPerTarget("pointLights[" + i + "].diffuseColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].diffuseColor));
+		shader.bindPropertyPerTarget("pointLights[" + i + "].position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].position));
+		shader.bindPropertyPerTarget("pointLights[" + i + "].specularColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].specularColor));
 	}
 
 	return shader;
 };
 
-export { Configuration, LightingMode, PointLight, State, load }
+class Renderer implements webgl.Renderer<State> {
+	private readonly shader: webgl.Shader<State>;
+
+	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+		this.shader = load(gl, configuration);
+	}
+
+	public render(target: webgl.Target, subjects: webgl.Subject[], state: State) {
+		target.draw(this.shader, subjects, state);
+	}
+}
+
+export { Configuration, LightingMode, PointLight, Renderer, State }
