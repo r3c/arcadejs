@@ -48,20 +48,17 @@ void main(void) {
 	vec3 b = cross(n, t);
 
 	#ifdef USE_NORMAL_MAP
-		vec3 light0DirectionCamera = normalize(toCameraPosition(pointLights[0].position) - pointCamera);
-		vec3 light1DirectionCamera = normalize(toCameraPosition(pointLights[1].position) - pointCamera);
-		vec3 light2DirectionCamera = normalize(toCameraPosition(pointLights[2].position) - pointCamera);
+		for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
+			vec3 lightDirectionCamera = normalize(toCameraPosition(pointLights[i].position) - pointCamera);
 
-		lightDirections[0] = vec3(dot(light0DirectionCamera, t), dot(light0DirectionCamera, b), dot(light0DirectionCamera, n));
-		lightDirections[1] = vec3(dot(light1DirectionCamera, t), dot(light1DirectionCamera, b), dot(light1DirectionCamera, n));
-		lightDirections[2] = vec3(dot(light2DirectionCamera, t), dot(light2DirectionCamera, b), dot(light2DirectionCamera, n));
+			lightDirections[i] = vec3(dot(lightDirectionCamera, t), dot(lightDirectionCamera, b), dot(lightDirectionCamera, n));
+		}
 
 		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
 		normal = vec3(0.0, 0.0, 1.0);
 	#else
-		lightDirections[0] = toCameraPosition(pointLights[0].position) - pointCamera;
-		lightDirections[1] = toCameraPosition(pointLights[1].position) - pointCamera;
-		lightDirections[2] = toCameraPosition(pointLights[2].position) - pointCamera;
+		for (int i = 0; i < POINT_LIGHT_COUNT; ++i)
+			lightDirections[i] = toCameraPosition(pointLights[i].position) - pointCamera;
 
 		eye = eyeDirectionCamera;
 		normal = n;
@@ -148,15 +145,13 @@ void main(void) {
 	vec3 eyeDirection = normalize(eye);
 	vec2 modifiedCoord = getCoord(coord, eyeDirection, 0.04, 0.02);
 	vec3 modifiedNormal = getNormal(normal, modifiedCoord);
-
 	vec3 outputColor = vec3(0, 0, 0);
 
 	if (LIGHTING_MODE >= LIGHTING_MODE_AMBIENT)
 		outputColor += vec3(0.3, 0.3, 0.3) * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
 
-	outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[0]), pointLights[0]);
-	outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[1]), pointLights[1]);
-	outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[2]), pointLights[2]);
+	for (int i = 0; i < POINT_LIGHT_COUNT; ++i)
+		outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[i]), pointLights[i]);
 
 	fragColor = vec4(outputColor, 1.0);
 }`;
