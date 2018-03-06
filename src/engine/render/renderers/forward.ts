@@ -3,13 +3,14 @@ import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
 
 const commonShader = `
-#define LIGHTING_MODE_AMBIENT 1
-#define LIGHTING_MODE_LAMBERT 2
-#define LIGHTING_MODE_PHONG 3
+#define LIGHT_MODEL_AMBIENT 1
+#define LIGHT_MODEL_LAMBERT 2
+#define LIGHT_MODEL_PHONG 3
 
 struct PointLight {
 	vec3 diffuseColor;
 	vec3 position;
+	float radius; // FIXME: ignored
 	vec3 specularColor;
 };
 
@@ -100,17 +101,17 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 	vec3 outputColor = vec3(0, 0, 0);
 
 	if (lightNormalCosine > 0.0) {
-		if (LIGHTING_MODE >= LIGHTING_MODE_LAMBERT) {
+		if (LIGHT_MODEL >= LIGHT_MODEL_LAMBERT) {
 			vec3 diffuseMaterial = texture(diffuseMap, coord).rgb;
 			float diffusePower = lightNormalCosine;
 
 			outputColor += diffuseColor.rgb * light.diffuseColor * diffuseMaterial * diffusePower;
 		}
 
-		if (LIGHTING_MODE >= LIGHTING_MODE_PHONG) {
+		if (LIGHT_MODEL >= LIGHT_MODEL_PHONG) {
 			float specularCosine;
 
-			#ifdef LIGHTING_MODE_PHONG_STANDARD
+			#ifdef LIGHT_MODEL_PHONG_STANDARD
 				// Standard Phong model
 				vec3 reflectionDirection = normalize(normal * lightNormalCosine * 2.0 - lightDirection);
 
@@ -147,7 +148,7 @@ void main(void) {
 	vec3 modifiedNormal = getNormal(normal, modifiedCoord);
 	vec3 outputColor = vec3(0, 0, 0);
 
-	if (LIGHTING_MODE >= LIGHTING_MODE_AMBIENT)
+	if (LIGHT_MODEL >= LIGHT_MODEL_AMBIENT)
 		outputColor += vec3(0.3, 0.3, 0.3) * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
 
 	for (int i = 0; i < POINT_LIGHT_COUNT; ++i)
@@ -157,27 +158,21 @@ void main(void) {
 }`;
 
 interface Configuration {
-	lightingMode: LightingMode,
+	lightModel: LightModel,
 	pointLightCount: number,
 	useHeightMap: boolean,
 	useNormalMap: boolean
 }
 
-enum LightingMode {
+enum LightModel {
 	None,
 	Ambient,
 	Lambert,
 	Phong
 }
 
-interface PointLight {
-	diffuseColor: vector.Vector3,
-	position: vector.Vector3,
-	specularColor: vector.Vector3
-}
-
-interface State {
-	pointLights: PointLight[],
+interface LightState {
+	pointLights: webgl.PointLight[],
 	projectionMatrix: matrix.Matrix4,
 	viewMatrix: matrix.Matrix4
 }
@@ -185,7 +180,7 @@ interface State {
 const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const directives = [];
 
-	directives.push({ name: "LIGHTING_MODE", value: <number>configuration.lightingMode });
+	directives.push({ name: "LIGHT_MODEL", value: <number>configuration.lightModel });
 	directives.push({ name: "POINT_LIGHT_COUNT", value: configuration.pointLightCount });
 
 	if (configuration.useHeightMap)
@@ -194,7 +189,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	if (configuration.useNormalMap)
 		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
 
-	const shader = new webgl.Shader<State>(gl, commonShader + vertexShader, commonShader + fragmentShader, directives);
+	const shader = new webgl.Shader<LightState>(gl, commonShader + vertexShader, commonShader + fragmentShader, directives);
 
 	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	shader.bindAttributePerGeometry("normals", 3, gl.FLOAT, state => state.geometry.normals);
@@ -206,12 +201,12 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	if (configuration.lightingMode >= LightingMode.Ambient) {
+	if (configuration.lightModel >= LightModel.Ambient) {
 		shader.bindPropertyPerMaterial("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
 		shader.bindTexturePerMaterial("ambientMap", state => state.material.ambientMap);
 	}
 
-	if (configuration.lightingMode >= LightingMode.Lambert) {
+	if (configuration.lightModel >= LightModel.Lambert) {
 		shader.bindPropertyPerMaterial("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
 		shader.bindTexturePerMaterial("diffuseMap", state => state.material.diffuseMap);
 	}
@@ -222,7 +217,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	if (configuration.useNormalMap)
 		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
 
-	if (configuration.lightingMode >= LightingMode.Phong) {
+	if (configuration.lightModel >= LightModel.Phong) {
 		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
 		shader.bindPropertyPerMaterial("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
 		shader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
@@ -231,22 +226,36 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	for (let i = 0; i < configuration.pointLightCount; ++i) {
 		shader.bindPropertyPerTarget("pointLights[" + i + "].diffuseColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].diffuseColor));
 		shader.bindPropertyPerTarget("pointLights[" + i + "].position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].position));
+		shader.bindPropertyPerTarget("pointLights[" + i + "].radius", gl => gl.uniform1f, state => state.pointLights[i].radius);
 		shader.bindPropertyPerTarget("pointLights[" + i + "].specularColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].specularColor));
 	}
 
 	return shader;
 };
 
-class Renderer implements webgl.Renderer<State> {
-	private readonly shader: webgl.Shader<State>;
+class Renderer implements webgl.Renderer {
+	private readonly gl: WebGLRenderingContext;
+	private readonly shader: webgl.Shader<LightState>;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+		this.gl = gl;
 		this.shader = load(gl, configuration);
 	}
 
-	public render(target: webgl.Target, subjects: webgl.Subject[], state: State) {
-		target.draw(this.shader, subjects, state);
+	public render(target: webgl.Target, scene: webgl.Scene, projectionMatrix: matrix.Matrix4, viewMatrix: matrix.Matrix4) {
+		const gl = this.gl;
+
+		gl.enable(gl.CULL_FACE);
+		gl.enable(gl.DEPTH_TEST);
+
+		gl.cullFace(gl.BACK);
+
+		target.draw(this.shader, scene.subjects, {
+			pointLights: scene.pointLights || [],
+			projectionMatrix: projectionMatrix,
+			viewMatrix: viewMatrix
+		});
 	}
 }
 
-export { Configuration, LightingMode, PointLight, Renderer, State }
+export { Configuration, LightModel, Renderer }

@@ -22,7 +22,7 @@ import * as webgl from "../engine/render/webgl";
 interface Configuration {
 	nbLights: string[],
 	animate: boolean,
-	lightingMode: string[],
+	lightModel: string[],
 	useNormalMap: boolean,
 	useHeightMap: boolean
 }
@@ -50,14 +50,14 @@ interface SceneState {
 const configuration = {
 	nbLights: ["0", ".1", "2", "3"],
 	animate: false,
-	lightingMode: ["None", ".Ambient", "Lambert", "Phong"],
+	lightModel: ["None", ".Ambient", "Lambert", "Phong"],
 	useNormalMap: false,
 	useHeightMap: false
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
-	(tweak.lightingMode & 1) !== 0,
-	(tweak.lightingMode & 2) !== 0,
+	(tweak.lightModel & 1) !== 0,
+	(tweak.lightModel & 2) !== 0,
 	tweak.useHeightMap !== 0,
 	tweak.useNormalMap !== 0
 ];
@@ -87,7 +87,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		renderers: {
 			basic: new basicRenderer.Renderer(gl),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardRenderer.Renderer(gl, {
-				lightingMode: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
+				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
 				pointLightCount: 3,
 				useHeightMap: flags[2],
 				useNormalMap: flags[3]
@@ -112,7 +112,7 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Draw scene
-	const lights = state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
+	const lights = state.lightPositions.map(position => ({
 		matrix: matrix.Matrix4.createIdentity().translate(position),
 		model: models.light
 	}));
@@ -127,26 +127,29 @@ const render = (state: SceneState) => {
 		model: models.ground
 	};
 
-	const callState = {
+	target.clear();
+
+	// Basic pass
+	const basicRenderer = renderers.basic;
+	const basicScene = {
+		subjects: lights.slice(0, state.tweak.nbLights)
+	};
+
+	renderers.basic.render(target, basicScene, state.projectionMatrix, cameraView);
+
+	// Light pass
+	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
+	const lightScene = {
 		pointLights: state.lightPositions.map((position, index) => ({
 			diffuseColor: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0),
 			position: position,
+			radius: 0,
 			specularColor: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0)
 		})),
-		projectionMatrix: state.projectionMatrix,
-		tweak: state.tweak,
-		viewMatrix: cameraView
+		subjects: [cube, ground]
 	};
 
-	gl.enable(gl.CULL_FACE);
-	gl.enable(gl.DEPTH_TEST);
-
-	gl.cullFace(gl.BACK);
-
-	target.clear();
-
-	renderers.basic.render(target, lights, callState);
-	renderers.lights[bitfield.index(getOptions(state.tweak))].render(target, [cube, ground], callState);
+	lightRenderer.render(target, lightScene, state.projectionMatrix, cameraView);
 };
 
 const update = (state: SceneState, dt: number) => {

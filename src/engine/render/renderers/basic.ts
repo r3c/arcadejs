@@ -36,16 +36,28 @@ const load = (gl: WebGLRenderingContext) => {
 	return shader;
 };
 
-class Renderer implements webgl.Renderer<State> {
+class Renderer implements webgl.Renderer {
+	private readonly gl: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<State>;
 
 	public constructor(gl: WebGLRenderingContext) {
+		this.gl = gl;
 		this.shader = load(gl);
 	}
 
-	public render(target: webgl.Target, subjects: webgl.Subject[], state: State) {
-		target.draw(this.shader, subjects, state);
+	public render(target: webgl.Target, scene: webgl.Scene, projectionMatrix: matrix.Matrix4, viewMatrix: matrix.Matrix4) {
+		const gl = this.gl;
+
+		gl.enable(gl.CULL_FACE);
+		gl.enable(gl.DEPTH_TEST);
+
+		gl.cullFace(gl.BACK);
+
+		target.draw(this.shader, scene.subjects, {
+			projectionMatrix: projectionMatrix,
+			viewMatrix: viewMatrix
+		});
 	}
 }
 
-export { Renderer, State }
+export { Renderer }

@@ -65,14 +65,26 @@ interface Model {
 	meshes: Mesh[]
 }
 
+interface PointLight {
+	diffuseColor: vector.Vector3,
+	position: vector.Vector3,
+	radius: number,
+	specularColor: vector.Vector3
+}
+
 interface Quality {
 	textureFilterLinear: boolean,
 	textureMipmap: boolean,
 	textureMipmapLinear: boolean
 }
 
-interface Renderer<State> {
-	render(target: Target, subjects: Subject[], state: State): void
+interface Renderer {
+	render(target: Target, scene: Scene, projectionMatrix: matrix.Matrix4, viewMatrix: matrix.Matrix4): void
+}
+
+interface Scene {
+	pointLights?: PointLight[],
+	subjects: Subject[]
 }
 
 enum Storage {
@@ -761,4 +773,4 @@ class Target {
 	}
 }
 
-export { Geometry, Mesh, Model, Renderer, Shader, Storage, Subject, Target, loadModel }
+export { Directive, Geometry, Mesh, Model, PointLight, Renderer, Scene, Shader, Storage, Subject, Target, loadModel }
