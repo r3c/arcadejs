@@ -20,5 +20,5 @@ application.initialize([
 	application.declare("s06: forward lightning", s06.scenario),
 	application.declare("s07: directional shadow", s07.scenario),
 	application.declare("s08: deferred shading", s08.scenario),
-	application.declare("s09. deferred lighting", s09.scenario)
+	application.declare("s09: deferred lighting", s09.scenario)
 ]);
