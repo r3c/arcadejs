@@ -1,9 +1,3 @@
-#version 300 es
-
-#ifdef GL_ES
-precision highp float;
-#endif
-
 const mat4 texUnitConverter = mat4(
 	0.5, 0.0, 0.0, 0.0,
 	0.0, 0.5, 0.0, 0.0,
@@ -26,7 +20,6 @@ uniform mat4 shadowProjectionMatrix;
 uniform mat4 shadowViewMatrix;
 
 uniform vec3 lightDirection;
-uniform bool useNormalMap;
 
 in vec2 coords;
 in vec3 normals;
@@ -57,20 +50,19 @@ void main(void) {
 	vec3 t = normalize(normalMatrix * tangents);
 	vec3 b = cross(n, t);
 
-	if (useNormalMap) {
+	#ifdef USE_NORMAL_MAP
 		vec3 lightDirectionCamera = normalize(toCameraDirection(lightDirection));
 
 		lightDirectionTransformed = vec3(dot(lightDirectionCamera, t), dot(lightDirectionCamera, b), dot(lightDirectionCamera, n));
 
 		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
 		normal = vec3(0.0, 0.0, 1.0);
-	}
-	else {
+	#else
 		lightDirectionTransformed = normalize(toCameraDirection(lightDirection));
 
 		eye = eyeDirectionCamera;
 		normal = n;
-	}
+	#endif
 
 	gl_Position = projectionMatrix * point;
 }

@@ -1,5 +1,3 @@
-#version 300 es
-
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

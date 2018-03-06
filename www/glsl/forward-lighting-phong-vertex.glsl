@@ -1,9 +1,3 @@
-#version 300 es
-
-#ifdef GL_ES
-precision highp float;
-#endif
-
 struct Light {
 	bool enabled;
 	vec3 position;
@@ -17,8 +11,6 @@ uniform mat4 viewMatrix;
 uniform Light light0;
 uniform Light light1;
 uniform Light light2;
-
-uniform bool useNormalMap;
 
 in vec2 coords;
 in vec3 normals;
@@ -48,7 +40,7 @@ void main(void) {
 	vec3 t = normalize(normalMatrix * tangents);
 	vec3 b = cross(n, t);
 
-	if (useNormalMap) {
+	#ifdef USE_NORMAL_MAP
 		vec3 light0DirectionCamera = normalize(toCameraPosition(light0.position) - pointCamera);
 		vec3 light1DirectionCamera = normalize(toCameraPosition(light1.position) - pointCamera);
 		vec3 light2DirectionCamera = normalize(toCameraPosition(light2.position) - pointCamera);
@@ -59,15 +51,14 @@ void main(void) {
 
 		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
 		normal = vec3(0.0, 0.0, 1.0);
-	}
-	else {
+	#else
 		light0Direction = toCameraPosition(light0.position) - pointCamera;
 		light1Direction = toCameraPosition(light1.position) - pointCamera;
 		light2Direction = toCameraPosition(light2.position) - pointCamera;
 
 		eye = eyeDirectionCamera;
 		normal = n;
-	}
+	#endif
 
 	gl_Position = projectionMatrix * point;
 }

@@ -1,18 +1,9 @@
-#version 300 es
-
-#ifdef GL_ES
-precision highp float;
-#endif
-
 uniform vec4 ambientColor;
 uniform sampler2D ambientMap;
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
 uniform sampler2D specularMap;
 uniform float shininess;
-
-uniform bool useHeightMap;
-uniform bool useNormalMap;
 
 in vec3 bitangent;
 in vec2 coord;
@@ -34,23 +25,23 @@ vec2 encodeNormal(in vec3 decoded) {
 }
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionFace, float parallaxScale, float parallaxBias) {
-	if (useHeightMap) {
+	#ifdef USE_HEIGHT_MAP
 		float parallaxHeight = texture(heightMap, initialCoord).r;
 
 		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirectionFace.xy / eyeDirectionFace.z;
-	}
-	else {
+	#else
 		return initialCoord;
-	}
+	#endif
 }
 
 vec3 getNormal(in vec3 normal, in vec2 coord) {
 	vec3 normalFace;
 
-	if (useNormalMap)
+	#ifdef USE_NORMAL_MAP
 		normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
-	else
+	#else
 		normalFace = vec3(0.0, 0.0, 1.0);
+	#endif
 
 	return normalize(normalFace.x * tangent + normalFace.y * bitangent + normalFace.z * normal);
 }

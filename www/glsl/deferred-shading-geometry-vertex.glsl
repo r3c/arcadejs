@@ -1,9 +1,3 @@
-#version 300 es
-
-#ifdef GL_ES
-precision highp float;
-#endif
-
 in vec2 coords;
 in vec3 normals;
 in vec3 points;
@@ -13,9 +7,6 @@ uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
-
-uniform bool useHeightMap;
-uniform bool useNormalMap;
 
 out vec3 bitangent; // Bitangent at point in camera space
 out vec2 coord; // Texture coordinate

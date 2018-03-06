@@ -214,16 +214,16 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	const toIndices = (indices: [number, number, number]) => indices;
 
 	for (const mesh of model.meshes) {
-		const name = mesh.materialName;
+		const materialName = mesh.materialName;
 
-		let geometries = [];
+		let geometries: Geometry[];
 
-		if (name !== undefined) {
-			if (definitions[name] === undefined)
-				throw invalidMaterial(name);
+		if (materialName !== undefined) {
+			if (definitions[materialName] === undefined)
+				throw invalidMaterial(materialName);
 
-			if (meshes[name] === undefined) {
-				const definition = definitions[name];
+			if (meshes[materialName] === undefined) {
+				const definition = definitions[materialName];
 
 				const ambientColor = definition.ambientColor || colorWhite;
 				const ambientMap = functional.map(definition.ambientMap, toColorMap);
@@ -232,7 +232,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				const specularColor = definition.specularColor || diffuseColor;
 				const specularMap = functional.map(definition.specularMap, toColorMap);
 
-				meshes[name] = {
+				meshes[materialName] = {
 					geometries: [],
 					material: {
 						ambientColor: toArray4(ambientColor),
@@ -248,11 +248,13 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				}
 			}
 
-			geometries = meshes[name].geometries;
+			geometries = meshes[materialName].geometries;
 		}
 		else {
-			if (meshes[""] === undefined) {
-				meshes[""] = {
+			const defaultMaterialName = "";
+
+			if (meshes[defaultMaterialName] === undefined) {
+				meshes[defaultMaterialName] = {
 					geometries: [],
 					material: {
 						ambientColor: toArray4(colorWhite),
@@ -268,7 +270,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				};
 			}
 
-			geometries = meshes[""].geometries;
+			geometries = meshes[defaultMaterialName].geometries;
 		}
 
 		geometries.push({
@@ -321,14 +323,21 @@ class Shader<TCallState> {
 	private readonly perGeometryAttributeBindings: AttributeBinding<GeometryState<TCallState>>[];
 	private readonly perModelPropertyBindings: UniformBinding<SubjectState<TCallState>>[];
 
-	public constructor(gl: WebGLRenderingContext, vsSource: string, fsSource: string) {
+	public constructor(gl: WebGLRenderingContext, vsSource: string, fsSource: string, flags: string[] = []) {
 		const program = gl.createProgram();
 
 		if (program === null)
 			throw Error("could not create program");
 
-		gl.attachShader(program, Shader.compile(gl, gl.VERTEX_SHADER, vsSource));
-		gl.attachShader(program, Shader.compile(gl, gl.FRAGMENT_SHADER, fsSource));
+		const header =
+			"#version 300 es\n" +
+			"#ifdef GL_ES\n" +
+			"precision highp float;\n" +
+			"#endif\n" +
+			flags.map(flag => `#define ${flag}\n`).join("");
+
+		gl.attachShader(program, Shader.compile(gl, gl.VERTEX_SHADER, header + vsSource));
+		gl.attachShader(program, Shader.compile(gl, gl.FRAGMENT_SHADER, header + fsSource));
 		gl.linkProgram(program);
 
 		if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
@@ -467,7 +476,7 @@ class Shader<TCallState> {
 
 			gl.deleteShader(shader);
 
-			throw Error(`could not compile ${name} shader: ${error}`);
+			throw Error(`could not compile ${name} shader: ${error}\n${source}`);
 		}
 
 		return shader;

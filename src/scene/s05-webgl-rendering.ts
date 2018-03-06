@@ -15,16 +15,16 @@ import * as webgl from "../engine/render/webgl";
 */
 
 const vsSource = `
-	attribute vec4 colors;
-	attribute vec2 coords;
-	attribute vec4 points;
+	in vec4 colors;
+	in vec2 coords;
+	in vec4 points;
 
 	uniform mat4 modelMatrix;
 	uniform mat4 projectionMatrix;
 	uniform mat4 viewMatrix;
 
-	varying highp vec4 color;
-	varying highp vec2 coord;
+	out vec4 color;
+	out vec2 coord;
 
 	void main(void) {
 		color = colors;
@@ -35,14 +35,16 @@ const vsSource = `
 `;
 
 const fsSource = `
-	varying highp vec4 color;
-	varying highp vec2 coord;
+	in vec4 color;
+	in vec2 coord;
 
-	uniform highp vec4 ambientColor;
+	uniform vec4 ambientColor;
 	uniform sampler2D ambientMap;
 
+	layout(location=0) out vec4 fragColor;
+
 	void main(void) {
-		gl_FragColor = color * ambientColor * texture2D(ambientMap, coord);
+		fragColor = color * ambientColor * texture(ambientMap, coord);
 	}
 `;
 

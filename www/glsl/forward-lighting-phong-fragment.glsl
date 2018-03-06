@@ -1,9 +1,3 @@
-#version 300 es
-
-#ifdef GL_ES
-precision highp float;
-#endif
-
 struct Light {
 	bool enabled;
 	vec3 position;
@@ -26,8 +20,6 @@ uniform Light light2;
 uniform bool applyAmbient;
 uniform bool applyDiffuse;
 uniform bool applySpecular;
-uniform bool useHeightMap;
-uniform bool useNormalMap;
 
 in vec2 coord;
 in vec3 eye;
@@ -40,14 +32,13 @@ in vec3 light2Direction;
 layout(location=0) out vec4 fragColor;
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirection, float parallaxScale, float parallaxBias) {
-	if (useHeightMap) {
+	#ifdef USE_HEIGHT_MAP
 		float parallaxHeight = texture(heightMap, initialCoord).r;
 
 		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirection.xy / eyeDirection.z;
-	}
-	else {
+	#else
 		return initialCoord;
-	}
+	#endif
 }
 
 vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection) {
@@ -91,13 +82,12 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 }
 
 vec3 getNormal(in vec3 initialNormal, in vec2 coord) {
-	if (useNormalMap) {
+	#ifdef USE_NORMAL_MAP
 		// Initial normal is always (0, 0, 1) here and can be safely ignored, see vertex shader
 		return normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
-	}
-	else {
+	#else
 		return normalize(initialNormal);
-	}
+	#endif
 }
 
 void main(void) {

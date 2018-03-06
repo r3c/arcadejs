@@ -127,16 +127,14 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const geometryShader = new webgl.Shader<GeometryCallState>(
 		gl,
 		await io.readURL(io.StringFormat, "./glsl/deferred-shading-geometry-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./glsl/deferred-shading-geometry-fragment.glsl")
+		await io.readURL(io.StringFormat, "./glsl/deferred-shading-geometry-fragment.glsl"),
+		["USE_HEIGHT_MAP", "USE_NORMAL_MAP"]
 	);
 
 	geometryShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	geometryShader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
 	geometryShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 	geometryShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
-
-	geometryShader.bindPerCallProperty("useHeightMap", gl => gl.uniform1i, state => 1);
-	geometryShader.bindPerCallProperty("useNormalMap", gl => gl.uniform1i, state => 1);
 
 	geometryShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	geometryShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());

@@ -4,6 +4,7 @@ import * as display from "../engine/display";
 import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
+import * as variant from "./shared/variant";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/render/webgl";
@@ -58,7 +59,7 @@ interface SceneState {
 	screenProjectionMatrix: matrix.Matrix4,
 	shaders: {
 		debug: webgl.Shader<DebugCallState>,
-		light: webgl.Shader<LightCallState>,
+		lights: webgl.Shader<LightCallState>[],
 		shadow: webgl.Shader<ShadowCallState>,
 	},
 	shadowMap: WebGLTexture,
@@ -78,6 +79,13 @@ const configuration = {
 	useNormalMap: false,
 	useHeightMap: false,
 	showDebug: false
+};
+
+const getOptions = (tweak: application.Tweak<Configuration>): { [name: string]: boolean } => {
+	return {
+		"USE_HEIGHT_MAP": tweak.useHeightMap !== 0,
+		"USE_NORMAL_MAP": tweak.useNormalMap !== 0
+	};
 };
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
@@ -105,41 +113,47 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	debugShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	debugShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	const lightShader = new webgl.Shader<LightCallState>(
-		gl,
-		await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-fragment.glsl")
-	);
+	const vsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-vertex.glsl");
+	const fsShader = await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-fragment.glsl");
 
-	lightShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	lightShader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
-	lightShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
-	lightShader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
+	const lightShaders = variant.enumerate(getOptions(tweak)).map(flags => {
+		const shader = new webgl.Shader<LightCallState>(gl, vsShader, fsShader, flags);
 
-	lightShader.bindPerCallProperty("lightDirection", gl => gl.uniform3fv, state => [state.direction.x, state.direction.y, state.direction.z]);
-	lightShader.bindPerCallProperty("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
-	lightShader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
-	lightShader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
-	lightShader.bindPerCallProperty("useHeightMap", gl => gl.uniform1i, state => state.tweak.useHeightMap);
-	lightShader.bindPerCallProperty("useNormalMap", gl => gl.uniform1i, state => state.tweak.useNormalMap);
-	lightShader.bindPerCallTexture("shadowMap", state => state.shadowMap);
+		shader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
+		shader.bindPerGeometryAttribute("normals", 3, gl.FLOAT, state => state.geometry.normals);
+		shader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
+		shader.bindPerGeometryAttribute("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-	lightShader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	lightShader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
-	lightShader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	lightShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-	lightShader.bindPerCallMatrix("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
-	lightShader.bindPerCallMatrix("shadowViewMatrix", gl => gl.uniformMatrix4fv, state => state.shadowViewMatrix.getValues());
+		shader.bindPerCallProperty("lightDirection", gl => gl.uniform3fv, state => [state.direction.x, state.direction.y, state.direction.z]);
+		shader.bindPerCallProperty("applyAmbient", gl => gl.uniform1i, state => state.tweak.applyAmbient);
+		shader.bindPerCallProperty("applyDiffuse", gl => gl.uniform1i, state => state.tweak.applyDiffuse);
+		shader.bindPerCallProperty("applySpecular", gl => gl.uniform1i, state => state.tweak.applySpecular);
+		shader.bindPerCallTexture("shadowMap", state => state.shadowMap);
 
-	lightShader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-	lightShader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
-	lightShader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
-	lightShader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
-	lightShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
-	lightShader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
-	lightShader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
-	lightShader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
-	lightShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
+		shader.bindPerModelMatrix("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+		shader.bindPerModelMatrix("normalMatrix", gl => gl.uniformMatrix3fv, state => state.call.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
+		shader.bindPerCallMatrix("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+		shader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+		shader.bindPerCallMatrix("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
+		shader.bindPerCallMatrix("shadowViewMatrix", gl => gl.uniformMatrix4fv, state => state.shadowViewMatrix.getValues());
+
+		shader.bindPerMaterialProperty("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
+		shader.bindPerMaterialTexture("ambientMap", state => state.material.ambientMap);
+		shader.bindPerMaterialProperty("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
+		shader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
+
+		if (flags.indexOf("USE_HEIGHT_MAP") !== -1)
+			shader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
+
+		if (flags.indexOf("USE_NORMAL_MAP") !== -1)
+			shader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
+
+		shader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
+		shader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
+		shader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
+
+		return shader;
+	});
 
 	const shadowShader = new webgl.Shader<ShadowCallState>(gl,
 		await io.readURL(io.StringFormat, "./glsl/shadow-directional-vertex.glsl"),
@@ -170,7 +184,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		screenProjectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shaders: {
 			debug: debugShader,
-			light: lightShader,
+			lights: lightShaders,
 			shadow: shadowShader
 		},
 		shadowMap: buffer.setupDepthTexture(webgl.Storage.Depth16),
@@ -248,7 +262,7 @@ const render = (state: SceneState) => {
 	};
 
 	targets.screen.clear();
-	targets.screen.draw(shaders.light, [cube, ground], {
+	targets.screen.draw(shaders.lights[variant.index(getOptions(state.tweak))], [cube, ground], {
 		direction: { x: shadowView.getValue(2), y: shadowView.getValue(6), z: shadowView.getValue(10) },
 		projectionMatrix: state.screenProjectionMatrix,
 		shadowMap: state.shadowMap,

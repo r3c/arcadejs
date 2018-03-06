@@ -1,9 +1,3 @@
-#version 300 es
-
-#ifdef GL_ES
-precision highp float;
-#endif
-
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;

@@ -1,5 +1,3 @@
-#version 300 es
-
 uniform vec3 lightPosition;
 
 uniform mat4 modelMatrix;
