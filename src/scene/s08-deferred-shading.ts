@@ -2,7 +2,8 @@ import * as application from "../engine/application";
 import * as bitfield from "./shared/bitfield";
 import * as color from "./shared/color";
 import * as controller from "../engine/controller";
-import * as deferredShadingRenderer from "../engine/render/renderers/deferred-shading";
+import * as debugTexture from "../engine/render/renderers/debug-texture";
+import * as deferredShading from "../engine/render/renderers/deferred-shading";
 import * as display from "../engine/display";
 import * as functional from "../engine/language/functional";
 import * as io from "../engine/io";
@@ -24,14 +25,6 @@ interface Configuration {
 	debugMode: string[]
 }
 
-interface DebugState {
-	format: number,
-	projectionMatrix: matrix.Matrix4,
-	select: number,
-	texture: WebGLTexture,
-	viewMatrix: matrix.Matrix4
-}
-
 interface SceneState {
 	camera: view.Camera,
 	gl: WebGLRenderingContext,
@@ -46,8 +39,8 @@ interface SceneState {
 	pointLights: webgl.PointLight[],
 	projectionMatrix: matrix.Matrix4,
 	renderers: {
-		debug: webgl.Shader<DebugState>,
-		scene: deferredShadingRenderer.Renderer[]
+		debug: debugTexture.Renderer,
+		scene: deferredShading.Renderer[]
 	},
 	target: webgl.Target,
 	tweak: application.Tweak<Configuration>
@@ -69,27 +62,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const runtime = application.runtime(display.WebGLScreen);
 	const gl = runtime.screen.context;
 
-	// Setup render targets
-	const screen = new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight());
-
-	// Setup shaders
-	const debugShader = new webgl.Shader<DebugState>(
-		gl,
-		await io.readURL(io.StringFormat, "./glsl/debug-texture-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./glsl/debug-texture-fragment.glsl")
-	);
-
-	debugShader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	debugShader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
-
-	debugShader.bindPropertyPerTarget("format", gl => gl.uniform1i, state => state.format);
-	debugShader.bindPropertyPerTarget("select", gl => gl.uniform1i, state => state.select);
-	debugShader.bindTexturePerTarget("source", state => state.texture);
-
-	debugShader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	debugShader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	debugShader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube.json");
 	const debugModel = await model.fromJSON("./obj/debug.json");
@@ -108,26 +80,22 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			light: webgl.loadModel(gl, lightModel)
 		},
 		move: 0,
-		pointLights: functional.range(100, i => {
-			const lightColor = color.createBright(i);
-
-			return {
-				diffuseColor: lightColor,
-				position: { x: 0, y: 0, z: 0 },
-				radius: 4,
-				specularColor: lightColor
-			};
-		}),
+		pointLights: functional.range(100, i => ({
+			diffuseColor: color.createBright(i),
+			position: { x: 0, y: 0, z: 0 },
+			radius: 4,
+			specularColor: color.createBright(i)
+		})),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderers: {
-			debug: debugShader,
-			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredShadingRenderer.Renderer(gl, {
+			debug: new debugTexture.Renderer(gl),
+			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredShading.Renderer(gl, {
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
 				useHeightMap: true,
 				useNormalMap: true
 			}))
 		},
-		target: screen,
+		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),
 		tweak: tweak
 	};
 };
@@ -137,6 +105,7 @@ const render = (state: SceneState) => {
 	const gl = state.gl;
 	const models = state.models;
 	const renderers = state.renderers;
+	const target = state.target;
 	const tweak = state.tweak;
 
 	const cameraView = matrix.Matrix4
@@ -145,13 +114,10 @@ const render = (state: SceneState) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
+	target.clear();
+
 	// Draw scene
 	const lights = state.pointLights.slice(0, [5, 10, 25, 100][tweak.nbLights] || 0);
-
-	const lightSubjects = lights.map(light => ({
-		matrix: matrix.Matrix4.createIdentity().translate(light.position),
-		model: models.light
-	}));
 
 	const cubeSubject = {
 		matrix: matrix.Matrix4.createIdentity(),
@@ -163,6 +129,11 @@ const render = (state: SceneState) => {
 		model: models.ground
 	};
 
+	const lightSubjects = lights.map(light => ({
+		matrix: matrix.Matrix4.createIdentity().translate(light.position),
+		model: models.light
+	}));
+
 	const deferredRenderer = state.renderers.scene[bitfield.index(getOptions(tweak))];
 
 	const deferredScene = {
@@ -170,30 +141,37 @@ const render = (state: SceneState) => {
 		subjects: [cubeSubject, groundSubject].concat(lightSubjects)
 	};
 
-	deferredRenderer.render(state.target, deferredScene, state.projectionMatrix, cameraView);
+	deferredRenderer.render(state.target, deferredScene, {
+		projectionMatrix: state.projectionMatrix,
+		viewMatrix: cameraView
+	});
 
 	// Draw debug
 	if (tweak.debugMode !== 0) {
+		const configurations = [
+			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.RedGreenBlue, format: debugTexture.Format.Colorful },
+			{ source: deferredRenderer.depthBuffer, select: debugTexture.Select.Red, format: debugTexture.Format.Monochrome },
+			{ source: deferredRenderer.normalAndReflectionBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
+			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome },
+			{ source: deferredRenderer.normalAndReflectionBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome }
+		];
+
+		const debugRenderer = renderers.debug;
+
 		const debugSubject = {
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 3, y: -2, z: -8 }),
 			model: models.debug
 		};
 
-		gl.cullFace(gl.BACK);
+		const debugScene = {
+			subjects: [debugSubject]
+		};
 
-		gl.disable(gl.BLEND);
-		gl.disable(gl.DEPTH_TEST);
-
-		state.target.draw(renderers.debug, [debugSubject], {
-			format: [1, 2, 3, 2, 2][tweak.debugMode - 1],
+		debugRenderer.render(state.target, debugScene, {
+			format: configurations[tweak.debugMode - 1].format,
 			projectionMatrix: state.projectionMatrix,
-			select: [1, 6, 3, 9, 9][tweak.debugMode - 1],
-			texture: [
-				deferredRenderer.albedoAndShininessBuffer,
-				deferredRenderer.depthBuffer,
-				deferredRenderer.normalAndReflectionBuffer,
-				deferredRenderer.albedoAndShininessBuffer,
-				deferredRenderer.normalAndReflectionBuffer][tweak.debugMode - 1],
+			select: configurations[tweak.debugMode - 1].select,
+			source: configurations[tweak.debugMode - 1].source,
 			viewMatrix: matrix.Matrix4.createIdentity()
 		});
 	}

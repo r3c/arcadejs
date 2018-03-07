@@ -245,11 +245,6 @@ interface Configuration {
 	useNormalMap: boolean
 }
 
-interface GeometryState {
-	projectionMatrix: matrix.Matrix4,
-	viewMatrix: matrix.Matrix4
-}
-
 enum LightModel {
 	None,
 	Ambient,
@@ -257,14 +252,17 @@ enum LightModel {
 	Phong
 }
 
-interface LightState {
+interface LightState extends State {
 	albedoAndShininess: WebGLTexture,
 	depth: WebGLTexture,
 	pointLight: webgl.PointLight,
 	normalAndReflection: WebGLTexture,
-	projectionMatrix: matrix.Matrix4,
-	viewMatrix: matrix.Matrix4,
 	viewportSize: vector.Vector2
+}
+
+interface State {
+	projectionMatrix: matrix.Matrix4,
+	viewMatrix: matrix.Matrix4
 }
 
 const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) => {
@@ -278,7 +276,7 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
 
 	// Setup geometry shader
-	const shader = new webgl.Shader<GeometryState>(gl, geometryVertexShader, geometryFragmentShader, directives);
+	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
 
 	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	shader.bindAttributePerGeometry("normals", 3, gl.FLOAT, state => state.geometry.normals);
@@ -339,13 +337,13 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	return shader;
 };
 
-class Renderer implements webgl.Renderer {
+class Renderer implements webgl.Renderer<State> {
 	public readonly albedoAndShininessBuffer: WebGLTexture;
 	public readonly depthBuffer: WebGLTexture;
 	public readonly normalAndReflectionBuffer: WebGLTexture;
 
 	private readonly geometryTarget: webgl.Target;
-	private readonly geometryShader: webgl.Shader<GeometryState>;
+	private readonly geometryShader: webgl.Shader<State>;
 	private readonly gl: WebGLRenderingContext;
 	private readonly lightShader: webgl.Shader<LightState>;
 	private readonly lightSphere: webgl.Model;
@@ -363,7 +361,7 @@ class Renderer implements webgl.Renderer {
 		this.normalAndReflectionBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 1);
 	}
 
-	public render(target: webgl.Target, scene: webgl.Scene, projectionMatrix: matrix.Matrix4, viewMatrix: matrix.Matrix4) {
+	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
 		if (scene.pointLights === undefined)
 			return;
 
@@ -379,10 +377,7 @@ class Renderer implements webgl.Renderer {
 		gl.depthMask(true);
 
 		this.geometryTarget.clear();
-		this.geometryTarget.draw(this.geometryShader, scene.subjects, {
-			projectionMatrix: projectionMatrix,
-			viewMatrix: viewMatrix
-		});
+		this.geometryTarget.draw(this.geometryShader, scene.subjects, state);
 
 		// Draw scene lights
 		gl.cullFace(gl.FRONT);
@@ -393,7 +388,7 @@ class Renderer implements webgl.Renderer {
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.ONE, gl.ONE);
 
-		target.clear();
+		target.clear(); // FIXME: shouldn't be performed here but crash if not
 
 		for (const pointLight of scene.pointLights) {
 			const subject = {
@@ -408,12 +403,12 @@ class Renderer implements webgl.Renderer {
 				depth: this.depthBuffer,
 				pointLight: pointLight,
 				normalAndReflection: this.normalAndReflectionBuffer,
-				projectionMatrix: projectionMatrix,
-				viewMatrix: viewMatrix,
+				projectionMatrix: state.projectionMatrix,
+				viewMatrix: state.viewMatrix,
 				viewportSize: { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight }
 			});
 		}
 	}
 }
 
-export { Configuration, LightModel, Renderer }
+export { Configuration, LightModel, Renderer, State }

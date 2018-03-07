@@ -171,8 +171,11 @@ enum LightModel {
 	Phong
 }
 
-interface LightState {
-	pointLights: webgl.PointLight[],
+interface LightState extends State {
+	pointLights: webgl.PointLight[]
+}
+
+interface State {
 	projectionMatrix: matrix.Matrix4,
 	viewMatrix: matrix.Matrix4
 }
@@ -233,7 +236,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	return shader;
 };
 
-class Renderer implements webgl.Renderer {
+class Renderer implements webgl.Renderer<State> {
 	private readonly gl: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<LightState>;
 
@@ -242,20 +245,22 @@ class Renderer implements webgl.Renderer {
 		this.shader = load(gl, configuration);
 	}
 
-	public render(target: webgl.Target, scene: webgl.Scene, projectionMatrix: matrix.Matrix4, viewMatrix: matrix.Matrix4) {
+	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const gl = this.gl;
 
-		gl.enable(gl.CULL_FACE);
-		gl.enable(gl.DEPTH_TEST);
+		gl.disable(gl.BLEND);
 
+		gl.enable(gl.CULL_FACE);
 		gl.cullFace(gl.BACK);
+
+		gl.enable(gl.DEPTH_TEST);
 
 		target.draw(this.shader, scene.subjects, {
 			pointLights: scene.pointLights || [],
-			projectionMatrix: projectionMatrix,
-			viewMatrix: viewMatrix
+			projectionMatrix: state.projectionMatrix,
+			viewMatrix: state.viewMatrix
 		});
 	}
 }
 
-export { Configuration, LightModel, Renderer }
+export { Configuration, LightModel, Renderer, State }

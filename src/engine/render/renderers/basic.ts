@@ -1,7 +1,7 @@
 import * as matrix from "../../math/matrix";
 import * as webgl from "../webgl";
 
-const vsSource = `
+const vertexShader = `
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -12,7 +12,7 @@ void main(void) {
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
 }`;
 
-const fsSource = `
+const fragmentShader = `
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
@@ -25,7 +25,7 @@ interface State {
 }
 
 const load = (gl: WebGLRenderingContext) => {
-	const shader = new webgl.Shader<State>(gl, vsSource, fsSource);
+	const shader = new webgl.Shader<State>(gl, vertexShader, fragmentShader);
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
@@ -36,7 +36,7 @@ const load = (gl: WebGLRenderingContext) => {
 	return shader;
 };
 
-class Renderer implements webgl.Renderer {
+class Renderer implements webgl.Renderer<State> {
 	private readonly gl: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<State>;
 
@@ -45,7 +45,7 @@ class Renderer implements webgl.Renderer {
 		this.shader = load(gl);
 	}
 
-	public render(target: webgl.Target, scene: webgl.Scene, projectionMatrix: matrix.Matrix4, viewMatrix: matrix.Matrix4) {
+	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const gl = this.gl;
 
 		gl.enable(gl.CULL_FACE);
@@ -53,11 +53,8 @@ class Renderer implements webgl.Renderer {
 
 		gl.cullFace(gl.BACK);
 
-		target.draw(this.shader, scene.subjects, {
-			projectionMatrix: projectionMatrix,
-			viewMatrix: viewMatrix
-		});
+		target.draw(this.shader, scene.subjects, state);
 	}
 }
 
-export { Renderer }
+export { Renderer, State }

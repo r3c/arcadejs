@@ -78,8 +78,8 @@ interface Quality {
 	textureMipmapLinear: boolean
 }
 
-interface Renderer {
-	render(target: Target, scene: Scene, projectionMatrix: matrix.Matrix4, viewMatrix: matrix.Matrix4): void
+interface Renderer<State> {
+	render(target: Target, scene: Scene, state: State): void
 }
 
 interface Scene {

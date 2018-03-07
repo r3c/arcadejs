@@ -3,7 +3,7 @@ import * as basicRenderer from "../engine/render/renderers/basic";
 import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
-import * as forwardRenderer from "../engine/render/renderers/forward";
+import * as forwardLighting from "../engine/render/renderers/forward-lighting";
 import * as functional from "../engine/language/functional";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
@@ -41,7 +41,7 @@ interface SceneState {
 	projectionMatrix: matrix.Matrix4,
 	renderers: {
 		basic: basicRenderer.Renderer,
-		lights: forwardRenderer.Renderer[]
+		lights: forwardLighting.Renderer[]
 	},
 	target: webgl.Target,
 	tweak: application.Tweak<Configuration>
@@ -86,7 +86,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderers: {
 			basic: new basicRenderer.Renderer(gl),
-			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardRenderer.Renderer(gl, {
+			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
 				pointLightCount: 3,
 				useHeightMap: flags[2],
@@ -112,11 +112,6 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Draw scene
-	const lights = state.lightPositions.map(position => ({
-		matrix: matrix.Matrix4.createIdentity().translate(position),
-		model: models.light
-	}));
-
 	const cube = {
 		matrix: matrix.Matrix4.createIdentity(),
 		model: models.cube
@@ -127,6 +122,11 @@ const render = (state: SceneState) => {
 		model: models.ground
 	};
 
+	const lights = state.lightPositions.map(position => ({
+		matrix: matrix.Matrix4.createIdentity().translate(position),
+		model: models.light
+	}));
+
 	target.clear();
 
 	// Basic pass
@@ -135,7 +135,10 @@ const render = (state: SceneState) => {
 		subjects: lights.slice(0, state.tweak.nbLights)
 	};
 
-	renderers.basic.render(target, basicScene, state.projectionMatrix, cameraView);
+	renderers.basic.render(target, basicScene, {
+		projectionMatrix: state.projectionMatrix,
+		viewMatrix: cameraView
+	});
 
 	// Light pass
 	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
@@ -149,7 +152,10 @@ const render = (state: SceneState) => {
 		subjects: [cube, ground]
 	};
 
-	lightRenderer.render(target, lightScene, state.projectionMatrix, cameraView);
+	lightRenderer.render(target, lightScene, {
+		projectionMatrix: state.projectionMatrix,
+		viewMatrix: cameraView
+	});
 };
 
 const update = (state: SceneState, dt: number) => {
