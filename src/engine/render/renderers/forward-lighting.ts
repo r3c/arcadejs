@@ -101,14 +101,14 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 	vec3 outputColor = vec3(0, 0, 0);
 
 	if (lightNormalCosine > 0.0) {
-		if (LIGHT_MODEL >= LIGHT_MODEL_LAMBERT) {
+		#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
 			vec3 diffuseMaterial = texture(diffuseMap, coord).rgb;
 			float diffusePower = lightNormalCosine;
 
 			outputColor += diffuseColor.rgb * light.diffuseColor * diffuseMaterial * diffusePower;
-		}
+		#endif
 
-		if (LIGHT_MODEL >= LIGHT_MODEL_PHONG) {
+		#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
 			float specularCosine;
 
 			#ifdef LIGHT_MODEL_PHONG_STANDARD
@@ -127,7 +127,7 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 			float specularPower = pow(specularCosine, shininess);
 
 			outputColor += specularColor.rgb * light.specularColor * specularMaterial * specularPower;
-		}
+		#endif
 	}
 
 	return outputColor;
@@ -148,8 +148,9 @@ void main(void) {
 	vec3 modifiedNormal = getNormal(normal, modifiedCoord);
 	vec3 outputColor = vec3(0, 0, 0);
 
-	if (LIGHT_MODEL >= LIGHT_MODEL_AMBIENT)
+	#if LIGHT_MODEL >= LIGHT_MODEL_AMBIENT
 		outputColor += vec3(0.3, 0.3, 0.3) * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
+	#endif
 
 	for (int i = 0; i < POINT_LIGHT_COUNT; ++i)
 		outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(lightDirections[i]), pointLights[i]);

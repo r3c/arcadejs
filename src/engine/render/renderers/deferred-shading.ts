@@ -173,13 +173,13 @@ vec3 getLight(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in f
 	vec3 lightOutput = vec3(0, 0, 0);
 
 	if (lightAngle > 0.0) {
-		if (LIGHT_MODEL >= LIGHT_MODEL_LAMBERT) {
+		#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
 			float lightPowerDiffuse = lightAngle;
 
 			lightOutput += pointLight.diffuseColor * lightPowerDiffuse;
-		}
+		#endif
 
-		if (LIGHT_MODEL >= LIGHT_MODEL_PHONG) {
+		#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
 			float lightSpecularCosine;
 
 			#ifdef LIGHT_MODEL_PHONG_STANDARD
@@ -197,7 +197,7 @@ vec3 getLight(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in f
 			float lightPowerSpecular = pow(lightSpecularCosine, shininess) * specularColor;
 
 			lightOutput += pointLight.specularColor * lightPowerSpecular;
-		}
+		#endif
 	}
 
 	return lightOutput;
