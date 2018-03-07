@@ -253,10 +253,10 @@ enum LightModel {
 }
 
 interface LightState extends State {
-	albedoAndShininess: WebGLTexture,
-	depth: WebGLTexture,
+	albedoAndShininessBuffer: WebGLTexture,
+	depthBuffer: WebGLTexture,
 	pointLight: webgl.PointLight,
-	normalAndReflection: WebGLTexture,
+	normalAndReflectionBuffer: WebGLTexture,
 	viewportSize: vector.Vector2
 }
 
@@ -330,9 +330,9 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindPropertyPerTarget("pointLight.specularColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.specularColor));
 	shader.bindPropertyPerTarget("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
 
-	shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininess);
-	shader.bindTexturePerTarget("depth", state => state.depth);
-	shader.bindTexturePerTarget("normalAndReflection", state => state.normalAndReflection);
+	shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);
+	shader.bindTexturePerTarget("depth", state => state.depthBuffer);
+	shader.bindTexturePerTarget("normalAndReflection", state => state.normalAndReflectionBuffer);
 
 	return shader;
 };
@@ -362,10 +362,9 @@ class Renderer implements webgl.Renderer<State> {
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
-		if (scene.pointLights === undefined)
-			return;
-
 		const gl = this.gl;
+		const pointLights = scene.pointLights || [];
+		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
 		// Draw scene geometries
 		gl.enable(gl.CULL_FACE);
@@ -390,7 +389,7 @@ class Renderer implements webgl.Renderer<State> {
 
 		target.clear(); // FIXME: shouldn't be performed here but crash if not
 
-		for (const pointLight of scene.pointLights) {
+		for (const pointLight of pointLights) {
 			const subject = {
 				matrix: matrix.Matrix4.createIdentity()
 					.translate(pointLight.position)
@@ -399,13 +398,13 @@ class Renderer implements webgl.Renderer<State> {
 			};
 
 			target.draw(this.lightShader, [subject], {
-				albedoAndShininess: this.albedoAndShininessBuffer,
-				depth: this.depthBuffer,
+				albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+				depthBuffer: this.depthBuffer,
+				normalAndReflectionBuffer: this.normalAndReflectionBuffer,
 				pointLight: pointLight,
-				normalAndReflection: this.normalAndReflectionBuffer,
 				projectionMatrix: state.projectionMatrix,
 				viewMatrix: state.viewMatrix,
-				viewportSize: { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight }
+				viewportSize: viewportSize
 			});
 		}
 	}
