@@ -141,11 +141,10 @@ class Renderer implements webgl.Renderer<State> {
 		const gl = this.gl;
 
 		gl.disable(gl.BLEND);
+		gl.disable(gl.DEPTH_TEST);
 
 		gl.enable(gl.CULL_FACE);
 		gl.cullFace(gl.BACK);
-
-		gl.enable(gl.DEPTH_TEST);
 
 		target.draw(this.shader, scene.subjects, state);
 	}
