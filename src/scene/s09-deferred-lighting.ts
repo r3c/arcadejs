@@ -376,7 +376,7 @@ const render = (state: SceneState) => {
 const update = (state: SceneState, dt: number) => {
 	// Update light positions
 	if (state.tweak.animate)
-		state.move += dt * 0.0001;
+		state.move += dt * 0.0002;
 
 	for (let i = 0; i < state.lights.length; ++i)
 		state.lights[i].position = move.rotate(i, state.move, 4);
