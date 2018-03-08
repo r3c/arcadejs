@@ -4,16 +4,13 @@ Arcade.js TODO
 ToDo
 ----
 
+- Fix "operation requires zeroing texture data" error
+- Fix out of range specular component in light buffer of deferred-lighting renderer
+- Fix extra "clear" call required to bypass feedback error in deferred-shading & deferred-lighting
+- Factorize common GLSL methods from renderer implementations
 - Implement point light shadow maps
 - Implement ambient occlusion
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
-
-Open
-----
-
-- Stencil buffer + full sphere instead of front face culling for deferred rendering?
-  - http://ogldev.atspace.co.uk/www/tutorial37/tutorial37.html
-  - https://learnopengl.com/Advanced-Lighting/Deferred-Shading
 
 Done
 ----

@@ -114,8 +114,6 @@ const render = (state: SceneState) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	target.clear();
-
 	// Draw scene
 	const lights = state.pointLights.slice(0, [5, 10, 25, 100][tweak.nbLights] || 0);
 
@@ -134,14 +132,16 @@ const render = (state: SceneState) => {
 		model: models.light
 	}));
 
-	const deferredRenderer = state.renderers.scene[bitfield.index(getOptions(tweak))];
+	const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
 
 	const deferredScene = {
 		pointLights: lights,
 		subjects: [cubeSubject, groundSubject].concat(lightSubjects)
 	};
 
-	deferredRenderer.render(state.target, deferredScene, {
+	target.clear();
+
+	deferredRenderer.render(target, deferredScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraView
 	});
@@ -167,7 +167,7 @@ const render = (state: SceneState) => {
 			subjects: [debugSubject]
 		};
 
-		debugRenderer.render(state.target, debugScene, {
+		debugRenderer.render(target, debugScene, {
 			format: configurations[tweak.debugMode - 1].format,
 			projectionMatrix: state.projectionMatrix,
 			select: configurations[tweak.debugMode - 1].select,
