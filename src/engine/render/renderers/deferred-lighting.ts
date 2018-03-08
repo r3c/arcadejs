@@ -538,7 +538,6 @@ class Renderer implements webgl.Renderer<State> {
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthMask(true);
 
-		target.clear(); // FIXME: move to caller
 		target.draw(this.materialShader, scene.subjects, {
 			lightBuffer: this.lightBuffer,
 			projectionMatrix: state.projectionMatrix,

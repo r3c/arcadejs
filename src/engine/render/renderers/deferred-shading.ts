@@ -387,8 +387,6 @@ class Renderer implements webgl.Renderer<State> {
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.ONE, gl.ONE);
 
-		target.clear(); // FIXME: shouldn't be performed here but crash if not
-
 		for (const pointLight of pointLights) {
 			const subject = {
 				matrix: matrix.Matrix4.createIdentity()

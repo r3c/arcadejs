@@ -534,7 +534,6 @@ class Target {
 	public clear() {
 		const gl = this.gl;
 
-		// FIXME: binding framebuffer here (and only here) introduces an implicit shared state between "clear" and "draw" calls
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
@@ -552,6 +551,9 @@ class Target {
 
 	public draw<T>(shader: Shader<T>, subjects: Subject[], state: T) {
 		const gl = this.gl;
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
 		// Enable shader program
 		gl.useProgram(shader.program);
