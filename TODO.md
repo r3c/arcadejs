@@ -5,7 +5,6 @@ ToDo
 ----
 
 - Fix "operation requires zeroing texture data" error
-- Fix out of range specular component in light buffer of deferred-lighting renderer
 - Factorize common GLSL methods from renderer implementations
 - Implement point light shadow maps
 - Implement ambient occlusion
@@ -30,3 +29,4 @@ Done
 - Implement deferred lighing
 - Fix lighting saturation in deferred lighting
 - Fix extra "clear" call required to bypass feedback error in deferred-shading & deferred-lighting
+- Fix out of range specular component in light buffer of deferred-lighting renderer

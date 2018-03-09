@@ -52,14 +52,14 @@ in vec3 tangent;
 
 layout(location=0) out vec4 normalAndSpecular;
 
-float encodeInteger(in float decoded) {
-	return decoded / 256.0;
-}
-
 vec2 encodeNormal(in vec3 decoded) {
 	// Spheremap transform
 	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
 	return normalize(decoded.xy) * sqrt(-decoded.z * 0.5 + 0.5) * 0.5 + 0.5;
+}
+
+float encodeShininess(in float decoded) {
+	return log2(max(decoded, 1.0));
 }
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionTangent, float parallaxScale, float parallaxBias) {
@@ -96,7 +96,7 @@ void main(void) {
 	// Color target: [normal, normal, shininess, specularColor]
 	vec2 normalPack = encodeNormal(getNormal(normal, parallaxCoord));
 	float specularColor = texture(specularMap, parallaxCoord).r;
-	float shininessPack = encodeInteger(shininess);
+	float shininessPack = encodeShininess(shininess);
 
 	normalAndSpecular = vec4(normalPack, shininessPack, specularColor);
 }`;
@@ -145,10 +145,6 @@ in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
 
-float decodeInteger(in float encoded) {
-	return encoded * 256.0;
-}
-
 vec3 decodeNormal(in vec2 normalPack) {
 	// Spheremap transform
 	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
@@ -157,6 +153,10 @@ vec3 decodeNormal(in vec2 normalPack) {
 	float g = sqrt(1.0 - f * 0.25);
 
 	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
+}
+
+float decodeShininess(in float encoded) {
+	return exp2(encoded);
 }
 
 float getLightDiffuse(in vec3 normal, in vec3 lightDirection) {
@@ -212,7 +212,7 @@ void main(void) {
 	// Decode geometry and material properties from samples
 	vec3 normal = decodeNormal(normalAndSpecularSample.rg);
 	float specularColor = normalAndSpecularSample.a;
-	float shininess = decodeInteger(normalAndSpecularSample.b);
+	float shininess = decodeShininess(normalAndSpecularSample.b);
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
