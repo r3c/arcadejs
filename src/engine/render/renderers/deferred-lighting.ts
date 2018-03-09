@@ -163,7 +163,7 @@ float getLightDiffuse(in vec3 normal, in vec3 lightDirection) {
 	#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
 		float lightNormalCosine = dot(normal, lightDirection);
 
-		return max(lightNormalCosine, 0.0);
+		return clamp(lightNormalCosine, 0.0, 1.0);
 	#else
 		return 0.0;
 	#endif
@@ -172,27 +172,25 @@ float getLightDiffuse(in vec3 normal, in vec3 lightDirection) {
 float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
 	#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
 		float lightNormalCosine = dot(normal, lightDirection);
+		float lightVisible = step(0.0, lightNormalCosine);
+		float lightSpecularCosine;
 
-		if (lightNormalCosine > 0.0) {
-			float lightSpecularCosine;
+		#ifdef LIGHT_MODEL_PHONG_STANDARD
+			// Phong model
+			vec3 specularReflection = normalize(normal * clamp(lightNormalCosine, 0.0, 1.0) * 2.0 - lightDirection);
 
-			#ifdef LIGHT_MODEL_PHONG_STANDARD
-				// Phong model
-				vec3 specularReflection = normalize(normal * lightNormalCosine * 2.0 - lightDirection);
+			lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
+		#else
+			// Blinn-Phong model
+			vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
 
-				lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
-			#else
-				// Blinn-Phong model
-				vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
+			lightSpecularCosine = max(dot(normal, cameraLightMidway), 0.0);
+		#endif
 
-				lightSpecularCosine = max(dot(normal, cameraLightMidway), 0.0);
-			#endif
-
-			return pow(lightSpecularCosine, shininess);
-		}
+		return lightVisible * pow(lightSpecularCosine, shininess);
+	#else
+		return 0.0;
 	#endif
-
-	return 0.0;
 }
 
 vec3 getPoint(in vec2 fragCoord, in float fragDepth) {
