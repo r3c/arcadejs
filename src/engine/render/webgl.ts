@@ -16,6 +16,13 @@ interface AttributeBinding<T> {
 	type: number
 }
 
+interface DirectionalLight {
+	castShadow: boolean,
+	diffuseColor: vector.Vector3,
+	direction: vector.Vector3,
+	specularColor: vector.Vector3
+}
+
 interface Directive {
 	name: string,
 	value: number
@@ -83,6 +90,7 @@ interface Renderer<State> {
 }
 
 interface Scene {
+	directionalLights?: DirectionalLight[],
 	pointLights?: PointLight[],
 	subjects: Subject[]
 }
@@ -775,4 +783,4 @@ class Target {
 	}
 }
 
-export { Directive, Geometry, Mesh, Model, PointLight, Renderer, Scene, Shader, Storage, Subject, Target, loadModel }
+export { DirectionalLight, Directive, Geometry, Mesh, Model, PointLight, Renderer, Scene, Shader, Storage, Subject, Target, loadModel }

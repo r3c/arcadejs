@@ -90,7 +90,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
 				pointLightCount: 3,
 				useHeightMap: flags[2],
-				useNormalMap: flags[3]
+				useNormalMap: flags[3],
+				useShadowMap: false
 			}))
 		},
 		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),
@@ -154,6 +155,7 @@ const render = (state: SceneState) => {
 
 	lightRenderer.render(target, lightScene, {
 		projectionMatrix: state.projectionMatrix,
+		shadowViewMatrix: matrix.Matrix4.createIdentity(),
 		viewMatrix: cameraView
 	});
 };
