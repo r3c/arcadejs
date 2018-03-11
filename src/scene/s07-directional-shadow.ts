@@ -27,7 +27,6 @@ interface Configuration {
 
 interface SceneState {
 	camera: view.Camera,
-	gl: WebGLRenderingContext,
 	input: controller.Input,
 	models: {
 		cube: webgl.Model,
@@ -71,7 +70,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Create state
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
-		gl: gl,
 		input: runtime.input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
@@ -97,12 +95,11 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
-	const gl = state.gl;
 	const models = state.models;
 	const renderers = state.renderers;
 	const target = state.target;;
 
-	// Draw shadow map
+	// Setup view matrices
 	const cameraViewMatrix = matrix.Matrix4
 		.createIdentity()
 		.translate(camera.position)
@@ -115,6 +112,7 @@ const render = (state: SceneState) => {
 		.rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 1 / 6)
 		.rotate({ x: 0, y: 1, z: 0 }, state.move * 7);
 
+	// Draw scene
 	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
 		directionalLights: [{
@@ -144,7 +142,7 @@ const render = (state: SceneState) => {
 		viewMatrix: cameraViewMatrix
 	});
 
-	// Draw debug
+	// Draw texture debug
 	if (state.tweak.showDebug) {
 		const debugRenderer = renderers.debug;
 		const debugScene = {

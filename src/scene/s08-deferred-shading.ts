@@ -27,7 +27,6 @@ interface Configuration {
 
 interface SceneState {
 	camera: view.Camera,
-	gl: WebGLRenderingContext,
 	input: controller.Input,
 	models: {
 		cube: webgl.Model,
@@ -71,7 +70,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Create state
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
-		gl: gl,
 		input: runtime.input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
@@ -102,7 +100,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
-	const gl = state.gl;
 	const models = state.models;
 	const renderers = state.renderers;
 	const target = state.target;
@@ -114,29 +111,23 @@ const render = (state: SceneState) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	// Draw scene
+	// Pick active lights
 	const lights = state.pointLights.slice(0, [5, 10, 25, 100][tweak.nbLights] || 0);
 
-	const cubeSubject = {
-		matrix: matrix.Matrix4.createIdentity(),
-		model: models.cube
-	};
-
-	const groundSubject = {
-		matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
-		model: models.ground
-	};
-
-	const lightSubjects = lights.map(light => ({
-		matrix: matrix.Matrix4.createIdentity().translate(light.position),
-		model: models.light
-	}));
-
+	// Draw scene
 	const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
-
 	const deferredScene = {
 		pointLights: lights,
-		subjects: [cubeSubject, groundSubject].concat(lightSubjects)
+		subjects: [{
+			matrix: matrix.Matrix4.createIdentity(),
+			model: models.cube
+		}, {
+			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
+			model: models.ground
+		}].concat(lights.map(light => ({
+			matrix: matrix.Matrix4.createIdentity().translate(light.position),
+			model: models.light
+		})))
 	};
 
 	target.clear();
@@ -157,14 +148,11 @@ const render = (state: SceneState) => {
 		];
 
 		const debugRenderer = renderers.debug;
-
-		const debugSubject = {
-			matrix: matrix.Matrix4.createIdentity().translate({ x: 3, y: -2, z: -8 }),
-			model: models.debug
-		};
-
 		const debugScene = {
-			subjects: [debugSubject]
+			subjects: [{
+				matrix: matrix.Matrix4.createIdentity().translate({ x: 3, y: -2, z: -8 }),
+				model: models.debug
+			}]
 		};
 
 		debugRenderer.render(target, debugScene, {

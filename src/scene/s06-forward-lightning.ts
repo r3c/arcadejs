@@ -29,7 +29,6 @@ interface Configuration {
 
 interface SceneState {
 	camera: view.Camera,
-	gl: WebGLRenderingContext,
 	input: controller.Input,
 	lightPositions: vector.Vector3[],
 	models: {
@@ -74,7 +73,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Create state
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
-		gl: gl,
 		input: runtime.input,
 		lightPositions: functional.range(3, i => ({ x: 0, y: 0, z: 0 })),
 		models: {
@@ -101,7 +99,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
-	const gl = state.gl;
 	const models = state.models;
 	const renderers = state.renderers;
 	const target = state.target;
@@ -112,28 +109,16 @@ const render = (state: SceneState) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	// Draw scene
-	const cube = {
-		matrix: matrix.Matrix4.createIdentity(),
-		model: models.cube
-	};
-
-	const ground = {
-		matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
-		model: models.ground
-	};
-
-	const lights = state.lightPositions.map(position => ({
-		matrix: matrix.Matrix4.createIdentity().translate(position),
-		model: models.light
-	}));
-
+	// Clear screen
 	target.clear();
 
-	// Basic pass
+	// Basic pass: draw light bulbs
 	const basicRenderer = renderers.basic;
 	const basicScene = {
-		subjects: lights.slice(0, state.tweak.nbLights)
+		subjects: state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
+			matrix: matrix.Matrix4.createIdentity().translate(position),
+			model: models.light
+		}))
 	};
 
 	renderers.basic.render(target, basicScene, {
@@ -141,7 +126,7 @@ const render = (state: SceneState) => {
 		viewMatrix: cameraView
 	});
 
-	// Light pass
+	// Light pass: draw subjects
 	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
 		pointLights: state.lightPositions.map((position, index) => ({
@@ -150,7 +135,13 @@ const render = (state: SceneState) => {
 			radius: 0,
 			specularColor: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0)
 		})),
-		subjects: [cube, ground]
+		subjects: [{
+			matrix: matrix.Matrix4.createIdentity(),
+			model: models.cube
+		}, {
+			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
+			model: models.ground
+		}]
 	};
 
 	lightRenderer.render(target, lightScene, {
