@@ -83,8 +83,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		renderers: {
 			debug: new debugTexture.Renderer(gl),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
-				directionalLightCount: 1,
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
+				maxDirectionalLights: 1,
 				useHeightMap: flags[2],
 				useNormalMap: flags[3],
 				useShadowMap: true
@@ -158,7 +158,7 @@ const render = (state: SceneState) => {
 			format: debugTexture.Format.Monochrome,
 			projectionMatrix: state.projectionMatrix,
 			select: debugTexture.Select.Red,
-			source: lightRenderer.shadowBuffer,
+			source: lightRenderer.shadowBuffers[0],
 			viewMatrix: matrix.Matrix4.createIdentity()
 		});
 	}

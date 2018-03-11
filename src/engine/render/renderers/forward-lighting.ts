@@ -12,6 +12,7 @@ struct DirectionalLight {
 	vec3 diffuseColor;
 	vec3 direction;
 	vec3 specularColor;
+	float visibility;
 #ifdef USE_SHADOW_MAP
 	bool castShadow;
 	mat4 shadowViewMatrix;
@@ -23,6 +24,7 @@ struct PointLight {
 	vec3 position;
 	float radius; // FIXME: ignored by this implementation
 	vec3 specularColor;
+	float visibility;
 };
 
 const mat4 texUnitConverter = mat4(
@@ -33,13 +35,13 @@ const mat4 texUnitConverter = mat4(
 );
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform DirectionalLight directionalLights[max(DIRECTIONAL_LIGHT_COUNT, 1)];
-uniform PointLight pointLights[max(POINT_LIGHT_COUNT, 1)];
+uniform DirectionalLight directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+uniform PointLight pointLights[max(MAX_POINT_LIGHTS, 1)];
 
 // FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
 #ifdef USE_SHADOW_MAP
-uniform sampler2D directionalLightShadowMaps[max(DIRECTIONAL_LIGHT_COUNT, 1)];
-uniform sampler2D pointLightShadowMaps[max(POINT_LIGHT_COUNT, 1)];
+uniform sampler2D directionalLightShadowMaps[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+uniform sampler2D pointLightShadowMaps[max(MAX_POINT_LIGHTS, 1)];
 #endif`;
 
 const lightVertexShader = `
@@ -58,11 +60,11 @@ out vec2 coord; // Texture coordinate
 out vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
 out vec3 normal; // Normal at point in same space than eye vector
 
-out vec3 directionalLightDirections[max(DIRECTIONAL_LIGHT_COUNT, 1)];
-out vec3 directionalLightShadows[max(DIRECTIONAL_LIGHT_COUNT, 1)];
+out vec3 directionalLightDirections[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+out vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 
-out vec3 pointLightDirections[max(POINT_LIGHT_COUNT, 1)];
-out vec3 pointLightShadows[max(POINT_LIGHT_COUNT, 1)];
+out vec3 pointLightDirections[max(MAX_POINT_LIGHTS, 1)];
+out vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 vec3 toCameraDirection(in vec3 worldDirection) {
 	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
@@ -83,7 +85,7 @@ void main(void) {
 	#endif
 
 	// Process directional lights
-	for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
+	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
 		#ifdef USE_SHADOW_MAP
 			if (directionalLights[i].castShadow) {
 				vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * modelMatrix * vec4(points, 1.0);
@@ -95,14 +97,14 @@ void main(void) {
 		vec3 lightDirection = normalize(toCameraDirection(directionalLights[i].direction));
 
 		#ifdef USE_NORMAL_MAP
-			lightDirection = vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n));
+			lightDirection = normalize(vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n)));
 		#endif
 
-		directionalLightDirections[i] = normalize(lightDirection);
+		directionalLightDirections[i] = lightDirection;
 	}
 
 	// Process point lights
-	for (int i = 0; i < POINT_LIGHT_COUNT; ++i) {
+	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
 		#ifdef USE_SHADOW_MAP
 			// FIXME: shadow map code
 		#endif
@@ -110,10 +112,10 @@ void main(void) {
 		vec3 lightDirection = normalize(toCameraPosition(pointLights[i].position) - pointCamera);
 
 		#ifdef USE_NORMAL_MAP
-			lightDirection = vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n));
+			lightDirection = normalize(vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n)));
 		#endif
 
-		pointLightDirections[i] = normalize(lightDirection);
+		pointLightDirections[i] = lightDirection;
 	}
 
 	vec3 eyeDirectionCamera = normalize(-pointCamera);
@@ -146,11 +148,11 @@ in vec2 coord;
 in vec3 eye;
 in vec3 normal;
 
-in vec3 directionalLightDirections[max(DIRECTIONAL_LIGHT_COUNT, 1)];
-in vec3 directionalLightShadows[max(DIRECTIONAL_LIGHT_COUNT, 1)];
+in vec3 directionalLightDirections[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+in vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 
-in vec3 pointLightDirections[max(POINT_LIGHT_COUNT, 1)];
-in vec3 pointLightShadows[max(POINT_LIGHT_COUNT, 1)];
+in vec3 pointLightDirections[max(MAX_POINT_LIGHTS, 1)];
+in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 layout(location=0) out vec4 fragColor;
 
@@ -221,19 +223,19 @@ void main(void) {
 		outputColor += vec3(0.3, 0.3, 0.3) * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
 	#endif
 
-	for (int i = 0; i < DIRECTIONAL_LIGHT_COUNT; ++i) {
+	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
 		#ifdef USE_SHADOW_MAP
 			float shadowMapSample = texture(directionalLightShadowMaps[i], directionalLightShadows[i].xy).r;
 
-			if (shadowMapSample < directionalLightShadows[i].z)
+			if (directionalLights[i].castShadow && shadowMapSample < directionalLightShadows[i].z)
 				continue;
 		#endif
 
-		outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(directionalLightDirections[i]), directionalLights[i].diffuseColor, directionalLights[i].specularColor);
+		outputColor += directionalLights[i].visibility * getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(directionalLightDirections[i]), directionalLights[i].diffuseColor, directionalLights[i].specularColor);
 	}
 
-	for (int i = 0; i < POINT_LIGHT_COUNT; ++i)
-		outputColor += getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(pointLightDirections[i]), pointLights[i].diffuseColor, pointLights[i].specularColor);
+	for (int i = 0; i < MAX_POINT_LIGHTS; ++i)
+		outputColor += pointLights[i].visibility * getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(pointLightDirections[i]), pointLights[i].diffuseColor, pointLights[i].specularColor);
 
 	fragColor = vec4(outputColor, 1.0);
 }`;
@@ -257,9 +259,9 @@ void main(void) {
 }`;
 
 interface Configuration {
-	directionalLightCount?: number,
 	lightModel: LightModel,
-	pointLightCount?: number,
+	maxDirectionalLights?: number,
+	maxPointLights?: number,
 	useHeightMap: boolean,
 	useNormalMap: boolean,
 	useShadowMap: boolean
@@ -297,13 +299,13 @@ interface State {
 }
 
 const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
-	const directionalLightCount = functional.coalesce(configuration.directionalLightCount, 0);
 	const directives = [];
-	const pointLightCount = functional.coalesce(configuration.pointLightCount, 0)
+	const maxDirectionalLights = functional.coalesce(configuration.maxDirectionalLights, 0);
+	const maxPointLights = functional.coalesce(configuration.maxPointLights, 0)
 
-	directives.push({ name: "DIRECTIONAL_LIGHT_COUNT", value: directionalLightCount });
 	directives.push({ name: "LIGHT_MODEL", value: <number>configuration.lightModel });
-	directives.push({ name: "POINT_LIGHT_COUNT", value: pointLightCount });
+	directives.push({ name: "MAX_DIRECTIONAL_LIGHTS", value: maxDirectionalLights });
+	directives.push({ name: "MAX_POINT_LIGHTS", value: maxPointLights });
 
 	if (configuration.useHeightMap)
 		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
@@ -336,6 +338,10 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 		shader.bindMatrixPerTarget("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
 
 	// Bind light uniforms
+	const defaultColor = [0, 0, 0];
+	const defaultDirection = [1, 0, 0];
+	const defaultPosition = [0, 0, 0];
+
 	if (configuration.lightModel >= LightModel.Ambient) {
 		shader.bindPropertyPerMaterial("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
 		shader.bindTexturePerMaterial("ambientMap", state => state.material.ambientMap);
@@ -358,23 +364,29 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 		shader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
 	}
 
-	for (let i = 0; i < directionalLightCount; ++i) {
+	for (let i = 0; i < maxDirectionalLights; ++i) {
+		const index = i;
+
 		if (configuration.useShadowMap) {
-			shader.bindPropertyPerTarget(`directionalLights[${i}].castShadow`, gl => gl.uniform1i, state => state.directionalLights[i].castShadow ? 1 : 0);
-			shader.bindMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, gl => gl.uniformMatrix4fv, state => state.directionalLights[i].shadowViewMatrix.getValues());
-			shader.bindTexturePerTarget(`directionalLightShadowMaps[${i}]`, state => state.directionalLights[i].shadowMap);
+			shader.bindPropertyPerTarget(`directionalLights[${i}].castShadow`, gl => gl.uniform1i, state => index < state.directionalLights.length && state.directionalLights[index].castShadow ? 1 : 0);
+			shader.bindMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, gl => gl.uniformMatrix4fv, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues());
+			shader.bindTexturePerTarget(`directionalLightShadowMaps[${i}]`, state => state.directionalLights[index].shadowMap);
 		}
 
-		shader.bindPropertyPerTarget(`directionalLights[${i}].diffuseColor`, gl => gl.uniform3fv, state => vector.Vector3.toArray(state.directionalLights[i].diffuseColor));
-		shader.bindPropertyPerTarget(`directionalLights[${i}].direction`, gl => gl.uniform3fv, state => vector.Vector3.toArray(state.directionalLights[i].direction));
-		shader.bindPropertyPerTarget(`directionalLights[${i}].specularColor`, gl => gl.uniform3fv, state => vector.Vector3.toArray(state.directionalLights[i].specularColor));
+		shader.bindPropertyPerTarget(`directionalLights[${i}].diffuseColor`, gl => gl.uniform3fv, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].diffuseColor) : defaultColor);
+		shader.bindPropertyPerTarget(`directionalLights[${i}].direction`, gl => gl.uniform3fv, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].direction) : defaultDirection);
+		shader.bindPropertyPerTarget(`directionalLights[${i}].specularColor`, gl => gl.uniform3fv, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].specularColor) : defaultColor);
+		shader.bindPropertyPerTarget(`directionalLights[${i}].visibility`, gl => gl.uniform1f, state => index < state.directionalLights.length ? 1 : 0);
 	}
 
-	for (let i = 0; i < pointLightCount; ++i) {
-		shader.bindPropertyPerTarget(`pointLights[${i}].diffuseColor`, gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].diffuseColor));
-		shader.bindPropertyPerTarget(`pointLights[${i}].position`, gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].position));
-		shader.bindPropertyPerTarget(`pointLights[${i}].radius`, gl => gl.uniform1f, state => state.pointLights[i].radius);
-		shader.bindPropertyPerTarget(`pointLights[${i}].specularColor`, gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLights[i].specularColor));
+	for (let i = 0; i < maxPointLights; ++i) {
+		const index = i;
+
+		shader.bindPropertyPerTarget(`pointLights[${i}].diffuseColor`, gl => gl.uniform3fv, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].diffuseColor) : defaultColor);
+		shader.bindPropertyPerTarget(`pointLights[${i}].position`, gl => gl.uniform3fv, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].position) : defaultPosition);
+		shader.bindPropertyPerTarget(`pointLights[${i}].radius`, gl => gl.uniform1f, state => index < state.pointLights.length ? state.pointLights[index].radius : 0);
+		shader.bindPropertyPerTarget(`pointLights[${i}].specularColor`, gl => gl.uniform3fv, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].specularColor) : defaultColor);
+		shader.bindPropertyPerTarget(`pointLights[${i}].visibility`, gl => gl.uniform1f, state => index < state.pointLights.length ? 1 : 0);
 	}
 
 	return shader;
@@ -393,23 +405,29 @@ const loadShadow = (gl: WebGLRenderingContext) => {
 };
 
 class Renderer implements webgl.Renderer<State> {
-	public readonly shadowBuffer: WebGLTexture; // FIXME: should be a list?
+	public readonly shadowBuffers: WebGLTexture[];
 
 	private readonly gl: WebGLRenderingContext;
 	private readonly lightShader: webgl.Shader<LightState>;
+	private readonly maxDirectionalLights: number;
+	private readonly maxPointLights: number;
 	private readonly shadowProjectionMatrix: matrix.Matrix4;
 	private readonly shadowShader: webgl.Shader<ShadowState>;
-	private readonly shadowTarget: webgl.Target;
+	private readonly shadowTargets: webgl.Target[];
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
-		const target = new webgl.Target(gl, 1024, 1024);
+		const maxDirectionalLights = configuration.maxDirectionalLights || 0;
+		const maxPointLights = configuration.maxPointLights || 0;
+		const targets = functional.range(maxDirectionalLights + maxPointLights, i => new webgl.Target(gl, 1024, 1024));
 
 		this.gl = gl;
 		this.lightShader = loadLight(gl, configuration);
-		this.shadowBuffer = target.setupDepthTexture(webgl.Storage.Depth16);
+		this.maxDirectionalLights = maxDirectionalLights;
+		this.maxPointLights = maxPointLights;
+		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Storage.Depth16));
 		this.shadowProjectionMatrix = matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20);
 		this.shadowShader = loadShadow(gl);
-		this.shadowTarget = target;
+		this.shadowTargets = targets;
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
@@ -423,31 +441,43 @@ class Renderer implements webgl.Renderer<State> {
 		gl.enable(gl.CULL_FACE);
 		gl.enable(gl.DEPTH_TEST);
 
+		let bufferIndex = 0;
+
 		// Create shadow maps for directional lights
-		for (let i = 0; i < directionalLights.length; ++i) {
+		const directionalLightStates = [];
+
+		for (let i = 0; i < Math.min(directionalLights.length, this.maxDirectionalLights); ++i) {
+			const light = directionalLights[i];
+
 			gl.colorMask(false, false, false, false);
 			gl.cullFace(gl.FRONT);
 
-			this.shadowTarget.clear();
-			this.shadowTarget.draw(this.shadowShader, scene.subjects, {
+			this.shadowTargets[bufferIndex].clear();
+			this.shadowTargets[bufferIndex].draw(this.shadowShader, scene.subjects, {
 				projectionMatrix: this.shadowProjectionMatrix,
 				viewMatrix: shadowViewMatrix
 			});
+
+			directionalLightStates.push({
+				castShadow: light.castShadow,
+				diffuseColor: light.diffuseColor,
+				direction: light.direction,
+				shadowMap: this.shadowBuffers[bufferIndex],
+				shadowViewMatrix: shadowViewMatrix,
+				specularColor: light.specularColor
+			});
+
+			++bufferIndex;
 		}
+
+		// TODO: create shadow maps for point lights
 
 		// Draw scene
 		gl.colorMask(true, true, true, true);
 		gl.cullFace(gl.BACK);
 
 		target.draw(this.lightShader, scene.subjects, {
-			directionalLights: directionalLights.map(light => ({
-				castShadow: light.castShadow,
-				diffuseColor: light.diffuseColor,
-				direction: light.direction,
-				shadowMap: this.shadowBuffer,
-				shadowViewMatrix: shadowViewMatrix,
-				specularColor: light.specularColor
-			})),
+			directionalLights: directionalLightStates,
 			pointLights: pointLights,
 			projectionMatrix: state.projectionMatrix,
 			shadowProjectionMatrix: this.shadowProjectionMatrix,

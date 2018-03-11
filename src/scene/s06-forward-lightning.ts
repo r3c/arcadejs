@@ -88,7 +88,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			basic: new basicRenderer.Renderer(gl),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
-				pointLightCount: 3,
+				maxPointLights: 3,
 				useHeightMap: flags[2],
 				useNormalMap: flags[3],
 				useShadowMap: false
