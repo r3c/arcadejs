@@ -5,6 +5,10 @@ ToDo
 ----
 
 - Fix "operation requires zeroing texture data" error
+- Fix shininess encoding function used in deferred lighting renderer
+- Fix directional/point lighting in forward renderer when not using normal maps
+- Inject ambient light in forward renderer
+- Compute shadow view matrix from light direction and not the opposite in forward renderer
 - Factorize common GLSL methods from renderer implementations
 - Implement point light shadow maps
 - Implement ambient occlusion
