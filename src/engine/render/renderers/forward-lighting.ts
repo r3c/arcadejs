@@ -125,7 +125,7 @@ void main(void) {
 		normal = vec3(0.0, 0.0, 1.0);
 	#else
 		eye = eyeDirectionCamera;
-		normal = normalize(normals);
+		normal = normalize(normalMatrix * normals);
 	#endif
 
 	coord = coords;
@@ -328,11 +328,9 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	// Bind matrix uniforms
 	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	shader.bindMatrixPerModel("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
-
-	if (configuration.useNormalMap)
-		shader.bindMatrixPerModel("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
 
 	if (configuration.useShadowMap)
 		shader.bindMatrixPerTarget("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
