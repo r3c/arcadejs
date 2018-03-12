@@ -1,6 +1,7 @@
 {
 	"materials": {
 		"side": {
+			"ambientMap": "cube-diffuse.jpg",
 			"diffuseMap": "cube-diffuse.jpg",
 			"heightMap": "cube-height.jpg",
 			"normalMap": "cube-normal.jpg",
