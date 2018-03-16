@@ -59,7 +59,7 @@ vec2 encodeNormal(in vec3 decoded) {
 }
 
 float encodeShininess(in float decoded) {
-	return log2(max(decoded, 1.0));
+	return 1.0 / max(decoded, 1.0);
 }
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionTangent, float parallaxScale, float parallaxBias) {
@@ -156,7 +156,7 @@ vec3 decodeNormal(in vec2 normalPack) {
 }
 
 float decodeShininess(in float encoded) {
-	return exp2(encoded);
+	return 1.0 / encoded;
 }
 
 float getLightDiffuse(in vec3 normal, in vec3 lightDirection) {

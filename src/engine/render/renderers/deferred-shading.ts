@@ -55,8 +55,8 @@ in vec3 tangent;
 layout(location=0) out vec4 albedoAndShininess;
 layout(location=1) out vec4 normalAndReflection;
 
-float encodeInteger(in float decoded) {
-	return decoded / 256.0;
+float encodeShininess(in float decoded) {
+	return 1.0 / max(decoded, 1.0);
 }
 
 vec2 encodeNormal(in vec3 decoded) {
@@ -94,7 +94,7 @@ void main(void) {
 
 	// Color target 1: [ambient, ambient, ambient, shininess]
 	vec3 albedo = ambientColor.rgb * texture(ambientMap, parallaxCoord).rgb;
-	float shininessPack = encodeInteger(shininess);
+	float shininessPack = encodeShininess(shininess);
 
 	albedoAndShininess = vec4(albedo, shininessPack);
 
@@ -154,8 +154,8 @@ in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
 
-float decodeInteger(in float encoded) {
-	return encoded * 256.0;
+float decodeShininess(in float encoded) {
+	return 1.0 / encoded;
 }
 
 vec3 decodeNormal(in vec2 normalPack) {
@@ -222,7 +222,7 @@ void main(void) {
 	vec3 albedo = albedoAndShininessSample.rgb;
 	vec3 normal = decodeNormal(normalAndReflectionSample.rg);
 	float specularColor = normalAndReflectionSample.a;
-	float shininess = decodeInteger(albedoAndShininessSample.a);
+	float shininess = decodeShininess(albedoAndShininessSample.a);
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(depthSample.r);
