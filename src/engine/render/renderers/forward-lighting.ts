@@ -34,6 +34,8 @@ const mat4 texUnitConverter = mat4(
 	0.5, 0.5, 0.5, 1.0
 );
 
+uniform vec3 ambientLightColor;
+
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
 uniform DirectionalLight directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 uniform PointLight pointLights[max(MAX_POINT_LIGHTS, 1)];
@@ -219,8 +221,7 @@ void main(void) {
 	vec3 outputColor = vec3(0, 0, 0);
 
 	#if LIGHT_MODEL >= LIGHT_MODEL_AMBIENT
-		// FIXME: constant ambient light
-		outputColor += vec3(0.3, 0.3, 0.3) * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
+		outputColor += ambientLightColor * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
 	#endif
 
 	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
@@ -280,6 +281,7 @@ enum LightModel {
 }
 
 interface LightState { // FIXME: extends State once shadowViewMatrix is removed
+	ambientLightColor: vector.Vector3,
 	directionalLights: DirectionalLight[],
 	pointLights: webgl.PointLight[], // FIXME: extend PointLight with extra properties
 	projectionMatrix: matrix.Matrix4,
@@ -343,6 +345,8 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	if (configuration.lightModel >= LightModel.Ambient) {
 		shader.bindPropertyPerMaterial("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
 		shader.bindTexturePerMaterial("ambientMap", state => state.material.ambientMap);
+
+		shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 	}
 
 	if (configuration.lightModel >= LightModel.Lambert) {
@@ -475,6 +479,7 @@ class Renderer implements webgl.Renderer<State> {
 		gl.cullFace(gl.BACK);
 
 		target.draw(this.lightShader, scene.subjects, {
+			ambientLightColor: scene.ambientLightColor || { x: 0, y: 0, z: 0 },
 			directionalLights: directionalLightStates,
 			pointLights: pointLights,
 			projectionMatrix: state.projectionMatrix,

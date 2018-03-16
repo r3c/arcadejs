@@ -37,6 +37,16 @@ vec3 decodeNormalSpheremap(in vec2 normalPack) {
 	return normalize(vec3(fenc * g, 1.0 - f * 0.5)) * 0.5 + 0.5;
 }
 
+// Linearize depth
+// See: http://glampert.com/2014/01-26/visualizing-the-depth-buffer/
+vec3 linearizeDepth(in float depth)
+{
+    float zNear = float(ZNEAR);
+    float zFar = float(ZFAR);
+
+    return vec3(2.0 * zNear / (zFar + zNear - depth * (zFar - zNear)));
+}
+
 void main(void) {
 	vec4 encoded;
 	vec4 raw = texture(source, coord);
@@ -77,15 +87,23 @@ void main(void) {
 	else if (format == 2)
 		fragColor = vec4(encoded.rrr, 1.0);
 	else if (format == 3)
-		fragColor = vec4(decodeNormalSpheremap(encoded.rg), 1.0);
+		fragColor = vec4(linearizeDepth(encoded.r), 1.0);
 	else if (format == 4)
+		fragColor = vec4(decodeNormalSpheremap(encoded.rg), 1.0);
+	else if (format == 5)
 		fragColor = vec4(-log2(encoded.rgb), 1.0);
 }`;
+
+interface Configuration {
+	zFar: number,
+	zNear: number
+}
 
 enum Format {
 	Identity,
 	Colorful,
 	Monochrome,
+	Depth,
 	Spheremap,
 	Logarithm
 }
@@ -111,8 +129,13 @@ interface State {
 	source: WebGLTexture
 }
 
-const load = (gl: WebGLRenderingContext) => {
-	const shader = new webgl.Shader<State>(gl, vertexSource, fragmentSource);
+const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
+	const directives = [
+		{ name: "ZFAR", value: configuration.zFar },
+		{ name: "ZNEAR", value: configuration.zNear }
+	];
+
+	const shader = new webgl.Shader<State>(gl, vertexSource, fragmentSource, directives);
 
 	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
@@ -132,9 +155,9 @@ class Renderer implements webgl.Renderer<State> {
 	private readonly gl: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<State>;
 
-	public constructor(gl: WebGLRenderingContext) {
+	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		this.gl = gl;
-		this.shader = load(gl);
+		this.shader = load(gl, configuration);
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {

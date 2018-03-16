@@ -90,6 +90,7 @@ interface Renderer<State> {
 }
 
 interface Scene {
+	ambientLightColor?: vector.Vector3,
 	directionalLights?: DirectionalLight[],
 	pointLights?: PointLight[],
 	subjects: Subject[]

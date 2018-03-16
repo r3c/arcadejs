@@ -49,7 +49,7 @@ const configuration = {
 	nbLights: [".5", "10", "25", "100"],
 	animate: true,
 	lightModel: ["None", "Ambient", "Lambert", ".Phong"],
-	debugMode: [".None", "Albedo", "Depth", "Normal", "Shininess", "Specular"]
+	debugMode: [".None", "Depth", "Albedo", "Normal", "Shininess", "Specular"]
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
@@ -86,7 +86,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		})),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderers: {
-			debug: new debugTexture.Renderer(gl),
+			debug: new debugTexture.Renderer(gl, { zNear: 0.1, zFar: 100 }),
 			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredShading.Renderer(gl, {
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
 				useHeightMap: true,
@@ -117,6 +117,7 @@ const render = (state: SceneState) => {
 	// Draw scene
 	const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
 	const deferredScene = {
+		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		pointLights: lights,
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity(),
@@ -140,11 +141,11 @@ const render = (state: SceneState) => {
 	// Draw debug
 	if (tweak.debugMode !== 0) {
 		const configurations = [
+			{ source: deferredRenderer.depthBuffer, select: debugTexture.Select.Red, format: debugTexture.Format.Depth },
 			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.RedGreenBlue, format: debugTexture.Format.Colorful },
-			{ source: deferredRenderer.depthBuffer, select: debugTexture.Select.Red, format: debugTexture.Format.Monochrome },
-			{ source: deferredRenderer.normalAndReflectionBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
+			{ source: deferredRenderer.normalAndSpecularBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
 			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome },
-			{ source: deferredRenderer.normalAndReflectionBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome }
+			{ source: deferredRenderer.normalAndSpecularBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome }
 		];
 
 		const debugRenderer = renderers.debug;

@@ -79,7 +79,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		move: 0,
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderers: {
-			debug: new debugTexture.Renderer(gl),
+			debug: new debugTexture.Renderer(gl, { zNear: 0.1, zFar: 100 }),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
 				maxDirectionalLights: 1,
@@ -115,6 +115,7 @@ const render = (state: SceneState) => {
 	// Draw scene
 	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
+		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: [{
 			castShadow: true,
 			diffuseColor: { x: 0.8, y: 0.8, z: 0.8 },

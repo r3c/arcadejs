@@ -1,4 +1,5 @@
 import * as matrix from "../../math/matrix";
+import * as quad from "./resources/quad";
 import * as sphere from "./resources/sphere";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
@@ -53,7 +54,7 @@ in vec3 point;
 in vec3 tangent;
 
 layout(location=0) out vec4 albedoAndShininess;
-layout(location=1) out vec4 normalAndReflection;
+layout(location=1) out vec4 normalAndSpecular;
 
 float encodeShininess(in float decoded) {
 	return 1.0 / max(decoded, 1.0);
@@ -103,10 +104,10 @@ void main(void) {
 	float specularColor = texture(specularMap, parallaxCoord).r;
 	float unused = 0.0;
 
-	normalAndReflection = vec4(normalPack, unused, specularColor);
+	normalAndSpecular = vec4(normalPack, unused, specularColor);
 }`;
 
-const lightCommonShader = `
+const lightHeaderShader = `
 #define LIGHT_MODEL_AMBIENT 1
 #define LIGHT_MODEL_LAMBERT 2
 #define LIGHT_MODEL_PHONG 3
@@ -118,6 +119,7 @@ struct PointLight {
 	vec3 specularColor;
 };
 
+uniform vec3 ambientLightColor;
 uniform PointLight pointLight;`;
 
 const lightVertexShader = `
@@ -139,16 +141,34 @@ void main(void) {
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
 }`;
 
-const lightFragmentShader = `
+const lightFragmentAmbientShader = `
+uniform sampler2D albedoAndShininess;
+
+layout(location=0) out vec4 fragColor;
+
+void main(void) {
+	#if LIGHT_MODEL >= LIGHT_MODEL_AMBIENT
+		ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
+
+		// Read samples from texture buffers
+		vec4 albedoAndShininessSample = texelFetch(albedoAndShininess, bufferCoord, 0);
+
+		// Decode geometry and material properties from samples
+		vec3 albedo = albedoAndShininessSample.rgb;
+
+		fragColor = vec4(albedo * ambientLightColor, 1.0);
+	#else
+		fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+	#endif
+}`;
+
+const lightFragmentPointShader = `
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
 uniform sampler2D albedoAndShininess;
 uniform sampler2D depth;
-uniform sampler2D normalAndReflection;
-
-uniform bool applyDiffuse;
-uniform bool applySpecular;
+uniform sampler2D normalAndSpecular;
 
 in vec3 lightPositionCamera;
 
@@ -216,12 +236,12 @@ void main(void) {
 	// Read samples from texture buffers
 	vec4 albedoAndShininessSample = texelFetch(albedoAndShininess, bufferCoord, 0);
 	vec4 depthSample = texelFetch(depth, bufferCoord, 0);
-	vec4 normalAndReflectionSample = texelFetch(normalAndReflection, bufferCoord, 0);
+	vec4 normalAndSpecularSample = texelFetch(normalAndSpecular, bufferCoord, 0);
 
 	// Decode geometry and material properties from samples
 	vec3 albedo = albedoAndShininessSample.rgb;
-	vec3 normal = decodeNormal(normalAndReflectionSample.rg);
-	float specularColor = normalAndReflectionSample.a;
+	vec3 normal = decodeNormal(normalAndSpecularSample.rg);
+	float specularColor = normalAndSpecularSample.a;
 	float shininess = decodeShininess(albedoAndShininessSample.a);
 
 	// Compute point in camera space from fragment coord and depth buffer
@@ -252,11 +272,16 @@ enum LightModel {
 	Phong
 }
 
-interface LightState extends State {
+interface AmbientLightState extends State {
+	albedoAndShininessBuffer: WebGLTexture,
+	ambientLightColor: vector.Vector3
+}
+
+interface PointLightState extends State {
 	albedoAndShininessBuffer: WebGLTexture,
 	depthBuffer: WebGLTexture,
 	pointLight: webgl.PointLight,
-	normalAndReflectionBuffer: WebGLTexture,
+	normalAndSpecularBuffer: WebGLTexture,
 	viewportSize: vector.Vector2
 }
 
@@ -307,14 +332,38 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	return shader;
 }
 
-const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
+const loadLightAmbient = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
 	const directives = [
 		{ name: "LIGHT_MODEL", value: <number>configuration.lightModel }
 	];
 
 	// Setup light shader
-	const shader = new webgl.Shader<LightState>(gl, lightCommonShader + lightVertexShader, lightCommonShader + lightFragmentShader, directives);
+	const shader = new webgl.Shader<AmbientLightState>(gl, lightHeaderShader + lightVertexShader, lightHeaderShader + lightFragmentAmbientShader, directives);
+
+	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+
+	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+
+	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
+	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+
+	if (configuration.lightModel >= LightModel.Ambient) {
+		shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);
+		shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
+	}
+
+	return shader;
+};
+
+const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration) => {
+	// Build directives from configuration
+	const directives = [
+		{ name: "LIGHT_MODEL", value: <number>configuration.lightModel }
+	];
+
+	// Setup light shader
+	const shader = new webgl.Shader<PointLightState>(gl, lightHeaderShader + lightVertexShader, lightHeaderShader + lightFragmentPointShader, directives);
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
@@ -332,7 +381,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);
 	shader.bindTexturePerTarget("depth", state => state.depthBuffer);
-	shader.bindTexturePerTarget("normalAndReflection", state => state.normalAndReflectionBuffer);
+	shader.bindTexturePerTarget("normalAndSpecular", state => state.normalAndSpecularBuffer);
 
 	return shader;
 };
@@ -340,25 +389,29 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 class Renderer implements webgl.Renderer<State> {
 	public readonly albedoAndShininessBuffer: WebGLTexture;
 	public readonly depthBuffer: WebGLTexture;
-	public readonly normalAndReflectionBuffer: WebGLTexture;
+	public readonly normalAndSpecularBuffer: WebGLTexture;
 
+	private readonly ambientLightQuad: webgl.Model;
+	private readonly ambientLightShader: webgl.Shader<AmbientLightState>;
 	private readonly geometryTarget: webgl.Target;
 	private readonly geometryShader: webgl.Shader<State>;
 	private readonly gl: WebGLRenderingContext;
-	private readonly lightShader: webgl.Shader<LightState>;
-	private readonly lightSphere: webgl.Model;
+	private readonly pointLightShader: webgl.Shader<PointLightState>;
+	private readonly pointLightSphere: webgl.Model;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		const geometry = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 
 		this.albedoAndShininessBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
+		this.ambientLightQuad = webgl.loadModel(gl, quad.model);
+		this.ambientLightShader = loadLightAmbient(gl, configuration);
 		this.depthBuffer = geometry.setupDepthTexture(webgl.Storage.Depth16);
 		this.geometryTarget = geometry;
 		this.geometryShader = loadGeometry(gl, configuration);
 		this.gl = gl;
-		this.lightShader = loadLight(gl, configuration);
-		this.lightSphere = webgl.loadModel(gl, sphere.model);
-		this.normalAndReflectionBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 1);
+		this.pointLightShader = loadLightPoint(gl, configuration);
+		this.pointLightSphere = webgl.loadModel(gl, sphere.model);
+		this.normalAndSpecularBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 1);
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
@@ -387,18 +440,35 @@ class Renderer implements webgl.Renderer<State> {
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.ONE, gl.ONE);
 
+		// Draw ambient light using fullscreen quad
+		if (scene.ambientLightColor !== undefined) {
+			const subject = {
+				matrix: matrix.Matrix4.createIdentity()
+					.translate({ x: 0, y: 0, z: -1 }),
+				model: this.ambientLightQuad
+			};
+
+			target.draw(this.ambientLightShader, [subject], {
+				albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+				ambientLightColor: scene.ambientLightColor,
+				projectionMatrix: state.projectionMatrix,
+				viewMatrix: matrix.Matrix4.createIdentity()
+			});
+		}
+
+		// Draw point lights using spheres
 		for (const pointLight of pointLights) {
 			const subject = {
 				matrix: matrix.Matrix4.createIdentity()
 					.translate(pointLight.position)
 					.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius }),
-				model: this.lightSphere
+				model: this.pointLightSphere
 			};
 
-			target.draw(this.lightShader, [subject], {
+			target.draw(this.pointLightShader, [subject], {
 				albedoAndShininessBuffer: this.albedoAndShininessBuffer,
 				depthBuffer: this.depthBuffer,
-				normalAndReflectionBuffer: this.normalAndReflectionBuffer,
+				normalAndSpecularBuffer: this.normalAndSpecularBuffer,
 				pointLight: pointLight,
 				projectionMatrix: state.projectionMatrix,
 				viewMatrix: state.viewMatrix,

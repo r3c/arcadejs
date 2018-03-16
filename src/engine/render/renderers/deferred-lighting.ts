@@ -466,8 +466,6 @@ class Renderer implements webgl.Renderer<State> {
 		const geometry = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 		const light = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 
-		light.setClearColor(1, 1, 1, 1);
-
 		this.depthBuffer = geometry.setupDepthTexture(webgl.Storage.Depth16);
 		this.geometryShader = loadGeometry(gl, configuration);
 		this.geometryTarget = geometry;
@@ -481,6 +479,7 @@ class Renderer implements webgl.Renderer<State> {
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
+		const ambientLightColor = /*scene.ambientLightColor || */{ x: 0, y: 0, z: 0 };
 		const gl = this.gl;
 		const lightSubjects = new Array<webgl.Subject>(1);
 		const pointLights = scene.pointLights || [];
@@ -507,6 +506,7 @@ class Renderer implements webgl.Renderer<State> {
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.DST_COLOR, gl.ZERO);
 
+		this.lightTarget.setClearColor(Math.pow(2, -ambientLightColor.x), Math.pow(2, -ambientLightColor.y), Math.pow(2, -ambientLightColor.z), 1);
 		this.lightTarget.clear();
 
 		for (const pointLight of pointLights) {
