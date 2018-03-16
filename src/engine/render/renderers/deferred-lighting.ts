@@ -1,4 +1,7 @@
 import * as matrix from "../../math/matrix";
+import * as normal from "./snippets/normal";
+import * as phong from "./snippets/phong";
+import * as shininess from "./snippets/shininess";
 import * as sphere from "./resources/sphere";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
@@ -52,15 +55,8 @@ in vec3 tangent;
 
 layout(location=0) out vec4 normalAndSpecular;
 
-vec2 encodeNormal(in vec3 decoded) {
-	// Spheremap transform
-	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-	return normalize(decoded.xy) * sqrt(-decoded.z * 0.5 + 0.5) * 0.5 + 0.5;
-}
-
-float encodeShininess(in float decoded) {
-	return 1.0 / max(decoded, 1.0);
-}
+${normal.encodeDeclare}
+${shininess.encodeDeclare}
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionTangent, float parallaxScale, float parallaxBias) {
 	#ifdef USE_HEIGHT_MAP
@@ -94,17 +90,15 @@ void main(void) {
 	vec2 parallaxCoord = getCoord(coord, eyeDirectionTangent, 0.04, 0.02);
 
 	// Color target: [normal, normal, shininess, specularColor]
-	vec2 normalPack = encodeNormal(getNormal(normal, parallaxCoord));
+	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
 	float specularColor = texture(specularMap, parallaxCoord).r;
-	float shininessPack = encodeShininess(shininess);
+	float shininessPack = ${shininess.encodeInvoke("shininess")};
 
 	normalAndSpecular = vec4(normalPack, shininessPack, specularColor);
 }`;
 
 const lightHeaderShader = `
-#define LIGHT_MODEL_AMBIENT 1
-#define LIGHT_MODEL_LAMBERT 2
-#define LIGHT_MODEL_PHONG 3
+${phong.modelDeclare}
 
 struct PointLight {
 	vec3 diffuseColor;
@@ -145,53 +139,10 @@ in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
 
-vec3 decodeNormal(in vec2 normalPack) {
-	// Spheremap transform
-	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-	vec2 fenc = normalPack * 4.0 - 2.0;
-	float f = dot(fenc, fenc);
-	float g = sqrt(1.0 - f * 0.25);
-
-	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
-}
-
-float decodeShininess(in float encoded) {
-	return 1.0 / encoded;
-}
-
-float getLightDiffuse(in vec3 normal, in vec3 lightDirection) {
-	#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
-		float lightNormalCosine = dot(normal, lightDirection);
-
-		return clamp(lightNormalCosine, 0.0, 1.0);
-	#else
-		return 0.0;
-	#endif
-}
-
-float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
-	#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
-		float lightNormalCosine = dot(normal, lightDirection);
-		float lightVisible = step(0.0, lightNormalCosine);
-		float lightSpecularCosine;
-
-		#ifdef LIGHT_MODEL_PHONG_STANDARD
-			// Phong model
-			vec3 specularReflection = normalize(normal * clamp(lightNormalCosine, 0.0, 1.0) * 2.0 - lightDirection);
-
-			lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
-		#else
-			// Blinn-Phong model
-			vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
-
-			lightSpecularCosine = max(dot(normal, cameraLightMidway), 0.0);
-		#endif
-
-		return lightVisible * pow(lightSpecularCosine, shininess);
-	#else
-		return 0.0;
-	#endif
-}
+${normal.decodeDeclare}
+${phong.diffuseDeclare}
+${phong.specularDeclare}
+${shininess.decodeDeclare}
 
 vec3 getPoint(in vec2 fragCoord, in float fragDepth) {
 	vec4 pointClip = vec4(fragCoord, fragDepth, 1.0) * 2.0 - 1.0;
@@ -208,9 +159,9 @@ void main(void) {
 	vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
 	// Decode geometry and material properties from samples
-	vec3 normal = decodeNormal(normalAndSpecularSample.rg);
+	vec3 normal = ${normal.decodeInvoke("normalAndSpecularSample.rg")};
 	float specularColor = normalAndSpecularSample.a;
-	float shininess = decodeShininess(normalAndSpecularSample.b);
+	float shininess = ${shininess.decodeInvoke("normalAndSpecularSample.b")};
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
@@ -224,8 +175,8 @@ void main(void) {
 
 	// Emit lighting parameters
 	fragColor = exp2(-vec4(
-		getLightDiffuse(normal, lightDirection) * lightPower * pointLight.diffuseColor,
-		getLightSpecular(normal, lightDirection, eyeDirection, shininess) * specularColor * lightPower
+		${phong.diffuseInvoke("normal", "lightDirection")} * lightPower * pointLight.diffuseColor,
+		${phong.specularInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * specularColor * lightPower
 	));
 }`;
 
@@ -385,7 +336,7 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
 	const directives = [
-		{ name: "LIGHT_MODEL", value: <number>configuration.lightModel }
+		{ name: phong.modelName, value: <number>configuration.lightModel }
 	];
 
 	// Setup light shader

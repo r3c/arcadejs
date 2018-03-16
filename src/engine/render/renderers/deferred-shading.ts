@@ -1,5 +1,8 @@
 import * as matrix from "../../math/matrix";
+import * as normal from "./snippets/normal";
+import * as phong from "./snippets/phong";
 import * as quad from "./resources/quad";
+import * as shininess from "./snippets/shininess";
 import * as sphere from "./resources/sphere";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
@@ -56,15 +59,8 @@ in vec3 tangent;
 layout(location=0) out vec4 albedoAndShininess;
 layout(location=1) out vec4 normalAndSpecular;
 
-float encodeShininess(in float decoded) {
-	return 1.0 / max(decoded, 1.0);
-}
-
-vec2 encodeNormal(in vec3 decoded) {
-	// Spheremap transform
-	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-	return normalize(decoded.xy) * sqrt(-decoded.z * 0.5 + 0.5) * 0.5 + 0.5;
-}
+${normal.encodeDeclare}
+${shininess.encodeDeclare}
 
 vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionFace, float parallaxScale, float parallaxBias) {
 	#ifdef USE_HEIGHT_MAP
@@ -95,12 +91,12 @@ void main(void) {
 
 	// Color target 1: [ambient, ambient, ambient, shininess]
 	vec3 albedo = ambientColor.rgb * texture(ambientMap, parallaxCoord).rgb;
-	float shininessPack = encodeShininess(shininess);
+	float shininessPack = ${shininess.encodeInvoke("shininess")};
 
 	albedoAndShininess = vec4(albedo, shininessPack);
 
 	// Color target 2: [normal, normal, zero, specularColor]
-	vec2 normalPack = encodeNormal(getNormal(normal, parallaxCoord));
+	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
 	float specularColor = texture(specularMap, parallaxCoord).r;
 	float unused = 0.0;
 
@@ -108,9 +104,7 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-#define LIGHT_MODEL_AMBIENT 1
-#define LIGHT_MODEL_LAMBERT 2
-#define LIGHT_MODEL_PHONG 3
+${phong.modelDeclare}
 
 struct PointLight {
 	vec3 diffuseColor;
@@ -146,20 +140,18 @@ uniform sampler2D albedoAndShininess;
 
 layout(location=0) out vec4 fragColor;
 
+${phong.ambientDeclare}
+
 void main(void) {
-	#if LIGHT_MODEL >= LIGHT_MODEL_AMBIENT
-		ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
+	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
-		// Read samples from texture buffers
-		vec4 albedoAndShininessSample = texelFetch(albedoAndShininess, bufferCoord, 0);
+	// Read samples from texture buffers
+	vec4 albedoAndShininessSample = texelFetch(albedoAndShininess, bufferCoord, 0);
 
-		// Decode geometry and material properties from samples
-		vec3 albedo = albedoAndShininessSample.rgb;
+	// Decode geometry and material properties from samples
+	vec3 albedo = albedoAndShininessSample.rgb;
 
-		fragColor = vec4(albedo * ambientLightColor, 1.0);
-	#else
-		fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-	#endif
+	fragColor = vec4(${phong.ambientInvoke()} * albedo * ambientLightColor, 1.0);
 }`;
 
 const lightFragmentPointShader = `
@@ -174,54 +166,10 @@ in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
 
-float decodeShininess(in float encoded) {
-	return 1.0 / encoded;
-}
-
-vec3 decodeNormal(in vec2 normalPack) {
-	// Spheremap transform
-	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-	vec2 fenc = normalPack * 4.0 - 2.0;
-	float f = dot(fenc, fenc);
-	float g = sqrt(1.0 - f * 0.25);
-
-	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
-}
-
-vec3 getLight(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float specularColor, in float shininess) {
-	float lightNormalCosine = dot(normal, lightDirection);
-	vec3 lightOutput = vec3(0, 0, 0);
-
-	if (lightNormalCosine > 0.0) {
-		#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
-			float lightPowerDiffuse = lightNormalCosine;
-
-			lightOutput += pointLight.diffuseColor * lightPowerDiffuse;
-		#endif
-
-		#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
-			float lightSpecularCosine;
-
-			#ifdef LIGHT_MODEL_PHONG_STANDARD
-				// Phong model
-				vec3 specularReflection = normalize(normal * lightNormalCosine * 2.0 - lightDirection);
-
-				lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
-			#else
-				// Blinn-Phong model
-				vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
-
-				lightSpecularCosine = max(dot(normal, cameraLightMidway), 0.0);
-			#endif
-
-			float lightPowerSpecular = pow(lightSpecularCosine, shininess) * specularColor;
-
-			lightOutput += pointLight.specularColor * lightPowerSpecular;
-		#endif
-	}
-
-	return lightOutput;
-}
+${normal.decodeDeclare}
+${phong.diffuseDeclare}
+${phong.specularDeclare}
+${shininess.decodeDeclare}
 
 vec3 getPoint(in float depthClip) {
 	vec4 pointClip = vec4(gl_FragCoord.xy / viewportSize, depthClip, 1.0) * 2.0 - 1.0;
@@ -240,9 +188,9 @@ void main(void) {
 
 	// Decode geometry and material properties from samples
 	vec3 albedo = albedoAndShininessSample.rgb;
-	vec3 normal = decodeNormal(normalAndSpecularSample.rg);
+	vec3 normal = ${normal.decodeInvoke("normalAndSpecularSample.rg")};
 	float specularColor = normalAndSpecularSample.a;
-	float shininess = decodeShininess(albedoAndShininessSample.a);
+	float shininess = ${shininess.decodeInvoke("albedoAndShininessSample.a")};
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(depthSample.r);
@@ -254,9 +202,11 @@ void main(void) {
 	float lightDistance = length(lightPositionCamera - point);
 	float lightPower = max(1.0 - lightDistance / pointLight.radius, 0.0);
 
-	vec3 light = getLight(normal, lightDirection, eyeDirection, specularColor, shininess) * lightPower;
+	vec3 lightColor =
+		${phong.diffuseInvoke("normal", "lightDirection")} * pointLight.diffuseColor +
+		${phong.specularInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * pointLight.specularColor * specularColor;
 
-	fragColor = vec4(albedo * light, 1.0);
+	fragColor = vec4(albedo * lightColor * lightPower, 1.0);
 }`;
 
 interface Configuration {
@@ -335,7 +285,7 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 const loadLightAmbient = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
 	const directives = [
-		{ name: "LIGHT_MODEL", value: <number>configuration.lightModel }
+		{ name: phong.modelName, value: <number>configuration.lightModel }
 	];
 
 	// Setup light shader
@@ -359,7 +309,7 @@ const loadLightAmbient = (gl: WebGLRenderingContext, configuration: Configuratio
 const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
 	const directives = [
-		{ name: "LIGHT_MODEL", value: <number>configuration.lightModel }
+		{ name: phong.modelName, value: <number>configuration.lightModel }
 	];
 
 	// Setup light shader
