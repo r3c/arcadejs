@@ -193,8 +193,15 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 				specularCosine = max(dot(normal, halfwayDirection), 0.0);
 			#endif
 
-			vec4 materialGloss = glossColor * texture(glossMap, coord);
 			float specularPower = pow(specularCosine, shininess);
+
+			vec4 materialGloss;
+
+			#ifdef USE_GLOSS_MAP
+				materialGloss = glossColor * texture(glossMap, coord);
+			#else
+				materialGloss = glossColor;
+			#endif
 
 			outputColor += materialGloss.rgb * lightSpecularColor * specularPower;
 		#endif
@@ -263,6 +270,7 @@ interface Configuration {
 	lightModel: LightModel,
 	maxDirectionalLights?: number,
 	maxPointLights?: number,
+	useGlossMap: boolean,
 	useHeightMap: boolean,
 	useNormalMap: boolean,
 	useShadowMap: boolean
@@ -309,6 +317,9 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	directives.push({ name: "MAX_DIRECTIONAL_LIGHTS", value: maxDirectionalLights });
 	directives.push({ name: "MAX_POINT_LIGHTS", value: maxPointLights });
 
+	if (configuration.useGlossMap)
+		directives.push({ name: "USE_GLOSS_MAP", value: 1 });
+
 	if (configuration.useHeightMap)
 		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
 
@@ -350,8 +361,10 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	}
 
 	if (configuration.lightModel >= LightModel.Phong) {
+		if (configuration.useGlossMap)
+			shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
+
 		shader.bindPropertyPerMaterial("glossColor", gl => gl.uniform4fv, state => state.material.glossColor);
-		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
 		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
 	}
 

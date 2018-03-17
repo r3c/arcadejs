@@ -23,6 +23,7 @@ interface Configuration {
 	nbLights: string[],
 	animate: boolean,
 	lightModel: string[],
+	useGlossMap: boolean,
 	useNormalMap: boolean,
 	useHeightMap: boolean
 }
@@ -50,6 +51,7 @@ const configuration = {
 	nbLights: ["0", ".1", "2", "3"],
 	animate: false,
 	lightModel: ["None", ".Ambient", "Lambert", "Phong"],
+	useGlossMap: false,
 	useNormalMap: false,
 	useHeightMap: false
 };
@@ -57,6 +59,7 @@ const configuration = {
 const getOptions = (tweak: application.Tweak<Configuration>) => [
 	(tweak.lightModel & 1) !== 0,
 	(tweak.lightModel & 2) !== 0,
+	tweak.useGlossMap !== 0,
 	tweak.useHeightMap !== 0,
 	tweak.useNormalMap !== 0
 ];
@@ -87,8 +90,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
 				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
 				maxPointLights: 3,
-				useHeightMap: flags[2],
-				useNormalMap: flags[3],
+				useGlossMap: flags[2],
+				useHeightMap: flags[3],
+				useNormalMap: flags[4],
 				useShadowMap: false
 			}))
 		},
