@@ -52,7 +52,7 @@ float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirect
 			lightSpecularCosine = max(dot(normal, cameraLightMidway), 0.0);
 		#endif
 
-		return lightVisible * pow(lightSpecularCosine, shininess);
+		return pow(lightSpecularCosine, shininess) * lightVisible;
 	#else
 		return 0.0;
 	#endif

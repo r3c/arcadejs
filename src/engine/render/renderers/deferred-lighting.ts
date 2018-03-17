@@ -89,7 +89,7 @@ void main(void) {
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, t), dot(eyeDirection, b), dot(eyeDirection, n));
 	vec2 parallaxCoord = getCoord(coord, eyeDirectionTangent, 0.04, 0.02);
 
-	// Color target: [normal, normal, shininess, specularColor]
+	// Color target: [normal, normal, shininess, gloss]
 	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
 	float gloss = texture(glossMap, parallaxCoord).r;
 	float shininessPack = ${shininess.encodeInvoke("shininess")};
@@ -160,7 +160,7 @@ void main(void) {
 
 	// Decode geometry and material properties from samples
 	vec3 normal = ${normal.decodeInvoke("normalAndGlossSample.rg")};
-	float specularColor = normalAndGlossSample.a;
+	float gloss = normalAndGlossSample.a;
 	float shininess = ${shininess.decodeInvoke("normalAndGlossSample.b")};
 
 	// Compute point in camera space from fragment coord and depth buffer
@@ -176,7 +176,7 @@ void main(void) {
 	// Emit lighting parameters
 	fragColor = exp2(-vec4(
 		${phong.diffuseInvoke("normal", "lightDirection")} * lightPower * pointLight.diffuseColor,
-		${phong.specularInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * specularColor * lightPower
+		${phong.specularInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * gloss * lightPower
 	));
 }`;
 
@@ -215,6 +215,7 @@ void main(void) {
 }`;
 
 const materialFragmentShader = `
+uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
 
 uniform vec4 albedoColor;
@@ -246,8 +247,8 @@ void main(void) {
 	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 	vec4 lightSample = -log2(texelFetch(lightBuffer, bufferCoord, 0));
 
-	vec3 lightDiffuse = lightSample.rgb;
-	vec3 lightSpecular = lightSample.rgb * lightSample.a;
+	vec3 diffuseLightColor = lightSample.rgb;
+	vec3 specularLightColor = lightSample.rgb * lightSample.a;
 
 	// Read material properties from uniforms
 	vec3 t = normalize(tangent);
@@ -262,7 +263,7 @@ void main(void) {
 	vec4 gloss = glossColor * texture(glossMap, parallaxCoord);
 
 	// Emit final fragment color
-	fragColor = vec4(albedo.rgb * lightDiffuse + gloss.rgb * lightSpecular, 1.0);
+	fragColor = vec4(albedo.rgb * (ambientLightColor + diffuseLightColor) + gloss.rgb * specularLightColor, 1.0);
 }`;
 
 interface Configuration {
@@ -286,6 +287,7 @@ interface LightState extends State {
 }
 
 interface MaterialState extends State {
+	ambientLightColor: vector.Vector3,
 	lightBuffer: WebGLTexture
 }
 
@@ -380,9 +382,10 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
+	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 	shader.bindTexturePerTarget("lightBuffer", state => state.lightBuffer);
 
-	if (configuration.lightModel >= LightModel.Lambert) {
+	if (configuration.lightModel >= LightModel.Ambient) {
 		shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
 		shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 	}
@@ -428,11 +431,7 @@ class Renderer implements webgl.Renderer<State> {
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
-		const ambientLightColor = /*scene.ambientLightColor || */{ x: 0, y: 0, z: 0 };
 		const gl = this.gl;
-		const lightSubjects = new Array<webgl.Subject>(1);
-		const pointLights = scene.pointLights || [];
-		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
 		// Render geometries to geometry buffers
 		gl.disable(gl.BLEND);
@@ -455,25 +454,30 @@ class Renderer implements webgl.Renderer<State> {
 		gl.enable(gl.BLEND);
 		gl.blendFunc(gl.DST_COLOR, gl.ZERO);
 
-		this.lightTarget.setClearColor(Math.pow(2, -ambientLightColor.x), Math.pow(2, -ambientLightColor.y), Math.pow(2, -ambientLightColor.z), 1);
+		this.lightTarget.setClearColor(1, 1, 1, 1);
 		this.lightTarget.clear();
 
-		for (const pointLight of pointLights) {
-			lightSubjects[0] = {
-				matrix: matrix.Matrix4.createIdentity()
-					.translate(pointLight.position)
-					.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius }),
-				model: this.lightSphere
-			};
+		if (scene.pointLights !== undefined) {
+			const lightSubjects = new Array<webgl.Subject>(1);
+			const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
-			this.lightTarget.draw(this.lightShader, lightSubjects, {
-				depthBuffer: this.depthBuffer,
-				normalAndGlossBuffer: this.normalAndGlossBuffer,
-				pointLight: pointLight,
-				projectionMatrix: state.projectionMatrix,
-				viewMatrix: state.viewMatrix,
-				viewportSize: viewportSize
-			});
+			for (const pointLight of scene.pointLights) {
+				lightSubjects[0] = {
+					matrix: matrix.Matrix4.createIdentity()
+						.translate(pointLight.position)
+						.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius }),
+					model: this.lightSphere
+				};
+
+				this.lightTarget.draw(this.lightShader, lightSubjects, {
+					depthBuffer: this.depthBuffer,
+					normalAndGlossBuffer: this.normalAndGlossBuffer,
+					pointLight: pointLight,
+					projectionMatrix: state.projectionMatrix,
+					viewMatrix: state.viewMatrix,
+					viewportSize: viewportSize
+				});
+			}
 		}
 
 		// Render materials to output
@@ -486,6 +490,7 @@ class Renderer implements webgl.Renderer<State> {
 		gl.depthMask(true);
 
 		target.draw(this.materialShader, scene.subjects, {
+			ambientLightColor: scene.ambientLightColor || { x: 0, y: 0, z: 0 },
 			lightBuffer: this.lightBuffer,
 			projectionMatrix: state.projectionMatrix,
 			viewMatrix: state.viewMatrix
