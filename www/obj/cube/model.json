@@ -1,10 +1,13 @@
 {
 	"materials": {
 		"side": {
-			"albedoMap": "cube-albedo.jpg",
-			"glossMap": "cube-gloss.jpg",
-			"heightMap": "cube-height.jpg",
-			"normalMap": "cube-normal.jpg",
+			"albedoMap": "mybricks1_basecolor.png",
+			"glossMap": "mybricks1_gloss.png",
+			"heightMap": "mybricks1_height.png",
+			"metalnessMap": "mybricks1_metallic.png",
+			"normalMap": "mybricks1_normal.png",
+			"occlusionMap": "mybricks1_AO.png",
+			"roughnessMap": "mybricks1_roughness.png",
 			"shininess": 100
 		}
 	},
