@@ -82,7 +82,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			diffuseColor: color.createBright(i),
 			position: { x: 0, y: 0, z: 0 },
 			radius: 4,
-			specularColor: { x: 0, y: 0, z: 0 } // Specular color is ignored by implementation
+			specularColor: { x: 0, y: 0, z: 0 } // FIXME: specular color is ignored by implementation
 		})),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderers: {

@@ -366,8 +366,6 @@ class Renderer implements webgl.Renderer<State> {
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const gl = this.gl;
-		const pointLights = scene.pointLights || [];
-		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
 		// Draw scene geometries
 		gl.enable(gl.CULL_FACE);
@@ -407,23 +405,27 @@ class Renderer implements webgl.Renderer<State> {
 		}
 
 		// Draw point lights using spheres
-		for (const pointLight of pointLights) {
-			const subject = {
-				matrix: matrix.Matrix4.createIdentity()
-					.translate(pointLight.position)
-					.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius }),
-				model: this.pointLightSphere
-			};
+		if (scene.pointLights !== undefined) {
+			const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
-			target.draw(this.pointLightShader, [subject], {
-				albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-				depthBuffer: this.depthBuffer,
-				normalAndGlossBuffer: this.normalAndGlossBuffer,
-				pointLight: pointLight,
-				projectionMatrix: state.projectionMatrix,
-				viewMatrix: state.viewMatrix,
-				viewportSize: viewportSize
-			});
+			for (const pointLight of scene.pointLights) {
+				const subject = {
+					matrix: matrix.Matrix4.createIdentity()
+						.translate(pointLight.position)
+						.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius }),
+					model: this.pointLightSphere
+				};
+
+				target.draw(this.pointLightShader, [subject], {
+					albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+					depthBuffer: this.depthBuffer,
+					normalAndGlossBuffer: this.normalAndGlossBuffer,
+					pointLight: pointLight,
+					projectionMatrix: state.projectionMatrix,
+					viewMatrix: state.viewMatrix,
+					viewportSize: viewportSize
+				});
+			}
 		}
 	}
 }
