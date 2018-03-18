@@ -1,5 +1,6 @@
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
+import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import * as quad from "./resources/quad";
 import * as shininess from "./snippets/shininess";
@@ -43,6 +44,10 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
+${parallax.heightDeclare}
+${normal.encodeDeclare}
+${shininess.encodeDeclare}
+
 uniform vec4 albedoColor;
 uniform sampler2D albedoMap;
 uniform sampler2D heightMap;
@@ -59,23 +64,10 @@ in vec3 tangent;
 layout(location=0) out vec4 albedoAndShininess;
 layout(location=1) out vec4 normalAndGloss;
 
-${normal.encodeDeclare}
-${shininess.encodeDeclare}
-
-vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionFace, float parallaxScale, float parallaxBias) {
-	#ifdef USE_HEIGHT_MAP
-		float parallaxHeight = texture(heightMap, initialCoord).r;
-
-		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirectionFace.xy / eyeDirectionFace.z;
-	#else
-		return initialCoord;
-	#endif
-}
-
 vec3 getNormal(in vec3 normal, in vec2 coord) {
 	vec3 normalFace;
 
-	#ifdef USE_NORMAL_MAP
+	#ifdef ${normal.modifyEnable}
 		normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
 	#else
 		normalFace = vec3(0.0, 0.0, 1.0);
@@ -86,8 +78,8 @@ vec3 getNormal(in vec3 normal, in vec2 coord) {
 
 void main(void) {
 	vec3 eyeDirection = normalize(-point);
-	vec3 eyeDirectionFace = vec3(dot(eyeDirection, tangent), dot(eyeDirection, bitangent), dot(eyeDirection, normal));
-	vec2 parallaxCoord = getCoord(coord, eyeDirectionFace, 0.04, 0.02);
+	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, tangent), dot(eyeDirection, bitangent), dot(eyeDirection, normal));
+	vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
 
 	// Color target 1: [albedo.rgb, shininess]
 	vec4 albedo = albedoColor * texture(albedoMap, parallaxCoord);
@@ -104,8 +96,6 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-${phong.modelDeclare}
-
 struct PointLight {
 	vec3 diffuseColor;
 	vec3 position;
@@ -117,6 +107,8 @@ uniform vec3 ambientLightColor;
 uniform PointLight pointLight;`;
 
 const lightVertexShader = `
+${lightHeaderShader}
+
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -136,11 +128,14 @@ void main(void) {
 }`;
 
 const lightFragmentAmbientShader = `
+${lightHeaderShader}
+
+${phong.modelDeclare}
+${phong.getAmbientPowerDeclare}
+
 uniform sampler2D albedoAndShininess;
 
 layout(location=0) out vec4 fragColor;
-
-${phong.ambientDeclare}
 
 void main(void) {
 	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
@@ -149,12 +144,20 @@ void main(void) {
 	vec4 albedoAndShininessSample = texelFetch(albedoAndShininess, bufferCoord, 0);
 
 	// Decode geometry and material properties from samples
-	vec3 albedo = albedoAndShininessSample.rgb;
+	vec3 materialAlbedo = albedoAndShininessSample.rgb;
 
-	fragColor = vec4(${phong.ambientInvoke()} * albedo * ambientLightColor, 1.0);
+	fragColor = vec4(${phong.getAmbientPowerInvoke()} * ambientLightColor * materialAlbedo, 1.0);
 }`;
 
 const lightFragmentPointShader = `
+${lightHeaderShader}
+
+${normal.decodeDeclare}
+${phong.modelDeclare}
+${phong.getDiffusePowerDeclare}
+${phong.getSpecularPowerDeclare}
+${shininess.decodeDeclare}
+
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
@@ -165,11 +168,6 @@ uniform sampler2D normalAndGloss;
 in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
-
-${normal.decodeDeclare}
-${phong.diffuseDeclare}
-${phong.specularDeclare}
-${shininess.decodeDeclare}
 
 vec3 getPoint(in float depthClip) {
 	vec4 pointClip = vec4(gl_FragCoord.xy / viewportSize, depthClip, 1.0) * 2.0 - 1.0;
@@ -203,8 +201,8 @@ void main(void) {
 	float lightPower = max(1.0 - lightDistance / pointLight.radius, 0.0);
 
 	vec3 lightColor =
-		${phong.diffuseInvoke("normal", "lightDirection")} * pointLight.diffuseColor +
-		${phong.specularInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * pointLight.specularColor * gloss;
+		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.diffuseColor +
+		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * pointLight.specularColor * gloss;
 
 	fragColor = vec4(albedo * lightColor * lightPower, 1.0);
 }`;
@@ -245,10 +243,10 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	const directives = [];
 
 	if (configuration.useHeightMap)
-		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
+		directives.push({ name: parallax.heightEnable, value: 1 });
 
 	if (configuration.useNormalMap)
-		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
+		directives.push({ name: normal.modifyEnable, value: 1 });
 
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
@@ -289,7 +287,7 @@ const loadLightAmbient = (gl: WebGLRenderingContext, configuration: Configuratio
 	];
 
 	// Setup light shader
-	const shader = new webgl.Shader<AmbientLightState>(gl, lightHeaderShader + lightVertexShader, lightHeaderShader + lightFragmentAmbientShader, directives);
+	const shader = new webgl.Shader<AmbientLightState>(gl, lightVertexShader, lightFragmentAmbientShader, directives);
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
@@ -313,7 +311,7 @@ const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration)
 	];
 
 	// Setup light shader
-	const shader = new webgl.Shader<PointLightState>(gl, lightHeaderShader + lightVertexShader, lightHeaderShader + lightFragmentPointShader, directives);
+	const shader = new webgl.Shader<PointLightState>(gl, lightVertexShader, lightFragmentPointShader, directives);
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 

@@ -1,13 +1,12 @@
 import * as functional from "../../language/functional";
 import * as matrix from "../../math/matrix";
+import * as normal from "./snippets/normal";
+import * as parallax from "./snippets/parallax";
+import * as phong from "./snippets/phong";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
 
 const lightHeaderShader = `
-#define LIGHT_MODEL_AMBIENT 1
-#define LIGHT_MODEL_LAMBERT 2
-#define LIGHT_MODEL_PHONG 3
-
 struct DirectionalLight {
 	vec3 diffuseColor;
 	vec3 direction;
@@ -47,6 +46,8 @@ uniform sampler2D pointLightShadowMaps[max(MAX_POINT_LIGHTS, 1)];
 #endif`;
 
 const lightVertexShader = `
+${lightHeaderShader}
+
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
@@ -80,7 +81,7 @@ void main(void) {
 	vec4 point = viewMatrix * modelMatrix * vec4(points, 1.0);
 	vec3 pointCamera = point.xyz;
 
-	#ifdef USE_NORMAL_MAP
+	#ifdef ${normal.modifyEnable}
 		vec3 n = normalize(normalMatrix * normals);
 		vec3 t = normalize(normalMatrix * tangents);
 		vec3 b = cross(n, t);
@@ -98,7 +99,7 @@ void main(void) {
 
 		vec3 lightDirection = normalize(toCameraDirection(directionalLights[i].direction));
 
-		#ifdef USE_NORMAL_MAP
+		#ifdef ${normal.modifyEnable}
 			lightDirection = normalize(vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n)));
 		#endif
 
@@ -113,7 +114,7 @@ void main(void) {
 
 		vec3 lightDirection = normalize(toCameraPosition(pointLights[i].position) - pointCamera);
 
-		#ifdef USE_NORMAL_MAP
+		#ifdef ${normal.modifyEnable}
 			lightDirection = normalize(vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n)));
 		#endif
 
@@ -122,7 +123,7 @@ void main(void) {
 
 	vec3 eyeDirectionCamera = normalize(-pointCamera);
 
-	#ifdef USE_NORMAL_MAP
+	#ifdef ${normal.modifyEnable}
 		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
 		normal = vec3(0.0, 0.0, 1.0);
 	#else
@@ -136,6 +137,15 @@ void main(void) {
 }`;
 
 const lightFragmentShader = `
+${lightHeaderShader}
+
+${parallax.heightDeclare}
+${normal.modifyDeclare}
+${phong.modelDeclare}
+${phong.getAmbientPowerDeclare}
+${phong.getDiffusePowerDeclare}
+${phong.getSpecularPowerDeclare}
+
 uniform vec4 albedoColor;
 uniform sampler2D albedoMap;
 uniform vec4 glossColor;
@@ -156,81 +166,25 @@ in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 layout(location=0) out vec4 fragColor;
 
-vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirection, float parallaxScale, float parallaxBias) {
-	#ifdef USE_HEIGHT_MAP
-		float parallaxHeight = texture(heightMap, initialCoord).r;
-
-		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirection.xy / eyeDirection.z;
-	#else
-		return initialCoord;
-	#endif
-}
-
-vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightDiffuseColor, in vec3 lightSpecularColor) {
-	float lightNormalCosine = dot(normal, lightDirection);
-	vec3 outputColor = vec3(0, 0, 0);
-
-	if (lightNormalCosine > 0.0) {
-		#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
-			vec4 materialAlbedo = albedoColor * texture(albedoMap, coord);
-			float diffusePower = lightNormalCosine;
-
-			outputColor += materialAlbedo.rgb * lightDiffuseColor * diffusePower;
-		#endif
-
-		#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
-			float specularCosine;
-
-			#ifdef LIGHT_MODEL_PHONG_STANDARD
-				// Standard Phong model
-				vec3 reflectionDirection = normalize(normal * lightNormalCosine * 2.0 - lightDirection);
-
-				specularCosine = max(dot(reflectionDirection, eyeDirection), 0.0);
-			#else
-				// Blinn-Phong variant
-				vec3 halfwayDirection = normalize(eyeDirection + lightDirection);
-
-				specularCosine = max(dot(normal, halfwayDirection), 0.0);
-			#endif
-
-			float specularPower = pow(specularCosine, shininess);
-
-			vec4 materialGloss;
-
-			#ifdef USE_GLOSS_MAP
-				materialGloss = glossColor * texture(glossMap, coord);
-			#else
-				materialGloss = glossColor;
-			#endif
-
-			outputColor += materialGloss.rgb * lightSpecularColor * specularPower;
-		#endif
-	}
-
-	return outputColor;
-}
-
-vec3 getNormal(in vec3 initialNormal, in vec2 coord) {
-	#ifdef USE_NORMAL_MAP
-		// Initial normal is always (0, 0, 1) here and can be safely ignored, see vertex shader
-		return normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
-	#else
-		return normalize(initialNormal);
-	#endif
-}
-
 void main(void) {
 	vec3 eyeDirection = normalize(eye);
-	vec2 modifiedCoord = getCoord(coord, eyeDirection, 0.04, 0.02);
-	vec3 modifiedNormal = getNormal(normal, modifiedCoord);
+	vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirection", "0.04", "0.02")};
+	vec3 modifiedNormal = ${normal.modifyInvoke("normal", "normalMap", "parallaxCoord")};
 	vec3 outputColor = vec3(0, 0, 0);
 
-	vec4 materialAlbedo = albedoColor * texture(albedoMap, modifiedCoord);
+	vec4 materialAlbedo = albedoColor * texture(albedoMap, parallaxCoord);
+	vec4 materialGloss;
 
-	#if LIGHT_MODEL >= LIGHT_MODEL_AMBIENT
-		outputColor += materialAlbedo.rgb * ambientLightColor;
+	#ifdef USE_GLOSS_MAP
+		materialGloss = glossColor * texture(glossMap, parallaxCoord);
+	#else
+		materialGloss = glossColor;
 	#endif
 
+	// Apply ambient component
+	outputColor += ${phong.getAmbientPowerInvoke()} * materialAlbedo.rgb * ambientLightColor;
+
+	// Apply diffuse and specular components from directional lights
 	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
 		#ifdef USE_SHADOW_MAP
 			float shadowMapSample = texture(directionalLightShadowMaps[i], directionalLightShadows[i].xy).r;
@@ -239,11 +193,23 @@ void main(void) {
 				continue;
 		#endif
 
-		outputColor += directionalLights[i].visibility * getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(directionalLightDirections[i]), directionalLights[i].diffuseColor, directionalLights[i].specularColor);
+		vec3 lightDirection = normalize(directionalLightDirections[i]);
+
+		outputColor += directionalLights[i].visibility * (
+			${phong.getDiffusePowerInvoke("modifiedNormal", "lightDirection")} * directionalLights[i].diffuseColor * materialAlbedo.rgb +
+			${phong.getSpecularPowerInvoke("modifiedNormal", "lightDirection", "eyeDirection", "shininess")} * directionalLights[i].specularColor * materialGloss.rgb
+		);
 	}
 
-	for (int i = 0; i < MAX_POINT_LIGHTS; ++i)
-		outputColor += pointLights[i].visibility * getLight(modifiedCoord, modifiedNormal, eyeDirection, normalize(pointLightDirections[i]), pointLights[i].diffuseColor, pointLights[i].specularColor);
+	// Apply diffuse and specular components from point lights
+	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
+		vec3 lightDirection = normalize(pointLightDirections[i]);
+
+		outputColor += pointLights[i].visibility * (
+			${phong.getDiffusePowerInvoke("modifiedNormal", "lightDirection")} * pointLights[i].diffuseColor * materialAlbedo.rgb +
+			${phong.getSpecularPowerInvoke("modifiedNormal", "lightDirection", "eyeDirection", "shininess")} * pointLights[i].specularColor * materialGloss.rgb
+		);
+	}
 
 	fragColor = vec4(outputColor, 1.0);
 }`;
@@ -321,15 +287,15 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 		directives.push({ name: "USE_GLOSS_MAP", value: 1 });
 
 	if (configuration.useHeightMap)
-		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
+		directives.push({ name: parallax.heightEnable, value: 1 });
 
 	if (configuration.useNormalMap)
-		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
+		directives.push({ name: normal.modifyEnable, value: 1 });
 
 	if (configuration.useShadowMap)
 		directives.push({ name: "USE_SHADOW_MAP", value: 1 });
 
-	const shader = new webgl.Shader<LightState>(gl, lightHeaderShader + lightVertexShader, lightHeaderShader + lightFragmentShader, directives);
+	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
 
 	// Bind geometry attributes
 	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);

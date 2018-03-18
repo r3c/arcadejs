@@ -1,5 +1,5 @@
-const ambientDeclare = `
-float getLightAmbient() {
+const getAmbientPowerDeclare = `
+float phongGetLightAmbient() {
 	#if LIGHT_MODEL >= LIGHT_MODEL_AMBIENT
 		return 1.0;
 	#else
@@ -7,11 +7,11 @@ float getLightAmbient() {
 	#endif
 }`;
 
-const ambientInvoke = () => `
-getLightAmbient()`;
+const getAmbientPowerInvoke = () => `
+phongGetLightAmbient()`;
 
-const diffuseDeclare = `
-float getLightDiffuse(in vec3 normal, in vec3 lightDirection) {
+const getDiffusePowerDeclare = `
+float phongGetLightDiffuse(in vec3 normal, in vec3 lightDirection) {
 	#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
 		float lightNormalCosine = dot(normal, lightDirection);
 
@@ -21,20 +21,12 @@ float getLightDiffuse(in vec3 normal, in vec3 lightDirection) {
 	#endif
 }`;
 
-const diffuseInvoke = (normal: string, lightDirection: string) => `
-getLightDiffuse(${normal}, ${lightDirection})
+const getDiffusePowerInvoke = (normal: string, lightDirection: string) => `
+phongGetLightDiffuse(${normal}, ${lightDirection})
 `;
 
-const modelDeclare = `
-#define LIGHT_MODEL_AMBIENT 1
-#define LIGHT_MODEL_LAMBERT 2
-#define LIGHT_MODEL_PHONG 3
-`;
-
-const modelName = "LIGHT_MODEL";
-
-const specularDeclare = `
-float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
+const getSpecularPowerDeclare = `
+float phongGetLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
 	#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
 		float lightNormalCosine = dot(normal, lightDirection);
 		float lightVisible = step(0.0, lightNormalCosine);
@@ -58,8 +50,16 @@ float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirect
 	#endif
 }`;
 
-const specularInvoke = (normal: string, lightDirection: string, eyeDirection: string, shininess: string) => `
-getLightSpecular(${normal}, ${lightDirection}, ${eyeDirection}, ${shininess})
+const getSpecularPowerInvoke = (normal: string, lightDirection: string, eyeDirection: string, shininess: string) => `
+phongGetLightSpecular(${normal}, ${lightDirection}, ${eyeDirection}, ${shininess})
 `;
 
-export { ambientDeclare, ambientInvoke, diffuseDeclare, diffuseInvoke, modelDeclare, modelName, specularDeclare, specularInvoke }
+const modelDeclare = `
+#define LIGHT_MODEL_AMBIENT 1
+#define LIGHT_MODEL_LAMBERT 2
+#define LIGHT_MODEL_PHONG 3
+`;
+
+const modelName = "LIGHT_MODEL";
+
+export { getAmbientPowerDeclare, getAmbientPowerInvoke, getDiffusePowerDeclare, getDiffusePowerInvoke, getSpecularPowerDeclare, getSpecularPowerInvoke, modelDeclare, modelName }
