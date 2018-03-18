@@ -1,5 +1,6 @@
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
+import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import * as shininess from "./snippets/shininess";
 import * as sphere from "./resources/sphere";
@@ -42,6 +43,10 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
+${parallax.heightDeclare}
+${normal.encodeDeclare}
+${shininess.encodeDeclare}
+
 uniform sampler2D glossMap;
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
@@ -55,23 +60,10 @@ in vec3 tangent;
 
 layout(location=0) out vec4 normalAndGloss;
 
-${normal.encodeDeclare}
-${shininess.encodeDeclare}
-
-vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionTangent, float parallaxScale, float parallaxBias) {
-	#ifdef USE_HEIGHT_MAP
-		float parallaxHeight = texture(heightMap, initialCoord).r;
-
-		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirectionTangent.xy / eyeDirectionTangent.z;
-	#else
-		return initialCoord;
-	#endif
-}
-
 vec3 getNormal(in vec3 normal, in vec2 coord) {
 	vec3 normalFace;
 
-	#ifdef USE_NORMAL_MAP
+	#ifdef ${normal.modifyEnable}
 		normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
 	#else
 		normalFace = vec3(0.0, 0.0, 1.0);
@@ -87,7 +79,7 @@ void main(void) {
 
 	vec3 eyeDirection = normalize(-point);
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, t), dot(eyeDirection, b), dot(eyeDirection, n));
-	vec2 parallaxCoord = getCoord(coord, eyeDirectionTangent, 0.04, 0.02);
+	vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
 
 	// Color target: [normal, normal, shininess, gloss]
 	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
@@ -98,8 +90,6 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-${phong.modelDeclare}
-
 struct PointLight {
 	vec3 diffuseColor;
 	vec3 position;
@@ -110,6 +100,8 @@ struct PointLight {
 uniform PointLight pointLight;`;
 
 const lightVertexShader = `
+${lightHeaderShader}
+
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -129,6 +121,14 @@ void main(void) {
 }`;
 
 const lightFragmentShader = `
+${lightHeaderShader}
+
+${normal.decodeDeclare}
+${phong.modelDeclare}
+${phong.getDiffusePowerDeclare}
+${phong.getSpecularPowerDeclare}
+${shininess.decodeDeclare}
+
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
@@ -138,11 +138,6 @@ uniform sampler2D normalAndGlossBuffer;
 in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
-
-${normal.decodeDeclare}
-${phong.diffuseDeclare}
-${phong.specularDeclare}
-${shininess.decodeDeclare}
 
 vec3 getPoint(in vec2 fragCoord, in float fragDepth) {
 	vec4 pointClip = vec4(fragCoord, fragDepth, 1.0) * 2.0 - 1.0;
@@ -175,9 +170,9 @@ void main(void) {
 
 	// Emit lighting parameters
 	fragColor = exp2(-vec4(
-		${phong.diffuseInvoke("normal", "lightDirection")} * lightPower * pointLight.diffuseColor,
-		${phong.specularInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * gloss * lightPower
-	));
+		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.diffuseColor,
+		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * gloss
+	) * lightPower);
 }`;
 
 const materialVertexShader = `
@@ -215,6 +210,10 @@ void main(void) {
 }`;
 
 const materialFragmentShader = `
+${parallax.heightDeclare}
+${phong.modelDeclare}
+${phong.getAmbientPowerDeclare}
+
 uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
 
@@ -232,23 +231,14 @@ in vec3 tangent;
 
 layout(location=0) out vec4 fragColor;
 
-vec2 getCoord(in vec2 initialCoord, in vec3 eyeDirectionTangent, float parallaxScale, float parallaxBias) {
-	#ifdef USE_HEIGHT_MAP
-		float parallaxHeight = texture(heightMap, initialCoord).r;
-
-		return initialCoord + (parallaxHeight * parallaxScale - parallaxBias) * eyeDirectionTangent.xy / eyeDirectionTangent.z;
-	#else
-		return initialCoord;
-	#endif
-}
-
 void main(void) {
 	// Read light properties from texture buffers
 	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 	vec4 lightSample = -log2(texelFetch(lightBuffer, bufferCoord, 0));
 
-	vec3 diffuseLightColor = lightSample.rgb;
-	vec3 specularLightColor = lightSample.rgb * lightSample.a;
+	vec3 ambientLight = ambientLightColor * ${phong.getAmbientPowerInvoke()};
+	vec3 diffuseLight = lightSample.rgb;
+	vec3 specularLight = lightSample.rgb * lightSample.a; // FIXME: not accurate, depends on diffuse RGB instead of specular RGB
 
 	// Read material properties from uniforms
 	vec3 t = normalize(tangent);
@@ -257,13 +247,13 @@ void main(void) {
 
 	vec3 eyeDirection = normalize(-point);
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, t), dot(eyeDirection, b), dot(eyeDirection, n));
-	vec2 parallaxCoord = getCoord(coord, eyeDirectionTangent, 0.04, 0.02);
+	vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
 
 	vec4 albedo = albedoColor * texture(albedoMap, parallaxCoord);
 	vec4 gloss = glossColor * texture(glossMap, parallaxCoord);
 
 	// Emit final fragment color
-	fragColor = vec4(albedo.rgb * (ambientLightColor + diffuseLightColor) + gloss.rgb * specularLightColor, 1.0);
+	fragColor = vec4(albedo.rgb * (ambientLight + diffuseLight) + gloss.rgb * specularLight, 1.0);
 }`;
 
 interface Configuration {
@@ -301,10 +291,10 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	const directives = [];
 
 	if (configuration.useHeightMap)
-		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
+		directives.push({ name: parallax.heightEnable, value: 1 });
 
 	if (configuration.useNormalMap)
-		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
+		directives.push({ name: normal.modifyEnable, value: 1 });
 
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
@@ -340,7 +330,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	];
 
 	// Setup light shader
-	const shader = new webgl.Shader<LightState>(gl, lightHeaderShader + lightVertexShader, lightHeaderShader + lightFragmentShader, directives);
+	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
@@ -364,10 +354,12 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
-	const directives = [];
+	const directives = [
+		{ name: phong.modelName, value: <number>configuration.lightModel }
+	];
 
 	if (configuration.useHeightMap)
-		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
+		directives.push({ name: parallax.heightEnable, value: 1 });
 
 	// Setup material shader
 	const shader = new webgl.Shader<MaterialState>(gl, materialVertexShader, materialFragmentShader, directives);
@@ -385,10 +377,8 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 	shader.bindTexturePerTarget("lightBuffer", state => state.lightBuffer);
 
-	if (configuration.lightModel >= LightModel.Ambient) {
-		shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
-		shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
-	}
+	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
 		shader.bindPropertyPerMaterial("glossColor", gl => gl.uniform4fv, state => state.material.glossColor);
