@@ -100,10 +100,16 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 	return {
 		albedoColor: toOptional(`${name}.albedoColor`, instance.albedoColor, toColor, mesh.defaultColor),
 		albedoMap: await toImageData(`${name}.albedoMap`, instance.albedoMap, directory),
+		emissiveMap: await toImageData(`${name}.emissiveMap`, instance.emissiveMap, directory),
+		emissiveStrength: toOptional(`${name}.emissiveStrength`, instance.emissiveStrength, toDecimal, 1),
 		glossColor: toOptional(`${name}.glossColor`, instance.glossColor, toColor, mesh.defaultColor),
 		glossMap: await toImageData(`${name}.glossMap`, instance.glossMap, directory),
 		heightMap: await toImageData(`${name}.heightMap`, instance.heightMap, directory),
+		metalnessMap: await toImageData(`${name}.metalnessMap`, instance.metalnessMap, directory),
 		normalMap: await toImageData(`${name}.normalMap`, instance.normalMap, directory),
+		occlusionMap: await toImageData(`${name}.occlusionMap`, instance.occlusionMap, directory),
+		occlusionStrength: toOptional(`${name}.occlusionStrength`, instance.occlusionStrength, toDecimal, 1),
+		roughnessMap: await toImageData(`${name}.roughnessMap`, instance.roughnessMap, directory),
 		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger, 1)
 	};
 };

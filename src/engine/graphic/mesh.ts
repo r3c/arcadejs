@@ -3,10 +3,16 @@ import * as vector from "../math/vector";
 interface Material {
 	albedoColor?: vector.Vector4,
 	albedoMap?: ImageData,
+	emissiveMap?: ImageData,
+	emissiveStrength?: number,
 	glossColor?: vector.Vector4,
 	glossMap?: ImageData,
 	heightMap?: ImageData,
+	metalnessMap?: ImageData,
 	normalMap?: ImageData,
+	occlusionMap?: ImageData,
+	occlusionStrength?: number,
+	roughnessMap?: ImageData,
 	shininess?: number
 }
 

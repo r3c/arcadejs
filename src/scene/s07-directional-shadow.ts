@@ -19,7 +19,7 @@ import * as webgl from "../engine/render/webgl";
 
 interface Configuration {
 	animate: boolean,
-	lightModel: string[],
+	enableShadow: boolean,
 	showDebug: boolean
 }
 
@@ -43,13 +43,12 @@ interface SceneState {
 
 const configuration = {
 	animate: true,
-	lightModel: ["None", ".Ambient", "Lambert", "Phong"],
+	enableShadow: true,
 	showDebug: false
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
-	(tweak.lightModel & 1) !== 0,
-	(tweak.lightModel & 2) !== 0
+	tweak.enableShadow !== 0
 ];
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
@@ -75,12 +74,14 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		renderers: {
 			debug: new debugTexture.Renderer(gl, { zNear: 0.1, zFar: 100 }),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
-				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
+				lightModel: forwardLighting.LightModel.Phong,
 				maxDirectionalLights: 1,
+				useEmissiveMap: false,
 				useGlossMap: true,
 				useHeightMap: true,
 				useNormalMap: true,
-				useShadowMap: true
+				useOcclusionMap: false,
+				useShadowMap: flags[0]
 			}))
 		},
 		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),

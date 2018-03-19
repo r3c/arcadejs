@@ -7,6 +7,11 @@ import * as sphere from "./resources/sphere";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
 
+const enum LightModel {
+	None,
+	Phong
+}
+
 const geometryVertexShader = `
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
@@ -63,7 +68,7 @@ layout(location=0) out vec4 normalAndGloss;
 vec3 getNormal(in vec3 normal, in vec2 coord) {
 	vec3 normalFace;
 
-	#ifdef ${normal.modifyEnable}
+	#ifdef USE_NORMAL_MAP
 		normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
 	#else
 		normalFace = vec3(0.0, 0.0, 1.0);
@@ -79,7 +84,12 @@ void main(void) {
 
 	vec3 eyeDirection = normalize(-point);
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, t), dot(eyeDirection, b), dot(eyeDirection, n));
-	vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
+
+	#ifdef USE_HEIGHT_MAP
+		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
+	#else
+		vec2 parallaxCoord = coord;
+	#endif
 
 	// Color target: [normal, normal, shininess, gloss]
 	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
@@ -124,7 +134,6 @@ const lightFragmentShader = `
 ${lightHeaderShader}
 
 ${normal.decodeDeclare}
-${phong.modelDeclare}
 ${phong.getDiffusePowerDeclare}
 ${phong.getSpecularPowerDeclare}
 ${shininess.decodeDeclare}
@@ -211,8 +220,6 @@ void main(void) {
 
 const materialFragmentShader = `
 ${parallax.heightDeclare}
-${phong.modelDeclare}
-${phong.getAmbientPowerDeclare}
 
 uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
@@ -236,9 +243,9 @@ void main(void) {
 	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 	vec4 lightSample = -log2(texelFetch(lightBuffer, bufferCoord, 0));
 
-	vec3 ambientLight = ambientLightColor * ${phong.getAmbientPowerInvoke()};
-	vec3 diffuseLight = lightSample.rgb;
-	vec3 specularLight = lightSample.rgb * lightSample.a; // FIXME: not accurate, depends on diffuse RGB instead of specular RGB
+	vec3 ambientLight = ambientLightColor * float(LIGHT_MODEL_AMBIENT);
+	vec3 diffuseLight = lightSample.rgb * float(LIGHT_MODEL_PHONG_DIFFUSE);
+	vec3 specularLight = lightSample.rgb * lightSample.a * float(LIGHT_MODEL_PHONG_SPECULAR); // FIXME: not accurate, depends on diffuse RGB instead of specular RGB
 
 	// Read material properties from uniforms
 	vec3 t = normalize(tangent);
@@ -247,7 +254,12 @@ void main(void) {
 
 	vec3 eyeDirection = normalize(-point);
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, t), dot(eyeDirection, b), dot(eyeDirection, n));
-	vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
+
+	#ifdef USE_HEIGHT_MAP
+		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
+	#else
+		vec2 parallaxCoord = coord;
+	#endif
 
 	vec4 albedo = albedoColor * texture(albedoMap, parallaxCoord);
 	vec4 gloss = glossColor * texture(glossMap, parallaxCoord);
@@ -258,15 +270,11 @@ void main(void) {
 
 interface Configuration {
 	lightModel: LightModel,
+	lightModelPhongNoAmbient?: boolean,
+	lightModelPhongNoDiffuse?: boolean,
+	lightModelPhongNoSpecular?: boolean,
 	useHeightMap: boolean,
 	useNormalMap: boolean
-}
-
-enum LightModel {
-	None,
-	Ambient,
-	Lambert,
-	Phong
 }
 
 interface LightState extends State {
@@ -291,10 +299,10 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	const directives = [];
 
 	if (configuration.useHeightMap)
-		directives.push({ name: parallax.heightEnable, value: 1 });
+		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
 
 	if (configuration.useNormalMap)
-		directives.push({ name: normal.modifyEnable, value: 1 });
+		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
 
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
@@ -309,28 +317,23 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
+	if (configuration.lightModel === LightModel.Phong) {
+		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
+		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
+	}
+
 	if (configuration.useHeightMap)
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
 
 	if (configuration.useNormalMap)
 		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
 
-	if (configuration.lightModel >= LightModel.Phong) {
-		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
-		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
-	}
-
 	return shader;
 };
 
 const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
-	// Build directives from configuration
-	const directives = [
-		{ name: phong.modelName, value: <number>configuration.lightModel }
-	];
-
 	// Setup light shader
-	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
+	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader);
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
@@ -354,12 +357,19 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
-	const directives = [
-		{ name: phong.modelName, value: <number>configuration.lightModel }
-	];
+	const directives = [];
+
+	switch (configuration.lightModel) {
+		case LightModel.Phong:
+			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: configuration.lightModelPhongNoAmbient ? 0 : 1 });
+			directives.push({ name: "LIGHT_MODEL_PHONG_DIFFUSE", value: configuration.lightModelPhongNoDiffuse ? 0 : 1 });
+			directives.push({ name: "LIGHT_MODEL_PHONG_SPECULAR", value: configuration.lightModelPhongNoSpecular ? 0 : 1 });
+
+			break;
+	}
 
 	if (configuration.useHeightMap)
-		directives.push({ name: parallax.heightEnable, value: 1 });
+		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
 
 	// Setup material shader
 	const shader = new webgl.Shader<MaterialState>(gl, materialVertexShader, materialFragmentShader, directives);

@@ -48,10 +48,16 @@ interface GeometryState<State> {
 interface Material {
 	albedoColor: number[],
 	albedoMap: WebGLTexture | undefined,
+	emissiveMap: WebGLTexture | undefined,
+	emissiveStrength: number,
 	glossColor: number[],
 	glossMap: WebGLTexture | undefined,
 	heightMap: WebGLTexture | undefined,
+	metalnessMap: WebGLTexture | undefined,
 	normalMap: WebGLTexture | undefined,
+	occlusionMap: WebGLTexture | undefined,
+	occlusionStrength: number,
+	roughnessMap: WebGLTexture | undefined,
 	shininess: number
 }
 
@@ -445,10 +451,16 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 					material: {
 						albedoColor: vector.Vector4.toArray(definition.albedoColor || colorWhite),
 						albedoMap: functional.map(definition.albedoMap, toColorMap),
+						emissiveMap: functional.map(definition.emissiveMap, toColorMap),
+						emissiveStrength: functional.coalesce(definition.emissiveStrength, 1),
 						glossColor: vector.Vector4.toArray(definition.glossColor || definition.albedoColor || colorWhite),
 						glossMap: functional.map(definition.glossMap, toColorMap),
 						heightMap: functional.map(definition.heightMap, toColorMap),
+						metalnessMap: functional.map(definition.metalnessMap, toColorMap),
 						normalMap: functional.map(definition.normalMap, toColorMap),
+						occlusionMap: functional.map(definition.occlusionMap, toColorMap),
+						occlusionStrength: functional.coalesce(definition.occlusionStrength, 1),
+						roughnessMap: functional.map(definition.roughnessMap, toColorMap),
 						shininess: functional.coalesce(definition.shininess, shininessDefault)
 					}
 				}
@@ -465,10 +477,16 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 					material: {
 						albedoColor: vector.Vector4.toArray(colorWhite),
 						albedoMap: undefined,
+						emissiveMap: undefined,
+						emissiveStrength: 1,
 						glossColor: vector.Vector4.toArray(colorWhite),
 						glossMap: undefined,
 						heightMap: undefined,
+						metalnessMap: undefined,
 						normalMap: undefined,
+						occlusionMap: undefined,
+						occlusionStrength: 1,
+						roughnessMap: undefined,
 						shininess: shininessDefault
 					}
 				};
