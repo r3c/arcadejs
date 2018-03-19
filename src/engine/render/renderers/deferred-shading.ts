@@ -8,6 +8,11 @@ import * as sphere from "./resources/sphere";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
 
+const enum LightModel {
+	None,
+	Phong
+}
+
 const geometryVertexShader = `
 in vec2 coords;
 in vec3 normals;
@@ -67,7 +72,7 @@ layout(location=1) out vec4 normalAndGloss;
 vec3 getNormal(in vec3 normal, in vec2 coord) {
 	vec3 normalFace;
 
-	#ifdef ${normal.modifyEnable}
+	#ifdef USE_NORMAL_MAP
 		normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
 	#else
 		normalFace = vec3(0.0, 0.0, 1.0);
@@ -79,7 +84,12 @@ vec3 getNormal(in vec3 normal, in vec2 coord) {
 void main(void) {
 	vec3 eyeDirection = normalize(-point);
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, tangent), dot(eyeDirection, bitangent), dot(eyeDirection, normal));
-	vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
+
+	#ifdef USE_HEIGHT_MAP
+		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "0.04", "0.02")};
+	#else
+		vec2 parallaxCoord = coord;
+	#endif
 
 	// Color target 1: [albedo.rgb, shininess]
 	vec4 albedo = albedoColor * texture(albedoMap, parallaxCoord);
@@ -130,9 +140,6 @@ void main(void) {
 const lightFragmentAmbientShader = `
 ${lightHeaderShader}
 
-${phong.modelDeclare}
-${phong.getAmbientPowerDeclare}
-
 uniform sampler2D albedoAndShininess;
 
 layout(location=0) out vec4 fragColor;
@@ -146,14 +153,13 @@ void main(void) {
 	// Decode geometry and material properties from samples
 	vec3 materialAlbedo = albedoAndShininessSample.rgb;
 
-	fragColor = vec4(${phong.getAmbientPowerInvoke()} * ambientLightColor * materialAlbedo, 1.0);
+	fragColor = vec4(ambientLightColor * materialAlbedo * float(LIGHT_MODEL_AMBIENT), 1.0);
 }`;
 
 const lightFragmentPointShader = `
 ${lightHeaderShader}
 
 ${normal.decodeDeclare}
-${phong.modelDeclare}
 ${phong.getDiffusePowerDeclare}
 ${phong.getSpecularPowerDeclare}
 ${shininess.decodeDeclare}
@@ -201,23 +207,19 @@ void main(void) {
 	float lightPower = max(1.0 - lightDistance / pointLight.radius, 0.0);
 
 	vec3 lightColor =
-		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.diffuseColor +
-		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * pointLight.specularColor * gloss;
+		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.diffuseColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
+		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * pointLight.specularColor * gloss * float(LIGHT_MODEL_PHONG_SPECULAR);
 
 	fragColor = vec4(albedo * lightColor * lightPower, 1.0);
 }`;
 
 interface Configuration {
 	lightModel: LightModel,
+	lightModelPhongNoAmbient?: boolean,
+	lightModelPhongNoDiffuse?: boolean,
+	lightModelPhongNoSpecular?: boolean,
 	useHeightMap: boolean,
 	useNormalMap: boolean
-}
-
-enum LightModel {
-	None,
-	Ambient,
-	Lambert,
-	Phong
 }
 
 interface AmbientLightState extends State {
@@ -243,10 +245,10 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	const directives = [];
 
 	if (configuration.useHeightMap)
-		directives.push({ name: parallax.heightEnable, value: 1 });
+		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
 
 	if (configuration.useNormalMap)
-		directives.push({ name: normal.modifyEnable, value: 1 });
+		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
 
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
@@ -261,12 +263,10 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	if (configuration.lightModel >= LightModel.Ambient) {
-		shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
-		shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
-	}
+	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
-	if (configuration.lightModel >= LightModel.Phong) {
+	if (configuration.lightModel === LightModel.Phong) {
 		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
 		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
 	}
@@ -282,9 +282,14 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 
 const loadLightAmbient = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
-	const directives = [
-		{ name: phong.modelName, value: <number>configuration.lightModel }
-	];
+	const directives = [];
+
+	switch (configuration.lightModel) {
+		case LightModel.Phong:
+			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: configuration.lightModelPhongNoAmbient ? 0 : 1 });
+
+			break;
+	}
 
 	// Setup light shader
 	const shader = new webgl.Shader<AmbientLightState>(gl, lightVertexShader, lightFragmentAmbientShader, directives);
@@ -296,19 +301,23 @@ const loadLightAmbient = (gl: WebGLRenderingContext, configuration: Configuratio
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	if (configuration.lightModel >= LightModel.Ambient) {
-		shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);
-		shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
-	}
+	shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);
+	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 
 	return shader;
 };
 
 const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
-	const directives = [
-		{ name: phong.modelName, value: <number>configuration.lightModel }
-	];
+	const directives = [];
+
+	switch (configuration.lightModel) {
+		case LightModel.Phong:
+			directives.push({ name: "LIGHT_MODEL_PHONG_DIFFUSE", value: configuration.lightModelPhongNoDiffuse ? 0 : 1 });
+			directives.push({ name: "LIGHT_MODEL_PHONG_SPECULAR", value: configuration.lightModelPhongNoSpecular ? 0 : 1 });
+
+			break;
+	}
 
 	// Setup light shader
 	const shader = new webgl.Shader<PointLightState>(gl, lightVertexShader, lightFragmentPointShader, directives);

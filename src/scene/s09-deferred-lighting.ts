@@ -21,7 +21,9 @@ import * as webgl from "../engine/render/webgl";
 interface Configuration {
 	nbLights: string[],
 	animate: boolean,
-	lightModel: string[],
+	enableAmbient: boolean,
+	enableDiffuse: boolean,
+	enableSpecular: boolean,
 	debugMode: string[]
 }
 
@@ -48,13 +50,16 @@ interface SceneState {
 const configuration = {
 	nbLights: [".5", "10", "25", "100"],
 	animate: true,
-	lightModel: ["None", "Ambient", "Lambert", ".Phong"],
+	enableAmbient: true,
+	enableDiffuse: true,
+	enableSpecular: true,
 	debugMode: [".None", "Depth", "Normal", "Shininess", "Gloss", "Diffuse light", "Specular light"]
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
-	(tweak.lightModel & 1) !== 0,
-	(tweak.lightModel & 2) !== 0
+	tweak.enableAmbient !== 0,
+	tweak.enableDiffuse !== 0,
+	tweak.enableSpecular !== 0
 ];
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
@@ -88,7 +93,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		renderers: {
 			debug: new debugTexture.Renderer(gl, { zNear: 0.1, zFar: 100 }),
 			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredLighting.Renderer(gl, {
-				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
+				lightModel: deferredLighting.LightModel.Phong,
+				lightModelPhongNoAmbient: !flags[0],
+				lightModelPhongNoDiffuse: !flags[1],
+				lightModelPhongNoSpecular: !flags[2],
 				useHeightMap: true,
 				useNormalMap: true
 			}))

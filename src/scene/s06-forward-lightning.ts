@@ -22,8 +22,9 @@ import * as webgl from "../engine/render/webgl";
 interface Configuration {
 	nbLights: string[],
 	animate: boolean,
-	lightModel: string[],
-	useGlossMap: boolean,
+	enableAmbient: boolean,
+	enableDiffuse: boolean,
+	enableSpecular: boolean,
 	useNormalMap: boolean,
 	useHeightMap: boolean
 }
@@ -50,16 +51,17 @@ interface SceneState {
 const configuration = {
 	nbLights: ["0", ".1", "2", "3"],
 	animate: false,
-	lightModel: ["None", ".Ambient", "Lambert", "Phong"],
-	useGlossMap: false,
+	enableAmbient: true,
+	enableDiffuse: false,
+	enableSpecular: false,
 	useNormalMap: false,
 	useHeightMap: false
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
-	(tweak.lightModel & 1) !== 0,
-	(tweak.lightModel & 2) !== 0,
-	tweak.useGlossMap !== 0,
+	tweak.enableAmbient !== 0,
+	tweak.enableDiffuse !== 0,
+	tweak.enableSpecular !== 0,
 	tweak.useHeightMap !== 0,
 	tweak.useNormalMap !== 0
 ];
@@ -88,11 +90,16 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		renderers: {
 			basic: new basicRenderer.Renderer(gl),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
-				lightModel: (flags[0] ? 1 : 0) + (flags[1] ? 2 : 0),
+				lightModel: forwardLighting.LightModel.Phong,
+				lightModelPhongNoAmbient: !flags[0],
+				lightModelPhongNoDiffuse: !flags[1],
+				lightModelPhongNoSpecular: !flags[2],
 				maxPointLights: 3,
-				useGlossMap: flags[2],
+				useEmissiveMap: false,
+				useGlossMap: true,
 				useHeightMap: flags[3],
 				useNormalMap: flags[4],
+				useOcclusionMap: false,
 				useShadowMap: false
 			}))
 		},
