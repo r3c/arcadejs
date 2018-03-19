@@ -16,9 +16,8 @@ const enum LightModel {
 
 const lightHeaderShader = `
 struct DirectionalLight {
-	vec3 diffuseColor;
+	vec3 color;
 	vec3 direction;
-	vec3 specularColor;
 	float visibility;
 #ifdef USE_SHADOW_MAP
 	bool castShadow;
@@ -27,10 +26,9 @@ struct DirectionalLight {
 };
 
 struct PointLight {
-	vec3 diffuseColor;
+	vec3 color;
 	vec3 position;
 	float radius; // FIXME: ignored by this implementation
-	vec3 specularColor;
 	float visibility;
 };
 
@@ -183,7 +181,7 @@ in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in vec3 materialAlbedo, in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor, in vec3 lightSpecularColor) {
+vec3 getLight(in vec3 materialAlbedo, in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
 	#if LIGHT_MODEL == ${LightModel.Phong}
 		#ifdef USE_GLOSS_MAP
 			vec4 materialGloss = glossColor * texture(glossMap, coord);
@@ -193,7 +191,7 @@ vec3 getLight(in vec3 materialAlbedo, in vec2 coord, in vec3 normal, in vec3 eye
 
 		return
 			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * materialAlbedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
-			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightSpecularColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
+			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
 	#elif LIGHT_MODEL == ${LightModel.Physical}
 			float materialMetalness = clamp(texture(metalnessMap, coord).r * perceptualMetalness, 0.0, 1.0);
 			float materialRoughness = clamp(texture(roughnessMap, coord).r * perceptualRoughness, 0.04, 1.0);
@@ -241,8 +239,7 @@ void main(void) {
 			modifiedNormal,
 			eyeDirection,
 			normalize(directionalLightDirections[i]),
-			directionalLights[i].diffuseColor,
-			directionalLights[i].specularColor
+			directionalLights[i].color
 		);
 	}
 
@@ -254,8 +251,7 @@ void main(void) {
 			modifiedNormal,
 			eyeDirection,
 			normalize(pointLightDirections[i]),
-			pointLights[i].diffuseColor,
-			pointLights[i].specularColor
+			pointLights[i].color
 		);
 	}
 
@@ -440,24 +436,22 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 		const index = i;
 
 		if (configuration.useShadowMap) {
-			shader.bindPropertyPerTarget(`directionalLights[${i}].castShadow`, gl => gl.uniform1i, state => index < state.directionalLights.length && state.directionalLights[index].castShadow ? 1 : 0);
+			shader.bindPropertyPerTarget(`directionalLights[${i}].castShadow`, gl => gl.uniform1i, state => index < state.directionalLights.length && state.directionalLights[index].shadow ? 1 : 0);
 			shader.bindMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, gl => gl.uniformMatrix4fv, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues());
 			shader.bindTexturePerTarget(`directionalLightShadowMaps[${i}]`, state => state.directionalLights[index].shadowMap);
 		}
 
-		shader.bindPropertyPerTarget(`directionalLights[${i}].diffuseColor`, gl => gl.uniform3fv, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].diffuseColor) : defaultColor);
+		shader.bindPropertyPerTarget(`directionalLights[${i}].color`, gl => gl.uniform3fv, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].color) : defaultColor);
 		shader.bindPropertyPerTarget(`directionalLights[${i}].direction`, gl => gl.uniform3fv, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].direction) : defaultDirection);
-		shader.bindPropertyPerTarget(`directionalLights[${i}].specularColor`, gl => gl.uniform3fv, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].specularColor) : defaultColor);
 		shader.bindPropertyPerTarget(`directionalLights[${i}].visibility`, gl => gl.uniform1f, state => index < state.directionalLights.length ? 1 : 0);
 	}
 
 	for (let i = 0; i < maxPointLights; ++i) {
 		const index = i;
 
-		shader.bindPropertyPerTarget(`pointLights[${i}].diffuseColor`, gl => gl.uniform3fv, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].diffuseColor) : defaultColor);
+		shader.bindPropertyPerTarget(`pointLights[${i}].color`, gl => gl.uniform3fv, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].color) : defaultColor);
 		shader.bindPropertyPerTarget(`pointLights[${i}].position`, gl => gl.uniform3fv, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].position) : defaultPosition);
 		shader.bindPropertyPerTarget(`pointLights[${i}].radius`, gl => gl.uniform1f, state => index < state.pointLights.length ? state.pointLights[index].radius : 0);
-		shader.bindPropertyPerTarget(`pointLights[${i}].specularColor`, gl => gl.uniform3fv, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].specularColor) : defaultColor);
 		shader.bindPropertyPerTarget(`pointLights[${i}].visibility`, gl => gl.uniform1f, state => index < state.pointLights.length ? 1 : 0);
 	}
 
@@ -531,12 +525,11 @@ class Renderer implements webgl.Renderer<State> {
 			});
 
 			directionalLightStates.push({
-				castShadow: light.castShadow,
-				diffuseColor: light.diffuseColor,
+				color: light.color,
 				direction: light.direction,
+				shadow: light.shadow,
 				shadowMap: this.shadowBuffers[bufferIndex],
-				shadowViewMatrix: shadowViewMatrix,
-				specularColor: light.specularColor
+				shadowViewMatrix: shadowViewMatrix
 			});
 
 			++bufferIndex;

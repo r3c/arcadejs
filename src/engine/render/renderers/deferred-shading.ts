@@ -107,10 +107,9 @@ void main(void) {
 
 const lightHeaderShader = `
 struct PointLight {
-	vec3 diffuseColor;
+	vec3 color;
 	vec3 position;
 	float radius;
-	vec3 specularColor;
 };
 
 uniform vec3 ambientLightColor;
@@ -207,8 +206,8 @@ void main(void) {
 	float lightPower = max(1.0 - lightDistance / pointLight.radius, 0.0);
 
 	vec3 lightColor =
-		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.diffuseColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
-		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * pointLight.specularColor * gloss * float(LIGHT_MODEL_PHONG_SPECULAR);
+		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.color * float(LIGHT_MODEL_PHONG_DIFFUSE) +
+		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * pointLight.color * gloss * float(LIGHT_MODEL_PHONG_SPECULAR);
 
 	fragColor = vec4(albedo * lightColor * lightPower, 1.0);
 }`;
@@ -330,10 +329,9 @@ const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration)
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	shader.bindPropertyPerTarget("pointLight.diffuseColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.diffuseColor));
+	shader.bindPropertyPerTarget("pointLight.color", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.color));
 	shader.bindPropertyPerTarget("pointLight.position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.position));
 	shader.bindPropertyPerTarget("pointLight.radius", gl => gl.uniform1f, state => state.pointLight.radius);
-	shader.bindPropertyPerTarget("pointLight.specularColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.specularColor));
 	shader.bindPropertyPerTarget("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
 
 	shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);

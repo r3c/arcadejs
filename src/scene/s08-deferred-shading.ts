@@ -84,10 +84,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		},
 		move: 0,
 		pointLights: functional.range(100, i => ({
-			diffuseColor: color.createBright(i),
+			color: color.createBright(i),
 			position: { x: 0, y: 0, z: 0 },
-			radius: 4,
-			specularColor: color.createBright(i)
+			radius: 4
 		})),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderers: {

@@ -17,10 +17,9 @@ interface AttributeBinding<T> {
 }
 
 interface DirectionalLight {
-	castShadow: boolean,
-	diffuseColor: vector.Vector3,
+	color: vector.Vector3,
 	direction: vector.Vector3,
-	specularColor: vector.Vector3
+	shadow: boolean
 }
 
 interface Directive {
@@ -77,10 +76,9 @@ interface Model {
 }
 
 interface PointLight {
-	diffuseColor: vector.Vector3,
+	color: vector.Vector3,
 	position: vector.Vector3,
-	radius: number,
-	specularColor: vector.Vector3
+	radius: number
 }
 
 interface Quality {

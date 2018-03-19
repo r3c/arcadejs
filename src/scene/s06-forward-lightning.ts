@@ -142,10 +142,9 @@ const render = (state: SceneState) => {
 	const lightScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		pointLights: state.lightPositions.map((position, index) => ({
-			diffuseColor: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0),
+			color: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0),
 			position: position,
-			radius: 0,
-			specularColor: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0)
+			radius: 0
 		})),
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity(),

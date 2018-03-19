@@ -113,10 +113,9 @@ const render = (state: SceneState) => {
 	const lightScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: [{
-			castShadow: true,
-			diffuseColor: { x: 0.8, y: 0.8, z: 0.8 },
+			color: { x: 0.8, y: 0.8, z: 0.8 },
 			direction: { x: shadowViewMatrix.getValue(2), y: shadowViewMatrix.getValue(6), z: shadowViewMatrix.getValue(10) }, // FIXME: remove shadowViewMatrix and define this instead
-			specularColor: { x: 1, y: 1, z: 1 }
+			shadow: true
 		}],
 		subjects: [{
 			matrix: matrix.Matrix4
