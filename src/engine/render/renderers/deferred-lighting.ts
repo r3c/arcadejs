@@ -101,10 +101,9 @@ void main(void) {
 
 const lightHeaderShader = `
 struct PointLight {
-	vec3 diffuseColor;
+	vec3 color;
 	vec3 position;
 	float radius;
-	vec3 specularColor;
 };
 
 uniform PointLight pointLight;`;
@@ -179,7 +178,7 @@ void main(void) {
 
 	// Emit lighting parameters
 	fragColor = exp2(-vec4(
-		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.diffuseColor,
+		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.color,
 		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * gloss
 	) * lightPower);
 }`;
@@ -343,10 +342,9 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	shader.bindPropertyPerTarget("pointLight.diffuseColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.diffuseColor));
+	shader.bindPropertyPerTarget("pointLight.color", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.color));
 	shader.bindPropertyPerTarget("pointLight.position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.position));
 	shader.bindPropertyPerTarget("pointLight.radius", gl => gl.uniform1f, state => state.pointLight.radius);
-	shader.bindPropertyPerTarget("pointLight.specularColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.specularColor));
 	shader.bindPropertyPerTarget("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
 
 	shader.bindTexturePerTarget("depthBuffer", state => state.depthBuffer);

@@ -9,7 +9,6 @@ ToDo
 - Implement point light shadow maps
 - Implement ambient occlusion
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
-- Support specular light color in deferred lighing shader
 - Use same tangent space transform methods in forward and deferred renderers
 
 Done
@@ -37,3 +36,4 @@ Done
 - Inject ambient light in forward renderer
 - Inject ambient light in deferred lighting renderer
 - Factorize common GLSL methods from renderer implementations
+- Support specular light color in deferred lighing shader
