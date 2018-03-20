@@ -277,9 +277,8 @@ const render = (state: SceneState) => {
 
 const update = (state: SceneState, dt: number) => {
 	// Update animation state
-	if (state.tweak.animate) {
+	if (state.tweak.animate)
 		state.move += dt * 0.00003;
-	}
 
 	// Move camera
 	state.camera.move(state.input);
