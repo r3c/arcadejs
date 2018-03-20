@@ -1,11 +1,11 @@
 {
 	"materials": {
 		"side": {
-			"ambientMap": "ground-ambient.png",
+			"diffuseMap": "ground-diffuse.png",
 			"heightMap": "ground-height.png",
 			"normalMap": "ground-normal.png",
-			"reflectionMap": "ground-reflection.png",
-			"shininess": 10
+			"shininess": 10,
+			"specularMap": "ground-specular.png"
 		}
 	},
 	"meshes": [

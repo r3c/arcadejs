@@ -99,7 +99,7 @@ const configuration = {
 	animate: true,
 	applyDiffuse: true,
 	applySpecular: true,
-	debugMode: [".None", "Depth", "Normal", "Shininess", "Reflection", "Diffuse light", "Specular light"]
+	debugMode: [".None", "Depth", "Normal", "Shininess", "Specular", "Diffuse light", "Specular light"]
 };
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
@@ -156,8 +156,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	geometryShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
 	geometryShader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
-	geometryShader.bindPerMaterialTexture("reflectionMap", state => state.material.reflectionMap);
 	geometryShader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
+	geometryShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
 
 	const lightShader = new webgl.Shader<LightCallState>(
 		gl,

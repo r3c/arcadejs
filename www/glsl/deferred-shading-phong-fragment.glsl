@@ -36,7 +36,7 @@ vec3 decodeNormal(in vec2 normalPack) {
 	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
 }
 
-vec3 getLight(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float reflection, in float shininess) {
+vec3 getLight(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float specularColor, in float shininess) {
 	float lightAngle = dot(normal, lightDirection);
 	vec3 lightOutput = vec3(0, 0, 0);
 
@@ -65,7 +65,7 @@ vec3 getLight(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in f
 				lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
 			}
 
-			float lightPowerSpecular = pow(lightSpecularCosine, shininess) * reflection;
+			float lightPowerSpecular = pow(lightSpecularCosine, shininess) * specularColor;
 
 			lightOutput += lightColor * lightPowerSpecular;
 		}
@@ -92,7 +92,7 @@ void main(void) {
 	// Decode geometry and material properties from samples
 	vec3 albedo = albedoAndShininessSample.rgb;
 	vec3 normal = decodeNormal(normalAndReflectionSample.rg);
-	float reflection = normalAndReflectionSample.a;
+	float specularColor = normalAndReflectionSample.a;
 	float shininess = decodeInteger(albedoAndShininessSample.a);
 
 	// Compute point in camera space from fragment coord and depth buffer
@@ -105,7 +105,7 @@ void main(void) {
 	float lightDistance = length(lightPositionCamera - point);
 	float lightPower = max(1.0 - lightDistance / lightRadius, 0.0);
 
-	vec3 light = getLight(normal, lightDirection, eyeDirection, reflection, shininess) * lightPower;
+	vec3 light = getLight(normal, lightDirection, eyeDirection, specularColor, shininess) * lightPower;
 
 	fragColor = vec4(albedo * light, 1.0);
 }

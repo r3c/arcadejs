@@ -7,7 +7,6 @@ interface Material {
 	diffuseMap?: ImageData,
 	heightMap?: ImageData,
 	normalMap?: ImageData,
-	reflectionMap?: ImageData,
 	shininess?: number,
 	specularColor?: vector.Vector4,
 	specularMap?: ImageData

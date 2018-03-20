@@ -1,11 +1,11 @@
 {
     "materials": {
         "default": {
-            "ambientMap": "sphere-ambient.png",
+            "diffuseMap": "sphere-diffuse.png",
             "heightMap": "sphere-height.png",
             "normalMap": "sphere-normal.png",
-            "reflectionMap": "sphere-reflection.png",
-            "shininess": 100
+            "shininess": 100,
+            "specularMap": "sphere-specular.png"
         }
     },
     "meshes": [

@@ -15,7 +15,6 @@ uniform vec4 diffuseColor;
 uniform sampler2D diffuseMap;
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
-uniform sampler2D reflectionMap;
 uniform float shininess;
 uniform vec4 specularColor;
 uniform sampler2D specularMap;
@@ -82,7 +81,7 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 
 			vec3 specularLight = vec3(1.0, 1.0, 1.0);
 			vec3 specularMaterial = texture(specularMap, coord).rgb;
-			float specularPower = pow(specularCosine, shininess) * texture(reflectionMap, coord).r;
+			float specularPower = pow(specularCosine, shininess);
 
 			lightColor += specularColor.rgb * specularLight * specularMaterial * specularPower;
 		}

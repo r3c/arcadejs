@@ -32,7 +32,6 @@ interface Material {
 	diffuseMap: WebGLTexture | undefined,
 	heightMap: WebGLTexture | undefined,
 	normalMap: WebGLTexture | undefined,
-	reflectionMap: WebGLTexture | undefined,
 	shininess: number,
 	specularColor: number[],
 	specularMap: WebGLTexture | undefined
@@ -229,23 +228,22 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				const ambientColor = definition.ambientColor || colorWhite;
 				const ambientMap = functional.map(definition.ambientMap, toColorMap);
 				const diffuseColor = definition.diffuseColor || ambientColor;
-				const diffuseMap = functional.map(definition.diffuseMap, toColorMap) || ambientMap;
+				const diffuseMap = functional.map(definition.diffuseMap, toColorMap);
 				const specularColor = definition.specularColor || diffuseColor;
-				const specularMap = functional.map(definition.specularMap, toColorMap) || diffuseMap;
+				const specularMap = functional.map(definition.specularMap, toColorMap);
 
 				meshes[name] = {
 					geometries: [],
 					material: {
 						ambientColor: toArray4(ambientColor),
-						ambientMap: ambientMap,
+						ambientMap: ambientMap || diffuseMap,
 						diffuseColor: toArray4(diffuseColor),
-						diffuseMap: diffuseMap,
+						diffuseMap: diffuseMap || ambientMap,
 						heightMap: functional.map(definition.heightMap, toColorMap),
 						normalMap: functional.map(definition.normalMap, toColorMap),
-						reflectionMap: functional.map(definition.reflectionMap, toColorMap),
 						shininess: functional.coalesce(definition.shininess, shininessDefault),
 						specularColor: toArray4(specularColor),
-						specularMap: specularMap
+						specularMap: specularMap || diffuseMap || ambientMap
 					}
 				}
 			}
@@ -263,7 +261,6 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 						diffuseMap: undefined,
 						heightMap: undefined,
 						normalMap: undefined,
-						reflectionMap: undefined,
 						shininess: shininessDefault,
 						specularColor: toArray4(colorWhite),
 						specularMap: undefined

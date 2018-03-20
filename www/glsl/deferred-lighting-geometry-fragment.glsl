@@ -6,7 +6,7 @@ precision highp float;
 
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
-uniform sampler2D reflectionMap;
+uniform sampler2D specularMap;
 uniform float shininess;
 
 uniform bool useHeightMap;
@@ -57,10 +57,10 @@ void main(void) {
 	vec3 eyeDirectionFace = vec3(dot(eyeDirection, tangent), dot(eyeDirection, bitangent), dot(eyeDirection, normal));
 	vec2 parallaxCoord = getCoord(coord, eyeDirectionFace, 0.04, 0.02);
 
-	// Color target: [normal, normal, shininess, reflection]
+	// Color target: [normal, normal, shininess, specularColor]
 	vec2 normalPack = encodeNormal(getNormal(normal, parallaxCoord));
-	float reflection = texture(reflectionMap, parallaxCoord).r;
+	float specularColor = texture(specularMap, parallaxCoord).r;
 	float shininessPack = encodeInteger(shininess);
 
-	normalAndSpecular = vec4(normalPack, shininessPack, reflection);
+	normalAndSpecular = vec4(normalPack, shininessPack, specularColor);
 }

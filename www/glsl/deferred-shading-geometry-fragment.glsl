@@ -8,7 +8,7 @@ uniform vec4 ambientColor;
 uniform sampler2D ambientMap;
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
-uniform sampler2D reflectionMap;
+uniform sampler2D specularMap;
 uniform float shininess;
 
 uniform bool useHeightMap;
@@ -66,10 +66,10 @@ void main(void) {
 
 	albedoAndShininess = vec4(albedo, shininessPack);
 
-	// Color target 2: [normal, normal, zero, reflection]
+	// Color target 2: [normal, normal, zero, specularColor]
 	vec2 normalPack = encodeNormal(getNormal(normal, parallaxCoord));
-	float reflection = texture(reflectionMap, parallaxCoord).r;
+	float specularColor = texture(specularMap, parallaxCoord).r;
 	float unused = 0.0;
 
-	normalAndReflection = vec4(normalPack, unused, reflection);
+	normalAndReflection = vec4(normalPack, unused, specularColor);
 }

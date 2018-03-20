@@ -68,6 +68,12 @@ const toDecimal = (name: string, instance: any) => {
 	return <number>instance;
 };
 
+const toImageData = async (name: string, instance: any, directory: string) => {
+	return instance !== undefined
+		? await mesh.loadImage(toString(name, path.combine(directory, instance)))
+		: undefined;
+};
+
 const toInteger = (name: string, instance: any) => {
 	if (typeof instance !== "number" || ~~instance !== instance)
 		throw invalid(name, instance, "integer number");
@@ -92,24 +98,15 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 		throw invalid(name, instance, "material");
 
 	return {
-		ambientColor: instance.ambientColor !== undefined
-			? toColor(`${name}.ambientColor`, instance.ambientColor)
-			: mesh.defaultColor,
-		ambientMap: instance.ambientMap !== undefined
-			? await mesh.loadImage(toString(`${name}.ambientMap`, path.combine(directory, instance.ambientMap)))
-			: undefined,
-		heightMap: instance.heightMap !== undefined
-			? await mesh.loadImage(toString(`${name}.heightMap`, path.combine(directory, instance.heightMap)))
-			: undefined,
-		normalMap: instance.normalMap !== undefined
-			? await mesh.loadImage(toString(`${name}.normalMap`, path.combine(directory, instance.normalMap)))
-			: undefined,
-		reflectionMap: instance.reflectionMap !== undefined
-			? await mesh.loadImage(toString(`${name}.reflectionMap`, path.combine(directory, instance.reflectionMap)))
-			: undefined,
-		shininess: instance.shininess !== undefined
-			? toInteger(`${name}.shininess`, instance.shininess)
-			: 1
+		ambientColor: toOptional(`${name}.ambientColor`, instance.ambientColor, toColor, mesh.defaultColor),
+		ambientMap: await toImageData(`${name}.ambientMap`, instance.ambientMap, directory),
+		diffuseColor: toOptional(`${name}.diffuseColor`, instance.diffuseColor, toColor, mesh.defaultColor),
+		diffuseMap: await toImageData(`${name}.diffuseMap`, instance.diffuseMap, directory),
+		heightMap: await toImageData(`${name}.heightMap`, instance.heightMap, directory),
+		normalMap: await toImageData(`${name}.normalMap`, instance.normalMap, directory),
+		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger, 1),
+		specularColor: toOptional(`${name}.specularColor`, instance.specularColor, toColor, mesh.defaultColor),
+		specularMap: await toImageData(`${name}.specularMap`, instance.specularMap, directory)
 	};
 };
 
@@ -125,6 +122,13 @@ const toMesh = (name: string, instance: any): mesh.Mesh => {
 		normals: instance.normals !== undefined ? toArrayOf(`${name}.normals`, instance.normals, toVertex) : undefined,
 		points: toArrayOf(`${name}.points`, instance.points, toVertex)
 	};
+};
+
+const toOptional = <T>(name: string, instance: any, converter: (name: string, source: any) => T, defaultValue: T) => {
+	if (instance !== undefined)
+		return converter(name, instance);
+
+	return defaultValue;
 };
 
 const toString = (name: string, instance: any): string => {

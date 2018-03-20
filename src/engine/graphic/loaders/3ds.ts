@@ -134,10 +134,7 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa230: // Bump map
-			break;
-
-		case 0xa33c: // Reflection map
-			state.material.reflectionMap = await scan(context, end, readMaterialMap, undefined);
+			state.material.heightMap = await scan(context, end, readMaterialMap, undefined);
 
 			break;
 	}

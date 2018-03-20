@@ -113,7 +113,6 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerMaterialTexture("diffuseMap", state => state.material.diffuseMap);
 	lightShader.bindPerMaterialTexture("heightMap", state => state.material.heightMap);
 	lightShader.bindPerMaterialTexture("normalMap", state => state.material.normalMap);
-	lightShader.bindPerMaterialTexture("reflectionMap", state => state.material.reflectionMap);
 	lightShader.bindPerMaterialProperty("shininess", gl => gl.uniform1f, state => state.material.shininess);
 	lightShader.bindPerMaterialProperty("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
 	lightShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);

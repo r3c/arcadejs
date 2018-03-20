@@ -47,7 +47,7 @@ vec3 getLightDiffuse(in vec3 normal, in vec3 lightDirection) {
 	return vec3(0.0, 0.0, 0.0);
 }
 
-float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float reflection, in float shininess) {
+float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float specularColor, in float shininess) {
 	float lightAngle = dot(normal, lightDirection);
 
 	if (lightAngle > 0.0 && applySpecular) {
@@ -66,7 +66,7 @@ float getLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirect
 			lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
 		}
 
-		return pow(lightSpecularCosine, shininess) * reflection;
+		return pow(lightSpecularCosine, shininess) * specularColor;
 	}
 
 	return 0.0;
@@ -88,7 +88,7 @@ void main(void) {
 
 	// Decode geometry and material properties from samples
 	vec3 normal = decodeNormal(normalAndSpecularSample.rg);
-	float reflection = normalAndSpecularSample.a;
+	float specularColor = normalAndSpecularSample.a;
 	float shininess = decodeInteger(normalAndSpecularSample.b);
 
 	// Compute point in camera space from fragment coord and depth buffer
@@ -104,6 +104,6 @@ void main(void) {
 	// Emit lighting parameters
 	fragColor = exp2(-vec4(
 		getLightDiffuse(normal, lightDirection) * lightPower,
-		getLightSpecular(normal, lightDirection, eyeDirection, reflection, shininess) * lightPower
+		getLightSpecular(normal, lightDirection, eyeDirection, specularColor, shininess) * lightPower
 	));
 }

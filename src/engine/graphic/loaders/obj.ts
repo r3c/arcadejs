@@ -64,9 +64,9 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 			case "map_bump": // Bump map texture
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(fileName, line, "bump color");
+					throw invalidLine(fileName, line, "bump map");
 
-				/*current.bumpMap = */fields[1];
+				current.heightMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -90,7 +90,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "specular map");
 
-				current.reflectionMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.specularMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
