@@ -42,9 +42,9 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
+uniform sampler2D glossMap;
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
-uniform sampler2D specularMap;
 uniform float shininess;
 
 in vec3 bitangent;
@@ -53,7 +53,7 @@ in vec3 normal;
 in vec3 point;
 in vec3 tangent;
 
-layout(location=0) out vec4 normalAndSpecular;
+layout(location=0) out vec4 normalAndGloss;
 
 ${normal.encodeDeclare}
 ${shininess.encodeDeclare}
@@ -91,10 +91,10 @@ void main(void) {
 
 	// Color target: [normal, normal, shininess, specularColor]
 	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
-	float specularColor = texture(specularMap, parallaxCoord).r;
+	float gloss = texture(glossMap, parallaxCoord).r;
 	float shininessPack = ${shininess.encodeInvoke("shininess")};
 
-	normalAndSpecular = vec4(normalPack, shininessPack, specularColor);
+	normalAndGloss = vec4(normalPack, shininessPack, gloss);
 }`;
 
 const lightHeaderShader = `
@@ -133,7 +133,7 @@ uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
 uniform sampler2D depthBuffer;
-uniform sampler2D normalAndSpecularBuffer;
+uniform sampler2D normalAndGlossBuffer;
 
 in vec3 lightPositionCamera;
 
@@ -155,13 +155,13 @@ void main(void) {
 	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
 	// Read samples from texture buffers
-	vec4 normalAndSpecularSample = texelFetch(normalAndSpecularBuffer, bufferCoord, 0);
+	vec4 normalAndGlossSample = texelFetch(normalAndGlossBuffer, bufferCoord, 0);
 	vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
 	// Decode geometry and material properties from samples
-	vec3 normal = ${normal.decodeInvoke("normalAndSpecularSample.rg")};
-	float specularColor = normalAndSpecularSample.a;
-	float shininess = ${shininess.decodeInvoke("normalAndSpecularSample.b")};
+	vec3 normal = ${normal.decodeInvoke("normalAndGlossSample.rg")};
+	float specularColor = normalAndGlossSample.a;
+	float shininess = ${shininess.decodeInvoke("normalAndGlossSample.b")};
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
@@ -217,13 +217,11 @@ void main(void) {
 const materialFragmentShader = `
 uniform sampler2D lightBuffer;
 
-uniform vec4 ambientColor;
-uniform sampler2D ambientMap;
-uniform vec4 diffuseColor;
-uniform sampler2D diffuseMap;
+uniform vec4 albedoColor;
+uniform sampler2D albedoMap;
+uniform vec4 glossColor;
+uniform sampler2D glossMap;
 uniform sampler2D heightMap;
-uniform vec4 specularColor;
-uniform sampler2D specularMap;
 
 in vec3 bitangent;
 in vec2 coord;
@@ -260,11 +258,11 @@ void main(void) {
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, t), dot(eyeDirection, b), dot(eyeDirection, n));
 	vec2 parallaxCoord = getCoord(coord, eyeDirectionTangent, 0.04, 0.02);
 
-	vec4 materialDiffuse = diffuseColor * texture(diffuseMap, parallaxCoord);
-	vec4 materialSpecular = specularColor * texture(specularMap, parallaxCoord);
+	vec4 albedo = albedoColor * texture(albedoMap, parallaxCoord);
+	vec4 gloss = glossColor * texture(glossMap, parallaxCoord);
 
 	// Emit final fragment color
-	fragColor = vec4(materialDiffuse.rgb * lightDiffuse + materialSpecular.rgb * lightSpecular, 1.0);
+	fragColor = vec4(albedo.rgb * lightDiffuse + gloss.rgb * lightSpecular, 1.0);
 }`;
 
 interface Configuration {
@@ -283,7 +281,7 @@ enum LightModel {
 interface LightState extends State {
 	depthBuffer: WebGLTexture,
 	pointLight: webgl.PointLight,
-	normalAndSpecularBuffer: WebGLTexture,
+	normalAndGlossBuffer: WebGLTexture,
 	viewportSize: vector.Vector2
 }
 
@@ -326,8 +324,8 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
+		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
 		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
-		shader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
 	}
 
 	return shader;
@@ -357,7 +355,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindPropertyPerTarget("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
 
 	shader.bindTexturePerTarget("depthBuffer", state => state.depthBuffer);
-	shader.bindTexturePerTarget("normalAndSpecularBuffer", state => state.normalAndSpecularBuffer);
+	shader.bindTexturePerTarget("normalAndGlossBuffer", state => state.normalAndGlossBuffer);
 
 	return shader;
 };
@@ -384,18 +382,18 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 
 	shader.bindTexturePerTarget("lightBuffer", state => state.lightBuffer);
 
-	if (configuration.lightModel >= LightModel.Lambert) { // FIXME: inconsistent with geometry shader + deferred shading?
-		shader.bindPropertyPerMaterial("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
-		shader.bindTexturePerMaterial("diffuseMap", state => state.material.diffuseMap);
+	if (configuration.lightModel >= LightModel.Lambert) {
+		shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+		shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
+	}
+
+	if (configuration.lightModel >= LightModel.Phong) {
+		shader.bindPropertyPerMaterial("glossColor", gl => gl.uniform4fv, state => state.material.glossColor);
+		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
 	}
 
 	if (configuration.useHeightMap)
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-
-	if (configuration.lightModel >= LightModel.Phong) {
-		shader.bindPropertyPerMaterial("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
-		shader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
-	}
 
 	return shader;
 };
@@ -403,7 +401,7 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 class Renderer implements webgl.Renderer<State> {
 	public readonly depthBuffer: WebGLTexture;
 	public readonly lightBuffer: WebGLTexture;
-	public readonly normalAndSpecularBuffer: WebGLTexture;
+	public readonly normalAndGlossBuffer: WebGLTexture;
 
 	private readonly geometryTarget: webgl.Target;
 	private readonly geometryShader: webgl.Shader<State>;
@@ -426,7 +424,7 @@ class Renderer implements webgl.Renderer<State> {
 		this.lightSphere = webgl.loadModel(gl, sphere.model);
 		this.lightTarget = light;
 		this.materialShader = loadMaterial(gl, configuration);
-		this.normalAndSpecularBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
+		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
@@ -470,7 +468,7 @@ class Renderer implements webgl.Renderer<State> {
 
 			this.lightTarget.draw(this.lightShader, lightSubjects, {
 				depthBuffer: this.depthBuffer,
-				normalAndSpecularBuffer: this.normalAndSpecularBuffer,
+				normalAndGlossBuffer: this.normalAndGlossBuffer,
 				pointLight: pointLight,
 				projectionMatrix: state.projectionMatrix,
 				viewMatrix: state.viewMatrix,

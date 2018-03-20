@@ -46,15 +46,13 @@ interface GeometryState<State> {
 }
 
 interface Material {
-	ambientColor: number[],
-	ambientMap: WebGLTexture | undefined,
-	diffuseColor: number[],
-	diffuseMap: WebGLTexture | undefined,
+	albedoColor: number[],
+	albedoMap: WebGLTexture | undefined,
+	glossColor: number[],
+	glossMap: WebGLTexture | undefined,
 	heightMap: WebGLTexture | undefined,
 	normalMap: WebGLTexture | undefined,
-	shininess: number,
-	specularColor: number[],
-	specularMap: WebGLTexture | undefined
+	shininess: number
 }
 
 interface MaterialState<State> {
@@ -442,25 +440,16 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 			if (meshes[materialName] === undefined) {
 				const definition = definitions[materialName];
 
-				const ambientColor = definition.ambientColor || colorWhite;
-				const ambientMap = functional.map(definition.ambientMap, toColorMap);
-				const diffuseColor = definition.diffuseColor || ambientColor;
-				const diffuseMap = functional.map(definition.diffuseMap, toColorMap);
-				const specularColor = definition.specularColor || diffuseColor;
-				const specularMap = functional.map(definition.specularMap, toColorMap);
-
 				meshes[materialName] = {
 					geometries: [],
 					material: {
-						ambientColor: vector.Vector4.toArray(ambientColor),
-						ambientMap: ambientMap || diffuseMap,
-						diffuseColor: vector.Vector4.toArray(diffuseColor),
-						diffuseMap: diffuseMap || ambientMap,
+						albedoColor: vector.Vector4.toArray(definition.albedoColor || colorWhite),
+						albedoMap: functional.map(definition.albedoMap, toColorMap),
+						glossColor: vector.Vector4.toArray(definition.glossColor || definition.albedoColor || colorWhite),
+						glossMap: functional.map(definition.glossMap, toColorMap),
 						heightMap: functional.map(definition.heightMap, toColorMap),
 						normalMap: functional.map(definition.normalMap, toColorMap),
-						shininess: functional.coalesce(definition.shininess, shininessDefault),
-						specularColor: vector.Vector4.toArray(specularColor),
-						specularMap: specularMap || diffuseMap || ambientMap
+						shininess: functional.coalesce(definition.shininess, shininessDefault)
 					}
 				}
 			}
@@ -474,15 +463,13 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				meshes[defaultMaterialName] = {
 					geometries: [],
 					material: {
-						ambientColor: vector.Vector4.toArray(colorWhite),
-						ambientMap: undefined,
-						diffuseColor: vector.Vector4.toArray(colorWhite),
-						diffuseMap: undefined,
+						albedoColor: vector.Vector4.toArray(colorWhite),
+						albedoMap: undefined,
+						glossColor: vector.Vector4.toArray(colorWhite),
+						glossMap: undefined,
 						heightMap: undefined,
 						normalMap: undefined,
-						shininess: shininessDefault,
-						specularColor: vector.Vector4.toArray(colorWhite),
-						specularMap: undefined
+						shininess: shininessDefault
 					}
 				};
 			}

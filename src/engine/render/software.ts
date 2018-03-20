@@ -17,7 +17,7 @@ interface Image {
 }
 
 interface Material {
-	ambientMap?: ImageData
+	albedoMap?: ImageData
 }
 
 interface Mesh {
@@ -111,9 +111,9 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 		const colorIndex = depthIndex * 4;
 
 		// Ambient map
-		if (material.ambientMap !== undefined) {
+		if (material.albedoMap !== undefined) {
 			const coord = lerpVector2(begin.coord, end.coord, ratio);
-			const image = material.ambientMap;
+			const image = material.albedoMap;
 
 			const x = ~~(coord.x * image.width) % image.width;
 			const y = ~~(coord.y * image.height) % image.height;

@@ -66,9 +66,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const gl = runtime.screen.context;
 
 	// Load models
-	const cubeModel = await model.fromJSON("./obj/cube.json");
-	const groundModel = await model.fromJSON("./obj/ground.json");
-	const lightModel = await model.fromJSON("./obj/sphere.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const cubeModel = await model.fromJSON("./obj/cube/model.json");
+	const groundModel = await model.fromJSON("./obj/ground/model.json");
+	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 
 	// Create state
 	return {

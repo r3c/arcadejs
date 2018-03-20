@@ -136,15 +136,13 @@ void main(void) {
 }`;
 
 const lightFragmentShader = `
-uniform vec4 ambientColor;
-uniform sampler2D ambientMap;
-uniform vec4 diffuseColor;
-uniform sampler2D diffuseMap;
+uniform vec4 albedoColor;
+uniform sampler2D albedoMap;
+uniform vec4 glossColor;
+uniform sampler2D glossMap;
 uniform sampler2D heightMap;
 uniform sampler2D normalMap;
 uniform float shininess;
-uniform vec4 specularColor;
-uniform sampler2D specularMap;
 
 in vec2 coord;
 in vec3 eye;
@@ -174,10 +172,10 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 
 	if (lightNormalCosine > 0.0) {
 		#if LIGHT_MODEL >= LIGHT_MODEL_LAMBERT
-			vec3 diffuseMaterial = texture(diffuseMap, coord).rgb;
+			vec4 materialAlbedo = albedoColor * texture(albedoMap, coord);
 			float diffusePower = lightNormalCosine;
 
-			outputColor += diffuseColor.rgb * lightDiffuseColor * diffuseMaterial * diffusePower;
+			outputColor += materialAlbedo.rgb * lightDiffuseColor * diffusePower;
 		#endif
 
 		#if LIGHT_MODEL >= LIGHT_MODEL_PHONG
@@ -195,10 +193,10 @@ vec3 getLight(in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 light
 				specularCosine = max(dot(normal, halfwayDirection), 0.0);
 			#endif
 
-			vec3 specularMaterial = texture(specularMap, coord).rgb;
+			vec4 materialGloss = glossColor * texture(glossMap, coord);
 			float specularPower = pow(specularCosine, shininess);
 
-			outputColor += specularColor.rgb * lightSpecularColor * specularMaterial * specularPower;
+			outputColor += materialGloss.rgb * lightSpecularColor * specularPower;
 		#endif
 	}
 
@@ -220,8 +218,10 @@ void main(void) {
 	vec3 modifiedNormal = getNormal(normal, modifiedCoord);
 	vec3 outputColor = vec3(0, 0, 0);
 
+	vec4 materialAlbedo = albedoColor * texture(albedoMap, modifiedCoord);
+
 	#if LIGHT_MODEL >= LIGHT_MODEL_AMBIENT
-		outputColor += ambientLightColor * ambientColor.rgb * texture(ambientMap, modifiedCoord).rgb;
+		outputColor += materialAlbedo.rgb * ambientLightColor;
 	#endif
 
 	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
@@ -343,15 +343,16 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const defaultPosition = [0, 0, 0];
 
 	if (configuration.lightModel >= LightModel.Ambient) {
-		shader.bindPropertyPerMaterial("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-		shader.bindTexturePerMaterial("ambientMap", state => state.material.ambientMap);
+		shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+		shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 		shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 	}
 
-	if (configuration.lightModel >= LightModel.Lambert) {
-		shader.bindPropertyPerMaterial("diffuseColor", gl => gl.uniform4fv, state => state.material.diffuseColor);
-		shader.bindTexturePerMaterial("diffuseMap", state => state.material.diffuseMap);
+	if (configuration.lightModel >= LightModel.Phong) {
+		shader.bindPropertyPerMaterial("glossColor", gl => gl.uniform4fv, state => state.material.glossColor);
+		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
+		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
 	}
 
 	if (configuration.useHeightMap)
@@ -359,12 +360,6 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	if (configuration.useNormalMap)
 		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
-
-	if (configuration.lightModel >= LightModel.Phong) {
-		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
-		shader.bindPropertyPerMaterial("specularColor", gl => gl.uniform4fv, state => state.material.specularColor);
-		shader.bindTexturePerMaterial("specularMap", state => state.material.specularMap);
-	}
 
 	for (let i = 0; i < maxDirectionalLights; ++i) {
 		const index = i;

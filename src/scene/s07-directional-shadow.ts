@@ -63,9 +63,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const gl = runtime.screen.context;
 
 	// Load models
-	const cubeModel = await model.fromJSON("./obj/cube.json");
+	const cubeModel = await model.fromJSON("./obj/cube/model.json");
 	const debugModel = await model.fromJSON("./obj/debug.json");
-	const groundModel = await model.fromJSON("./obj/ground.json");
+	const groundModel = await model.fromJSON("./obj/ground/model.json");
 
 	// Create state
 	return {

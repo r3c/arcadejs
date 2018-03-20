@@ -98,15 +98,13 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 		throw invalid(name, instance, "material");
 
 	return {
-		ambientColor: toOptional(`${name}.ambientColor`, instance.ambientColor, toColor, mesh.defaultColor),
-		ambientMap: await toImageData(`${name}.ambientMap`, instance.ambientMap, directory),
-		diffuseColor: toOptional(`${name}.diffuseColor`, instance.diffuseColor, toColor, mesh.defaultColor),
-		diffuseMap: await toImageData(`${name}.diffuseMap`, instance.diffuseMap, directory),
+		albedoColor: toOptional(`${name}.albedoColor`, instance.albedoColor, toColor, mesh.defaultColor),
+		albedoMap: await toImageData(`${name}.albedoMap`, instance.albedoMap, directory),
+		glossColor: toOptional(`${name}.glossColor`, instance.glossColor, toColor, mesh.defaultColor),
+		glossMap: await toImageData(`${name}.glossMap`, instance.glossMap, directory),
 		heightMap: await toImageData(`${name}.heightMap`, instance.heightMap, directory),
 		normalMap: await toImageData(`${name}.normalMap`, instance.normalMap, directory),
-		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger, 1),
-		specularColor: toOptional(`${name}.specularColor`, instance.specularColor, toColor, mesh.defaultColor),
-		specularMap: await toImageData(`${name}.specularMap`, instance.specularMap, directory)
+		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger, 1)
 	};
 };
 

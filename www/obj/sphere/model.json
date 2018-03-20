@@ -1,11 +1,11 @@
 {
     "materials": {
         "default": {
-            "diffuseMap": "sphere-diffuse.png",
+            "albedoMap": "sphere-albedo.png",
+            "glossMap": "sphere-gloss.png",
             "heightMap": "sphere-height.png",
             "normalMap": "sphere-normal.png",
-            "shininess": 100,
-            "specularMap": "sphere-specular.png"
+            "shininess": 100
         }
     },
     "meshes": [

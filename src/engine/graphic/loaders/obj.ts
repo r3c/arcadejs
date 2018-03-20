@@ -3,6 +3,12 @@ import * as mesh from "../mesh";
 import * as path from "../../fs/path";
 import * as vector from "../../math/vector";
 
+/*
+** Implementation based on:
+** http://paulbourke.net/dataformats/obj/
+** http://paulbourke.net/dataformats/mtl/
+*/
+
 interface WavefrontOBJBatchMap {
 	[key: string]: number
 }
@@ -37,28 +43,19 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 	for (const { line, fields } of parseFile(data)) {
 		switch (fields[0]) {
-			case "Ka": // Ambient light color
-				if (fields.length < 4 || current === undefined)
-					throw invalidLine(fileName, line, "ambient color");
-
-				current.ambientColor = parseVector4(fields);
-
-				break;
-
 			case "Kd": // Diffuse light color
 				if (fields.length < 4 || current === undefined)
-					throw invalidLine(fileName, line, "diffuse color");
+					throw invalidLine(fileName, line, "albedo color");
 
-				current.diffuseColor = parseVector4(fields);
+				current.albedoColor = parseVector4(fields);
 
 				break;
-
 
 			case "Ks": // Specular light color
 				if (fields.length < 4 || current === undefined)
-					throw invalidLine(fileName, line, "specular color");
+					throw invalidLine(fileName, line, "gloss color");
 
-				current.specularColor = parseVector4(fields);
+				current.glossColor = parseVector4(fields);
 
 				break;
 
@@ -70,19 +67,11 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 				break;
 
-			case "map_Ka": // Ambient map texture
-				if (fields.length < 2 || current === undefined)
-					throw invalidLine(fileName, line, "ambient map");
-
-				current.ambientMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
-
-				break;
-
 			case "map_Kd": // Diffuse map texture
 				if (fields.length < 2 || current === undefined)
-					throw invalidLine(fileName, line, "diffuse map");
+					throw invalidLine(fileName, line, "albedo map");
 
-				current.diffuseMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.albedoMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -90,7 +79,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "specular map");
 
-				current.specularMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.glossMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 

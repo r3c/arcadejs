@@ -38,13 +38,13 @@ const fsSource = `
 	in vec4 color;
 	in vec2 coord;
 
-	uniform vec4 ambientColor;
-	uniform sampler2D ambientMap;
+	uniform vec4 albedoColor;
+	uniform sampler2D albedoMap;
 
 	layout(location=0) out vec4 fragColor;
 
 	void main(void) {
-		fragColor = color * ambientColor * texture(ambientMap, coord);
+		fragColor = color * albedoColor * texture(albedoMap, coord);
 	}
 `;
 
@@ -72,8 +72,8 @@ const prepare = async () => {
 	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	shader.bindPropertyPerMaterial("ambientColor", gl => gl.uniform4fv, state => state.material.ambientColor);
-	shader.bindTexturePerMaterial("ambientMap", state => state.material.ambientMap);
+	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
@@ -83,7 +83,7 @@ const prepare = async () => {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
 		gl: gl,
 		input: runtime.input,
-		model: webgl.loadModel(gl, await model.fromJSON("./obj/cube.json")),
+		model: webgl.loadModel(gl, await model.fromJSON("./obj/cube/model.json")),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shader: shader,
 		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight())

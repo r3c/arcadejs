@@ -1,15 +1,13 @@
 import * as vector from "../math/vector";
 
 interface Material {
-	ambientColor?: vector.Vector4,
-	ambientMap?: ImageData,
-	diffuseColor?: vector.Vector4,
-	diffuseMap?: ImageData,
+	albedoColor?: vector.Vector4,
+	albedoMap?: ImageData,
+	glossColor?: vector.Vector4,
+	glossMap?: ImageData,
 	heightMap?: ImageData,
 	normalMap?: ImageData,
-	shininess?: number,
-	specularColor?: vector.Vector4,
-	specularMap?: ImageData
+	shininess?: number
 }
 
 interface Mesh {

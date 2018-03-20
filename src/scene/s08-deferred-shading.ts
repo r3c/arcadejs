@@ -49,7 +49,7 @@ const configuration = {
 	nbLights: [".5", "10", "25", "100"],
 	animate: true,
 	lightModel: ["None", "Ambient", "Lambert", ".Phong"],
-	debugMode: [".None", "Depth", "Albedo", "Normal", "Shininess", "Specular"]
+	debugMode: [".None", "Depth", "Albedo", "Normal", "Shininess", "Gloss"]
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
@@ -62,10 +62,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const gl = runtime.screen.context;
 
 	// Load models
-	const cubeModel = await model.fromJSON("./obj/cube.json");
+	const cubeModel = await model.fromJSON("./obj/cube/model.json");
 	const debugModel = await model.fromJSON("./obj/debug.json");
-	const groundModel = await model.fromJSON("./obj/ground.json");
-	const lightModel = await model.fromJSON("./obj/sphere.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const groundModel = await model.fromJSON("./obj/ground/model.json");
+	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 
 	// Create state
 	return {
@@ -143,9 +143,9 @@ const render = (state: SceneState) => {
 		const configurations = [
 			{ source: deferredRenderer.depthBuffer, select: debugTexture.Select.Red, format: debugTexture.Format.Depth },
 			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.RedGreenBlue, format: debugTexture.Format.Colorful },
-			{ source: deferredRenderer.normalAndSpecularBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
+			{ source: deferredRenderer.normalAndGlossBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
 			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome },
-			{ source: deferredRenderer.normalAndSpecularBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome }
+			{ source: deferredRenderer.normalAndGlossBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome }
 		];
 
 		const debugRenderer = renderers.debug;

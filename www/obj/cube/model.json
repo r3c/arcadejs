@@ -1,12 +1,11 @@
 {
 	"materials": {
 		"side": {
-			"ambientMap": "cube-diffuse.jpg",
-			"diffuseMap": "cube-diffuse.jpg",
+			"albedoMap": "cube-albedo.jpg",
+			"glossMap": "cube-gloss.jpg",
 			"heightMap": "cube-height.jpg",
 			"normalMap": "cube-normal.jpg",
-			"shininess": 100,
-			"specularMap": "cube-specular.jpg"
+			"shininess": 100
 		}
 	},
 	"meshes": [

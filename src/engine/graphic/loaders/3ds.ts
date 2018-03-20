@@ -103,18 +103,13 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 
 			break;
 
-		case 0xa010: // Ambient color
-			state.material.ambientColor = await scan(context, end, readColor, mesh.defaultColor);
-
-			break;
-
-		case 0xa020: // Diffuse color
-			state.material.diffuseColor = await scan(context, end, readColor, mesh.defaultColor);
+		case 0xa020: // Albedo color
+			state.material.albedoColor = await scan(context, end, readColor, mesh.defaultColor);
 
 			break;
 
 		case 0xa030: // Specular color
-			state.material.specularColor = await scan(context, end, readColor, mesh.defaultColor);
+			state.material.glossColor = await scan(context, end, readColor, mesh.defaultColor);
 
 			break;
 
@@ -124,12 +119,12 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa200: // Texture 1
-			state.material.ambientMap = await scan(context, end, readMaterialMap, undefined);
+			state.material.albedoMap = await scan(context, end, readMaterialMap, undefined);
 
 			break;
 
-		case 0xa204: // Specular map
-			state.material.specularMap = await scan(context, end, readMaterialMap, undefined);
+		case 0xa204: // Gloss map
+			state.material.glossMap = await scan(context, end, readMaterialMap, undefined);
 
 			break;
 
