@@ -4,7 +4,6 @@ Arcade.js TODO
 ToDo
 ----
 
-- Fix lighting saturation in deferred lighting
 - Implement point light shadow maps
 - Implement ambient occlusion
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
@@ -33,3 +32,4 @@ Done
 - Fix vertices rotation when loading model
 - Implement deferred shading
 - Implement deferred lighing
+- Fix lighting saturation in deferred lighting

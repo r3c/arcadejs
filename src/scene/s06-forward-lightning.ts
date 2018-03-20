@@ -75,8 +75,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Setup shaders
 	const basicShader = new webgl.Shader<CallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/basic-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/basic-fragment.glsl")
+		await io.readURL(io.StringFormat, "./glsl/basic-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./glsl/basic-fragment.glsl")
 	);
 
 	basicShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
@@ -87,8 +87,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const lightShader = new webgl.Shader<CallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/forward-light-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/forward-light-fragment.glsl")
+		await io.readURL(io.StringFormat, "./glsl/forward-lighting-light-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./glsl/forward-lighting-light-fragment.glsl")
 	);
 
 	lightShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
@@ -124,9 +124,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	}
 
 	// Load models
-	const cubeModel = await model.fromJSON("./res/model/cube.json");
-	const groundModel = await model.fromJSON("./res/model/ground.json");
-	const lightModel = await model.fromJSON("./res/model/sphere.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const cubeModel = await model.fromJSON("./obj/cube.json");
+	const groundModel = await model.fromJSON("./obj/ground.json");
+	const lightModel = await model.fromJSON("./obj/sphere.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 
 	// Create state
 	return {

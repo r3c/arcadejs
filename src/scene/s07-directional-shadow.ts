@@ -90,8 +90,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Setup shaders
 	const debugShader = new webgl.Shader<DebugCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/debug-texture-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/debug-texture-fragment.glsl")
+		await io.readURL(io.StringFormat, "./glsl/debug-texture-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./glsl/debug-texture-fragment.glsl")
 	);
 
 	debugShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
@@ -107,8 +107,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	const lightShader = new webgl.Shader<LightCallState>(
 		gl,
-		await io.readURL(io.StringFormat, "./res/shader/forward-shadow-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/forward-shadow-fragment.glsl")
+		await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./glsl/forward-lighting-shadow-fragment.glsl")
 	);
 
 	lightShader.bindPerGeometryAttribute("coords", 2, gl.FLOAT, state => state.geometry.coords);
@@ -143,8 +143,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	lightShader.bindPerMaterialTexture("specularMap", state => state.material.specularMap);
 
 	const shadowShader = new webgl.Shader<ShadowCallState>(gl,
-		await io.readURL(io.StringFormat, "./res/shader/shadow-directional-vertex.glsl"),
-		await io.readURL(io.StringFormat, "./res/shader/shadow-directional-fragment.glsl"));
+		await io.readURL(io.StringFormat, "./glsl/shadow-directional-vertex.glsl"),
+		await io.readURL(io.StringFormat, "./glsl/shadow-directional-fragment.glsl"));
 
 	shadowShader.bindPerGeometryAttribute("points", 3, gl.FLOAT, state => state.geometry.points);
 
@@ -153,9 +153,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	shadowShader.bindPerCallMatrix("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	// Load models
-	const cubeModel = await model.fromJSON("./res/model/cube.json");
-	const debugModel = await model.fromJSON("./res/model/debug.json");
-	const groundModel = await model.fromJSON("./res/model/ground.json");
+	const cubeModel = await model.fromJSON("./obj/cube.json");
+	const debugModel = await model.fromJSON("./obj/debug.json");
+	const groundModel = await model.fromJSON("./obj/ground.json");
 
 	// Create state
 	return {

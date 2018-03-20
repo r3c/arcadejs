@@ -81,7 +81,7 @@ const prepare = async () => {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
 		gl: gl,
 		input: runtime.input,
-		model: webgl.loadModel(gl, await model.fromJSON("./res/model/cube.json")),
+		model: webgl.loadModel(gl, await model.fromJSON("./obj/cube.json")),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		shader: shader,
 		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight())

@@ -1,24 +1,24 @@
-let browserify = require("browserify");
-let fs = require("fs");
-let tsify = require("tsify");
-let watchify = require("watchify");
+const browserify = require("browserify");
+const fs = require("fs");
+const tsify = require("tsify");
+const watchify = require("watchify");
 
-let browserifyOptions = {
+const browserifyOptions = {
 	cache: {},
 	debug: true,
-	entries: ['ts/main.ts'],
+	entries: ['src/main.ts'],
 	packageCache: {}
 };
 
-project = browserify(browserifyOptions)
+const project = browserify(browserifyOptions)
 	.plugin("tsify")
 	.plugin(watchify);
 
-let bundle = function () {
+const bundle = function () {
 	project
 		.bundle()
 		.on('error', console.error)
-		.pipe(fs.createWriteStream(__dirname + "/dist/bundle.js"));
+		.pipe(fs.createWriteStream(__dirname + "/www/js/bundle.js"));
 }
 
 project

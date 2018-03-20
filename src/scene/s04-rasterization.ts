@@ -40,8 +40,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
-		cubeWithColor: renderer.load(await model.fromJSON("./res/model/cube-color.json")),
-		cubeWithTexture: renderer.load(await model.fromJSON("./res/model/cube.json")),
+		cubeWithColor: renderer.load(await model.fromJSON("./obj/cube-color.json")),
+		cubeWithTexture: renderer.load(await model.fromJSON("./obj/cube.json")),
 		input: runtime.input,
 		projection: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderer: renderer,
