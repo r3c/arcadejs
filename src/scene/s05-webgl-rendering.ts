@@ -80,7 +80,7 @@ const prepare = async () => {
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	return {
-		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
+		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		gl: gl,
 		input: runtime.input,
 		model: webgl.loadModel(gl, await model.fromJSON("./obj/cube/model.json")),

@@ -75,10 +75,39 @@ class Matrix4 {
 		return new Matrix4(Matrix4.multiply(this.values, other.values));
 	}
 
+	public getTransposedInverse3x3() {
+		const m = this.values;
+		const determinant =
+			m[0] * (m[5] * m[10] - m[6] * m[9]) -
+			m[1] * (m[4] * m[10] - m[6] * m[8]) +
+			m[2] * (m[4] * m[9] - m[5] * m[8]);
+
+		if (determinant < Number.EPSILON)
+			return m;
+
+		const inverse = 1 / determinant;
+
+		return [
+			(m[5] * m[10] - m[9] * m[6]) * inverse,
+			(m[4] * m[10] - m[6] * m[8]) * -inverse,
+			(m[4] * m[9] - m[8] * m[5]) * inverse,
+			(m[1] * m[10] - m[2] * m[9]) * -inverse,
+			(m[0] * m[10] - m[2] * m[8]) * inverse,
+			(m[0] * m[9] - m[8] * m[1]) * -inverse,
+			(m[1] * m[6] - m[2] * m[5]) * inverse,
+			(m[0] * m[6] - m[4] * m[2]) * -inverse,
+			(m[0] * m[5] - m[4] * m[1]) * inverse
+		];
+	}
+
+	public getValues(): Iterable<number> {
+		return this.values;
+	}
+
 	/*
 	** From: https://github.com/jlyharia/Computer_GraphicsII/blob/master/gluInvertMatrix.h
 	*/
-	public getInverse() {
+	public inverse() {
 		const inv = [];
 		const m = this.values;
 
@@ -202,35 +231,6 @@ class Matrix4 {
 		const invDet = 1.0 / det;
 
 		return new Matrix4(inv.map(v => v * invDet));
-	}
-
-	public getTransposedInverse3x3() {
-		const m = this.values;
-		const determinant =
-			m[0] * (m[5] * m[10] - m[6] * m[9]) -
-			m[1] * (m[4] * m[10] - m[6] * m[8]) +
-			m[2] * (m[4] * m[9] - m[5] * m[8]);
-
-		if (determinant < Number.EPSILON)
-			return m;
-
-		const inverse = 1 / determinant;
-
-		return [
-			(m[5] * m[10] - m[9] * m[6]) * inverse,
-			(m[4] * m[10] - m[6] * m[8]) * -inverse,
-			(m[4] * m[9] - m[8] * m[5]) * inverse,
-			(m[1] * m[10] - m[2] * m[9]) * -inverse,
-			(m[0] * m[10] - m[2] * m[8]) * inverse,
-			(m[0] * m[9] - m[8] * m[1]) * -inverse,
-			(m[1] * m[6] - m[2] * m[5]) * inverse,
-			(m[0] * m[6] - m[4] * m[2]) * -inverse,
-			(m[0] * m[5] - m[4] * m[1]) * inverse
-		];
-	}
-
-	public getValues(): Iterable<number> {
-		return this.values;
 	}
 
 	/*
