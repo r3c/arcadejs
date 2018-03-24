@@ -56,6 +56,8 @@ interface Material {
 	normalMap: WebGLTexture | undefined,
 	occlusionMap: WebGLTexture | undefined,
 	occlusionStrength: number,
+	parallaxBias: number,
+	parallaxScale: number,
 	roughnessMap: WebGLTexture | undefined,
 	shininess: number
 }
@@ -458,6 +460,8 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 						normalMap: functional.map(definition.normalMap, toColorMap),
 						occlusionMap: functional.map(definition.occlusionMap, toColorMap),
 						occlusionStrength: functional.coalesce(definition.occlusionStrength, 1),
+						parallaxBias: functional.coalesce(definition.parallaxBias, 0),
+						parallaxScale: functional.coalesce(definition.parallaxScale, 0),
 						roughnessMap: functional.map(definition.roughnessMap, toColorMap),
 						shininess: functional.coalesce(definition.shininess, shininessDefault)
 					}
@@ -484,6 +488,8 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 						normalMap: undefined,
 						occlusionMap: undefined,
 						occlusionStrength: 1,
+						parallaxBias: 0,
+						parallaxScale: 0,
 						roughnessMap: undefined,
 						shininess: shininessDefault
 					}
