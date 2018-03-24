@@ -164,6 +164,8 @@ uniform sampler2D metalnessMap;
 uniform sampler2D normalMap;
 uniform sampler2D occlusionMap;
 uniform float occlusionStrength;
+uniform float parallaxBias;
+uniform float parallaxScale;
 uniform float perceptualRoughness;
 uniform float perceptualMetalness;
 uniform sampler2D roughnessMap;
@@ -206,7 +208,7 @@ void main(void) {
 	vec3 eyeDirection = normalize(eye);
 
 	#ifdef USE_HEIGHT_MAP
-		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirection", "0.04", "0.02")};
+		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirection", "parallaxScale", "parallaxBias")};
 	#else
 		vec2 parallaxCoord = coord;
 	#endif
@@ -420,8 +422,11 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 		shader.bindPropertyPerMaterial("emissiveStrength", gl => gl.uniform1f, state => state.material.emissiveStrength);
 	}
 
-	if (configuration.useHeightMap)
+	if (configuration.useHeightMap) {
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
+		shader.bindPropertyPerMaterial("parallaxBias", gl => gl.uniform1f, state => state.material.parallaxBias);
+		shader.bindPropertyPerMaterial("parallaxScale", gl => gl.uniform1f, state => state.material.parallaxScale);
+	}
 
 	if (configuration.useNormalMap)
 		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);

@@ -5,6 +5,8 @@
 			"glossMap": "ground-gloss.png",
 			"heightMap": "ground-height.png",
 			"normalMap": "ground-normal.png",
+			"parallaxBias": 0.02,
+			"parallaxScale": 0.04,
 			"shininess": 10
 		}
 	},

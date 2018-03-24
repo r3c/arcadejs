@@ -109,6 +109,8 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 		normalMap: await toImageData(`${name}.normalMap`, instance.normalMap, directory),
 		occlusionMap: await toImageData(`${name}.occlusionMap`, instance.occlusionMap, directory),
 		occlusionStrength: toOptional(`${name}.occlusionStrength`, instance.occlusionStrength, toDecimal, 1),
+		parallaxBias: toOptional(`${name}.parallaxBias`, instance.parallaxBias, toDecimal, 1),
+		parallaxScale: toOptional(`${name}.parallaxScale`, instance.parallaxScale, toDecimal, 1),
 		roughnessMap: await toImageData(`${name}.roughnessMap`, instance.roughnessMap, directory),
 		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger, 1)
 	};

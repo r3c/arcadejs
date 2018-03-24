@@ -7,6 +7,8 @@
 			"metalnessMap": "mybricks1_metallic.png",
 			"normalMap": "mybricks1_normal.png",
 			"occlusionMap": "mybricks1_AO.png",
+			"parallaxBias": 0.02,
+			"parallaxScale": 0.04,
 			"roughnessMap": "mybricks1_roughness.png",
 			"shininess": 100
 		}

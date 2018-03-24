@@ -12,6 +12,8 @@ interface Material {
 	normalMap?: ImageData,
 	occlusionMap?: ImageData,
 	occlusionStrength?: number,
+	parallaxBias?: number,
+	parallaxScale?: number,
 	roughnessMap?: ImageData,
 	shininess?: number
 }
