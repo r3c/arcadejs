@@ -308,7 +308,7 @@ interface DirectionalLight extends webgl.DirectionalLight {
 	shadowViewMatrix: matrix.Matrix4
 }
 
-interface LightState { // FIXME: extends State once shadowViewMatrix is removed
+interface LightState extends State {
 	ambientLightColor: vector.Vector3,
 	directionalLights: DirectionalLight[],
 	pointLights: webgl.PointLight[], // FIXME: extend PointLight with extra properties
@@ -317,14 +317,13 @@ interface LightState { // FIXME: extends State once shadowViewMatrix is removed
 	viewMatrix: matrix.Matrix4
 }
 
-interface ShadowState { // FIXME: extends State once shadowViewMatrix is removed
+interface ShadowState extends State {
 	projectionMatrix: matrix.Matrix4,
 	viewMatrix: matrix.Matrix4
 }
 
 interface State {
 	projectionMatrix: matrix.Matrix4,
-	shadowViewMatrix: matrix.Matrix4,
 	viewMatrix: matrix.Matrix4
 }
 
@@ -504,7 +503,6 @@ class Renderer implements webgl.Renderer<State> {
 		const directionalLights = scene.directionalLights || [];
 		const gl = this.gl;
 		const pointLights = scene.pointLights || [];
-		const shadowViewMatrix = state.shadowViewMatrix; // FIXME: must be computed from light direction + position
 
 		gl.disable(gl.BLEND);
 
@@ -518,6 +516,12 @@ class Renderer implements webgl.Renderer<State> {
 
 		for (let i = 0; i < Math.min(directionalLights.length, this.maxDirectionalLights); ++i) {
 			const light = directionalLights[i];
+			const shadowDirection = { x: -light.direction.x, y: -light.direction.y, z: -light.direction.z };
+
+			const viewMatrix = matrix.Matrix4
+				.createIdentity()
+				.translate({ x: 0, y: 0, z: -10 })
+				.compose(matrix.Matrix4.createDirection(shadowDirection, { x: 0, y: 1, z: 0 }));
 
 			gl.colorMask(false, false, false, false);
 			gl.cullFace(gl.FRONT);
@@ -525,7 +529,7 @@ class Renderer implements webgl.Renderer<State> {
 			this.shadowTargets[bufferIndex].clear();
 			this.shadowTargets[bufferIndex].draw(this.shadowShader, scene.subjects, {
 				projectionMatrix: this.shadowProjectionMatrix,
-				viewMatrix: shadowViewMatrix
+				viewMatrix: viewMatrix
 			});
 
 			directionalLightStates.push({
@@ -533,7 +537,7 @@ class Renderer implements webgl.Renderer<State> {
 				direction: light.direction,
 				shadow: light.shadow,
 				shadowMap: this.shadowBuffers[bufferIndex],
-				shadowViewMatrix: shadowViewMatrix
+				shadowViewMatrix: viewMatrix
 			});
 
 			++bufferIndex;

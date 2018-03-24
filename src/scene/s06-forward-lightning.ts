@@ -157,7 +157,6 @@ const render = (state: SceneState) => {
 
 	lightRenderer.render(target, lightScene, {
 		projectionMatrix: state.projectionMatrix,
-		shadowViewMatrix: matrix.Matrix4.createIdentity(),
 		viewMatrix: cameraView
 	});
 };
