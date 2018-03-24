@@ -167,7 +167,7 @@ const update = (state: SceneState, dt: number) => {
 		state.move += dt * 0.0005;
 
 	for (let i = 0; i < state.lightPositions.length; ++i)
-		state.lightPositions[i] = move.rotate(i, state.move, 2);
+		state.lightPositions[i] = move.rotate(i, state.move, 2, 2);
 
 	// Move camera
 	state.camera.move(state.input);
