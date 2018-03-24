@@ -217,9 +217,8 @@ void main(void) {
 		vec3 modifiedNormal = normal;
 	#endif
 
+	vec3 materialAlbedo = albedoColor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, parallaxCoord).rgb")};
 	vec3 outputColor = vec3(0, 0, 0);
-
-	vec3 materialAlbedo = albedoColor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, coord).rgb")};
 
 	// Apply ambient component
 	outputColor += materialAlbedo * ambientLightColor * float(LIGHT_MODEL_AMBIENT);
@@ -257,12 +256,12 @@ void main(void) {
 
 	// Apply emissive component
 	#ifdef USE_EMISSIVE_MAP
-		outputColor += ${rgb.standardToLinearInvoke("texture(emissiveMap, coord).rgb")} * emissiveStrength;
+		outputColor += ${rgb.standardToLinearInvoke("texture(emissiveMap, parallaxCoord).rgb")} * emissiveStrength;
 	#endif
 
 	// Apply ambient occlusion component
 	#ifdef USE_OCCLUSION_MAP
-		outputColor = mix(outputColor, outputColor * texture(occlusionMap, coord).r, occlusionStrength);
+		outputColor = mix(outputColor, outputColor * texture(occlusionMap, parallaxCoord).r, occlusionStrength);
 	#endif
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("outputColor")}, 1.0);
