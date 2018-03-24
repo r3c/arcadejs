@@ -68,7 +68,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
-	const debugModel = await model.fromJSON("./obj/debug.json");
+	const debugModel = await model.fromJSON("./obj/debug.json", { transform: matrix.Matrix4.createIdentity().scale({ x: gl.canvas.clientWidth / gl.canvas.clientHeight, y: 1, z: 1 }) });
 	const groundModel = await model.fromJSON("./obj/ground/model.json");
 	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
 
@@ -158,7 +158,7 @@ const render = (state: SceneState) => {
 		const debugRenderer = renderers.debug;
 		const debugScene = {
 			subjects: [{
-				matrix: matrix.Matrix4.createIdentity().translate({ x: 3, y: -2, z: -8 }),
+				matrix: matrix.Matrix4.createIdentity().translate({ x: 2, y: -1.5, z: -6 }),
 				model: models.debug
 			}]
 		};
