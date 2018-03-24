@@ -5,7 +5,6 @@ ToDo
 ----
 
 - Fix "operation requires zeroing texture data" error
-- Compute shadow view matrix from light direction and not the opposite in forward renderer
 - Implement point light shadow maps
 - Implement ambient occlusion
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
@@ -37,3 +36,4 @@ Done
 - Inject ambient light in deferred lighting renderer
 - Factorize common GLSL methods from renderer implementations
 - Support specular light color in deferred lighing shader
+- Compute shadow view matrix from light direction and not the opposite in forward renderer

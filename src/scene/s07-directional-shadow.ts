@@ -102,25 +102,19 @@ const render = (state: SceneState) => {
 		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	const shadowViewMatrix = matrix.Matrix4
-		.createIdentity()
-		.translate({ x: 0, y: 0, z: -10 })
-		.rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 1 / 6)
-		.rotate({ x: 0, y: 1, z: 0 }, state.move * 7);
-
 	// Draw scene
 	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: [{
 			color: { x: 0.8, y: 0.8, z: 0.8 },
-			direction: { x: shadowViewMatrix.getValue(2), y: shadowViewMatrix.getValue(6), z: shadowViewMatrix.getValue(10) }, // FIXME: remove shadowViewMatrix and define this instead
+			direction: { x: Math.cos(-state.move * 10), y: Math.PI * 1 / 6, z: Math.sin(-state.move * 10) },
 			shadow: true
 		}],
 		subjects: [{
 			matrix: matrix.Matrix4
 				.createIdentity()
-				.rotate({ x: 0, y: 1, z: 0 }, state.move * 5),
+				.rotate({ x: 0, y: 1, z: 1 }, state.move * 5),
 			model: models.cube
 		}, {
 			matrix: matrix.Matrix4
@@ -134,7 +128,6 @@ const render = (state: SceneState) => {
 
 	lightRenderer.render(target, lightScene, {
 		projectionMatrix: state.projectionMatrix,
-		shadowViewMatrix: shadowViewMatrix, // FIXME: remove
 		viewMatrix: cameraViewMatrix
 	});
 

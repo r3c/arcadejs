@@ -11,6 +11,23 @@ class Matrix4 {
 	private readonly values: number[];
 
 	/*
+	** Create new matrix for "looking to given direction" transformation.
+	** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
+	*/
+	public static createDirection(direction: vector.Vector3, up: vector.Vector3) {
+		const f = vector.Vector3.normalize(direction);
+		const s = vector.Vector3.cross(f, vector.Vector3.normalize(up));
+		const u = vector.Vector3.cross(vector.Vector3.normalize(s), f);
+
+		return new Matrix4([
+			s.x, u.x, -f.x, 0,
+			s.y, u.y, -f.y, 0,
+			s.z, u.z, -f.z, 0,
+			0, 0, 0, 1
+		]);
+	}
+
+	/*
 	** Create new identity matrix (actually returns a static immutable instance).
 	*/
 	public static createIdentity() {
@@ -210,10 +227,6 @@ class Matrix4 {
 			(m[0] * m[6] - m[4] * m[2]) * -inverse,
 			(m[0] * m[5] - m[4] * m[1]) * inverse
 		];
-	}
-
-	public getValue(index: number) {
-		return this.values[index];
 	}
 
 	public getValues(): Iterable<number> {
