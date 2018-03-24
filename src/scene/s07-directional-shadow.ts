@@ -62,7 +62,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	// Create state
 	return {
-		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
+		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		input: runtime.input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),

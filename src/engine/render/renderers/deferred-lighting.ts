@@ -345,7 +345,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
 
-	shader.bindMatrixPerTarget("inverseProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getInverse().getValues());
+	shader.bindMatrixPerTarget("inverseProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.inverse().getValues());
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
@@ -498,7 +498,7 @@ class Renderer implements webgl.Renderer<State> {
 		gl.depthMask(true);
 
 		target.draw(this.materialShader, scene.subjects, {
-			ambientLightColor: scene.ambientLightColor || { x: 0, y: 0, z: 0 },
+			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			lightBuffer: this.lightBuffer,
 			projectionMatrix: state.projectionMatrix,
 			viewMatrix: state.viewMatrix

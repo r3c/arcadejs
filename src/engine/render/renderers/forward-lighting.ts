@@ -550,7 +550,7 @@ class Renderer implements webgl.Renderer<State> {
 		gl.cullFace(gl.BACK);
 
 		target.draw(this.lightShader, scene.subjects, {
-			ambientLightColor: scene.ambientLightColor || { x: 0, y: 0, z: 0 },
+			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			directionalLights: directionalLightStates,
 			pointLights: pointLights,
 			projectionMatrix: state.projectionMatrix,

@@ -21,7 +21,7 @@ interface Model {
 ** http://www.iquilezles.org/www/articles/normals/normals.htm
 */
 const computeNormals = (triangles: [number, number, number][], points: vector.Vector3[]) => {
-	const normals = functional.range(points.length, i => ({ x: 0, y: 0, z: 0 }));
+	const normals = functional.range(points.length, i => vector.Vector3.zero);
 
 	for (const [index1, index2, index3] of triangles) {
 		const point1 = points[index1];
@@ -49,7 +49,7 @@ const computeNormals = (triangles: [number, number, number][], points: vector.Ve
 ** http://www.terathon.com/code/tangent.html
 */
 const computeTangents = (triangles: [number, number, number][], points: vector.Vector3[], coords: vector.Vector2[], normals: vector.Vector3[]) => {
-	const tangents = functional.range(normals.length, i => ({ x: 0, y: 0, z: 0 }));
+	const tangents = functional.range(normals.length, i => vector.Vector3.zero);
 
 	for (const [index1, index2, index3] of triangles) {
 		const coord1 = coords[index1];

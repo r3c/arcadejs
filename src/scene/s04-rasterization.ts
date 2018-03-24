@@ -39,7 +39,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const renderer = new software.Renderer(runtime.screen);
 
 	return {
-		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
+		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		cubeWithColor: renderer.load(await model.fromJSON("./obj/cube-color.json")),
 		cubeWithTexture: renderer.load(await model.fromJSON("./obj/cube/model.json")),
 		input: runtime.input,

@@ -74,7 +74,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 
 	// Create state
 	return {
-		camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
+		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		input: runtime.input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
@@ -85,7 +85,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		move: 0,
 		pointLights: functional.range(100, i => ({
 			color: color.createBright(i),
-			position: { x: 0, y: 0, z: 0 },
+			position: vector.Vector3.zero,
 			radius: 4
 		})),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),

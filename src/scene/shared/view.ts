@@ -27,17 +27,25 @@ class Camera {
 		const movement = input.fetchMovement();
 		const wheel = input.fetchWheel();
 
-		if (input.isPressed("mouseleft")) {
-			this.nextPosition.x += movement.x / 64;
-			this.nextPosition.y -= movement.y / 64;
-		}
+		const deltaPosition = input.isPressed("mouseleft") ?
+			{ x: movement.x / 64, y: -movement.y / 64 } :
+			vector.Vector2.zero;
 
-		if (input.isPressed("mouseright")) {
-			this.nextRotation.x -= movement.y / 64;
-			this.nextRotation.y -= movement.x / 64;
-		}
+		const deltaRotation = input.isPressed("mouseright") ?
+			{ x: -movement.y / 64, y: -movement.x / 64 } :
+			vector.Vector2.zero;
 
-		this.nextPosition.z += wheel;
+		this.nextPosition = {
+			x: this.nextPosition.x + deltaPosition.x,
+			y: this.nextPosition.y + deltaPosition.y,
+			z: this.nextPosition.z + wheel
+		};
+
+		this.nextRotation = {
+			x: this.nextRotation.x + deltaRotation.x,
+			y: this.nextRotation.y + deltaRotation.y,
+			z: this.nextRotation.z
+		};
 
 		this.position = ease(this.position, this.nextPosition, 0.2);
 		this.rotation = ease(this.rotation, this.nextRotation, 0.2);

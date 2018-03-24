@@ -1,22 +1,24 @@
 interface Vector2 {
-	x: number,
-	y: number
+	readonly x: number,
+	readonly y: number
 }
 
 interface Vector3 {
-	x: number,
-	y: number,
-	z: number
+	readonly x: number,
+	readonly y: number,
+	readonly z: number
 }
 
 interface Vector4 {
-	x: number,
-	y: number,
-	z: number,
-	w: number
+	readonly x: number,
+	readonly y: number,
+	readonly z: number,
+	readonly w: number
 }
 
 class Vector2 {
+	public static readonly zero: Vector2 = { x: 0, y: 0 };
+
 	public static sub(lhs: Vector2, rhs: Vector2) {
 		return {
 			x: lhs.x - rhs.x,
@@ -30,6 +32,8 @@ class Vector2 {
 }
 
 class Vector3 {
+	public static readonly zero: Vector3 = { x: 0, y: 0, z: 0 };
+
 	public static add(lhs: Vector3, rhs: Vector3) {
 		return {
 			x: lhs.x + rhs.x,
@@ -87,6 +91,8 @@ class Vector3 {
 }
 
 class Vector4 {
+	public static readonly zero: Vector4 = { x: 0, y: 0, z: 0, w: 0 };
+
 	public static toArray(vector: Vector4) {
 		return [vector.x, vector.y, vector.z, vector.w];
 	}
