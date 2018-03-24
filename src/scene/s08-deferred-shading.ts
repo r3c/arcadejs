@@ -48,7 +48,7 @@ interface SceneState {
 }
 
 const configuration = {
-	nbLights: [".5", "10", "25", "100"],
+	nbLights: [".50", "100", "250", "500"],
 	animate: true,
 	enableAmbient: true,
 	enableDiffuse: true,
@@ -67,10 +67,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const gl = runtime.screen.context;
 
 	// Load models
-	const cubeModel = await model.fromJSON("./obj/cube/model.json");
+	const cubeModel = await model.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
 	const debugModel = await model.fromJSON("./obj/debug.json");
 	const groundModel = await model.fromJSON("./obj/ground/model.json");
-	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
 
 	// Create state
 	return {
@@ -83,10 +83,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			light: webgl.loadModel(gl, lightModel)
 		},
 		move: 0,
-		pointLights: functional.range(100, i => ({
+		pointLights: functional.range(500, i => ({
 			color: color.createBright(i),
 			position: vector.Vector3.zero,
-			radius: 4
+			radius: 2
 		})),
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
 		renderers: {
@@ -119,7 +119,7 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Pick active lights
-	const lights = state.pointLights.slice(0, [5, 10, 25, 100][tweak.nbLights] || 0);
+	const lights = state.pointLights.slice(0, [50, 100, 250, 500][tweak.nbLights] || 0);
 
 	// Draw scene
 	const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
@@ -127,12 +127,12 @@ const render = (state: SceneState) => {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		pointLights: lights,
 		subjects: [{
-			matrix: matrix.Matrix4.createIdentity(),
-			model: models.cube
-		}, {
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
-		}].concat(lights.map(light => ({
+		}].concat(functional.range(16, i => ({
+			matrix: matrix.Matrix4.createIdentity().translate({ x: (i % 4 - 1.5) * 2, y: 0, z: (Math.floor(i / 4) - 1.5) * 2 }),
+			model: models.cube
+		}))).concat(lights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(light.position),
 			model: models.light
 		})))
@@ -179,7 +179,7 @@ const update = (state: SceneState, dt: number) => {
 		state.move += dt * 0.0002;
 
 	for (let i = 0; i < state.pointLights.length; ++i)
-		state.pointLights[i].position = move.rotate(i, state.move, 4);
+		state.pointLights[i].position = move.rotate(i, state.move, 6, 2);
 
 	// Move camera
 	state.camera.move(state.input);
