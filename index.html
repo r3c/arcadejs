@@ -1,0 +1,312 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Let there be (gl)Light!</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css">
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+		<link rel="stylesheet" href="css/style.css">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<h2>Let there be (gl)Light!</h2>
+					<h4>A glimpse in real-time 3D graphics world</h4>
+				</section>
+
+				<section>
+					<p>3D is a big topic so we'll only see about:</p>
+					<ul>
+						<li>Real-time rendering (e.g. no offline)</li>
+						<li>Polygon-based (e.g. no voxel-based)</li>
+						<li>Using OpenGL (e.g. no DirectX)</li>
+					</ul>
+				</section>
+
+				<section>
+					<p>Polygon-based = objects are made out of triangles</p>
+					<img height="300" src="image/wireframe.png" />
+					<p class="fragment">...so all we need is rendering 3D triangles!</p>
+				</section>
+
+				<section>
+					<p>Render 3D triangle = project to 2D screen + display</p>
+					<img height="300" src="image/projection.png" />
+					<p class="fragment">...so all we need is projecting a 3D point into 2D space.</p>
+				</section>
+
+				<section>
+					<p>Transform points using projection matrix</p>
+					<ul>
+						<li>Project to (x, y, z) &isin; ([-1, 1], [-1, 1], [-1, 1]) space</li>
+						<li>Perspective projection will be used for demos</li>
+						<li>Math background is not part of this presentation 😇</li>
+					</ul>
+					<img height="300" src="image/gl_projectionmatrix01.png" />
+				</section>
+
+				<section>
+					<p>Demo 01: projection</p>
+					<p>Demo 02: rotation</p>
+				</section>
+
+				<section>
+					<p>Problem: projecting absolute 3D points to 2D works</p>
+					<ul>
+						<li>...but calculation of each position seems tedious...</li>
+						<li class="fragment" data-fragment-index="1">...especially if we want to move & rotate objects</li>
+						<li class="fragment" data-fragment-index="2">...and change viewer's point of view (camera)</li>
+					</ul>
+					<img class="fragment" data-fragment-index="2" height="200" src="image/world-to-view.png" />
+					<p class="fragment" data-fragment-index="2">Transformation matrices to the rescue <img style="background: none; border: none; vertical-align: bottom;" height="64" src="image/anadon.png" /></p>
+				</section>
+
+				<section>
+					<p>Solution: changing coordinate system</p>
+					<ul>
+						<li>Translate a point p by a vector v &hArr; p' = p + v</li>
+						<li>Rotate a point around axis &hArr; multiply by 3x3 matrix</li>
+					</ul>
+					<p>Example for rotation of angle θ around X axis:</p>
+					<blockquote>
+						<table class="matrix">
+							<tr>
+								<td>p'<sub>x</sub></td>
+							</tr>
+							<tr>
+								<td>p'<sub>y</sub></td>
+							</tr>
+							<tr>
+								<td>p'<sub>z</sub></td>
+							</tr>
+						</table>
+						=
+						<table class="matrix">
+							<tr>
+								<td>p<sub>x</sub></td>
+							</tr>
+							<tr>
+								<td>p<sub>y</sub></td>
+							</tr>
+							<tr>
+								<td>p<sub>z</sub></td>
+							</tr>
+						</table>
+						*
+						<table class="matrix">
+							<tr>
+								<td>1</td>
+								<td>0</td>
+								<td>0</td>
+							</tr>
+							<tr>
+								<td>0</td>
+								<td>cos(θ)</td>
+								<td>-sin(θ)</td>
+							</tr>
+							<tr>
+								<td>0</td>
+								<td>sin(θ)</td>
+								<td>cos(θ)</td>
+							</tr>
+						</table>
+					</blockquote>
+				</section>
+
+				<section>
+					<p>Demo 03: composition</p>
+				</section>
+
+				<section>
+					<p>Moving out of wireframe: rasterizing triangles</p>
+					<img height="300" src="image/scanline.png" />
+					<ul>
+						<li>Horizontally split triangle at middle vertex's height</li>
+						<li>Draw both of them with horizontal lines</li>
+						<li>Use linear interpolation between x<sub>t</sub>, x<sub>m1</sub>, x<sub>m2</sub> &amp; x<sub>b</sub>
+					</ul>
+				</section>
+
+				<section>
+					<p>Demo 04: rasterization</p>
+				</section>
+
+				<section>
+					<p>Problem: most time (CPU) spent on</p>
+					<ul>
+						<li>Projecting 3D points to 2D using vector instructions</li>
+						<li>Interpolating pixel colors with floating point ops</li>
+					</ul>
+					<p class="fragment" data-fragment-index="1">Fortunately this is heavily parallelizable 🤹‍♂️</p>
+					<p class="fragment" data-fragment-index="1">GPU to the rescue!</p>
+				</section>
+
+				<section>
+					<p>Meet OpenGL: rendering-oriented &amp; GPU-designed API</p>
+					<ul>
+						<li>Released in January 1992 by Silicon Graphics</li>
+						<li>Managed by Khronos Group since 2006</li>
+						<li>Cross-platform &amp; language independant API</li>
+						<li>Wildly used, supported and documented</li>
+						<li>Superseeded by Vulkan since 2016</li>
+					</ul>
+					<p>Let's use WebGL, an HTML5 API based on OpenGL ES</p>
+				</section>
+
+				<section>
+					<p>The WebGL pipeline</p>
+					<div style="background: white;">
+						<img height="200" src="image/gl-pipeline.png" />
+					</div>
+					<p>Customize highlighted steps with <em>shader</em> programs.</p>
+				</section>
+
+				<section>
+					<p>Demo 05: WebGL</p>
+				</section>
+
+				<section>
+					<p>Problem: doesn't look realistic at all 😢</p>
+					<ul>
+						<li>Simulate material properties, not a simple color</li>
+						<li>Realistic rendering requires lighting computation</li>
+					</ul>
+					<img height="300" src="image/lighting-off.jpg" />
+					<img height="300" src="image/lighting-on.jpg" />
+				</section>
+
+				<section>
+					<section>
+						<p>Solution: Phong model (Bui Tuong Phong, 1975)</p>
+						<ul>
+							<li>Blinn-Phong variant (Jim Blinn, 1977) mostly used (default in OpenGL &amp; DirectX)</li>
+							<li>Empirical model with diffuse (rough) + specular (smooth) components</li>
+						</ul>
+						<img height="300" src="image/shad2-roughsurface.png" />
+					</section>
+
+					<section>
+						<p>Solution: Physical-based rendering</p>
+						<ul>
+							<li>Popularized in 2004 from Cornell University research</li>
+							<li>More reallistic lighting model than Phong one</li>
+							<li>Approximate real world physical properties (conservation of energy, fresnel reflectivity, etc.)</li>
+							<li>Used in modern 3D engines (UE4, Unity)</li>
+						</ul>
+					</section>
+				</section>
+
+				<section>
+					<p>Use tricks to improve final result, e.g.</p>
+					<ul>
+						<li>Normal mapping: perturb normals using 2D texture</li>
+						<li>Height mapping: simulate height on flat surfaces</li>
+					</ul>
+					<img height="350" src="image/maps.jpg" />
+				</section>
+
+				<section>
+					<p>Demo 06: forward rendering</p>
+				</section>
+
+				<section>
+					<p>Problem: complexity = O(nbLights * nbModels) 😥</p>
+					<img height="350" src="image/deferred_example.png" />
+					<p>What if we want hundreds of lights?</p>
+				</section>
+
+				<section>
+					<section>
+						<p>Solution: deferred shading (~2007)</p>
+						<ul>
+							<li>Used in StarCraft II, GTA IV, CryENGINE3...</li>
+							<li class="fragment">
+								Draw models and store only geometry information:
+								<ul>
+									<li>Point depth (used to rebuild position)</li>
+									<li>Normal at point (thanks Irénée!)</li>
+									<li>Material properties (e.g. shininess)</li>
+								</ul>
+							</li>
+							<li class="fragment">Process lights for the whole geometry at once</li>
+						</ul>
+						<div class="fragment">
+							<p>Pro: O(nbLights + nbModels) complexity</p>
+							<p>Con: limited material capabilities (no transparency, only 1 type of material)</p>
+						</div>
+					</section>
+
+					<section>
+						<p>Solution: deferred lighting (aka light pre-pass, ~2008)</p>
+						<ul>
+							<li>Used in BioShock Inf., Assassin's Creed 3, MGS V...</li>
+							<li class="fragment">
+								Draw models and store geometry information:
+								<ul>
+									<li>Point depth (position)</li>
+									<li>Normal at point</li>
+								</ul>
+							</li>
+							<li class="fragment">
+								Draw lights and store radiance information:
+								<ul>
+									<li>Amount of received diffuse/specular light</li>
+								</ul>
+							</li>
+							<li class="fragment">Draw models again and apply lights to materials</li>
+						</ul>
+						<div class="fragment">
+							<p>Pro: better material flexibility than deferred shading</p>
+							<p>Con: 2 passes per model instead of 1</p>
+						</div>
+					</section>
+				</section>
+
+				<section>
+					<p>Demo 08: deferred shading</p>
+					<p>Demo 09: deferred lighting</p>
+				</section>
+
+				<section>
+					<p>Now back to work 😛</p>
+				</section>
+
+				<section>
+					<p>Resources:</p>
+					<ul>
+						<li><a href="https://glumpy.github.io/modern-gl.html">Model OpenGL</a></li>
+						<li><a href="https://blenderartists.org/forum/showthread.php?401209-Cycles-Parallax-(step)-mapping-shader-with-Silhouette-Occlusion-Download">Blender Artists</a></li>
+						<li><a href="https://learnopengl.com/Advanced-Lighting/Deferred-Shading">LearnOpenGL - Deferred Shading</a></li>
+						<li><a href="https://en.wikipedia.org/wiki/Phong_reflection_model">Phong reflection model</a></li>
+						<li><a href="https://www.scratchapixel.com/lessons/3d-basic-rendering/phong-shader-BRDF">The Phong Model and the concepts of Illumination Models and BRDF</a></li>
+						<li><a href="http://webreference.com/3d/lesson18/part2.html">3D Animation Workshop</a></li>
+						<li><a href="http://www.songho.ca/opengl/gl_projectionmatrix.html">OpenGL Projection Matrix</a></li>
+					</ul>
+				</section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			Reveal.initialize({
+				controlsTutorial: false,
+				defaultTiming: 120,
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				],
+				history: true,
+				transition:'convex'
+			});
+		</script>
+	</body>
+</html>

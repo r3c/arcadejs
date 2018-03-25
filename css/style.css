@@ -1,0 +1,31 @@
+.reveal .matrix {
+	position: relative;
+	display: inline-table;
+	vertical-align: middle;
+}
+
+.reveal .matrix:before,
+.reveal .matrix:after {
+	content: "";
+	position: absolute;
+	top: 0;
+	width: 4%;
+	height: 100%;
+	border-style: solid;
+	border-width: 2px;
+}
+
+.reveal .matrix:before {
+	left: 0;
+	border-right: 0;
+}
+
+.reveal .matrix:after {
+	right: 0;
+	border-left: 0;
+}
+
+.reveal .matrix td {
+	border-bottom: none;
+	text-align: center;
+}
