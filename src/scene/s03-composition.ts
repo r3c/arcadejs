@@ -82,10 +82,10 @@ const update = (state: State, dt: number) => {
 	state.camera.move(state.input);
 };
 
-const scenario = {
+const process = application.declare({
 	prepare: prepare,
 	render: render,
 	update: update
-};
+});
 
-export { scenario };
+export { process };

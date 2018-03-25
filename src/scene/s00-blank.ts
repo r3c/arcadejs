@@ -21,10 +21,10 @@ const render = (state: State) => {
 const update = () => {
 };
 
-const scenario = {
+const process = application.declare({
 	prepare: prepare,
 	render: render,
 	update: update
-};
+});
 
-export { scenario };
+export { process };

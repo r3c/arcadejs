@@ -79,10 +79,10 @@ const update = (state: State, dt: number) => {
 	state.rotation -= dt * 0.001;
 };
 
-const scenario = {
+const process = application.declare({
 	prepare: prepare,
 	render: render,
 	update: update
-};
+});
 
-export { scenario };
+export { process };

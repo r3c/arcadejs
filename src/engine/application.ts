@@ -2,7 +2,6 @@ import * as controller from "./controller";
 import * as display from "./display";
 
 interface Process {
-	name: string,
 	start: () => Promise<void>,
 	step: (dt: number) => void
 }
@@ -117,11 +116,10 @@ const createSelect = (caption: string, choices: string[], value: number, change:
 	return container;
 };
 
-const declare = <TConfiguration, TState>(name: string, scene: Scenario<TConfiguration, TState>) => {
+const declare = <TConfiguration, TState>(scene: Scenario<TConfiguration, TState>) => {
 	let state: TState;
 
 	return {
-		name: name,
 		start: async () => {
 			state = await scene.prepare(configure(scene.configuration || <TConfiguration>{}));
 		},
@@ -133,7 +131,7 @@ const declare = <TConfiguration, TState>(name: string, scene: Scenario<TConfigur
 	};
 };
 
-const initialize = (processes: Process[]) => {
+const initialize = (processes: { [name: string]: Process }) => {
 	const frameContainer = document.getElementById("frames");
 
 	if (frameContainer === null)
@@ -150,7 +148,8 @@ const initialize = (processes: Process[]) => {
 	let time = new Date().getTime();
 
 	const enable = (value: number) => {
-		const process = processes[value];
+		const name = Object.keys(processes)[value];
+		const process = processes[name];
 
 		step = undefined;
 
@@ -183,7 +182,7 @@ const initialize = (processes: Process[]) => {
 		window.requestAnimationFrame(tick);
 	};
 
-	sceneContainer.appendChild(createSelect("", processes.map(p => p.name), 0, enable));
+	sceneContainer.appendChild(createSelect("", Object.keys(processes), 0, enable));
 
 	tick();
 };
