@@ -5,8 +5,9 @@ ToDo
 ----
 
 - Fix "operation requires zeroing texture data" error
+- Implement directional light shadow maps for deferred {shading,lighting}
 - Implement point light shadow maps
-- Implement ambient occlusion
+- Implement smooth shadows
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
 - Use same tangent space transform methods in forward and deferred renderers
 
