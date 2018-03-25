@@ -244,9 +244,8 @@ void main(void) {
 		vec3 lightSpecularColor = pointLight.color * gloss;
 	#endif
 
-	vec3 eyeDirection = normalize(-point);
 	float lightDiffusePower = ${phong.getDiffusePowerInvoke("normal", "lightDirection")};
-	float lightSpecularPower = ${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")};
+	float lightSpecularPower = ${phong.getSpecularPowerInvoke("normal", "lightDirection", "normalize(-point)", "shininess")};
 
 	vec3 lightColor =
 		lightDiffusePower * lightDiffuseColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
@@ -469,12 +468,12 @@ class Renderer implements webgl.Renderer<State> {
 
 		// Draw ambient light using fullscreen quad
 		if (scene.ambientLightColor !== undefined) {
-			const subject = {
+			const subjects = [{
 				matrix: matrix.Matrix4.createIdentity(),
 				model: this.fullscreenModel
-			};
+			}];
 
-			target.draw(this.ambientLightShader, [subject], {
+			target.draw(this.ambientLightShader, subjects, {
 				albedoAndShininessBuffer: this.albedoAndShininessBuffer,
 				ambientLightColor: scene.ambientLightColor,
 				projectionMatrix: this.fullscreenProjection,
@@ -484,13 +483,13 @@ class Renderer implements webgl.Renderer<State> {
 
 		// Draw directional lights using fullscreen quads
 		if (scene.directionalLights !== undefined) {
-			const subject = {
+			const subjects = [{
 				matrix: state.viewMatrix.inverse(),
 				model: this.fullscreenModel
-			};
+			}];
 
 			for (const directionalLight of scene.directionalLights) {
-				target.draw(this.directionalLightShader, [subject], {
+				target.draw(this.directionalLightShader, subjects, {
 					albedoAndShininessBuffer: this.albedoAndShininessBuffer,
 					depthBuffer: this.depthBuffer,
 					light: directionalLight,
@@ -504,15 +503,17 @@ class Renderer implements webgl.Renderer<State> {
 
 		// Draw point lights using spheres
 		if (scene.pointLights !== undefined) {
-			for (const pointLight of scene.pointLights) {
-				const subject = {
-					matrix: matrix.Matrix4.createIdentity()
-						.translate(pointLight.position)
-						.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius }),
-					model: this.sphereModel
-				};
+			const subjects = [{
+				matrix: matrix.Matrix4.createIdentity(),
+				model: this.sphereModel
+			}];
 
-				target.draw(this.pointLightShader, [subject], {
+			for (const pointLight of scene.pointLights) {
+				subjects[0].matrix = matrix.Matrix4.createIdentity()
+					.translate(pointLight.position)
+					.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius });
+
+				target.draw(this.pointLightShader, subjects, {
 					albedoAndShininessBuffer: this.albedoAndShininessBuffer,
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
