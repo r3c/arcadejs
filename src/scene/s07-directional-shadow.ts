@@ -7,6 +7,7 @@ import * as forwardLighting from "../engine/render/renderers/forward-lighting";
 import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
+import * as move from "./shared/move";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/render/webgl";
@@ -108,7 +109,7 @@ const render = (state: SceneState) => {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: [{
 			color: { x: 0.8, y: 0.8, z: 0.8 },
-			direction: { x: Math.cos(-state.move * 10), y: Math.PI * 1 / 6, z: Math.sin(-state.move * 10) },
+			direction: move.rotate(0, -state.move * 10),
 			shadow: true
 		}],
 		subjects: [{

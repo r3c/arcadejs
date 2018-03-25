@@ -19,16 +19,18 @@ import * as webgl from "../engine/render/webgl";
 */
 
 interface Configuration {
-	nbLights: string[],
+	nbDirectionals: string[],
+	nbPoints: string[],
 	animate: boolean,
-	enableAmbient: boolean,
-	enableDiffuse: boolean,
-	enableSpecular: boolean,
+	ambient: boolean,
+	diffuse: boolean,
+	specular: boolean,
 	debugMode: string[]
 }
 
 interface SceneState {
 	camera: view.Camera,
+	directionalLights: webgl.DirectionalLight[],
 	input: controller.Input,
 	models: {
 		cube: webgl.Model,
@@ -48,18 +50,19 @@ interface SceneState {
 }
 
 const configuration = {
-	nbLights: [".50", "100", "250", "500"],
+	nbDirectionals: [".0", "1", "2", "5"],
+	nbPoints: ["0", ".50", "100", "250", "500"],
 	animate: true,
-	enableAmbient: true,
-	enableDiffuse: true,
-	enableSpecular: true,
+	ambient: true,
+	diffuse: true,
+	specular: true,
 	debugMode: [".None", "Depth", "Albedo", "Normal", "Shininess", "Gloss"]
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
-	tweak.enableAmbient !== 0,
-	tweak.enableDiffuse !== 0,
-	tweak.enableSpecular !== 0
+	tweak.ambient !== 0,
+	tweak.diffuse !== 0,
+	tweak.specular !== 0
 ];
 
 const prepare = async (tweak: application.Tweak<Configuration>) => {
@@ -75,6 +78,11 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Create state
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
+		directionalLights: functional.range(10, i => ({
+			color: color.createBright(i),
+			direction: vector.Vector3.zero,
+			shadow: false
+		})),
 		input: runtime.input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
@@ -119,20 +127,22 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Pick active lights
-	const lights = state.pointLights.slice(0, [50, 100, 250, 500][tweak.nbLights] || 0);
+	const directionalLights = state.directionalLights.slice(0, [0, 1, 2, 5][tweak.nbDirectionals] || 0);
+	const pointLights = state.pointLights.slice(0, [0, 50, 100, 250, 500][tweak.nbPoints] || 0);
 
 	// Draw scene
 	const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
 	const deferredScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-		pointLights: lights,
+		directionalLights: directionalLights,
+		pointLights: pointLights,
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
 		}].concat(functional.range(16, i => ({
 			matrix: matrix.Matrix4.createIdentity().translate({ x: (i % 4 - 1.5) * 2, y: 0, z: (Math.floor(i / 4) - 1.5) * 2 }),
 			model: models.cube
-		}))).concat(lights.map(light => ({
+		}))).concat(pointLights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(light.position),
 			model: models.light
 		})))
@@ -178,8 +188,11 @@ const update = (state: SceneState, dt: number) => {
 	if (state.tweak.animate)
 		state.move += dt * 0.0002;
 
+	for (let i = 0; i < state.directionalLights.length; ++i)
+		state.directionalLights[i].direction = move.rotate(i, state.move * 5);
+
 	for (let i = 0; i < state.pointLights.length; ++i)
-		state.pointLights[i].position = move.rotate(i, state.move, 6, 2);
+		state.pointLights[i].position = move.orbitate(i, state.move, 6, 2);
 
 	// Move camera
 	state.camera.move(state.input);

@@ -180,7 +180,7 @@ const update = (state: SceneState, dt: number) => {
 		state.move += dt * 0.0002;
 
 	for (let i = 0; i < state.pointLights.length; ++i)
-		state.pointLights[i].position = move.rotate(i, state.move, 6, 2);
+		state.pointLights[i].position = move.orbitate(i, state.move, 6, 2);
 
 	// Move camera
 	state.camera.move(state.input);
