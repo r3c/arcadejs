@@ -2,6 +2,7 @@ import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
+import * as quad from "./resources/quad";
 import * as shininess from "./snippets/shininess";
 import * as sphere from "./resources/sphere";
 import * as vector from "../../math/vector";
@@ -102,12 +103,18 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
+struct DirectionalLight {
+	vec3 color;
+	vec3 direction;
+};
+
 struct PointLight {
 	vec3 color;
 	vec3 position;
 	float radius;
 };
 
+uniform DirectionalLight directionalLight;
 uniform PointLight pointLight;`;
 
 const lightVertexShader = `
@@ -119,14 +126,23 @@ uniform mat4 viewMatrix;
 
 in vec4 points;
 
+out vec3 lightDirectionCamera;
 out vec3 lightPositionCamera;
+
+vec3 toCameraDirection(in vec3 worldDirection) {
+	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
+}
 
 vec3 toCameraPosition(in vec3 worldPosition) {
 	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
 }
 
 void main(void) {
-	lightPositionCamera = toCameraPosition(pointLight.position);
+	#if LIGHT_TYPE == ${LightType.Directional}
+		lightDirectionCamera = toCameraDirection(directionalLight.direction);
+	#elif LIGHT_TYPE == ${LightType.Point}
+		lightPositionCamera = toCameraPosition(pointLight.position);
+	#endif
 
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
 }`;
@@ -145,6 +161,7 @@ uniform vec2 viewportSize;
 uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossBuffer;
 
+in vec3 lightDirectionCamera;
 in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
@@ -171,18 +188,22 @@ void main(void) {
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
 
-	// Compute lightning power
-	vec3 eyeDirection = normalize(-point);
-	vec3 lightDirection = normalize(lightPositionCamera - point);
+	// Compute lightning parameters
+	#if LIGHT_TYPE == ${LightType.Directional}
+		vec3 lightColor = directionalLight.color;
+		vec3 lightDirection = normalize(lightDirectionCamera);
+		float lightPower = 1.0;
+	#elif LIGHT_TYPE == ${LightType.Point}
+		vec3 lightColor = pointLight.color;
+		vec3 lightDirection = normalize(lightPositionCamera - point);
+		float lightPower = max(1.0 - length(lightPositionCamera - point) / pointLight.radius, 0.0);
+	#endif
 
-	float lightDistance = length(lightPositionCamera - point);
-	float lightPower = max(1.0 - lightDistance / pointLight.radius, 0.0);
+	float lightDiffusePower = ${phong.getDiffusePowerInvoke("normal", "lightDirection")};
+	float lightSpecularPower = ${phong.getSpecularPowerInvoke("normal", "lightDirection", "normalize(-point)", "shininess")};
 
 	// Emit lighting parameters
-	fragColor = exp2(-vec4(
-		${phong.getDiffusePowerInvoke("normal", "lightDirection")} * pointLight.color,
-		${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * gloss
-	) * lightPower);
+	fragColor = exp2(-vec4(lightDiffusePower * lightColor, lightSpecularPower * gloss) * lightPower);
 }`;
 
 const materialVertexShader = `
@@ -201,10 +222,6 @@ out vec2 coord;
 out vec3 normal;
 out vec3 point;
 out vec3 tangent;
-
-vec3 toCameraPosition(in vec3 worldPosition) {
-	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
-}
 
 void main(void) {
 	vec4 pointCamera = viewMatrix * modelMatrix * vec4(points, 1.0);
@@ -280,11 +297,16 @@ interface Configuration {
 	useNormalMap: boolean
 }
 
-interface LightState extends State {
+interface LightState<TLight> extends State {
 	depthBuffer: WebGLTexture,
-	pointLight: webgl.PointLight,
+	light: TLight,
 	normalAndGlossBuffer: WebGLTexture,
 	viewportSize: vector.Vector2
+}
+
+const enum LightType {
+	Directional,
+	Point
 }
 
 interface MaterialState extends State {
@@ -337,9 +359,13 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	return shader;
 };
 
-const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
+const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, type: LightType) => {
+	const directives = [
+		{ name: "LIGHT_TYPE", value: type }
+	];
+
 	// Setup light shader
-	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader);
+	const shader = new webgl.Shader<LightState<T>>(gl, lightVertexShader, lightFragmentShader, directives);
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
@@ -349,13 +375,29 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	shader.bindPropertyPerTarget("pointLight.color", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.color));
-	shader.bindPropertyPerTarget("pointLight.position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.pointLight.position));
-	shader.bindPropertyPerTarget("pointLight.radius", gl => gl.uniform1f, state => state.pointLight.radius);
 	shader.bindPropertyPerTarget("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
 
 	shader.bindTexturePerTarget("depthBuffer", state => state.depthBuffer);
 	shader.bindTexturePerTarget("normalAndGlossBuffer", state => state.normalAndGlossBuffer);
+
+	return shader;
+};
+
+const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configuration) => {
+	const shader = loadLight<webgl.DirectionalLight>(gl, configuration, LightType.Directional);
+
+	shader.bindPropertyPerTarget("directionalLight.color", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.color));
+	shader.bindPropertyPerTarget("directionalLight.direction", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.direction));
+
+	return shader;
+};
+
+const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration) => {
+	const shader = loadLight<webgl.PointLight>(gl, configuration, LightType.Point);
+
+	shader.bindPropertyPerTarget("pointLight.color", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.color));
+	shader.bindPropertyPerTarget("pointLight.position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.position));
+	shader.bindPropertyPerTarget("pointLight.radius", gl => gl.uniform1f, state => state.light.radius);
 
 	return shader;
 };
@@ -414,32 +456,39 @@ class Renderer implements webgl.Renderer<State> {
 	public readonly lightBuffer: WebGLTexture;
 	public readonly normalAndGlossBuffer: WebGLTexture;
 
+	private readonly directionalLightShader: webgl.Shader<LightState<webgl.DirectionalLight>>;
+	private readonly fullscreenModel: webgl.Model;
+	private readonly fullscreenProjection: matrix.Matrix4;
 	private readonly geometryTarget: webgl.Target;
 	private readonly geometryShader: webgl.Shader<State>;
 	private readonly gl: WebGLRenderingContext;
-	private readonly lightShader: webgl.Shader<LightState>;
-	private readonly lightSphere: webgl.Model;
 	private readonly lightTarget: webgl.Target;
 	private readonly materialShader: webgl.Shader<MaterialState>;
+	private readonly pointLightShader: webgl.Shader<LightState<webgl.PointLight>>;
+	private readonly sphereModel: webgl.Model;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		const geometry = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 		const light = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 
 		this.depthBuffer = geometry.setupDepthTexture(webgl.Storage.Depth16);
+		this.directionalLightShader = loadLightDirectional(gl, configuration);
+		this.fullscreenModel = webgl.loadModel(gl, quad.model);
+		this.fullscreenProjection = matrix.Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
 		this.geometryShader = loadGeometry(gl, configuration);
 		this.geometryTarget = geometry;
 		this.gl = gl;
 		this.lightBuffer = light.setupColorTexture(webgl.Storage.RGBA8, 0);
-		this.lightShader = loadLight(gl, configuration);
-		this.lightSphere = webgl.loadModel(gl, sphere.model);
 		this.lightTarget = light;
 		this.materialShader = loadMaterial(gl, configuration);
+		this.pointLightShader = loadLightPoint(gl, configuration);
 		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
+		this.sphereModel = webgl.loadModel(gl, sphere.model);
 	}
 
 	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const gl = this.gl;
+		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
 		// Render geometries to geometry buffers
 		gl.disable(gl.BLEND);
@@ -465,22 +514,39 @@ class Renderer implements webgl.Renderer<State> {
 		this.lightTarget.setClearColor(1, 1, 1, 1);
 		this.lightTarget.clear();
 
-		if (scene.pointLights !== undefined) {
-			const lightSubjects = new Array<webgl.Subject>(1);
-			const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
+		if (scene.directionalLights !== undefined) {
+			const subjects = [{
+				matrix: state.viewMatrix.inverse(),
+				model: this.fullscreenModel
+			}];
 
-			for (const pointLight of scene.pointLights) {
-				lightSubjects[0] = {
-					matrix: matrix.Matrix4.createIdentity()
-						.translate(pointLight.position)
-						.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius }),
-					model: this.lightSphere
-				};
-
-				this.lightTarget.draw(this.lightShader, lightSubjects, {
+			for (const directionalLight of scene.directionalLights) {
+				this.lightTarget.draw(this.directionalLightShader, subjects, {
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
-					pointLight: pointLight,
+					light: directionalLight,
+					projectionMatrix: this.fullscreenProjection,
+					viewMatrix: state.viewMatrix,
+					viewportSize: viewportSize
+				});
+			}
+		}
+
+		if (scene.pointLights !== undefined) {
+			const subjects = [{
+				matrix: matrix.Matrix4.createIdentity(),
+				model: this.sphereModel
+			}];
+
+			for (const pointLight of scene.pointLights) {
+				subjects[0].matrix = matrix.Matrix4.createIdentity()
+					.translate(pointLight.position)
+					.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius });
+
+				this.lightTarget.draw(this.pointLightShader, subjects, {
+					depthBuffer: this.depthBuffer,
+					normalAndGlossBuffer: this.normalAndGlossBuffer,
+					light: pointLight,
 					projectionMatrix: state.projectionMatrix,
 					viewMatrix: state.viewMatrix,
 					viewportSize: viewportSize
