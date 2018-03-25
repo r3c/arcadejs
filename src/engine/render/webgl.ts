@@ -107,7 +107,8 @@ enum Storage {
 
 interface Subject {
 	matrix: matrix.Matrix4,
-	model: Model
+	model: Model,
+	shadow?: boolean
 }
 
 interface SubjectState<State> {
