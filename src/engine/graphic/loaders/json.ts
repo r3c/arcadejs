@@ -98,21 +98,21 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 		throw invalid(name, instance, "material");
 
 	return {
-		albedoColor: toOptional(`${name}.albedoColor`, instance.albedoColor, toColor, mesh.defaultColor),
+		albedoColor: toOptional(`${name}.albedoColor`, instance.albedoColor, toColor),
 		albedoMap: await toImageData(`${name}.albedoMap`, instance.albedoMap, directory),
 		emissiveMap: await toImageData(`${name}.emissiveMap`, instance.emissiveMap, directory),
-		emissiveStrength: toOptional(`${name}.emissiveStrength`, instance.emissiveStrength, toDecimal, 1),
-		glossColor: toOptional(`${name}.glossColor`, instance.glossColor, toColor, mesh.defaultColor),
+		emissiveStrength: toOptional(`${name}.emissiveStrength`, instance.emissiveStrength, toDecimal),
+		glossColor: toOptional(`${name}.glossColor`, instance.glossColor, toColor),
 		glossMap: await toImageData(`${name}.glossMap`, instance.glossMap, directory),
 		heightMap: await toImageData(`${name}.heightMap`, instance.heightMap, directory),
 		metalnessMap: await toImageData(`${name}.metalnessMap`, instance.metalnessMap, directory),
 		normalMap: await toImageData(`${name}.normalMap`, instance.normalMap, directory),
 		occlusionMap: await toImageData(`${name}.occlusionMap`, instance.occlusionMap, directory),
-		occlusionStrength: toOptional(`${name}.occlusionStrength`, instance.occlusionStrength, toDecimal, 1),
-		parallaxBias: toOptional(`${name}.parallaxBias`, instance.parallaxBias, toDecimal, 1),
-		parallaxScale: toOptional(`${name}.parallaxScale`, instance.parallaxScale, toDecimal, 1),
+		occlusionStrength: toOptional(`${name}.occlusionStrength`, instance.occlusionStrength, toDecimal),
+		parallaxBias: toOptional(`${name}.parallaxBias`, instance.parallaxBias, toDecimal),
+		parallaxScale: toOptional(`${name}.parallaxScale`, instance.parallaxScale, toDecimal),
 		roughnessMap: await toImageData(`${name}.roughnessMap`, instance.roughnessMap, directory),
-		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger, 1)
+		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger)
 	};
 };
 
@@ -130,11 +130,11 @@ const toMesh = (name: string, instance: any): mesh.Mesh => {
 	};
 };
 
-const toOptional = <T>(name: string, instance: any, converter: (name: string, source: any) => T, defaultValue: T) => {
+const toOptional = <T>(name: string, instance: any, converter: (name: string, source: any) => T) => {
 	if (instance !== undefined)
 		return converter(name, instance);
 
-	return defaultValue;
+	return undefined;
 };
 
 const toString = (name: string, instance: any): string => {
