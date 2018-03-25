@@ -35,8 +35,9 @@ interface SceneState {
 	models: {
 		cube: webgl.Model,
 		debug: webgl.Model,
+		directionalLight: webgl.Model,
 		ground: webgl.Model,
-		light: webgl.Model
+		pointLight: webgl.Model
 	},
 	move: number,
 	pointLights: webgl.PointLight[],
@@ -72,8 +73,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
 	const debugModel = await model.fromJSON("./obj/debug.json", { transform: matrix.Matrix4.createIdentity().scale({ x: gl.canvas.clientWidth / gl.canvas.clientHeight, y: 1, z: 1 }) });
+	const directionalLightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
 	const groundModel = await model.fromJSON("./obj/ground/model.json");
-	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
+	const pointLightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
 
 	// Create state
 	return {
@@ -87,8 +89,9 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
 			debug: webgl.loadModel(gl, debugModel),
+			directionalLight: webgl.loadModel(gl, directionalLightModel),
 			ground: webgl.loadModel(gl, groundModel),
-			light: webgl.loadModel(gl, lightModel)
+			pointLight: webgl.loadModel(gl, pointLightModel)
 		},
 		move: 0,
 		pointLights: functional.range(500, i => ({
@@ -142,9 +145,12 @@ const render = (state: SceneState) => {
 		}].concat(functional.range(16, i => ({
 			matrix: matrix.Matrix4.createIdentity().translate({ x: (i % 4 - 1.5) * 2, y: 0, z: (Math.floor(i / 4) - 1.5) * 2 }),
 			model: models.cube
+		}))).concat(directionalLights.map(light => ({
+			matrix: matrix.Matrix4.createIdentity().translate(vector.Vector3.scale(vector.Vector3.normalize(light.direction), 10)),
+			model: models.directionalLight
 		}))).concat(pointLights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(light.position),
-			model: models.light
+			model: models.pointLight
 		})))
 	};
 

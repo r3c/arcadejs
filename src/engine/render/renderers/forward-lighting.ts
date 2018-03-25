@@ -509,6 +509,7 @@ class Renderer implements webgl.Renderer<State> {
 		gl.enable(gl.CULL_FACE);
 		gl.enable(gl.DEPTH_TEST);
 
+		const obstacles = scene.subjects.filter(subject => subject.shadow !== false);
 		let bufferIndex = 0;
 
 		// Create shadow maps for directional lights
@@ -527,7 +528,7 @@ class Renderer implements webgl.Renderer<State> {
 			gl.cullFace(gl.FRONT);
 
 			this.shadowTargets[bufferIndex].clear();
-			this.shadowTargets[bufferIndex].draw(this.shadowShader, scene.subjects, {
+			this.shadowTargets[bufferIndex].draw(this.shadowShader, obstacles, {
 				projectionMatrix: this.shadowProjectionMatrix,
 				viewMatrix: viewMatrix
 			});

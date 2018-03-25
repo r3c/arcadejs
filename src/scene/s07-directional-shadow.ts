@@ -30,7 +30,8 @@ interface SceneState {
 	models: {
 		cube: webgl.Model,
 		debug: webgl.Model,
-		ground: webgl.Model
+		ground: webgl.Model,
+		light: webgl.Model
 	},
 	move: number,
 	projectionMatrix: matrix.Matrix4,
@@ -60,6 +61,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 	const cubeModel = await model.fromJSON("./obj/cube/model.json");
 	const debugModel = await model.fromJSON("./obj/debug.json", { transform: matrix.Matrix4.createIdentity().scale({ x: gl.canvas.clientWidth / gl.canvas.clientHeight, y: 1, z: 1 }) });
 	const groundModel = await model.fromJSON("./obj/ground/model.json");
+	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
 
 	// Create state
 	return {
@@ -68,7 +70,8 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
 			debug: webgl.loadModel(gl, debugModel),
-			ground: webgl.loadModel(gl, groundModel)
+			ground: webgl.loadModel(gl, groundModel),
+			light: webgl.loadModel(gl, lightModel)
 		},
 		move: 0,
 		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
@@ -104,12 +107,13 @@ const render = (state: SceneState) => {
 		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
 	// Draw scene
+	const lightDirection = move.rotate(0, -state.move * 10);
 	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: [{
 			color: { x: 0.8, y: 0.8, z: 0.8 },
-			direction: move.rotate(0, -state.move * 10),
+			direction: lightDirection,
 			shadow: true
 		}],
 		subjects: [{
@@ -122,6 +126,12 @@ const render = (state: SceneState) => {
 				.createIdentity()
 				.translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
+		}, {
+			matrix: matrix.Matrix4
+				.createIdentity()
+				.translate(vector.Vector3.scale(vector.Vector3.normalize(lightDirection), 10)),
+			model: models.light,
+			shadow: false
 		}]
 	}
 
