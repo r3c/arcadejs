@@ -296,9 +296,11 @@
 
 		<script>
 			Reveal.initialize({
+				allottedTime: 45 * 60 * 1000,
 				controlsTutorial: false,
 				defaultTiming: 120,
 				dependencies: [
+					{ src: 'plugin/elapsed-time-bar/elapsed-time-bar.js' },
 					{ src: 'plugin/markdown/marked.js' },
 					{ src: 'plugin/markdown/markdown.js' },
 					{ src: 'plugin/notes/notes.js', async: true },
