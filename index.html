@@ -56,21 +56,23 @@
 				</section>
 
 				<section>
-					<p>Problem: projecting absolute 3D points to 2D works</p>
+					<p>Problem: 3D => 2D projection works</p>
 					<ul>
-						<li>...but calculation of each position seems tedious...</li>
-						<li class="fragment" data-fragment-index="1">...especially if we want to move & rotate objects</li>
-						<li class="fragment" data-fragment-index="2">...and change viewer's point of view (camera)</li>
+						<li>...but calculation is tedious...</li>
+						<li class="fragment" data-fragment-index="1">...especially with move & rotate</li>
+						<li class="fragment" data-fragment-index="2">...and relocate camera</li>
 					</ul>
-					<img class="fragment" data-fragment-index="2" height="200" src="image/world-to-view.png" />
+					<div>
+						<img class="fragment" data-fragment-index="2" height="250" src="image/world-to-view.png" />
+					</div>
 					<p class="fragment" data-fragment-index="2">Transformation matrices to the rescue <img style="background: none; border: none; vertical-align: bottom;" height="64" src="image/anadon.png" /></p>
 				</section>
 
 				<section>
 					<p>Solution: changing coordinate system</p>
 					<ul>
-						<li>Translate a point p by a vector v &hArr; p' = p + v</li>
-						<li>Rotate a point around axis &hArr; multiply by 3x3 matrix</li>
+						<li>Translate point &hArr; p' = p + v</li>
+						<li>Rotate point &hArr; multiply by 3x3 matrix</li>
 					</ul>
 					<p>Example for rotation of angle θ around X axis:</p>
 					<blockquote>
