@@ -66,9 +66,8 @@ const getOptions = (tweak: application.Tweak<Configuration>) => [
 	tweak.specular !== 0
 ];
 
-const prepare = async (tweak: application.Tweak<Configuration>) => {
-	const runtime = application.runtime(display.WebGLScreen);
-	const gl = runtime.screen.context;
+const prepare = () => application.runtime(display.WebGLScreen, configuration, async (screen, input, tweak) => {
+	const gl = screen.context;
 
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
@@ -85,7 +84,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			direction: vector.Vector3.zero,
 			shadow: false
 		})),
-		input: runtime.input,
+		input: input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
 			debug: webgl.loadModel(gl, debugModel),
@@ -99,7 +98,7 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 			position: vector.Vector3.zero,
 			radius: 2
 		})),
-		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		projectionMatrix: matrix.Matrix4.createIdentity(),
 		renderers: {
 			debug: new debugTexture.Renderer(gl, { zNear: 0.1, zFar: 100 }),
 			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredShading.Renderer(gl, {
@@ -111,10 +110,10 @@ const prepare = async (tweak: application.Tweak<Configuration>) => {
 				useNormalMap: true
 			}))
 		},
-		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight()),
+		target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
 		tweak: tweak
 	};
-};
+});
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
@@ -189,6 +188,15 @@ const render = (state: SceneState) => {
 	}
 };
 
+const resize = (state: SceneState, screen: display.WebGLScreen) => {
+	for (const renderer of state.renderers.scene)
+		renderer.resize(screen.getWidth(), screen.getHeight());
+
+	state.projectionMatrix = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
+	state.renderers.debug.resize(screen.getWidth(), screen.getHeight());
+	state.target.resize(screen.getWidth(), screen.getHeight());
+};
+
 const update = (state: SceneState, dt: number) => {
 	// Update light positions
 	if (state.tweak.animate)
@@ -205,9 +213,9 @@ const update = (state: SceneState, dt: number) => {
 };
 
 const process = application.declare({
-	configuration: configuration,
 	prepare: prepare,
 	render: render,
+	resize: resize,
 	update: update
 });
 

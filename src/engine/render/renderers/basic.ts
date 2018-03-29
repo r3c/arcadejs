@@ -55,6 +55,9 @@ class Renderer implements webgl.Renderer<State> {
 
 		target.draw(this.shader, scene.subjects, state);
 	}
+
+	public resize(width: number, height: number) {
+	}
 }
 
 export { Renderer, State }

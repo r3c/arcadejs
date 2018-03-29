@@ -8,11 +8,11 @@ class Screen {
 		container.appendChild(canvas);
 
 		canvas.tabIndex = 1;
-		canvas.width = canvas.clientWidth;
-		canvas.height = canvas.clientHeight;
 		canvas.focus();
 
 		this.canvas = canvas;
+
+		this.resize();
 	}
 
 	public getHeight() {
@@ -25,6 +25,24 @@ class Screen {
 
 	public getWidth() {
 		return this.canvas.clientWidth;
+	}
+
+	public goFullscreen() {
+		const canvas = <any>this.canvas;
+
+		if (canvas.requestFullscreen !== undefined)
+			canvas.requestFullscreen();
+		else if (canvas.mozRequestFullScreen !== undefined)
+			canvas.mozRequestFullScreen();
+		else if (canvas.webkitRequestFullScreen !== undefined)
+			canvas.webkitRequestFullScreen();
+
+		this.resize();
+	}
+
+	private resize() {
+		this.canvas.width = this.canvas.clientWidth;
+		this.canvas.height = this.canvas.clientHeight;
 	}
 }
 

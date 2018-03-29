@@ -493,7 +493,7 @@ class Renderer implements webgl.Renderer<State> {
 		this.lightShader = loadLight(gl, configuration);
 		this.maxDirectionalLights = maxDirectionalLights;
 		this.maxPointLights = maxPointLights;
-		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Storage.Depth16));
+		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Format.Depth16));
 		this.shadowProjectionMatrix = matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20);
 		this.shadowShader = loadShadow(gl);
 		this.shadowTargets = targets;
@@ -558,6 +558,9 @@ class Renderer implements webgl.Renderer<State> {
 			shadowProjectionMatrix: this.shadowProjectionMatrix,
 			viewMatrix: state.viewMatrix
 		});
+	}
+
+	public resize(width: number, height: number) {
 	}
 }
 

@@ -15,43 +15,36 @@ import * as webgl from "../engine/render/webgl";
 */
 
 const vsSource = `
-	in vec4 colors;
-	in vec2 coords;
-	in vec4 points;
+in vec4 colors;
+in vec2 coords;
+in vec4 points;
 
-	uniform mat4 modelMatrix;
-	uniform mat4 projectionMatrix;
-	uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
+uniform mat4 projectionMatrix;
+uniform mat4 viewMatrix;
 
-	out vec4 color;
-	out vec2 coord;
+out vec4 color;
+out vec2 coord;
 
-	void main(void) {
-		color = colors;
-		coord = coords;
+void main(void) {
+	color = colors;
+	coord = coords;
 
-		gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
-	}
-`;
+	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
+}`;
 
 const fsSource = `
-	in vec4 color;
-	in vec2 coord;
+in vec4 color;
+in vec2 coord;
 
-	uniform vec4 albedoColor;
-	uniform sampler2D albedoMap;
+uniform vec4 albedoColor;
+uniform sampler2D albedoMap;
 
-	layout(location=0) out vec4 fragColor;
+layout(location=0) out vec4 fragColor;
 
-	void main(void) {
-		fragColor = color * albedoColor * texture(albedoMap, coord);
-	}
-`;
-
-interface CallState {
-	projectionMatrix: matrix.Matrix4,
-	viewMatrix: matrix.Matrix4
-}
+void main(void) {
+	fragColor = color * albedoColor * texture(albedoMap, coord);
+}`;
 
 interface SceneState {
 	camera: view.Camera,
@@ -59,14 +52,18 @@ interface SceneState {
 	input: controller.Input,
 	model: webgl.Model,
 	projectionMatrix: matrix.Matrix4,
-	shader: webgl.Shader<CallState>,
+	shader: webgl.Shader<ShaderState>,
 	target: webgl.Target
 }
 
-const prepare = async () => {
-	const runtime = application.runtime(display.WebGLScreen);
-	const gl = runtime.screen.context;
-	const shader = new webgl.Shader<CallState>(gl, vsSource, fsSource);
+interface ShaderState {
+	projectionMatrix: matrix.Matrix4,
+	viewMatrix: matrix.Matrix4
+}
+
+const prepare = () => application.runtime(display.WebGLScreen, undefined, async (screen, input) => {
+	const gl = screen.context;
+	const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
 	shader.bindAttributePerGeometry("colors", 4, gl.FLOAT, state => state.geometry.colors);
 	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
@@ -82,13 +79,14 @@ const prepare = async () => {
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		gl: gl,
-		input: runtime.input,
+		input: input,
 		model: webgl.loadModel(gl, await model.fromJSON("./obj/cube/model.json")),
-		projectionMatrix: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		projectionMatrix: matrix.Matrix4.createIdentity(),
+		screen: screen,
 		shader: shader,
-		target: new webgl.Target(gl, runtime.screen.getWidth(), runtime.screen.getHeight())
+		target: new webgl.Target(screen.context, screen.getWidth(), screen.getHeight())
 	};
-};
+});
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
@@ -118,6 +116,12 @@ const render = (state: SceneState) => {
 	});
 };
 
+const resize = (state: SceneState, screen: display.WebGLScreen) => {
+	state.projectionMatrix = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
+
+	state.target.resize(screen.getWidth(), screen.getHeight());
+};
+
 const update = (state: SceneState, dt: number) => {
 	state.camera.move(state.input);
 };
@@ -125,6 +129,7 @@ const update = (state: SceneState, dt: number) => {
 const process = application.declare({
 	prepare: prepare,
 	render: render,
+	resize: resize,
 	update: update
 });
 

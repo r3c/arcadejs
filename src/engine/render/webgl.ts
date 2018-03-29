@@ -4,8 +4,18 @@ import * as model from "../graphic/model";
 import * as vector from "../math/vector";
 
 interface Attachment {
-	renderbuffer: WebGLRenderbuffer | null,
-	textures: (WebGLTexture | undefined)[] | null
+	renderbuffer: AttachmentRenderbuffer | undefined,
+	textures: AttachmentTexture[]
+}
+
+interface AttachmentRenderbuffer {
+	format: Format,
+	handle: WebGLRenderbuffer
+}
+
+interface AttachmentTexture {
+	format: Format,
+	handle: WebGLTexture
 }
 
 interface AttributeBinding<T> {
@@ -25,6 +35,11 @@ interface DirectionalLight {
 interface Directive {
 	name: string,
 	value: number
+}
+
+const enum Format {
+	Depth16,
+	RGBA8
 }
 
 interface Geometry {
@@ -90,7 +105,8 @@ interface Quality {
 }
 
 interface Renderer<State> {
-	render(target: Target, scene: Scene, state: State): void
+	render(target: Target, scene: Scene, state: State): void,
+	resize(width: number, height: number): void
 }
 
 interface Scene {
@@ -98,11 +114,6 @@ interface Scene {
 	directionalLights?: DirectionalLight[],
 	pointLights?: PointLight[],
 	subjects: Subject[]
-}
-
-enum Storage {
-	Depth16,
-	RGBA8
 }
 
 interface Subject {
@@ -314,21 +325,7 @@ const qualityImage = {
 
 const shininessDefault = 1;
 
-const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
-	const buffer = gl.createBuffer();
-
-	if (buffer === null)
-		throw Error("could not create buffer");
-
-	gl.bindBuffer(target, buffer);
-	gl.bufferData(target, values, gl.STATIC_DRAW);
-
-	return buffer;
-};
-
-const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: number, format: Storage, samples: number) => {
-	const renderbuffer = gl.createRenderbuffer();
-
+const configureRenderbuffer = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer | null, width: number, height: number, format: Format, samples: number) => {
 	if (renderbuffer === null)
 		throw Error("could not create render buffer");
 
@@ -337,12 +334,12 @@ const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: nu
 	let glInternal: number;
 
 	switch (format) {
-		case Storage.Depth16:
+		case Format.Depth16:
 			glInternal = gl.DEPTH_COMPONENT16;
 
 			break;
 
-		case Storage.RGBA8:
+		case Format.RGBA8:
 			glInternal = gl.RGBA;
 
 			break;
@@ -361,16 +358,14 @@ const createRenderbuffer = (gl: WebGLRenderingContext, width: number, height: nu
 	return renderbuffer;
 };
 
-const createTexture = (gl: WebGLRenderingContext, width: number, height: number, storage: Storage, quality: Quality, pixels?: Uint8ClampedArray) => {
+const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | null, width: number, height: number, format: Format, quality: Quality, pixels?: Uint8ClampedArray) => {
 	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
-
-	if (quality.textureMipmap && !isPowerOfTwo)
-		throw Error("cannot generate mipmaps for non-power-of-2 image");
-
-	const texture = gl.createTexture();
 
 	if (texture === null)
 		throw Error("could not create texture");
+
+	if (quality.textureMipmap && !isPowerOfTwo)
+		throw Error("cannot generate mipmaps for non-power-of-2 image");
 
 	const textureFilter = quality.textureFilterLinear ? gl.LINEAR : gl.NEAREST;
 
@@ -380,8 +375,8 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 	let glInternal: number;
 	let glType: number;
 
-	switch (storage) {
-		case Storage.Depth16:
+	switch (format) {
+		case Format.Depth16:
 			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
 				throw Error("depth texture WebGL extension is not available");
 
@@ -391,7 +386,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 
 			break;
 
-		case Storage.RGBA8:
+		case Format.RGBA8:
 			glFormat = gl.RGBA;
 			glInternal = (<any>gl).RGBA8; // FIXME: incomplete @type for WebGL2
 			glType = gl.UNSIGNED_BYTE;
@@ -399,7 +394,7 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 			break;
 
 		default:
-			throw Error(`invalid texture format ${storage}`);
+			throw Error(`invalid texture format ${format}`);
 	}
 
 	// TODO: remove unwanted wrapping of "pixels" array when https://github.com/KhronosGroup/WebGL/issues/1533 is fixed
@@ -423,6 +418,18 @@ const createTexture = (gl: WebGLRenderingContext, width: number, height: number,
 	return texture;
 };
 
+const createBuffer = (gl: WebGLRenderingContext, target: number, values: ArrayBufferView) => {
+	const buffer = gl.createBuffer();
+
+	if (buffer === null)
+		throw Error("could not create buffer");
+
+	gl.bindBuffer(target, buffer);
+	gl.bufferData(target, values, gl.STATIC_DRAW);
+
+	return buffer;
+};
+
 const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
 const invalidMaterial = (name: string) => Error(`cannot use unknown material "${name}" on mesh`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
@@ -432,7 +439,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	const meshes: { [name: string]: Mesh } = {};
 
 	const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
-	const toColorMap = (image: ImageData) => createTexture(gl, image.width, image.height, Storage.RGBA8, quality, image.data);
+	const toColorMap = (image: ImageData) => configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, quality, image.data);
 	const toIndices = (indices: [number, number, number]) => indices;
 
 	for (const mesh of model.meshes) {
@@ -523,32 +530,24 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 
 class Target {
 	private readonly gl: WebGLRenderingContext;
-	private readonly viewHeight: number;
-	private readonly viewWidth: number;
 
 	private colorAttachment: Attachment;
 	private colorClear: vector.Vector4;
 	private depthAttachment: Attachment;
 	private depthClear: number;
 	private framebuffer: WebGLFramebuffer | null;
+	private viewHeight: number;
+	private viewWidth: number;
 
 	public constructor(gl: WebGLRenderingContext, width: number, height: number) {
+		this.colorAttachment = { renderbuffer: undefined, textures: [] };
 		this.colorClear = colorBlack;
+		this.depthAttachment = { renderbuffer: undefined, textures: [] };
 		this.depthClear = 1;
 		this.framebuffer = null;
 		this.gl = gl;
 		this.viewHeight = height;
 		this.viewWidth = width;
-
-		this.colorAttachment = {
-			renderbuffer: null,
-			textures: null
-		};
-
-		this.depthAttachment = {
-			renderbuffer: null,
-			textures: null
-		};
 	}
 
 	public clear() {
@@ -655,6 +654,23 @@ class Target {
 		}
 	}
 
+	public resize(width: number, height: number) {
+		const gl = this.gl;
+
+		for (const attachment of [this.colorAttachment, this.depthAttachment]) {
+			// Resize existing renderbuffer attachment if any
+			if (attachment.renderbuffer !== undefined)
+				configureRenderbuffer(gl, attachment.renderbuffer.handle, width, height, attachment.renderbuffer.format, 1);
+
+			// Resize previously existing texture attachments if any
+			for (const texture of attachment.textures)
+				configureTexture(gl, texture.handle, width, height, texture.format, qualityBuffer);
+		}
+
+		this.viewHeight = height;
+		this.viewWidth = width;
+	}
+
 	public setClearColor(r: number, g: number, b: number, a: number) {
 		this.colorClear = { x: r, y: g, z: b, w: a };
 	}
@@ -663,27 +679,21 @@ class Target {
 		this.depthClear = depth;
 	}
 
-	public setupColorRenderbuffer(storage: Storage) {
-		const gl = this.gl;
-
-		return this.setupRenderbuffer(this.colorAttachment, storage, gl.COLOR_ATTACHMENT0, 1);
+	public setupColorRenderbuffer(format: Format) {
+		return this.attachRenderbuffer(this.colorAttachment, format, this.gl.COLOR_ATTACHMENT0);
 	}
 
-	public setupColorTexture(storage: Storage, layer: number) {
+	public setupColorTexture(format: Format) {
 		const gl = this.gl;
-		const texture = this.setupTexture(this.colorAttachment, storage, gl.COLOR_ATTACHMENT0, layer);
+		const texture = this.attachTexture(this.colorAttachment, format, gl.COLOR_ATTACHMENT0);
 
 		// Configure draw buffers
-		if (this.colorAttachment.textures !== null) {
-			const buffers = this.colorAttachment.textures.map((texture, index) => texture !== undefined
-				? gl.COLOR_ATTACHMENT0 + index
-				: gl.NONE);
-
+		if (this.colorAttachment.textures !== undefined) {
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 
 			// FIXME: this seems to cause a "operation requires zeroing texture data" in Firefox
 			// FIXME: incomplete @type for WebGL2
-			(<any>gl).drawBuffers(buffers);
+			(<any>gl).drawBuffers(functional.range(this.colorAttachment.textures.length, i => gl.COLOR_ATTACHMENT0 + i));
 
 			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 		}
@@ -691,34 +701,28 @@ class Target {
 		return texture;
 	}
 
-	public setupDepthRenderbuffer(storage: Storage) {
-		const gl = this.gl;
-
-		return this.setupRenderbuffer(this.depthAttachment, storage, gl.DEPTH_ATTACHMENT, 1);
+	public setupDepthRenderbuffer(format: Format) {
+		return this.attachRenderbuffer(this.depthAttachment, format, this.gl.DEPTH_ATTACHMENT);
 	}
 
-	public setupDepthTexture(storage: Storage) {
-		const gl = this.gl;
-
-		return this.setupTexture(this.depthAttachment, storage, gl.DEPTH_ATTACHMENT, 0);
+	public setupDepthTexture(format: Format) {
+		return this.attachTexture(this.depthAttachment, format, this.gl.DEPTH_ATTACHMENT);
 	}
 
 	private static clearRenderbufferAttachments(gl: WebGLRenderingContext, attachment: Attachment) {
-		if (attachment.renderbuffer !== null) {
-			gl.deleteRenderbuffer(attachment.renderbuffer);
+		if (attachment.renderbuffer !== undefined) {
+			gl.deleteRenderbuffer(attachment.renderbuffer.handle);
 
-			attachment.renderbuffer = null;
+			attachment.renderbuffer = undefined;
 		}
 	}
 
 	private static clearTextureAttachments(gl: WebGLRenderingContext, attachment: Attachment) {
-		if (attachment.textures !== null) {
-			for (const texture of attachment.textures) {
-				if (texture !== undefined)
-					gl.deleteTexture(texture);
-			}
+		if (attachment.textures !== undefined) {
+			for (const texture of attachment.textures)
+				gl.deleteTexture(texture.handle);
 
-			attachment.textures = null;
+			attachment.textures = [];
 		}
 	}
 
@@ -727,7 +731,7 @@ class Target {
 			throw Error("invalid framebuffer operation");
 	}
 
-	private setupFramebuffer() {
+	private attachFramebuffer() {
 		if (this.framebuffer !== null)
 			return this.framebuffer;
 
@@ -741,18 +745,21 @@ class Target {
 		return framebuffer;
 	}
 
-	private setupRenderbuffer(attachment: Attachment, storage: Storage, target: number, samples: number) {
-		const framebuffer = this.setupFramebuffer();
+	private attachRenderbuffer(attachment: Attachment, format: Format, target: number) {
+		const framebuffer = this.attachFramebuffer();
 		const gl = this.gl;
 
-		// Clear renderbuffer and all texture attachments (if any)
+		// Clear renderbuffer and texture attachments if any
 		Target.clearRenderbufferAttachments(gl, attachment);
 		Target.clearTextureAttachments(gl, attachment);
 
 		// Create renderbuffer attachment
-		const renderbuffer = createRenderbuffer(gl, this.viewWidth, this.viewHeight, storage, samples);
+		const renderbuffer = configureRenderbuffer(gl, gl.createRenderbuffer(), this.viewWidth, this.viewHeight, format, 1);
 
-		attachment.renderbuffer = renderbuffer;
+		attachment.renderbuffer = {
+			format: format,
+			handle: renderbuffer
+		};
 
 		// Bind attachment to framebuffer
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -765,34 +772,23 @@ class Target {
 		return renderbuffer;
 	}
 
-	private setupTexture(attachment: Attachment, storage: Storage, target: number, layer: number) {
-		const framebuffer = this.setupFramebuffer();
+	private attachTexture(attachment: Attachment, format: Format, target: number) {
+		const framebuffer = this.attachFramebuffer();
 		const gl = this.gl;
 
-		// Clear renderbuffer and concurrent texture attachments (if any)
+		// Reset renderbuffer attachment if any
 		Target.clearRenderbufferAttachments(gl, attachment);
 
-		if (attachment.textures !== null) {
-			const texture = attachment.textures[layer];
-
-			if (texture !== undefined)
-				gl.deleteTexture(texture);
-		}
-
-		// Create texture attachment
-		const texture = createTexture(gl, this.viewWidth, this.viewHeight, storage, qualityBuffer);
-
-		if (attachment.textures === null)
-			attachment.textures = [];
-
-		for (let i = attachment.textures.length; i < layer + 1; ++i)
-			attachment.textures.push(undefined);
-
-		attachment.textures[layer] = texture;
+		// Create and append new texture attachment
+		const texture = configureTexture(gl, gl.createTexture(), this.viewWidth, this.viewHeight, format, qualityBuffer);
+		const offset = attachment.textures.push({
+			format: format,
+			handle: texture
+		});
 
 		// Bind attachment to framebuffer
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, target + layer, gl.TEXTURE_2D, texture, 0);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, target + offset - 1, gl.TEXTURE_2D, texture, 0);
 
 		Target.checkFramebuffer(gl);
 
@@ -802,4 +798,4 @@ class Target {
 	}
 }
 
-export { DirectionalLight, Directive, Geometry, Mesh, Model, PointLight, Renderer, Scene, Shader, Storage, Subject, Target, loadModel }
+export { DirectionalLight, Directive, Format, Geometry, Mesh, Model, PointLight, Renderer, Scene, Shader, Subject, Target, loadModel }
