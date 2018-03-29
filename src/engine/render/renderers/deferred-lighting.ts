@@ -471,18 +471,18 @@ class Renderer implements webgl.Renderer<State> {
 		const geometry = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 		const light = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 
-		this.depthBuffer = geometry.setupDepthTexture(webgl.Storage.Depth16);
+		this.depthBuffer = geometry.setupDepthTexture(webgl.Format.Depth16);
 		this.directionalLightShader = loadLightDirectional(gl, configuration);
 		this.fullscreenModel = webgl.loadModel(gl, quad.model);
 		this.fullscreenProjection = matrix.Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
 		this.geometryShader = loadGeometry(gl, configuration);
 		this.geometryTarget = geometry;
 		this.gl = gl;
-		this.lightBuffer = light.setupColorTexture(webgl.Storage.RGBA8, 0);
+		this.lightBuffer = light.setupColorTexture(webgl.Format.RGBA8);
 		this.lightTarget = light;
 		this.materialShader = loadMaterial(gl, configuration);
 		this.pointLightShader = loadLightPoint(gl, configuration);
-		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.Storage.RGBA8, 0);
+		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.Format.RGBA8);
 		this.sphereModel = webgl.loadModel(gl, sphere.model);
 	}
 
@@ -569,6 +569,11 @@ class Renderer implements webgl.Renderer<State> {
 			projectionMatrix: state.projectionMatrix,
 			viewMatrix: state.viewMatrix
 		});
+	}
+
+	public resize(width: number, height: number) {
+		this.geometryTarget.resize(width, height);
+		this.lightTarget.resize(width, height);
 	}
 }
 

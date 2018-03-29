@@ -2,28 +2,33 @@ import * as controller from "./controller";
 import * as display from "./display";
 
 interface Process {
+	change: (callback: (screen: display.Screen) => void) => void,
 	start: () => Promise<void>,
 	step: (dt: number) => void
 }
 
-interface Runtime<T extends display.Screen> {
+interface Runtime<TScreen extends display.Screen, TState> {
 	input: controller.Input,
-	screen: T
+	screen: TScreen,
+	size: { x: number, y: number },
+	state: TState
+}
+
+interface Scenario<TScreen extends display.Screen, TState> {
+	prepare: () => Promise<Runtime<TScreen, TState>>,
+	render?: (state: TState) => void,
+	resize?: (state: TState, screen: TScreen) => void,
+	update?: (state: TState, dt: number) => void
 }
 
 interface ScreenConstructor<T> {
 	new(container: HTMLElement): T
 }
 
+type StateConstructor<TScreen extends display.Screen, TState, TConfiguration> = (screen: TScreen, input: controller.Input, tweak: Tweak<TConfiguration>) => Promise<TState>
+
 type Tweak<T> = {
 	[P in keyof T]: number
-};
-
-interface Scenario<TConfiguration, TState> {
-	configuration?: TConfiguration,
-	prepare: (tweak: Tweak<TConfiguration>) => Promise<TState>,
-	render: (state: TState) => void,
-	update: (state: TState, dt: number) => void
 }
 
 const configure = <T>(configuration: T) => {
@@ -68,6 +73,16 @@ const configure = <T>(configuration: T) => {
 	}
 
 	return tweak;
+};
+
+const createButton = (caption: string, click: () => void) => {
+	const button = document.createElement("input");
+
+	button.onclick = click;
+	button.type = "button";
+	button.value = caption;
+
+	return button;
 };
 
 const createCheckbox = (caption: string, value: number, change: (value: number) => void) => {
@@ -116,17 +131,38 @@ const createSelect = (caption: string, choices: string[], value: number, change:
 	return container;
 };
 
-const declare = <TConfiguration, TState>(scene: Scenario<TConfiguration, TState>) => {
-	let state: TState;
+const declare = <TScreen extends display.Screen, TState>(scene: Scenario<TScreen, TState>) => {
+	let runtime: Runtime<TScreen, TState>;
 
 	return {
+		change: (callback: (screen: display.Screen) => void) => {
+			callback(runtime.screen);
+		},
 		start: async () => {
-			state = await scene.prepare(configure(scene.configuration || <TConfiguration>{}));
+			runtime = await scene.prepare();
 		},
 		step: (dt: number) => {
-			scene.update(state, dt);
+			const render = scene.render;
+			const resize = scene.resize;
+			const update = scene.update;
 
-			setTimeout(() => scene.render(state), 0);
+			// FIXME: detect canvas resize [canvas-resize]
+			if (resize !== undefined && (runtime.screen.getWidth() !== runtime.size.x || runtime.screen.getHeight() !== runtime.size.y)) {
+				resize(runtime.state, runtime.screen);
+
+				(<any>runtime.screen).resize(); // FIXME: encapsulation violation [canvas-resize]
+
+				runtime.size = {
+					x: runtime.screen.getWidth(),
+					y: runtime.screen.getHeight()
+				};
+			}
+
+			if (update !== undefined)
+				update(runtime.state, dt);
+
+			if (render !== undefined)
+				setTimeout(() => render(runtime.state), 0);
 		}
 	};
 };
@@ -142,22 +178,30 @@ const initialize = (processes: { [name: string]: Process }) => {
 	if (sceneContainer === null)
 		throw Error("missing scene container");
 
-	let frames = 0;
+	let current: Process | undefined;
 	let elapsed = 0;
-	let step: ((dt: number) => void) | undefined = undefined;
+	let frames = 0;
 	let time = new Date().getTime();
 
-	const enable = (value: number) => {
+	const fullscreen = () => {
+		if (current === undefined)
+			return;
+
+		current.change(screen => screen.goFullscreen());
+	};
+
+	const select = (value: number) => {
 		const name = Object.keys(processes)[value];
 		const process = processes[name];
 
-		step = undefined;
+		current = undefined;
 
-		if (process !== undefined) {
-			process
-				.start()
-				.then(() => step = process.step);
-		}
+		if (process === undefined)
+			return;
+
+		process
+			.start()
+			.then(() => current = process);
 	};
 
 	const tick = () => {
@@ -167,8 +211,8 @@ const initialize = (processes: { [name: string]: Process }) => {
 		elapsed += dt;
 		time = now;
 
-		if (step !== undefined)
-			step(Math.min(dt, 1000));
+		if (current !== undefined)
+			current.step(Math.min(dt, 1000));
 
 		if (elapsed > 1000) {
 			frameContainer.innerText = Math.round(frames * 1000 / elapsed) + ' fps';
@@ -182,12 +226,13 @@ const initialize = (processes: { [name: string]: Process }) => {
 		window.requestAnimationFrame(tick);
 	};
 
-	sceneContainer.appendChild(createSelect("", Object.keys(processes), 0, enable));
+	sceneContainer.appendChild(createButton("Fullscreen", fullscreen));
+	sceneContainer.appendChild(createSelect("", Object.keys(processes), 0, select));
 
 	tick();
 };
 
-const runtime = <T extends display.Screen>(screenConstructor: ScreenConstructor<T>) => {
+const runtime = async <TScreen extends display.Screen, TState, TConfiguration>(screenConstructor: ScreenConstructor<TScreen>, configuration: TConfiguration, stateConstructor: StateConstructor<TScreen, TState, TConfiguration>) => {
 	const container = document.getElementById("screens");
 
 	if (container === null)
@@ -196,9 +241,15 @@ const runtime = <T extends display.Screen>(screenConstructor: ScreenConstructor<
 	while (container.childNodes.length > 0)
 		container.removeChild(container.childNodes[0]);
 
+	const input = new controller.Input(container);
+	const screen = new screenConstructor(container);
+	const state = await stateConstructor(screen, input, configure(configuration));
+
 	return {
-		input: new controller.Input(container),
-		screen: new screenConstructor(container)
+		input: input,
+		screen: screen,
+		size: { x: 0, y: 0 },
+		state: state
 	};
 };
 

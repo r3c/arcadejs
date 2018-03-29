@@ -34,20 +34,19 @@ const configuration = {
 	useTexture: false
 };
 
-const prepare = async (tweak: application.Tweak<Configuration>) => {
-	const runtime = application.runtime(display.Context2DScreen);
-	const renderer = new software.Renderer(runtime.screen);
+const prepare = () => application.runtime(display.Context2DScreen, configuration, async (screen, input, tweak) => {
+	const renderer = new software.Renderer(screen);
 
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		cubeWithColor: renderer.load(await model.fromJSON("./obj/cube-color.json")),
 		cubeWithTexture: renderer.load(await model.fromJSON("./obj/cube/model.json")),
-		input: runtime.input,
-		projection: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
+		input: input,
+		projection: matrix.Matrix4.createIdentity(),
 		renderer: renderer,
 		tweak: tweak
 	};
-};
+});
 
 const render = (state: State) => {
 	const camera = state.camera;
@@ -64,14 +63,18 @@ const render = (state: State) => {
 	renderer.draw(model, state.projection, view, software.DrawMode.Default);
 };
 
+const resize = (state: State, screen: display.Context2DScreen) => {
+	state.projection = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
+};
+
 const update = (state: State, dt: number) => {
 	state.camera.move(state.input);
 };
 
 const process = application.declare({
-	configuration: configuration,
 	prepare: prepare,
 	render: render,
+	resize: resize,
 	update: update
 });
 

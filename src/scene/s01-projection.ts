@@ -8,14 +8,10 @@ interface State {
 	renderer: software.Renderer
 }
 
-const prepare = async () => {
-	const runtime = application.runtime(display.Context2DScreen);
-
-	return {
-		projection: matrix.Matrix4.createPerspective(45, runtime.screen.getRatio(), 0.1, 100),
-		renderer: new software.Renderer(runtime.screen)
-	};
-};
+const prepare = () => application.runtime(display.Context2DScreen, undefined, async (screen, input) => ({
+	projection: matrix.Matrix4.createIdentity(),
+	renderer: new software.Renderer(screen)
+}));
 
 const render = (state: State) => {
 	const distance = -5;
@@ -58,13 +54,14 @@ const render = (state: State) => {
 	renderer.draw(meshes, state.projection, matrix.Matrix4.createIdentity(), software.DrawMode.Wire);
 };
 
-const update = (state: State, dt: number) => {
+const resize = (state: State, screen: display.Context2DScreen) => {
+	state.projection = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
 };
 
 const process = application.declare({
 	prepare: prepare,
 	render: render,
-	update: update
+	resize: resize
 });
 
 export { process };

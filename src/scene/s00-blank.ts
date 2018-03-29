@@ -6,25 +6,17 @@ interface State {
 	renderer: software.Renderer
 }
 
-const prepare = async () => {
-	const runtime = application.runtime(display.Context2DScreen);
-
-	return {
-		renderer: new software.Renderer(runtime.screen)
-	};
-};
+const prepare = () => application.runtime(display.Context2DScreen, undefined, async (screen, input) => ({
+	renderer: new software.Renderer(screen)
+}));
 
 const render = (state: State) => {
 	state.renderer.clear();
 };
 
-const update = () => {
-};
-
 const process = application.declare({
 	prepare: prepare,
-	render: render,
-	update: update
+	render: render
 });
 
 export { process };
