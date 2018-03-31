@@ -146,6 +146,7 @@ const render = (state: SceneState) => {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: directionalLights,
 		pointLights: pointLights,
+		projectionMatrix: state.projectionMatrix,
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
@@ -158,33 +159,27 @@ const render = (state: SceneState) => {
 		}))).concat(pointLights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(light.position),
 			model: models.pointLight
-		})))
+		}))),
+		viewMatrix: cameraView
 	};
 
 	target.clear();
 
-	deferredPipeline.process(target, deferredScene, {
-		projectionMatrix: state.projectionMatrix,
-		viewMatrix: cameraView
-	});
+	deferredPipeline.process(target, deferredScene);
 
 	// Draw debug
 	if (tweak.debugMode !== 0) {
-		const configurations = [
-			{ source: deferredPipeline.depthBuffer, select: debugTexture.Select.Red, format: debugTexture.Format.Depth },
-			{ source: deferredPipeline.normalAndGlossBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
-			{ source: deferredPipeline.normalAndGlossBuffer, select: debugTexture.Select.Blue, format: debugTexture.Format.Monochrome },
-			{ source: deferredPipeline.normalAndGlossBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome },
-			{ source: deferredPipeline.lightBuffer, select: debugTexture.Select.RedGreenBlue, format: debugTexture.Format.Logarithm },
-			{ source: deferredPipeline.lightBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Logarithm }
-		];
-
 		const debugPipeline = pipelines.debug[tweak.debugMode - 1];
-		const debugScene = { subjects: [] }; // FIXME: scene is ignored by debug pipeline
+		const debugScene = debugTexture.Pipeline.createScene([
+			deferredPipeline.depthBuffer,
+			deferredPipeline.normalAndGlossBuffer,
+			deferredPipeline.normalAndGlossBuffer,
+			deferredPipeline.normalAndGlossBuffer,
+			deferredPipeline.lightBuffer,
+			deferredPipeline.lightBuffer,
+		][tweak.debugMode - 1]);
 
-		debugPipeline.process(target, debugScene, {
-			source: configurations[tweak.debugMode - 1].source
-		});
+		debugPipeline.process(target, debugScene);
 	}
 };
 

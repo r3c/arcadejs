@@ -116,6 +116,7 @@ const render = (state: SceneState) => {
 			direction: lightDirection,
 			shadow: true
 		}],
+		projectionMatrix: state.projectionMatrix,
 		subjects: [{
 			matrix: matrix.Matrix4
 				.createIdentity()
@@ -132,24 +133,20 @@ const render = (state: SceneState) => {
 				.translate(vector.Vector3.scale(vector.Vector3.normalize(lightDirection), 10)),
 			model: models.light,
 			shadow: false
-		}]
+		}],
+		viewMatrix: cameraViewMatrix
 	}
 
 	target.clear();
 
-	lightPipeline.process(target, lightScene, {
-		projectionMatrix: state.projectionMatrix,
-		viewMatrix: cameraViewMatrix
-	});
+	lightPipeline.process(target, lightScene);
 
 	// Draw texture debug
 	if (state.tweak.showDebug) {
 		const debugPipeline = pipelines.debug;
-		const debugScene = { subjects: [] }; // FIXME: scene is ignored by debug pipeline
+		const debugScene = debugTexture.Pipeline.createScene(lightPipeline.shadowBuffers[0]);
 
-		debugPipeline.process(target, debugScene, {
-			source: lightPipeline.shadowBuffers[0]
-		});
+		debugPipeline.process(target, debugScene);
 	}
 };
 

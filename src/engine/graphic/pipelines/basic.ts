@@ -36,7 +36,7 @@ const load = (gl: WebGLRenderingContext) => {
 	return shader;
 };
 
-class Pipeline implements webgl.Pipeline<State> {
+class Pipeline implements webgl.Pipeline {
 	private readonly gl: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<State>;
 
@@ -45,7 +45,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.shader = load(gl);
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene) {
 		const gl = this.gl;
 
 		gl.enable(gl.CULL_FACE);
@@ -53,11 +53,14 @@ class Pipeline implements webgl.Pipeline<State> {
 
 		gl.cullFace(gl.BACK);
 
-		target.draw(this.shader, scene.subjects, state);
+		target.draw(this.shader, scene.subjects, {
+			projectionMatrix: scene.projectionMatrix,
+			viewMatrix: scene.viewMatrix
+		});
 	}
 
 	public resize(width: number, height: number) {
 	}
 }
 
-export { Pipeline, State }
+export { Pipeline }

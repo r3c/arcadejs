@@ -451,7 +451,7 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	return shader;
 };
 
-class Pipeline implements webgl.Pipeline<State> {
+class Pipeline implements webgl.Pipeline {
 	public readonly depthBuffer: WebGLTexture;
 	public readonly lightBuffer: WebGLTexture;
 	public readonly normalAndGlossBuffer: WebGLTexture;
@@ -486,7 +486,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.sphereModel = webgl.loadModel(gl, sphere.model);
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene) {
 		const gl = this.gl;
 		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
@@ -500,7 +500,10 @@ class Pipeline implements webgl.Pipeline<State> {
 		gl.depthMask(true);
 
 		this.geometryTarget.clear();
-		this.geometryTarget.draw(this.geometryShader, scene.subjects, state);
+		this.geometryTarget.draw(this.geometryShader, scene.subjects, {
+			projectionMatrix: scene.projectionMatrix,
+			viewMatrix: scene.viewMatrix
+		});
 
 		// Render lights to light buffer
 		gl.disable(gl.DEPTH_TEST);
@@ -518,7 +521,7 @@ class Pipeline implements webgl.Pipeline<State> {
 			// - One for projecting our quad to fullscreen
 			// - One for computing light directions in camera space
 			const subjects = [{
-				matrix: state.viewMatrix.inverse(),
+				matrix: scene.viewMatrix.inverse(),
 				model: this.fullscreenModel
 			}];
 
@@ -528,7 +531,7 @@ class Pipeline implements webgl.Pipeline<State> {
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					light: directionalLight,
 					projectionMatrix: this.fullscreenProjection,
-					viewMatrix: state.viewMatrix,
+					viewMatrix: scene.viewMatrix,
 					viewportSize: viewportSize
 				});
 			}
@@ -551,8 +554,8 @@ class Pipeline implements webgl.Pipeline<State> {
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					light: pointLight,
-					projectionMatrix: state.projectionMatrix,
-					viewMatrix: state.viewMatrix,
+					projectionMatrix: scene.projectionMatrix,
+					viewMatrix: scene.viewMatrix,
 					viewportSize: viewportSize
 				});
 			}
@@ -570,8 +573,8 @@ class Pipeline implements webgl.Pipeline<State> {
 		target.draw(this.materialShader, scene.subjects, {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			lightBuffer: this.lightBuffer,
-			projectionMatrix: state.projectionMatrix,
-			viewMatrix: state.viewMatrix
+			projectionMatrix: scene.projectionMatrix,
+			viewMatrix: scene.viewMatrix
 		});
 	}
 
@@ -581,4 +584,4 @@ class Pipeline implements webgl.Pipeline<State> {
 	}
 }
 
-export { Configuration, LightModel, Pipeline, State }
+export { Configuration, LightModel, Pipeline }

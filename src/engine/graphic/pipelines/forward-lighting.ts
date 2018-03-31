@@ -473,7 +473,7 @@ const loadShadow = (gl: WebGLRenderingContext) => {
 	return shader;
 };
 
-class Pipeline implements webgl.Pipeline<State> {
+class Pipeline implements webgl.Pipeline {
 	public readonly shadowBuffers: WebGLTexture[];
 
 	private readonly gl: WebGLRenderingContext;
@@ -499,7 +499,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.shadowTargets = targets;
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene) {
 		const directionalLights = scene.directionalLights || [];
 		const gl = this.gl;
 		const pointLights = scene.pointLights || [];
@@ -554,9 +554,9 @@ class Pipeline implements webgl.Pipeline<State> {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			directionalLights: directionalLightStates,
 			pointLights: pointLights,
-			projectionMatrix: state.projectionMatrix,
+			projectionMatrix: scene.projectionMatrix,
 			shadowProjectionMatrix: this.shadowProjectionMatrix,
-			viewMatrix: state.viewMatrix
+			viewMatrix: scene.viewMatrix
 		});
 	}
 
@@ -564,4 +564,4 @@ class Pipeline implements webgl.Pipeline<State> {
 	}
 }
 
-export { Configuration, LightModel, Pipeline, State }
+export { Configuration, LightModel, Pipeline }
