@@ -1,7 +1,6 @@
 import * as application from "../engine/application";
-import * as controller from "../engine/controller";
+import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
-import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as software from "../engine/graphic/software";

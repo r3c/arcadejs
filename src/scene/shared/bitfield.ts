@@ -1,5 +1,4 @@
 import * as functional from "../../engine/language/functional";
-import * as io from "../../engine/io";
 
 const enumerate = (flags: boolean[]) => {
 	return functional.range(Math.pow(2, flags.length), i => flags.map((flag, index) => (i & Math.pow(2, index)) !== 0));

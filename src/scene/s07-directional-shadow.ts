@@ -1,10 +1,9 @@
 import * as application from "../engine/application";
 import * as bitfield from "./shared/bitfield";
-import * as controller from "../engine/controller";
+import * as controller from "../engine/io/controller";
 import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
 import * as display from "../engine/display";
 import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
-import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as move from "./shared/move";
@@ -93,7 +92,7 @@ const render = (state: SceneState) => {
 	const camera = state.camera;
 	const models = state.models;
 	const pipelines = state.pipelines;
-	const target = state.target;;
+	const target = state.target;
 
 	// Setup view matrices
 	const cameraViewMatrix = matrix.Matrix4

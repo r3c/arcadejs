@@ -1,4 +1,4 @@
-import * as controller from "./controller";
+import * as controller from "./io/controller";
 import * as display from "./display";
 
 interface Process {
