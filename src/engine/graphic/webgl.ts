@@ -92,6 +92,11 @@ interface Model {
 	meshes: Mesh[]
 }
 
+interface Pipeline<State> {
+	render(target: Target, scene: Scene, state: State): void,
+	resize(width: number, height: number): void
+}
+
 interface PointLight {
 	color: vector.Vector3,
 	position: vector.Vector3,
@@ -102,11 +107,6 @@ interface Quality {
 	textureFilterLinear: boolean,
 	textureMipmap: boolean,
 	textureMipmapLinear: boolean
-}
-
-interface Renderer<State> {
-	render(target: Target, scene: Scene, state: State): void,
-	resize(width: number, height: number): void
 }
 
 interface Scene {
@@ -798,4 +798,4 @@ class Target {
 	}
 }
 
-export { DirectionalLight, Directive, Format, Geometry, Mesh, Model, PointLight, Renderer, Scene, Shader, Subject, Target, loadModel }
+export { DirectionalLight, Directive, Format, Geometry, Mesh, Model, PointLight, Pipeline, Scene, Shader, Subject, Target, loadModel }

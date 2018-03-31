@@ -2,8 +2,8 @@ import * as application from "../engine/application";
 import * as bitfield from "./shared/bitfield";
 import * as color from "./shared/color";
 import * as controller from "../engine/controller";
-import * as debugTexture from "../engine/render/renderers/debug-texture";
-import * as deferredShading from "../engine/render/renderers/deferred-shading";
+import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
+import * as deferredShading from "../engine/graphic/pipelines/deferred-shading";
 import * as display from "../engine/display";
 import * as functional from "../engine/language/functional";
 import * as io from "../engine/io";
@@ -12,7 +12,7 @@ import * as model from "../engine/graphic/model";
 import * as move from "./shared/move";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
-import * as webgl from "../engine/render/webgl";
+import * as webgl from "../engine/graphic/webgl";
 
 /*
 ** What changed?
@@ -40,12 +40,12 @@ interface SceneState {
 		pointLight: webgl.Model
 	},
 	move: number,
+	pipelines: {
+		debug: debugTexture.Pipeline,
+		scene: deferredShading.Pipeline[]
+	},
 	pointLights: webgl.PointLight[],
 	projectionMatrix: matrix.Matrix4,
-	renderers: {
-		debug: debugTexture.Renderer,
-		scene: deferredShading.Renderer[]
-	},
 	target: webgl.Target,
 	tweak: application.Tweak<Configuration>
 }
@@ -93,15 +93,9 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 			pointLight: webgl.loadModel(gl, pointLightModel)
 		},
 		move: 0,
-		pointLights: functional.range(500, i => ({
-			color: color.createBright(i),
-			position: vector.Vector3.zero,
-			radius: 2
-		})),
-		projectionMatrix: matrix.Matrix4.createIdentity(),
-		renderers: {
-			debug: new debugTexture.Renderer(gl, { zNear: 0.1, zFar: 100 }),
-			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredShading.Renderer(gl, {
+		pipelines: {
+			debug: new debugTexture.Pipeline(gl, { zNear: 0.1, zFar: 100 }),
+			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredShading.Pipeline(gl, {
 				lightModel: deferredShading.LightModel.Phong,
 				lightModelPhongNoAmbient: !flags[0],
 				lightModelPhongNoDiffuse: !flags[1],
@@ -110,6 +104,12 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 				useNormalMap: true
 			}))
 		},
+		pointLights: functional.range(500, i => ({
+			color: color.createBright(i),
+			position: vector.Vector3.zero,
+			radius: 2
+		})),
+		projectionMatrix: matrix.Matrix4.createIdentity(),
 		target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
 		tweak: tweak
 	};
@@ -118,7 +118,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 const render = (state: SceneState) => {
 	const camera = state.camera;
 	const models = state.models;
-	const renderers = state.renderers;
+	const pipelines = state.pipelines;
 	const target = state.target;
 	const tweak = state.tweak;
 
@@ -133,7 +133,7 @@ const render = (state: SceneState) => {
 	const pointLights = state.pointLights.slice(0, [0, 50, 100, 250, 500][tweak.nbPoints] || 0);
 
 	// Draw scene
-	const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
+	const deferredPipeline = pipelines.scene[bitfield.index(getOptions(tweak))];
 	const deferredScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: directionalLights,
@@ -155,7 +155,7 @@ const render = (state: SceneState) => {
 
 	target.clear();
 
-	deferredRenderer.render(target, deferredScene, {
+	deferredPipeline.render(target, deferredScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraView
 	});
@@ -163,14 +163,14 @@ const render = (state: SceneState) => {
 	// Draw debug
 	if (tweak.debugMode !== 0) {
 		const configurations = [
-			{ source: deferredRenderer.depthBuffer, select: debugTexture.Select.Red, format: debugTexture.Format.Depth },
-			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.RedGreenBlue, format: debugTexture.Format.Colorful },
-			{ source: deferredRenderer.normalAndGlossBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
-			{ source: deferredRenderer.albedoAndShininessBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome },
-			{ source: deferredRenderer.normalAndGlossBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome }
+			{ source: deferredPipeline.depthBuffer, select: debugTexture.Select.Red, format: debugTexture.Format.Depth },
+			{ source: deferredPipeline.albedoAndShininessBuffer, select: debugTexture.Select.RedGreenBlue, format: debugTexture.Format.Colorful },
+			{ source: deferredPipeline.normalAndGlossBuffer, select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
+			{ source: deferredPipeline.albedoAndShininessBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome },
+			{ source: deferredPipeline.normalAndGlossBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome }
 		];
 
-		const debugRenderer = renderers.debug;
+		const debugPipeline = pipelines.debug;
 		const debugScene = {
 			subjects: [{
 				matrix: matrix.Matrix4.createIdentity().translate({ x: 2, y: -1.5, z: -6 }),
@@ -178,7 +178,7 @@ const render = (state: SceneState) => {
 			}]
 		};
 
-		debugRenderer.render(target, debugScene, {
+		debugPipeline.render(target, debugScene, {
 			format: configurations[tweak.debugMode - 1].format,
 			projectionMatrix: state.projectionMatrix,
 			select: configurations[tweak.debugMode - 1].select,
@@ -189,11 +189,11 @@ const render = (state: SceneState) => {
 };
 
 const resize = (state: SceneState, screen: display.WebGLScreen) => {
-	for (const renderer of state.renderers.scene)
-		renderer.resize(screen.getWidth(), screen.getHeight());
+	for (const pipeline of state.pipelines.scene)
+		pipeline.resize(screen.getWidth(), screen.getHeight());
 
 	state.projectionMatrix = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
-	state.renderers.debug.resize(screen.getWidth(), screen.getHeight());
+	state.pipelines.debug.resize(screen.getWidth(), screen.getHeight());
 	state.target.resize(screen.getWidth(), screen.getHeight());
 };
 

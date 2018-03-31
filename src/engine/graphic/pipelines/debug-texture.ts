@@ -151,7 +151,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	return shader;
 };
 
-class Renderer implements webgl.Renderer<State> {
+class Pipeline implements webgl.Pipeline<State> {
 	private readonly gl: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<State>;
 
@@ -176,4 +176,4 @@ class Renderer implements webgl.Renderer<State> {
 	}
 }
 
-export { Format, Renderer, Select, State }
+export { Format, Pipeline, Select, State }

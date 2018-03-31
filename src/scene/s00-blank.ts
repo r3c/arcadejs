@@ -1,6 +1,6 @@
 import * as application from "../engine/application";
 import * as display from "../engine/display";
-import * as software from "../engine/render/software";
+import * as software from "../engine/graphic/software";
 
 interface State {
 	renderer: software.Renderer

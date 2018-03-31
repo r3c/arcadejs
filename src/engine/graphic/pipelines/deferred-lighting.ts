@@ -451,7 +451,7 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	return shader;
 };
 
-class Renderer implements webgl.Renderer<State> {
+class Pipeline implements webgl.Pipeline<State> {
 	public readonly depthBuffer: WebGLTexture;
 	public readonly lightBuffer: WebGLTexture;
 	public readonly normalAndGlossBuffer: WebGLTexture;
@@ -577,4 +577,4 @@ class Renderer implements webgl.Renderer<State> {
 	}
 }
 
-export { Configuration, LightModel, Renderer, State }
+export { Configuration, LightModel, Pipeline, State }

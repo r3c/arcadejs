@@ -36,7 +36,7 @@ const load = (gl: WebGLRenderingContext) => {
 	return shader;
 };
 
-class Renderer implements webgl.Renderer<State> {
+class Pipeline implements webgl.Pipeline<State> {
 	private readonly gl: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<State>;
 
@@ -60,4 +60,4 @@ class Renderer implements webgl.Renderer<State> {
 	}
 }
 
-export { Renderer, State }
+export { Pipeline, State }

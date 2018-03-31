@@ -1,16 +1,16 @@
 import * as application from "../engine/application";
-import * as basicRenderer from "../engine/render/renderers/basic";
+import * as basic from "../engine/graphic/pipelines/basic";
 import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/controller";
 import * as display from "../engine/display";
-import * as forwardLighting from "../engine/render/renderers/forward-lighting";
+import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../engine/language/functional";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as move from "./shared/move";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
-import * as webgl from "../engine/render/webgl";
+import * as webgl from "../engine/graphic/webgl";
 
 /*
 ** What changed?
@@ -39,11 +39,11 @@ interface SceneState {
 		light: webgl.Model
 	},
 	move: number,
-	projectionMatrix: matrix.Matrix4,
-	renderers: {
-		basic: basicRenderer.Renderer,
-		lights: forwardLighting.Renderer[]
+	pipelines: {
+		basic: basic.Pipeline,
+		lights: forwardLighting.Pipeline[]
 	},
+	projectionMatrix: matrix.Matrix4,
 	target: webgl.Target,
 	tweak: application.Tweak<Configuration>
 }
@@ -85,10 +85,9 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 			light: webgl.loadModel(gl, lightModel)
 		},
 		move: 0,
-		projectionMatrix: matrix.Matrix4.createIdentity(),
-		renderers: {
-			basic: new basicRenderer.Renderer(gl),
-			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Renderer(gl, {
+		pipelines: {
+			basic: new basic.Pipeline(gl),
+			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Pipeline(gl, {
 				lightModel: forwardLighting.LightModel.Phong,
 				lightModelPhongNoAmbient: !flags[0],
 				lightModelPhongNoDiffuse: !flags[1],
@@ -102,6 +101,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 				useShadowMap: false
 			}))
 		},
+		projectionMatrix: matrix.Matrix4.createIdentity(),
 		target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
 		tweak: tweak
 	};
@@ -110,7 +110,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 const render = (state: SceneState) => {
 	const camera = state.camera;
 	const models = state.models;
-	const renderers = state.renderers;
+	const pipelines = state.pipelines;
 	const target = state.target;
 
 	const cameraView = matrix.Matrix4
@@ -123,7 +123,7 @@ const render = (state: SceneState) => {
 	target.clear();
 
 	// Basic pass: draw light bulbs
-	const basicRenderer = renderers.basic;
+	const basicPipeline = pipelines.basic;
 	const basicScene = {
 		subjects: state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
 			matrix: matrix.Matrix4.createIdentity().translate(position),
@@ -131,13 +131,13 @@ const render = (state: SceneState) => {
 		}))
 	};
 
-	renderers.basic.render(target, basicScene, {
+	pipelines.basic.render(target, basicScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraView
 	});
 
 	// Light pass: draw subjects
-	const lightRenderer = renderers.lights[bitfield.index(getOptions(state.tweak))];
+	const lightPipeline = pipelines.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		pointLights: state.lightPositions.map((position, index) => ({
@@ -154,18 +154,18 @@ const render = (state: SceneState) => {
 		}]
 	};
 
-	lightRenderer.render(target, lightScene, {
+	lightPipeline.render(target, lightScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraView
 	});
 };
 
 const resize = (state: SceneState, screen: display.WebGLScreen) => {
-	for (const renderer of state.renderers.lights)
-		renderer.resize(screen.getWidth(), screen.getHeight());
+	for (const pipeline of state.pipelines.lights)
+		pipeline.resize(screen.getWidth(), screen.getHeight());
 
 	state.projectionMatrix = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
-	state.renderers.basic.resize(screen.getWidth(), screen.getHeight());
+	state.pipelines.basic.resize(screen.getWidth(), screen.getHeight());
 	state.target.resize(screen.getWidth(), screen.getHeight());
 };
 
