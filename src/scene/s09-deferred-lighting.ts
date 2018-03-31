@@ -34,7 +34,6 @@ interface SceneState {
 	input: controller.Input,
 	models: {
 		cube: webgl.Model,
-		debug: webgl.Model,
 		directionalLight: webgl.Model,
 		ground: webgl.Model,
 		pointLight: webgl.Model
@@ -71,7 +70,6 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
-	const debugModel = await model.fromJSON("./obj/debug.json", { transform: matrix.Matrix4.createIdentity().scale({ x: gl.canvas.clientWidth / gl.canvas.clientHeight, y: 1, z: 1 }) });
 	const directionalLightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
 	const groundModel = await model.fromJSON("./obj/ground/model.json");
 	const pointLightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
@@ -87,7 +85,6 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 		input: input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
-			debug: webgl.loadModel(gl, debugModel),
 			directionalLight: webgl.loadModel(gl, directionalLightModel),
 			ground: webgl.loadModel(gl, groundModel),
 			pointLight: webgl.loadModel(gl, pointLightModel)
@@ -155,7 +152,7 @@ const render = (state: SceneState) => {
 
 	target.clear();
 
-	deferredPipeline.render(target, deferredScene, {
+	deferredPipeline.process(target, deferredScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraView
 	});
@@ -172,19 +169,12 @@ const render = (state: SceneState) => {
 		];
 
 		const debugPipeline = pipelines.debug;
-		const debugScene = {
-			subjects: [{
-				matrix: matrix.Matrix4.createIdentity().translate({ x: 2, y: -1.5, z: -6 }),
-				model: models.debug
-			}]
-		};
+		const debugScene = { subjects: [] }; // FIXME: scene is ignored by debug pipeline
 
-		debugPipeline.render(target, debugScene, {
+		debugPipeline.process(target, debugScene, {
 			format: configurations[tweak.debugMode - 1].format,
-			projectionMatrix: state.projectionMatrix,
 			select: configurations[tweak.debugMode - 1].select,
-			source: configurations[tweak.debugMode - 1].source,
-			viewMatrix: matrix.Matrix4.createIdentity()
+			source: configurations[tweak.debugMode - 1].source
 		});
 	}
 };

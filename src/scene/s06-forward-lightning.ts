@@ -131,7 +131,7 @@ const render = (state: SceneState) => {
 		}))
 	};
 
-	pipelines.basic.render(target, basicScene, {
+	pipelines.basic.process(target, basicScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraView
 	});
@@ -154,7 +154,7 @@ const render = (state: SceneState) => {
 		}]
 	};
 
-	lightPipeline.render(target, lightScene, {
+	lightPipeline.process(target, lightScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraView
 	});

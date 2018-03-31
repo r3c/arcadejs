@@ -29,7 +29,6 @@ interface SceneState {
 	input: controller.Input,
 	models: {
 		cube: webgl.Model,
-		debug: webgl.Model,
 		ground: webgl.Model,
 		light: webgl.Model
 	},
@@ -58,7 +57,6 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 
 	// Load models
 	const cubeModel = await model.fromJSON("./obj/cube/model.json");
-	const debugModel = await model.fromJSON("./obj/debug.json", { transform: matrix.Matrix4.createIdentity().scale({ x: gl.canvas.clientWidth / gl.canvas.clientHeight, y: 1, z: 1 }) });
 	const groundModel = await model.fromJSON("./obj/ground/model.json");
 	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
 
@@ -68,7 +66,6 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 		input: input,
 		models: {
 			cube: webgl.loadModel(gl, cubeModel),
-			debug: webgl.loadModel(gl, debugModel),
 			ground: webgl.loadModel(gl, groundModel),
 			light: webgl.loadModel(gl, lightModel)
 		},
@@ -136,7 +133,7 @@ const render = (state: SceneState) => {
 
 	target.clear();
 
-	lightPipeline.render(target, lightScene, {
+	lightPipeline.process(target, lightScene, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: cameraViewMatrix
 	});
@@ -144,19 +141,12 @@ const render = (state: SceneState) => {
 	// Draw texture debug
 	if (state.tweak.showDebug) {
 		const debugPipeline = pipelines.debug;
-		const debugScene = {
-			subjects: [{
-				matrix: matrix.Matrix4.createIdentity().translate({ x: 2, y: -1.5, z: -6 }),
-				model: models.debug
-			}]
-		};
+		const debugScene = { subjects: [] }; // FIXME: scene is ignored by debug pipeline
 
-		debugPipeline.render(target, debugScene, {
+		debugPipeline.process(target, debugScene, {
 			format: debugTexture.Format.Monochrome,
-			projectionMatrix: state.projectionMatrix,
 			select: debugTexture.Select.Red,
-			source: lightPipeline.shadowBuffers[0],
-			viewMatrix: matrix.Matrix4.createIdentity()
+			source: lightPipeline.shadowBuffers[0]
 		});
 	}
 };

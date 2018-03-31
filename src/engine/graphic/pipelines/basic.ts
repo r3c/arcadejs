@@ -45,7 +45,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.shader = load(gl);
 	}
 
-	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const gl = this.gl;
 
 		gl.enable(gl.CULL_FACE);

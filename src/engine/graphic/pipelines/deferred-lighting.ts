@@ -486,7 +486,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.sphereModel = webgl.loadModel(gl, sphere.model);
 	}
 
-	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const gl = this.gl;
 		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
@@ -503,8 +503,6 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.geometryTarget.draw(this.geometryShader, scene.subjects, state);
 
 		// Render lights to light buffer
-		gl.cullFace(gl.FRONT);
-
 		gl.disable(gl.DEPTH_TEST);
 		gl.depthMask(false);
 
@@ -515,6 +513,10 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.lightTarget.clear();
 
 		if (scene.directionalLights !== undefined) {
+			// FIXME: a simple identity matrix could be use here at the cost of
+			// passing 2 distinct "view" matrices to light shader:
+			// - One for projecting our quad to fullscreen
+			// - One for computing light directions in camera space
 			const subjects = [{
 				matrix: state.viewMatrix.inverse(),
 				model: this.fullscreenModel
@@ -537,6 +539,8 @@ class Pipeline implements webgl.Pipeline<State> {
 				matrix: matrix.Matrix4.createIdentity(),
 				model: this.sphereModel
 			}];
+
+			gl.cullFace(gl.FRONT);
 
 			for (const pointLight of scene.pointLights) {
 				subjects[0].matrix = matrix.Matrix4.createIdentity()
