@@ -145,6 +145,7 @@ const render = (state: SceneState) => {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: directionalLights,
 		pointLights: pointLights,
+		projectionMatrix: state.projectionMatrix,
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
@@ -157,32 +158,26 @@ const render = (state: SceneState) => {
 		}))).concat(pointLights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(light.position),
 			model: models.pointLight
-		})))
+		}))),
+		viewMatrix: cameraView
 	};
 
 	target.clear();
 
-	deferredPipeline.process(target, deferredScene, {
-		projectionMatrix: state.projectionMatrix,
-		viewMatrix: cameraView
-	});
+	deferredPipeline.process(target, deferredScene);
 
 	// Draw debug
 	if (tweak.debugMode !== 0) {
-		const configurations = [
-			{ source: deferredPipeline.depthBuffer },
-			{ source: deferredPipeline.albedoAndShininessBuffer },
-			{ source: deferredPipeline.normalAndGlossBuffer },
-			{ source: deferredPipeline.albedoAndShininessBuffer },
-			{ source: deferredPipeline.normalAndGlossBuffer }
-		];
-
 		const debugPipeline = pipelines.debug[tweak.debugMode - 1];
-		const debugScene = { subjects: [] }; // FIXME: scene is ignored by debug pipeline
+		const debugScene = debugTexture.Pipeline.createScene([
+			deferredPipeline.depthBuffer,
+			deferredPipeline.albedoAndShininessBuffer,
+			deferredPipeline.normalAndGlossBuffer,
+			deferredPipeline.albedoAndShininessBuffer,
+			deferredPipeline.normalAndGlossBuffer
+		][tweak.debugMode - 1]);
 
-		debugPipeline.process(target, debugScene, {
-			source: configurations[tweak.debugMode - 1].source
-		});
+		debugPipeline.process(target, debugScene);
 	}
 };
 

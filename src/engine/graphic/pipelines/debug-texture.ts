@@ -147,11 +147,51 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	return shader;
 };
 
-class Pipeline implements webgl.Pipeline<State> {
+class Pipeline implements webgl.Pipeline {
 	private readonly gl: WebGLRenderingContext;
 	private readonly quad: webgl.Model;
 	private readonly scale: number;
 	private readonly shader: webgl.Shader<State>;
+
+	/*
+	** Helper function used to build fake scene with a single subject using
+	** given texture. It allows easy construction of "scene" parameter expected
+	** by "process" method easily.
+	*/
+	public static createScene(source: WebGLTexture): webgl.Scene {
+		const defaultColor = [0, 0, 0, 0];
+		const defaultMatrix = matrix.Matrix4.createIdentity();
+
+		return {
+			projectionMatrix: defaultMatrix,
+			subjects: [{
+				matrix: defaultMatrix,
+				model: {
+					meshes: [{
+						geometries: [],
+						material: {
+							albedoColor: defaultColor,
+							albedoMap: source,
+							emissiveMap: undefined,
+							emissiveStrength: 0,
+							glossColor: defaultColor,
+							glossMap: undefined,
+							heightMap: undefined,
+							metalnessMap: undefined,
+							normalMap: undefined,
+							occlusionMap: undefined,
+							occlusionStrength: 0,
+							parallaxBias: 0,
+							parallaxScale: 0,
+							roughnessMap: defaultColor,
+							shininess: 0
+						}
+					}]
+				}
+			}],
+			viewMatrix: defaultMatrix
+		};
+	}
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		this.gl = gl;
@@ -160,7 +200,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.shader = load(gl, configuration);
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene) {
 		const gl = this.gl;
 
 		gl.disable(gl.BLEND);
@@ -177,11 +217,18 @@ class Pipeline implements webgl.Pipeline<State> {
 			model: this.quad
 		}];
 
-		target.draw(this.shader, subjects, state);
+		// Hack: find first defined albedo map from subject models and use it as debug source
+		const source = <WebGLTexture>functional
+			.flatten(scene.subjects.map(s => s.model.meshes.map(m => m.material.albedoMap)))
+			.find(v => v !== undefined);
+
+		target.draw(this.shader, subjects, {
+			source: source
+		});
 	}
 
 	public resize(width: number, height: number) {
 	}
 }
 
-export { Format, Pipeline, Select, State }
+export { Format, Pipeline, Select }

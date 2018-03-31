@@ -409,7 +409,7 @@ const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration)
 	return shader;
 };
 
-class Pipeline implements webgl.Pipeline<State> {
+class Pipeline implements webgl.Pipeline {
 	public readonly albedoAndShininessBuffer: WebGLTexture;
 	public readonly depthBuffer: WebGLTexture;
 	public readonly normalAndGlossBuffer: WebGLTexture;
@@ -441,7 +441,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.sphereModel = webgl.loadModel(gl, sphere.model);
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene) {
 		const gl = this.gl;
 		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
@@ -455,7 +455,10 @@ class Pipeline implements webgl.Pipeline<State> {
 		gl.depthMask(true);
 
 		this.geometryTarget.clear();
-		this.geometryTarget.draw(this.geometryShader, scene.subjects, state);
+		this.geometryTarget.draw(this.geometryShader, scene.subjects, {
+			projectionMatrix: scene.projectionMatrix,
+			viewMatrix: scene.viewMatrix
+		});
 
 		// Draw scene lights
 		gl.disable(gl.DEPTH_TEST);
@@ -486,7 +489,7 @@ class Pipeline implements webgl.Pipeline<State> {
 			// - One for projecting our quad to fullscreen
 			// - One for computing light directions in camera space
 			const subjects = [{
-				matrix: state.viewMatrix.inverse(),
+				matrix: scene.viewMatrix.inverse(),
 				model: this.fullscreenModel
 			}];
 
@@ -497,7 +500,7 @@ class Pipeline implements webgl.Pipeline<State> {
 					light: directionalLight,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					projectionMatrix: this.fullscreenProjection,
-					viewMatrix: state.viewMatrix,
+					viewMatrix: scene.viewMatrix,
 					viewportSize: viewportSize
 				});
 			}
@@ -522,8 +525,8 @@ class Pipeline implements webgl.Pipeline<State> {
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					light: pointLight,
-					projectionMatrix: state.projectionMatrix,
-					viewMatrix: state.viewMatrix,
+					projectionMatrix: scene.projectionMatrix,
+					viewMatrix: scene.viewMatrix,
 					viewportSize: viewportSize
 				});
 			}

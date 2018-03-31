@@ -93,8 +93,8 @@ interface Model {
 	meshes: Mesh[]
 }
 
-interface Pipeline<State> {
-	process(target: Target, scene: Scene, state: State): void,
+interface Pipeline {
+	process(target: Target, scene: Scene): void,
 	resize(width: number, height: number): void
 }
 
@@ -114,7 +114,9 @@ interface Scene {
 	ambientLightColor?: vector.Vector3,
 	directionalLights?: DirectionalLight[],
 	pointLights?: PointLight[],
-	subjects: Subject[]
+	projectionMatrix: matrix.Matrix4,
+	subjects: Subject[],
+	viewMatrix: matrix.Matrix4
 }
 
 interface Subject {
