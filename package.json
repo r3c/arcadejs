@@ -13,6 +13,7 @@
   "scripts": {
     "build": "node build.js",
     "serve": "node serve.js",
+	"start": "node build.js && node serve.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "node build.js -w"
   }
