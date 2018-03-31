@@ -50,12 +50,12 @@ interface SceneState {
 
 const configuration = {
 	nbLights: ["0", ".1", "2", "3"],
-	animate: false,
+	animate: true,
 	enableAmbient: true,
-	enableDiffuse: false,
-	enableSpecular: false,
-	useNormalMap: false,
-	useHeightMap: false
+	enableDiffuse: true,
+	enableSpecular: true,
+	useNormalMap: true,
+	useHeightMap: true
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
