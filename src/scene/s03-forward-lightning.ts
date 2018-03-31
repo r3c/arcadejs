@@ -1,5 +1,4 @@
 import * as application from "../engine/application";
-import * as basic from "../engine/graphic/pipelines/basic";
 import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
@@ -40,7 +39,6 @@ interface SceneState {
 	},
 	move: number,
 	pipelines: {
-		basic: basic.Pipeline,
 		lights: forwardLighting.Pipeline[]
 	},
 	projectionMatrix: matrix.Matrix4,
@@ -86,7 +84,6 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 		},
 		move: 0,
 		pipelines: {
-			basic: new basic.Pipeline(gl),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Pipeline(gl, {
 				lightModel: forwardLighting.LightModel.Phong,
 				lightModelPhongNoAmbient: !flags[0],
@@ -125,18 +122,7 @@ const render = (state: SceneState) => {
 	// Clear screen
 	target.clear();
 
-	// Basic pass: draw light bulbs
-	const basicPipeline = pipelines.basic;
-	const basicScene = {
-		subjects: state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
-			matrix: matrix.Matrix4.createIdentity().translate(position),
-			model: models.light
-		}))
-	};
-
-	pipelines.basic.process(target, transform, basicScene);
-
-	// Light pass: draw subjects
+	// Forward pass
 	const lightPipeline = pipelines.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
@@ -151,7 +137,10 @@ const render = (state: SceneState) => {
 		}, {
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
-		}]
+		}].concat(state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
+			matrix: matrix.Matrix4.createIdentity().translate(position),
+			model: models.light
+		})))
 	};
 
 	lightPipeline.process(target, transform, lightScene);
@@ -162,7 +151,6 @@ const resize = (state: SceneState, screen: display.WebGLScreen) => {
 		pipeline.resize(screen.getWidth(), screen.getHeight());
 
 	state.projectionMatrix = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
-	state.pipelines.basic.resize(screen.getWidth(), screen.getHeight());
 	state.target.resize(screen.getWidth(), screen.getHeight());
 };
 
