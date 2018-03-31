@@ -1,5 +1,6 @@
 import * as functional from "../language/functional";
 import * as matrix from "../math/matrix";
+import * as mesh from "./mesh";
 import * as model from "../graphic/model";
 import * as vector from "../math/vector";
 
@@ -323,8 +324,6 @@ const qualityImage = {
 	textureMipmapLinear: false
 };
 
-const shininessDefault = 1;
-
 const configureRenderbuffer = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer | null, width: number, height: number, format: Format, samples: number) => {
 	if (renderbuffer === null)
 		throw Error("could not create render buffer");
@@ -434,12 +433,33 @@ const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with n
 const invalidMaterial = (name: string) => Error(`cannot use unknown material "${name}" on mesh`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
+const loadMaterial = (gl: WebGLRenderingContext, material: mesh.Material, quality: Quality) => {
+	const toColorMap = (image: ImageData) => configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, quality, image.data);
+
+	return {
+		albedoColor: vector.Vector4.toArray(material.albedoColor || colorWhite),
+		albedoMap: functional.map(material.albedoMap, toColorMap),
+		emissiveMap: functional.map(material.emissiveMap, toColorMap),
+		emissiveStrength: functional.coalesce(material.emissiveStrength, 1),
+		glossColor: vector.Vector4.toArray(material.glossColor || material.albedoColor || colorWhite),
+		glossMap: functional.map(material.glossMap, toColorMap),
+		heightMap: functional.map(material.heightMap, toColorMap),
+		metalnessMap: functional.map(material.metalnessMap, toColorMap),
+		normalMap: functional.map(material.normalMap, toColorMap),
+		occlusionMap: functional.map(material.occlusionMap, toColorMap),
+		occlusionStrength: functional.coalesce(material.occlusionStrength, 1),
+		parallaxBias: functional.coalesce(material.parallaxBias, 0),
+		parallaxScale: functional.coalesce(material.parallaxScale, 0),
+		roughnessMap: functional.map(material.roughnessMap, toColorMap),
+		shininess: functional.coalesce(material.shininess, 1)
+	};
+};
+
 const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quality = qualityImage): Model => {
 	const definitions = model.materials || {};
 	const meshes: { [name: string]: Mesh } = {};
 
 	const toBuffer = <T extends ArrayBufferView, U>(constructor: { new(items: number[]): T }, converter: (input: U) => number[], target: number) => (array: U[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
-	const toColorMap = (image: ImageData) => configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, quality, image.data);
 	const toIndices = (indices: [number, number, number]) => indices;
 
 	for (const mesh of model.meshes) {
@@ -452,27 +472,9 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 				throw invalidMaterial(materialName);
 
 			if (meshes[materialName] === undefined) {
-				const definition = definitions[materialName];
-
 				meshes[materialName] = {
 					geometries: [],
-					material: {
-						albedoColor: vector.Vector4.toArray(definition.albedoColor || colorWhite),
-						albedoMap: functional.map(definition.albedoMap, toColorMap),
-						emissiveMap: functional.map(definition.emissiveMap, toColorMap),
-						emissiveStrength: functional.coalesce(definition.emissiveStrength, 1),
-						glossColor: vector.Vector4.toArray(definition.glossColor || definition.albedoColor || colorWhite),
-						glossMap: functional.map(definition.glossMap, toColorMap),
-						heightMap: functional.map(definition.heightMap, toColorMap),
-						metalnessMap: functional.map(definition.metalnessMap, toColorMap),
-						normalMap: functional.map(definition.normalMap, toColorMap),
-						occlusionMap: functional.map(definition.occlusionMap, toColorMap),
-						occlusionStrength: functional.coalesce(definition.occlusionStrength, 1),
-						parallaxBias: functional.coalesce(definition.parallaxBias, 0),
-						parallaxScale: functional.coalesce(definition.parallaxScale, 0),
-						roughnessMap: functional.map(definition.roughnessMap, toColorMap),
-						shininess: functional.coalesce(definition.shininess, shininessDefault)
-					}
+					material: loadMaterial(gl, definitions[materialName], quality)
 				}
 			}
 
@@ -484,23 +486,7 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 			if (meshes[defaultMaterialName] === undefined) {
 				meshes[defaultMaterialName] = {
 					geometries: [],
-					material: {
-						albedoColor: vector.Vector4.toArray(colorWhite),
-						albedoMap: undefined,
-						emissiveMap: undefined,
-						emissiveStrength: 1,
-						glossColor: vector.Vector4.toArray(colorWhite),
-						glossMap: undefined,
-						heightMap: undefined,
-						metalnessMap: undefined,
-						normalMap: undefined,
-						occlusionMap: undefined,
-						occlusionStrength: 1,
-						parallaxBias: 0,
-						parallaxScale: 0,
-						roughnessMap: undefined,
-						shininess: shininessDefault
-					}
+					material: loadMaterial(gl, {}, quality)
 				};
 			}
 
