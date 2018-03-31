@@ -39,7 +39,7 @@ interface SceneState {
 	},
 	move: number,
 	pipelines: {
-		debug: debugTexture.Pipeline,
+		debug: debugTexture.Pipeline[],
 		scene: deferredLighting.Pipeline[]
 	},
 	pointLights: webgl.PointLight[],
@@ -90,7 +90,19 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 		},
 		move: 0,
 		pipelines: {
-			debug: new debugTexture.Pipeline(gl, { zNear: 0.1, zFar: 100 }),
+			debug: [
+				{ select: debugTexture.Select.Red, format: debugTexture.Format.Depth },
+				{ select: debugTexture.Select.RedGreen, format: debugTexture.Format.Spheremap },
+				{ select: debugTexture.Select.Blue, format: debugTexture.Format.Monochrome },
+				{ select: debugTexture.Select.Alpha, format: debugTexture.Format.Monochrome },
+				{ select: debugTexture.Select.RedGreenBlue, format: debugTexture.Format.Logarithm },
+				{ select: debugTexture.Select.Alpha, format: debugTexture.Format.Logarithm }
+			].map(configuration => new debugTexture.Pipeline(gl, {
+				format: configuration.format,
+				select: configuration.select,
+				zNear: 0.1,
+				zFar: 100
+			})),
 			scene: bitfield.enumerate(getOptions(tweak)).map(flags => new deferredLighting.Pipeline(gl, {
 				lightModel: deferredLighting.LightModel.Phong,
 				lightModelPhongNoAmbient: !flags[0],
@@ -167,23 +179,23 @@ const render = (state: SceneState) => {
 			{ source: deferredPipeline.lightBuffer, select: debugTexture.Select.Alpha, format: debugTexture.Format.Logarithm }
 		];
 
-		const debugPipeline = pipelines.debug;
+		const debugPipeline = pipelines.debug[tweak.debugMode - 1];
 		const debugScene = { subjects: [] }; // FIXME: scene is ignored by debug pipeline
 
 		debugPipeline.process(target, debugScene, {
-			format: configurations[tweak.debugMode - 1].format,
-			select: configurations[tweak.debugMode - 1].select,
 			source: configurations[tweak.debugMode - 1].source
 		});
 	}
 };
 
 const resize = (state: SceneState, screen: display.WebGLScreen) => {
+	for (const pipeline of state.pipelines.debug)
+		pipeline.resize(screen.getWidth(), screen.getHeight());
+
 	for (const pipeline of state.pipelines.scene)
 		pipeline.resize(screen.getWidth(), screen.getHeight());
 
 	state.projectionMatrix = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
-	state.pipelines.debug.resize(screen.getWidth(), screen.getHeight());
 	state.target.resize(screen.getWidth(), screen.getHeight());
 };
 

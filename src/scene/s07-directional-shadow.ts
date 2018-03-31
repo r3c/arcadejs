@@ -70,7 +70,12 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 		},
 		move: 0,
 		pipelines: {
-			debug: new debugTexture.Pipeline(gl, { zNear: 0.1, zFar: 100 }),
+			debug: new debugTexture.Pipeline(gl, {
+				format: debugTexture.Format.Monochrome,
+				select: debugTexture.Select.Red,
+				zNear: 0.1,
+				zFar: 100
+			}),
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Pipeline(gl, {
 				lightModel: forwardLighting.LightModel.Phong,
 				maxDirectionalLights: 1,
@@ -143,8 +148,6 @@ const render = (state: SceneState) => {
 		const debugScene = { subjects: [] }; // FIXME: scene is ignored by debug pipeline
 
 		debugPipeline.process(target, debugScene, {
-			format: debugTexture.Format.Monochrome,
-			select: debugTexture.Select.Red,
 			source: lightPipeline.shadowBuffers[0]
 		});
 	}
