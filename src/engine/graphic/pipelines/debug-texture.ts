@@ -160,12 +160,10 @@ class Pipeline implements webgl.Pipeline {
 	*/
 	public static createScene(source: WebGLTexture): webgl.Scene {
 		const defaultColor = [0, 0, 0, 0];
-		const defaultMatrix = matrix.Matrix4.createIdentity();
 
 		return {
-			projectionMatrix: defaultMatrix,
 			subjects: [{
-				matrix: defaultMatrix,
+				matrix: matrix.Matrix4.createIdentity(),
 				model: {
 					meshes: [{
 						geometries: [],
@@ -188,8 +186,7 @@ class Pipeline implements webgl.Pipeline {
 						}
 					}]
 				}
-			}],
-			viewMatrix: defaultMatrix
+			}]
 		};
 	}
 
@@ -200,7 +197,7 @@ class Pipeline implements webgl.Pipeline {
 		this.shader = load(gl, configuration);
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene) {
+	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
 		const gl = this.gl;
 
 		gl.disable(gl.BLEND);

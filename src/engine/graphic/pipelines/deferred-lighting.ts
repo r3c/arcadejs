@@ -486,7 +486,7 @@ class Pipeline implements webgl.Pipeline {
 		this.sphereModel = webgl.loadModel(gl, sphere.model);
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene) {
+	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
 		const gl = this.gl;
 		const viewportSize = { x: gl.canvas.clientWidth, y: gl.canvas.clientHeight };
 
@@ -500,10 +500,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.depthMask(true);
 
 		this.geometryTarget.clear();
-		this.geometryTarget.draw(this.geometryShader, scene.subjects, {
-			projectionMatrix: scene.projectionMatrix,
-			viewMatrix: scene.viewMatrix
-		});
+		this.geometryTarget.draw(this.geometryShader, scene.subjects, transform);
 
 		// Render lights to light buffer
 		gl.disable(gl.DEPTH_TEST);
@@ -521,7 +518,7 @@ class Pipeline implements webgl.Pipeline {
 			// - One for projecting our quad to fullscreen
 			// - One for computing light directions in camera space
 			const subjects = [{
-				matrix: scene.viewMatrix.inverse(),
+				matrix: transform.viewMatrix.inverse(),
 				model: this.fullscreenModel
 			}];
 
@@ -531,7 +528,7 @@ class Pipeline implements webgl.Pipeline {
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					light: directionalLight,
 					projectionMatrix: this.fullscreenProjection,
-					viewMatrix: scene.viewMatrix,
+					viewMatrix: transform.viewMatrix,
 					viewportSize: viewportSize
 				});
 			}
@@ -554,8 +551,8 @@ class Pipeline implements webgl.Pipeline {
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					light: pointLight,
-					projectionMatrix: scene.projectionMatrix,
-					viewMatrix: scene.viewMatrix,
+					projectionMatrix: transform.projectionMatrix,
+					viewMatrix: transform.viewMatrix,
 					viewportSize: viewportSize
 				});
 			}
@@ -573,8 +570,8 @@ class Pipeline implements webgl.Pipeline {
 		target.draw(this.materialShader, scene.subjects, {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			lightBuffer: this.lightBuffer,
-			projectionMatrix: scene.projectionMatrix,
-			viewMatrix: scene.viewMatrix
+			projectionMatrix: transform.projectionMatrix,
+			viewMatrix: transform.viewMatrix
 		});
 	}
 

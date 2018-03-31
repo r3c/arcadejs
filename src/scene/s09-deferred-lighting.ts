@@ -130,11 +130,14 @@ const render = (state: SceneState) => {
 	const target = state.target;
 	const tweak = state.tweak;
 
-	const cameraView = matrix.Matrix4
-		.createIdentity()
-		.translate(camera.position)
-		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+	const transform = {
+		projectionMatrix: state.projectionMatrix,
+		viewMatrix: matrix.Matrix4
+			.createIdentity()
+			.translate(camera.position)
+			.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+			.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
+	};
 
 	// Pick active lights
 	const directionalLights = state.directionalLights.slice(0, [0, 1, 2, 5][tweak.nbDirectionals] || 0);
@@ -146,7 +149,6 @@ const render = (state: SceneState) => {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
 		directionalLights: directionalLights,
 		pointLights: pointLights,
-		projectionMatrix: state.projectionMatrix,
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
@@ -159,13 +161,12 @@ const render = (state: SceneState) => {
 		}))).concat(pointLights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(light.position),
 			model: models.pointLight
-		}))),
-		viewMatrix: cameraView
+		})))
 	};
 
 	target.clear();
 
-	deferredPipeline.process(target, deferredScene);
+	deferredPipeline.process(target, transform, deferredScene);
 
 	// Draw debug
 	if (tweak.debugMode !== 0) {
@@ -179,7 +180,7 @@ const render = (state: SceneState) => {
 			deferredPipeline.lightBuffer,
 		][tweak.debugMode - 1]);
 
-		debugPipeline.process(target, debugScene);
+		debugPipeline.process(target, transform, debugScene);
 	}
 };
 
