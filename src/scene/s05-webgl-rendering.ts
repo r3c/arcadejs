@@ -6,7 +6,7 @@ import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
-import * as webgl from "../engine/render/webgl";
+import * as webgl from "../engine/graphic/webgl";
 
 /*
 ** What changed?

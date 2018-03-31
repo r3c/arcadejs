@@ -473,7 +473,7 @@ const loadShadow = (gl: WebGLRenderingContext) => {
 	return shader;
 };
 
-class Renderer implements webgl.Renderer<State> {
+class Pipeline implements webgl.Pipeline<State> {
 	public readonly shadowBuffers: WebGLTexture[];
 
 	private readonly gl: WebGLRenderingContext;
@@ -564,4 +564,4 @@ class Renderer implements webgl.Renderer<State> {
 	}
 }
 
-export { Configuration, LightModel, Renderer, State }
+export { Configuration, LightModel, Pipeline, State }
