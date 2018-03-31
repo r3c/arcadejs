@@ -100,11 +100,14 @@ const render = (state: SceneState) => {
 	const target = state.target;
 
 	// Setup view matrices
-	const cameraViewMatrix = matrix.Matrix4
-		.createIdentity()
-		.translate(camera.position)
-		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+	const transform = {
+		projectionMatrix: state.projectionMatrix,
+		viewMatrix: matrix.Matrix4
+			.createIdentity()
+			.translate(camera.position)
+			.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+			.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
+	};
 
 	// Draw scene
 	const lightDirection = move.rotate(0, -state.move * 10);
@@ -116,7 +119,6 @@ const render = (state: SceneState) => {
 			direction: lightDirection,
 			shadow: true
 		}],
-		projectionMatrix: state.projectionMatrix,
 		subjects: [{
 			matrix: matrix.Matrix4
 				.createIdentity()
@@ -133,20 +135,19 @@ const render = (state: SceneState) => {
 				.translate(vector.Vector3.scale(vector.Vector3.normalize(lightDirection), 10)),
 			model: models.light,
 			shadow: false
-		}],
-		viewMatrix: cameraViewMatrix
+		}]
 	}
 
 	target.clear();
 
-	lightPipeline.process(target, lightScene);
+	lightPipeline.process(target, transform, lightScene);
 
 	// Draw texture debug
 	if (state.tweak.showDebug) {
 		const debugPipeline = pipelines.debug;
 		const debugScene = debugTexture.Pipeline.createScene(lightPipeline.shadowBuffers[0]);
 
-		debugPipeline.process(target, debugScene);
+		debugPipeline.process(target, transform, debugScene);
 	}
 };
 

@@ -45,7 +45,7 @@ class Pipeline implements webgl.Pipeline {
 		this.shader = load(gl);
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene) {
+	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
 		const gl = this.gl;
 
 		gl.enable(gl.CULL_FACE);
@@ -54,8 +54,8 @@ class Pipeline implements webgl.Pipeline {
 		gl.cullFace(gl.BACK);
 
 		target.draw(this.shader, scene.subjects, {
-			projectionMatrix: scene.projectionMatrix,
-			viewMatrix: scene.viewMatrix
+			projectionMatrix: transform.projectionMatrix,
+			viewMatrix: transform.viewMatrix
 		});
 	}
 

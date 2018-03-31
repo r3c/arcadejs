@@ -94,7 +94,7 @@ interface Model {
 }
 
 interface Pipeline {
-	process(target: Target, scene: Scene): void,
+	process(target: Target, transform: Transform, scene: Scene): void,
 	resize(width: number, height: number): void
 }
 
@@ -114,9 +114,7 @@ interface Scene {
 	ambientLightColor?: vector.Vector3,
 	directionalLights?: DirectionalLight[],
 	pointLights?: PointLight[],
-	projectionMatrix: matrix.Matrix4,
-	subjects: Subject[],
-	viewMatrix: matrix.Matrix4
+	subjects: Subject[]
 }
 
 interface Subject {
@@ -134,6 +132,11 @@ interface TextureBinding<T> {
 	getter: (source: T) => WebGLTexture | undefined,
 	location: WebGLUniformLocation,
 	name: string
+}
+
+interface Transform {
+	projectionMatrix: matrix.Matrix4,
+	viewMatrix: matrix.Matrix4
 }
 
 type UniformBinding<T> = (gl: WebGLRenderingContext, source: T) => void;
@@ -786,4 +789,4 @@ class Target {
 	}
 }
 
-export { DirectionalLight, Directive, Format, Geometry, Mesh, Model, PointLight, Pipeline, Scene, Shader, Subject, Target, loadModel }
+export { DirectionalLight, Directive, Format, Geometry, Mesh, Model, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadModel }

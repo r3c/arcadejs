@@ -113,11 +113,14 @@ const render = (state: SceneState) => {
 	const pipelines = state.pipelines;
 	const target = state.target;
 
-	const cameraView = matrix.Matrix4
-		.createIdentity()
-		.translate(camera.position)
-		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+	const transform = {
+		projectionMatrix: state.projectionMatrix,
+		viewMatrix: matrix.Matrix4
+			.createIdentity()
+			.translate(camera.position)
+			.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+			.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y)
+	};
 
 	// Clear screen
 	target.clear();
@@ -125,15 +128,13 @@ const render = (state: SceneState) => {
 	// Basic pass: draw light bulbs
 	const basicPipeline = pipelines.basic;
 	const basicScene = {
-		projectionMatrix: state.projectionMatrix,
 		subjects: state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
 			matrix: matrix.Matrix4.createIdentity().translate(position),
 			model: models.light
-		})),
-		viewMatrix: cameraView
+		}))
 	};
 
-	pipelines.basic.process(target, basicScene);
+	pipelines.basic.process(target, transform, basicScene);
 
 	// Light pass: draw subjects
 	const lightPipeline = pipelines.lights[bitfield.index(getOptions(state.tweak))];
@@ -144,18 +145,16 @@ const render = (state: SceneState) => {
 			position: position,
 			radius: 0
 		})),
-		projectionMatrix: state.projectionMatrix,
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity(),
 			model: models.cube
 		}, {
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
 			model: models.ground
-		}],
-		viewMatrix: cameraView
+		}]
 	};
 
-	lightPipeline.process(target, lightScene);
+	lightPipeline.process(target, transform, lightScene);
 };
 
 const resize = (state: SceneState, screen: display.WebGLScreen) => {

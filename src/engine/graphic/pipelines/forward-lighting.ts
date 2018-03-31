@@ -499,7 +499,7 @@ class Pipeline implements webgl.Pipeline {
 		this.shadowTargets = targets;
 	}
 
-	public process(target: webgl.Target, scene: webgl.Scene) {
+	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
 		const directionalLights = scene.directionalLights || [];
 		const gl = this.gl;
 		const pointLights = scene.pointLights || [];
@@ -554,9 +554,9 @@ class Pipeline implements webgl.Pipeline {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			directionalLights: directionalLightStates,
 			pointLights: pointLights,
-			projectionMatrix: scene.projectionMatrix,
+			projectionMatrix: transform.projectionMatrix,
 			shadowProjectionMatrix: this.shadowProjectionMatrix,
-			viewMatrix: scene.viewMatrix
+			viewMatrix: transform.viewMatrix
 		});
 	}
 
