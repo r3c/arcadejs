@@ -1,12 +1,11 @@
 import * as application from "../engine/application";
 import * as bitfield from "./shared/bitfield";
 import * as color from "./shared/color";
-import * as controller from "../engine/controller";
+import * as controller from "../engine/io/controller";
 import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
 import * as deferredLighting from "../engine/graphic/pipelines/deferred-lighting";
 import * as display from "../engine/display";
 import * as functional from "../engine/language/functional";
-import * as io from "../engine/io";
 import * as matrix from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as move from "./shared/move";

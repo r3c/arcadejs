@@ -1,6 +1,6 @@
-import * as io from "../../io";
 import * as mesh from "../mesh";
 import * as path from "../../fs/path";
+import * as stream from "../../io/stream";
 import * as vector from "../../math/vector";
 
 /*
@@ -33,7 +33,7 @@ const invalidLine = (file: string, line: number, description: string) => {
 };
 
 const load = async (url: string) => {
-	const data = await io.readURL(io.StringFormat, url);
+	const data = await stream.readURL(stream.StringFormat, url);
 
 	return loadObject(data, url);
 };
@@ -159,8 +159,8 @@ const loadObject = async (data: string, fileName: string) => {
 				const directory = path.directory(fileName);
 				const library = path.combine(directory, fields[1]);
 
-				await io
-					.readURL(io.StringFormat, library)
+				await stream
+					.readURL(stream.StringFormat, library)
 					.then(data => loadMaterial(materials, data, library));
 
 				break;

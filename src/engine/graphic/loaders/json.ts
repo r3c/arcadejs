@@ -1,6 +1,6 @@
-import * as io from "../../io";
 import * as mesh from "../mesh";
 import * as path from "../../fs/path";
+import * as stream from "../../io/stream";
 import * as vector from "../../math/vector";
 
 const load = async (urlOrData: any) => {
@@ -11,7 +11,7 @@ const load = async (urlOrData: any) => {
 		const url = <string>urlOrData;
 
 		directory = path.directory(url);
-		root = await io.readURL(io.JSONFormat, url);
+		root = await stream.readURL(stream.JSONFormat, url);
 	}
 	else if (typeof urlOrData === "object") {
 		directory = "";

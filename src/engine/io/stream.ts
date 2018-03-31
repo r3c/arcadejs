@@ -1,13 +1,12 @@
+const enum Endian {
+	Big,
+	Little
+}
 
 interface FormatConstructor<T> {
 	new(request: XMLHttpRequest): T;
 
 	readonly responseType: XMLHttpRequestResponseType;
-}
-
-enum Endian {
-	Big,
-	Little
 }
 
 class Format<T> {

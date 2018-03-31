@@ -1,5 +1,4 @@
 import * as functional from "../language/functional";
-import * as io from "../io";
 import * as json from "./loaders/json";
 import * as matrix from "../math/matrix";
 import * as mesh from "./mesh";

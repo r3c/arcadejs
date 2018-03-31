@@ -1,6 +1,6 @@
-import * as io from "../../io";
 import * as mesh from "../mesh";
 import * as path from "../../fs/path";
+import * as stream from "../../io/stream";
 import * as vector from "../../math/vector";
 
 /*
@@ -12,7 +12,7 @@ import * as vector from "../../math/vector";
 interface Context {
 	directory: string,
 	file: string,
-	reader: io.BinaryReader
+	reader: stream.BinaryReader
 }
 
 interface Model {
@@ -28,7 +28,7 @@ const load = async (url: string) => {
 	const context = {
 		directory: path.directory(url),
 		file: url,
-		reader: new io.BinaryReader(await io.readURL(io.BinaryFormat, url), io.Endian.Little)
+		reader: new stream.BinaryReader(await stream.readURL(stream.BinaryFormat, url), stream.Endian.Little)
 	};
 
 	return scan(context, context.reader.getLength(), readRoot, {

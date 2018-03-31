@@ -1,4 +1,4 @@
-import * as controller from "../../engine/controller";
+import * as controller from "../../engine/io/controller";
 import * as vector from "../../engine/math/vector";
 
 const ease = (from: vector.Vector3, to: vector.Vector3, speed: number) => {

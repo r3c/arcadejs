@@ -1,7 +1,7 @@
 import * as application from "../engine/application";
 import * as basic from "../engine/graphic/pipelines/basic";
 import * as bitfield from "./shared/bitfield";
-import * as controller from "../engine/controller";
+import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../engine/language/functional";
