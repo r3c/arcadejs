@@ -499,7 +499,7 @@ class Pipeline implements webgl.Pipeline<State> {
 		this.shadowTargets = targets;
 	}
 
-	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const directionalLights = scene.directionalLights || [];
 		const gl = this.gl;
 		const pointLights = scene.pointLights || [];

@@ -1,10 +1,10 @@
+import * as functional from "../../language/functional";
 import * as matrix from "../../math/matrix";
+import * as quad from "./resources/quad";
 import * as webgl from "../webgl";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
 
 in vec2 coords;
 in vec3 points;
@@ -14,7 +14,7 @@ out vec2 coord;
 void main(void) {
 	coord = coords;
 
-	gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(points, 1.0);
+	gl_Position = modelMatrix * vec4(points, 1.0);
 }`;
 
 const fragmentSource = `
@@ -95,6 +95,7 @@ void main(void) {
 }`;
 
 interface Configuration {
+	scale?: number,
 	zFar: number,
 	zNear: number
 }
@@ -123,8 +124,6 @@ enum Select {
 
 interface State {
 	format: Format,
-	projectionMatrix: matrix.Matrix4,
-	viewMatrix: matrix.Matrix4,
 	select: Select,
 	source: WebGLTexture
 }
@@ -145,22 +144,24 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindTexturePerTarget("source", state => state.source);
 
 	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
 	return shader;
 };
 
 class Pipeline implements webgl.Pipeline<State> {
 	private readonly gl: WebGLRenderingContext;
+	private readonly quad: webgl.Model;
+	private readonly scale: number;
 	private readonly shader: webgl.Shader<State>;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		this.gl = gl;
+		this.quad = webgl.loadModel(gl, quad.model);
+		this.scale = functional.coalesce(configuration.scale, 0.4);
 		this.shader = load(gl, configuration);
 	}
 
-	public render(target: webgl.Target, scene: webgl.Scene, state: State) {
+	public process(target: webgl.Target, scene: webgl.Scene, state: State) {
 		const gl = this.gl;
 
 		gl.disable(gl.BLEND);
@@ -169,7 +170,15 @@ class Pipeline implements webgl.Pipeline<State> {
 		gl.enable(gl.CULL_FACE);
 		gl.cullFace(gl.BACK);
 
-		target.draw(this.shader, scene.subjects, state);
+		const subjects = [{
+			matrix: matrix.Matrix4
+				.createIdentity()
+				.translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 })
+				.scale({ x: this.scale, y: this.scale, z: 0 }),
+			model: this.quad
+		}];
+
+		target.draw(this.shader, subjects, state);
 	}
 
 	public resize(width: number, height: number) {

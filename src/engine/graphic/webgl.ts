@@ -93,7 +93,7 @@ interface Model {
 }
 
 interface Pipeline<State> {
-	render(target: Target, scene: Scene, state: State): void,
+	process(target: Target, scene: Scene, state: State): void,
 	resize(width: number, height: number): void
 }
 
