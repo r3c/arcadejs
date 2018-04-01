@@ -2,6 +2,7 @@
   "name": "arcade",
   "version": "1.0.0",
   "description": "Arcade.js Library",
+  "repository": "github:r3c/arcadejs",
   "license": "MIT",
   "dependencies": {
     "argparse": "^1.0.10",
