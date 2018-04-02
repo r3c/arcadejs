@@ -17,11 +17,11 @@ class Format<T> {
 	}
 }
 
-class BinaryFormat extends Format<Uint8Array> {
+class BinaryFormat extends Format<ArrayBuffer> {
 	public static readonly responseType = "arraybuffer";
 
 	public constructor(request: XMLHttpRequest) {
-		super(new Uint8Array(request.response));
+		super(request.response);
 	}
 }
 
@@ -42,19 +42,19 @@ class StringFormat extends Format<string> {
 }
 
 class BinaryReader {
-	private readonly buffer: Uint8Array;
-	private readonly endian: Endian;
+	private readonly little: boolean;
+	private readonly view: DataView;
 
 	private offset: number;
 
-	public constructor(buffer: Uint8Array, endian: Endian) {
-		this.buffer = buffer;
-		this.endian = endian;
+	public constructor(buffer: ArrayBuffer, endian: Endian, offset?: number, length?: number) {
+		this.little = endian === Endian.Little;
 		this.offset = 0;
+		this.view = new DataView(buffer, offset, length);
 	}
 
 	public getLength() {
-		return this.buffer.byteLength;
+		return this.view.byteLength;
 	}
 
 	public getOffset() {
@@ -62,57 +62,19 @@ class BinaryReader {
 	}
 
 	public readFloat32() {
-		let b1: number;
-		let b2: number;
-		let b3: number;
-		let b4: number;
-
-		if (this.endian === Endian.Big) {
-			b1 = this.readInt8u();
-			b2 = this.readInt8u();
-			b3 = this.readInt8u();
-			b4 = this.readInt8u();
-		}
-		else {
-			b4 = this.readInt8u();
-			b3 = this.readInt8u();
-			b2 = this.readInt8u();
-			b1 = this.readInt8u();
-		}
-
-		const exponent = ((b1 << 1) & 0xFF) | (b2 >> 7);
-		const sign = ((b2 & 0x7F) << 16) | (b3 << 8) | b4;
-
-		if (exponent === 0 && sign === 0)
-			return 0.0;
-		else if (exponent === 255)
-			return sign == 0 ? Infinity : NaN;
-
-		return (1 - 2 * (b1 >> 7)) * (1 + sign * Math.pow(2, -23)) * Math.pow(2, exponent - 127);
+		return this.view.getFloat32(this.skip(4), this.little);
 	}
 
 	public readInt8u() {
-		return this.buffer[this.offset++];
+		return this.view.getUint8(this.skip(1));
 	}
 
 	public readInt16u() {
-		const b1 = this.readInt8u();
-		const b2 = this.readInt8u();
-
-		return this.endian === Endian.Big
-			? b1 * 256 + b2
-			: b1 + b2 * 256;
+		return this.view.getUint16(this.skip(2), this.little);
 	}
 
 	public readInt32u() {
-		const b1 = this.readInt8u();
-		const b2 = this.readInt8u();
-		const b3 = this.readInt8u();
-		const b4 = this.readInt8u();
-
-		return this.endian === Endian.Big
-			? b1 * 16777216 + b2 * 65536 + b3 * 256 + b4
-			: b1 + b2 * 256 + b3 * 65536 + b4 * 16777216;
+		return this.view.getUint32(this.skip(4), this.little);
 	}
 
 	public readStringZero() {
@@ -129,7 +91,11 @@ class BinaryReader {
 	}
 
 	public skip(count: number) {
+		const current = this.offset;
+
 		this.offset += Math.max(count, 0);
+
+		return current;
 	}
 }
 
