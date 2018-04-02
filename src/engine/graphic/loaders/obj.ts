@@ -114,12 +114,12 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 };
 
 const loadObject = async (data: string, fileName: string) => {
-	const coords = new Array<vector.Vector2>();
+	const coords: vector.Vector2[] = [];
 	const groups: WavefrontOBJGroup[] = [];
 	const materials: { [name: string]: mesh.Material } = {};
 	const meshes: mesh.Mesh[] = [];
-	const normals = new Array<vector.Vector3>();
-	const points = new Array<vector.Vector3>();
+	const normals: vector.Vector3[] = [];
+	const points: vector.Vector3[] = [];
 
 	let mustStartNew = true;
 	let mustUseMaterial: string | undefined = undefined;
@@ -203,13 +203,10 @@ const loadObject = async (data: string, fileName: string) => {
 	// Convert groups into meshes by transforming multi-component face indices into scalar batch indices
 	for (const group of groups) {
 		const batches: WavefrontOBJBatchMap = {};
-		const mesh: mesh.Mesh = {
-			coords: coords.length > 0 ? [] : undefined,
-			triangles: [],
-			materialName: group.materialName,
-			normals: normals.length > 0 ? [] : undefined,
-			points: []
-		};
+		const groupCoords: number[] = [];
+		const groupIndices: number[] = [];
+		const groupNormals: number[] = [];
+		const groupPoints: number[] = [];
 
 		// Convert faces into triangles, a face with N vertices defines N-2 triangles with
 		// vertices [0, i + 1, i + 2] for 0 <= i < N - 2 (equivalent to gl.TRIANGLE_FAN mode)
@@ -222,42 +219,51 @@ const loadObject = async (data: string, fileName: string) => {
 					const key = vertex.point + '/' + vertex.coord + '/' + vertex.normal;
 
 					if (batches[key] === undefined) {
-						batches[key] = mesh.points.length;
+						batches[key] = points.length;
 
-						if (mesh.coords !== undefined) {
+						if (coords.length > 0) {
 							if (vertex.coord === undefined)
 								throw invalidFile(fileName, "faces must include texture coordinate index if file specify them");
 
 							if (vertex.coord < 0 || vertex.coord >= coords.length)
 								throw invalidFile(fileName, `invalid texture coordinate index ${vertex.coord}`);
 
-							mesh.coords.push(coords[vertex.coord]);
+							groupCoords.push(coords[vertex.coord].x);
+							groupCoords.push(coords[vertex.coord].y);
 						}
 
-						if (mesh.normals !== undefined) {
+						if (normals.length > 0) {
 							if (vertex.normal === undefined)
 								throw invalidFile(fileName, "faces must include normal index if file specify them");
 
 							if (vertex.normal < 0 || vertex.normal >= normals.length)
 								throw invalidFile(fileName, `invalid normal index ${vertex.normal}`);
 
-							mesh.normals.push(normals[vertex.normal]);
+							groupNormals.push(normals[vertex.normal].x);
+							groupNormals.push(normals[vertex.normal].y);
+							groupNormals.push(normals[vertex.normal].z);
 						}
 
 						if (vertex.point < 0 || vertex.point >= points.length)
 							throw invalidFile(fileName, `invalid vertex index ${vertex.point}`);
 
-						mesh.points.push(points[vertex.point]);
+						groupPoints.push(points[vertex.point].x);
+						groupPoints.push(points[vertex.point].y);
+						groupPoints.push(points[vertex.point].z);
 					}
 
-					indices[i] = batches[key];
+					groupIndices.push(batches[key]);
 				}
-
-				mesh.triangles.push(indices);
 			}
 		}
 
-		meshes.push(mesh);
+		meshes.push({
+			coords: undefined,
+			indices: new Uint32Array(groupIndices),
+			materialName: group.materialName,
+			normals: undefined,
+			points: new Float32Array(groupPoints)
+		});
 	}
 
 	return {

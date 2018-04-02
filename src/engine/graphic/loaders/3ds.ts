@@ -15,6 +15,13 @@ interface Context {
 	reader: stream.BinaryReader
 }
 
+interface Mesh {
+	coords: number[],
+	indices: number[],
+	materialName: string | undefined,
+	points: number[]
+}
+
 interface Model {
 	materials: { [name: string]: mesh.Material },
 	meshes: mesh.Mesh[]
@@ -68,8 +75,14 @@ const readEdit = async (context: Context, end: number, chunk: number, state: Mod
 
 			const meshes = await scan(context, end, readObject, []);
 
-			for (const mesh of meshes)
-				state.meshes.push(mesh);
+			for (const mesh of meshes) {
+				state.meshes.push({
+					coords: mesh.coords.length > 0 ? new Float32Array(mesh.coords) : undefined,
+					indices: new Uint32Array(mesh.indices),
+					materialName: mesh.materialName,
+					points: new Float32Array(mesh.points)
+				});
+			}
 
 			return state;
 
@@ -146,12 +159,14 @@ const readMaterialMap = async (context: Context, end: number, chunk: number, sta
 	return state;
 };
 
-const readObject = async (context: Context, end: number, chunk: number, state: mesh.Mesh[]) => {
+const readObject = async (context: Context, end: number, chunk: number, state: Mesh[]) => {
 	switch (chunk) {
 		case 0x4100: // OBJ_TRIMESH
 			const mesh = await scan(context, end, readPolygon, {
-				points: [],
-				triangles: []
+				coords: [],
+				indices: [],
+				materialName: undefined,
+				points: []
 			});
 
 			state.push(mesh);
@@ -174,26 +189,22 @@ const readPercent = async (context: Context, end: number, chunk: number, state: 
 	return state;
 };
 
-const readPolygon = async (context: Context, end: number, chunk: number, state: mesh.Mesh) => {
+const readPolygon = async (context: Context, end: number, chunk: number, state: Mesh) => {
 	switch (chunk) {
 		case 0x4110: // TRI_VERTEXL
 			for (let count = context.reader.readInt16u(); count > 0; --count) {
-				state.points.push({
-					x: context.reader.readFloat32(),
-					y: context.reader.readFloat32(),
-					z: context.reader.readFloat32()
-				});
+				state.points.push(context.reader.readFloat32());
+				state.points.push(context.reader.readFloat32());
+				state.points.push(context.reader.readFloat32());
 			}
 
 			return state;
 
 		case 0x4120: // TRI_FACEL1
 			for (let count = context.reader.readInt16u(); count > 0; --count) {
-				state.triangles.push([
-					context.reader.readInt16u(),
-					context.reader.readInt16u(),
-					context.reader.readInt16u()
-				]);
+				state.indices.push(context.reader.readInt16u());
+				state.indices.push(context.reader.readInt16u());
+				state.indices.push(context.reader.readInt16u());
 
 				context.reader.readInt16u(); // Face info
 			}
@@ -203,14 +214,9 @@ const readPolygon = async (context: Context, end: number, chunk: number, state: 
 			return state;
 
 		case 0x4140: // TRI_MAPPINGCOORS
-			if (state.coords === undefined)
-				state.coords = [];
-
 			for (let count = context.reader.readInt16u(); count > 0; --count) {
-				state.coords.push({
-					x: context.reader.readFloat32(),
-					y: 1.0 - context.reader.readFloat32()
-				});
+				state.coords.push(context.reader.readFloat32());
+				state.coords.push(1.0 - context.reader.readFloat32());
 			}
 
 			return state;

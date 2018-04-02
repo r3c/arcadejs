@@ -1,6 +1,7 @@
 import * as display from "../display";
 import * as functional from "../language/functional";
 import * as matrix from "../math/matrix";
+import * as mesh from "../graphic/mesh";
 import * as model from "../graphic/model";
 import * as vector from "../math/vector";
 
@@ -14,19 +15,6 @@ interface Image {
 	depths: Float32Array,
 	height: number,
 	width: number
-}
-
-interface Material {
-	albedoMap?: ImageData
-}
-
-interface Mesh {
-	colors: vector.Vector4[] | undefined,
-	coords: vector.Vector2[] | undefined,
-	material: Material,
-	normals: vector.Vector3[] | undefined,
-	points: vector.Vector3[],
-	triangles: [number, number, number][]
 }
 
 interface Vertex {
@@ -67,7 +55,7 @@ const lerpVector4 = (min: vector.Vector4, max: vector.Vector4, ratio: number) =>
 	}
 };
 
-const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, material: Material) => {
+const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, material: mesh.Material | undefined) => {
 	if (y < 0 || y >= image.height)
 		return;
 
@@ -110,20 +98,31 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 		const color = lerpVector4(begin.color, end.color, ratio);
 		const colorIndex = depthIndex * 4;
 
-		// Ambient map
-		if (material.albedoMap !== undefined) {
-			const coord = lerpVector2(begin.coord, end.coord, ratio);
-			const image = material.albedoMap;
+		// Apply material properties
+		if (material !== undefined) {
+			// Albedo color
+			if (material.albedoColor !== undefined) {
+				color.x *= material.albedoColor.x;
+				color.y *= material.albedoColor.y;
+				color.z *= material.albedoColor.z;
+				color.w *= material.albedoColor.w;
+			}
 
-			const x = ~~(coord.x * image.width) % image.width;
-			const y = ~~(coord.y * image.height) % image.height;
+			// Albedo map
+			if (material.albedoMap !== undefined) {
+				const coord = lerpVector2(begin.coord, end.coord, ratio);
+				const image = material.albedoMap;
 
-			const coordIndex = (x + y * image.width) * 4;
+				const x = ~~(coord.x * image.width) % image.width;
+				const y = ~~(coord.y * image.height) % image.height;
 
-			color.x *= image.data[coordIndex + 0] / 255;
-			color.y *= image.data[coordIndex + 1] / 255;
-			color.z *= image.data[coordIndex + 2] / 255;
-			color.w *= image.data[coordIndex + 3] / 255;
+				const coordIndex = (x + y * image.width) * 4;
+
+				color.x *= image.data[coordIndex + 0] / 255;
+				color.y *= image.data[coordIndex + 1] / 255;
+				color.z *= image.data[coordIndex + 2] / 255;
+				color.w *= image.data[coordIndex + 3] / 255;
+			}
 		}
 
 		// Set pixels
@@ -137,7 +136,7 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 /*
 ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
 */
-const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material: Material) => {
+const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material: mesh.Material | undefined) => {
 	// Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
 	if (v1.point.y > v2.point.y)
 		[v1, v2] = [v2, v1];
@@ -273,7 +272,7 @@ class Renderer {
 		screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 	}
 
-	public draw(meshes: Mesh[], projection: matrix.Matrix4, modelView: matrix.Matrix4, drawMode: DrawMode) {
+	public draw(model: model.Model, projection: matrix.Matrix4, modelView: matrix.Matrix4, drawMode: DrawMode) {
 		const screen = this.screen;
 		const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
@@ -288,63 +287,37 @@ class Renderer {
 
 		const halfWidth = screen.getWidth() * 0.5;
 		const halfHeight = screen.getHeight() * 0.5;
-
 		const modelViewProjection = projection.compose(modelView);
 
 		const triangle = drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
+		const vertices: Vertex[] = [];
 
-		for (const mesh of meshes) {
+		let index = 0;
+
+		for (const mesh of model.meshes) {
 			const colors = mesh.colors || [];
 			const coords = mesh.coords || [];
-			const faces = mesh.triangles;
-			const material = mesh.material;
-			const positions = mesh.points;
+			const indices = mesh.indices;
+			const material = model.materials !== undefined && mesh.materialName !== undefined ? model.materials[mesh.materialName] : undefined;
+			const points = mesh.points;
 
-			for (const [i, j, k] of faces) {
-				const vertex1 = {
-					color: colors[i] || defaultColor,
-					coord: coords[i] || defaultCoord,
-					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[i])
+			indices.forEach(i => {
+				vertices[index++] = {
+					color: { x: colors[i * 4 + 0], y: colors[i * 4 + 1], z: colors[i * 4 + 2], w: colors[i * 4 + 3] } || defaultColor,
+					coord: { x: coords[i * 2 + 0], y: coords[i * 2 + 1] } || defaultCoord,
+					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, { x: points[i * 3 + 0], y: points[i * 3 + 1], z: points[i * 3 + 2] })
 				};
 
-				const vertex2 = {
-					color: colors[j] || defaultColor,
-					coord: coords[j] || defaultCoord,
-					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[j])
-				};
+				if (index >= 3) {
+					triangle(image, vertices[0], vertices[1], vertices[2], material);
 
-				const vertex3 = {
-					color: colors[k] || defaultColor,
-					coord: coords[k] || defaultCoord,
-					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, positions[k])
-				};
-
-				triangle(image, vertex1, vertex2, vertex3, material);
-			}
+					index = 0;
+				}
+			});
 		}
 
 		screen.context.putImageData(capture, 0, 0);
 	}
-
-	public load(model: model.Model) {
-		const materials = model.materials || {};
-		const meshes: Mesh[] = [];
-
-		for (const mesh of model.meshes) {
-			const name = mesh.materialName;
-
-			meshes.push({
-				colors: mesh.colors,
-				coords: mesh.coords,
-				material: name !== undefined ? functional.coalesce(materials[name], {}) : {},
-				normals: mesh.normals,
-				points: mesh.points,
-				triangles: mesh.triangles
-			})
-		}
-
-		return meshes;
-	}
 }
 
-export { DrawMode, Mesh, Renderer };
+export { DrawMode, Renderer };

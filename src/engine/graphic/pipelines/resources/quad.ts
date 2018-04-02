@@ -1,24 +1,22 @@
-const triangles: [number, number, number][] = [
-	[0, 1, 2],
-	[0, 2, 3]
-];
-
 const model = {
-	"meshes": [
+	meshes: [
 		{
-			"coords": [
-				{ x: 0.0, y: 0.0 },
-				{ x: 1.0, y: 0.0 },
-				{ x: 1.0, y: 1.0 },
-				{ x: 0.0, y: 1.0 }
-			],
-			"points": [
-				{ x: -1.0, y: -1.0, z: 0.0 },
-				{ x: 1.0, y: -1.0, z: 0.0 },
-				{ x: 1.0, y: 1.0, z: 0.0 },
-				{ x: -1.0, y: 1.0, z: 0.0 }
-			],
-			"triangles": triangles
+			coords: new Float32Array([
+				0.0, 0.0,
+				1.0, 0.0,
+				1.0, 1.0,
+				0.0, 1.0
+			]),
+			indices: new Uint32Array([
+				0, 1, 2,
+				0, 2, 3
+			]),
+			points: new Float32Array([
+				-1.0, -1.0, 0.0,
+				1.0, -1.0, 0.0,
+				1.0, 1.0, 0.0,
+				-1.0, 1.0, 0.0
+			])
 		}
 	]
 };

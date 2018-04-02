@@ -422,7 +422,7 @@ const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | nul
 	return texture;
 };
 
-const createBuffer = (gl: WebGLRenderingContext, target: number, values: Float32Array | Uint16Array) => {
+const createBuffer = (gl: WebGLRenderingContext, target: number, values: Float32Array | Uint32Array) => {
 	const buffer = gl.createBuffer();
 
 	if (buffer === null)
@@ -464,7 +464,6 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 	const definitions = model.materials || {};
 	const meshes: { [name: string]: Mesh } = {};
 
-	const toArrayBuffer = <T>(constructor: { new(items: number[]): Float32Array | Uint16Array }, converter: (input: T) => number[], target: number) => (array: T[]) => createBuffer(gl, target, new constructor(functional.flatten(array.map(converter))));
 	const toIndices = (indices: [number, number, number]) => indices;
 
 	for (const mesh of model.meshes) {
@@ -499,13 +498,13 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 		}
 
 		geometries.push({
-			colors: functional.map(mesh.colors, toArrayBuffer(Float32Array, vector.Vector4.toArray, gl.ARRAY_BUFFER)),
-			coords: functional.map(mesh.coords, toArrayBuffer(Float32Array, vector.Vector2.toArray, gl.ARRAY_BUFFER)),
-			count: mesh.triangles.length * 3,
-			indices: toArrayBuffer(Uint16Array, toIndices, gl.ELEMENT_ARRAY_BUFFER)(mesh.triangles),
-			normals: functional.map(mesh.normals, toArrayBuffer(Float32Array, vector.Vector3.toArray, gl.ARRAY_BUFFER)),
-			points: toArrayBuffer(Float32Array, vector.Vector3.toArray, gl.ARRAY_BUFFER)(mesh.points),
-			tangents: functional.map(mesh.tangents, toArrayBuffer(Float32Array, vector.Vector3.toArray, gl.ARRAY_BUFFER))
+			colors: functional.map(mesh.colors, colors => createBuffer(gl, gl.ARRAY_BUFFER, colors)),
+			coords: functional.map(mesh.coords, coords => createBuffer(gl, gl.ARRAY_BUFFER, coords)),
+			count: mesh.indices.length,
+			indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, mesh.indices),
+			normals: functional.map(mesh.normals, normals => createBuffer(gl, gl.ARRAY_BUFFER, normals)),
+			points: createBuffer(gl, gl.ARRAY_BUFFER, mesh.points),
+			tangents: functional.map(mesh.tangents, tangents => createBuffer(gl, gl.ARRAY_BUFFER, tangents))
 		});
 	}
 
@@ -639,7 +638,7 @@ class Target {
 
 					// Perform draw call
 					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geometry.indices);
-					gl.drawElements(gl.TRIANGLES, geometry.count, gl.UNSIGNED_SHORT, 0);
+					gl.drawElements(gl.TRIANGLES, geometry.count, gl.UNSIGNED_INT, 0);
 				}
 			}
 		}

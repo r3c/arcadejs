@@ -19,13 +19,13 @@ interface Material {
 }
 
 interface Mesh {
-	colors?: vector.Vector4[],
-	coords?: vector.Vector2[],
+	colors?: Float32Array,
+	coords?: Float32Array,
+	indices: Uint32Array
 	materialName?: string,
-	normals?: vector.Vector3[],
-	points: vector.Vector3[],
-	tangents?: vector.Vector3[],
-	triangles: [number, number, number][]
+	normals?: Float32Array,
+	points: Float32Array,
+	tangents?: Float32Array,
 }
 
 const channelIndices: { [name: string]: number } = {

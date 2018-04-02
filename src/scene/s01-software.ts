@@ -21,8 +21,8 @@ interface Configuration {
 
 interface State {
 	camera: view.Camera,
-	cubeWithColor: software.Mesh[],
-	cubeWithTexture: software.Mesh[],
+	cubeWithColor: model.Model,
+	cubeWithTexture: model.Model,
 	input: controller.Input,
 	projection: matrix.Matrix4,
 	renderer: software.Renderer,
@@ -38,8 +38,8 @@ const prepare = () => application.runtime(display.Context2DScreen, configuration
 
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
-		cubeWithColor: renderer.load(await model.fromJSON("./obj/cube-color.json")),
-		cubeWithTexture: renderer.load(await model.fromJSON("./obj/cube/model.json")),
+		cubeWithColor: await model.fromJSON("./obj/cube-color.json"),
+		cubeWithTexture: await model.fromJSON("./obj/cube/model.json"),
 		input: input,
 		projection: matrix.Matrix4.createIdentity(),
 		renderer: renderer,
