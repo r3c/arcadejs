@@ -1,3 +1,4 @@
+import * as functional from "../../language/functional";
 import * as mesh from "../mesh";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
@@ -121,12 +122,18 @@ const toMesh = (name: string, instance: any): mesh.Mesh => {
 		throw invalid(name, instance, "mesh");
 
 	return {
-		colors: instance.colors !== undefined ? toArrayOf(`${name}.colors`, instance.colors, toColor) : undefined,
-		coords: instance.coords !== undefined ? toArrayOf(`${name}.coords`, instance.coords, toCoord) : undefined,
-		triangles: toArrayOf(`${name}.triangles`, instance.triangles, (name, item) => toTuple3(name, item, toInteger)),
+		colors: instance.colors !== undefined
+			? new Float32Array(functional.flatten(toArrayOf(`${name}.colors`, instance.colors, toColor).map(vector.Vector4.toArray)))
+			: undefined,
+		coords: instance.coords !== undefined
+			? new Float32Array(functional.flatten(toArrayOf(`${name}.coords`, instance.coords, toCoord).map(vector.Vector2.toArray)))
+			: undefined,
+		indices: new Uint32Array(functional.flatten(toArrayOf(`${name}.faces`, instance.faces, (name, item) => toTuple3(name, item, toInteger)))),
 		materialName: instance.materialName !== undefined ? toString(`${name}.materialName`, instance.materialName) : undefined,
-		normals: instance.normals !== undefined ? toArrayOf(`${name}.normals`, instance.normals, toVertex) : undefined,
-		points: toArrayOf(`${name}.points`, instance.points, toVertex)
+		normals: instance.normals !== undefined
+			? new Float32Array(functional.flatten(toArrayOf(`${name}.normals`, instance.normals, toVertex).map(vector.Vector3.toArray)))
+			: undefined,
+		points: new Float32Array(functional.flatten(toArrayOf(`${name}.points`, instance.points, toVertex).map(vector.Vector3.toArray)))
 	};
 };
 
