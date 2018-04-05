@@ -1,4 +1,5 @@
-import * as mesh from "../mesh";
+import * as matrix from "../../math/matrix";
+import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
 import * as vector from "../../math/vector";
@@ -15,16 +16,11 @@ interface Context {
 	reader: stream.BinaryReader
 }
 
-interface Mesh {
+interface RawMesh {
 	coords: number[],
 	indices: number[],
 	materialName: string | undefined,
 	points: number[]
-}
-
-interface Model {
-	materials: { [name: string]: mesh.Material },
-	meshes: mesh.Mesh[]
 }
 
 const invalidChunk = (file: string, chunk: number, description: string) => {
@@ -40,7 +36,11 @@ const load = async (url: string) => {
 
 	return scan(context, context.reader.getLength(), readRoot, {
 		materials: {},
-		meshes: []
+		root: {
+			children: [],
+			geometries: [],
+			transform: matrix.Matrix4.createIdentity()
+		}
 	});
 };
 
@@ -68,7 +68,7 @@ const readColor = async (context: Context, end: number, chunk: number, state: ve
 	return state;
 };
 
-const readEdit = async (context: Context, end: number, chunk: number, state: Model) => {
+const readEdit = async (context: Context, end: number, chunk: number, state: model.Mesh) => {
 	switch (chunk) {
 		case 0x4000: // DIT_OBJECT
 			context.reader.readStringZero(); // Skip object name
@@ -76,7 +76,7 @@ const readEdit = async (context: Context, end: number, chunk: number, state: Mod
 			const meshes = await scan(context, end, readObject, []);
 
 			for (const mesh of meshes) {
-				state.meshes.push({
+				state.root.geometries.push({
 					coords: mesh.coords.length > 0 ? { buffer: new Float32Array(mesh.coords), stride: 2 } : undefined,
 					indices: new Uint32Array(mesh.indices),
 					materialName: mesh.materialName,
@@ -100,7 +100,7 @@ const readEdit = async (context: Context, end: number, chunk: number, state: Mod
 	return state;
 };
 
-const readMain = async (context: Context, end: number, chunk: number, state: Model) => {
+const readMain = async (context: Context, end: number, chunk: number, state: model.Mesh) => {
 	switch (chunk) {
 		case 0x3d3d: // EDIT3DS
 			return scan(context, end, readEdit, state);
@@ -109,7 +109,7 @@ const readMain = async (context: Context, end: number, chunk: number, state: Mod
 	return state;
 };
 
-const readMaterial = async (context: Context, end: number, chunk: number, state: { material: mesh.Material, name: string }) => {
+const readMaterial = async (context: Context, end: number, chunk: number, state: { material: model.Material, name: string }) => {
 	switch (chunk) {
 		case 0xa000: // Material name
 			state.name = context.reader.readStringZero();
@@ -117,12 +117,12 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa020: // Albedo color
-			state.material.albedoColor = await scan(context, end, readColor, mesh.defaultColor);
+			state.material.albedoColor = await scan(context, end, readColor, model.defaultColor);
 
 			break;
 
 		case 0xa030: // Specular color
-			state.material.glossColor = await scan(context, end, readColor, mesh.defaultColor);
+			state.material.glossColor = await scan(context, end, readColor, model.defaultColor);
 
 			break;
 
@@ -153,13 +153,13 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 const readMaterialMap = async (context: Context, end: number, chunk: number, state: ImageData | undefined) => {
 	switch (chunk) {
 		case 0xa300:
-			return mesh.loadImage(path.combine(context.directory, context.reader.readStringZero()));
+			return model.loadImage(path.combine(context.directory, context.reader.readStringZero()));
 	}
 
 	return state;
 };
 
-const readObject = async (context: Context, end: number, chunk: number, state: Mesh[]) => {
+const readObject = async (context: Context, end: number, chunk: number, state: RawMesh[]) => {
 	switch (chunk) {
 		case 0x4100: // OBJ_TRIMESH
 			const mesh = await scan(context, end, readPolygon, {
@@ -189,7 +189,7 @@ const readPercent = async (context: Context, end: number, chunk: number, state: 
 	return state;
 };
 
-const readPolygon = async (context: Context, end: number, chunk: number, state: Mesh) => {
+const readPolygon = async (context: Context, end: number, chunk: number, state: RawMesh) => {
 	switch (chunk) {
 		case 0x4110: // TRI_VERTEXL
 			for (let count = context.reader.readInt16u(); count > 0; --count) {
@@ -238,7 +238,7 @@ const readPolygonMaterial = async (context: Context, end: number, chunk: number,
 	return state;
 };
 
-const readRoot = async (context: Context, end: number, chunk: number, state: Model) => {
+const readRoot = async (context: Context, end: number, chunk: number, state: model.Mesh) => {
 	switch (chunk) {
 		case 0x4d4d: // MAIN3DS
 			return scan(context, end, readMain, state);

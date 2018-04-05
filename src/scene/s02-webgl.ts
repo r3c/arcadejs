@@ -1,8 +1,8 @@
 import * as application from "../engine/application";
 import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
+import * as load from "../engine/graphic/load";
 import * as matrix from "../engine/math/matrix";
-import * as model from "../engine/graphic/model";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
@@ -79,7 +79,7 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		gl: gl,
 		input: input,
-		model: webgl.loadModel(gl, await model.fromJSON("./obj/cube/model.json")),
+		model: webgl.loadModel(gl, await load.fromJSON("./obj/cube/model.json")),
 		projectionMatrix: matrix.Matrix4.createIdentity(),
 		screen: screen,
 		shader: shader,

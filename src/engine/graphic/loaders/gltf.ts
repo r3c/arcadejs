@@ -1,6 +1,6 @@
 import * as functional from "../../language/functional";
 import * as matrix from "../../math/matrix";
-import * as mesh from "../../graphic/mesh";
+import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
 import * as vector from "../../math/vector";
@@ -22,7 +22,7 @@ interface Accessor {
 interface ArrayConstructor {
 	BYTES_PER_ELEMENT: number;
 
-	new(buffer: ArrayBuffer, offset: number, length: number): mesh.Array;
+	new(buffer: ArrayBuffer, offset: number, length: number): model.Array;
 }
 
 interface Buffer {
@@ -58,8 +58,8 @@ interface Mesh {
 
 interface Node {
 	children: Node[],
-	matrix: matrix.Matrix4,
-	mesh: Mesh | undefined
+	mesh: Mesh | undefined,
+	transform: matrix.Matrix4
 }
 
 interface Primitive {
@@ -115,7 +115,7 @@ const convertReferenceTo = <T>(url: string, source: string, reference: any, name
 	return pool[reference];
 };
 
-const expandAccessor = (url: string, accessor: Accessor): mesh.Attribute => {
+const expandAccessor = (url: string, accessor: Accessor): model.Attribute => {
 	const stride = accessor.stride !== undefined
 		? accessor.stride / accessor.arrayConstructor.BYTES_PER_ELEMENT
 		: accessor.componentsPerElement;
@@ -128,14 +128,14 @@ const expandAccessor = (url: string, accessor: Accessor): mesh.Attribute => {
 	};
 };
 
-const expandMaterial = (material: Material): mesh.Material => {
+const expandMaterial = (material: Material): model.Material => {
 	return {
 		albedoColor: material.albedoColor,
 		albedoMap: functional.map(material.albedoMap, texture => texture.image)
 	};
 };
 
-const expandMesh = (url: string, mesh: Mesh): mesh.Mesh[] => {
+const expandMesh = (url: string, mesh: Mesh): model.Geometry[] => {
 	return mesh.primitives.map(primitive => {
 		const indices = expandAccessor(url, primitive.indices);
 
@@ -151,7 +151,7 @@ const expandMesh = (url: string, mesh: Mesh): mesh.Mesh[] => {
 	})
 };
 
-const expandNode = (url: string, node: Node): mesh.Mesh[] => {
+const expandNode = (url: string, node: Node): model.Geometry[] => {
 	const children = functional.flatten(node.children.map(child => expandNode(url, child)))
 	const meshes = functional.coalesce(functional.map(node.mesh, mesh => expandMesh(url, mesh)), []);
 
@@ -284,7 +284,7 @@ const loadBufferView = (url: string, buffers: Buffer[], bufferView: any, index: 
 
 const loadImage = async (url: string, bufferViews: BufferView[], image: any, index: number): Promise<ImageData> => {
 	if (image.uri !== undefined)
-		return await mesh.loadImage(path.combine(path.directory(url), image.uri));
+		return await model.loadImage(path.combine(path.directory(url), image.uri));
 
 	if (image.bufferView !== undefined && image.mimeType !== undefined) {
 		const bufferView = convertReferenceTo(url, `image #${index}`, image.bufferView, "buffer view", bufferViews);
@@ -293,7 +293,7 @@ const loadImage = async (url: string, bufferViews: BufferView[], image: any, ind
 
 		console.log(uri); // FIXME
 
-		return mesh.loadImage(uri);
+		return model.loadImage(uri);
 	}
 
 	throw invalidData(url, `image #${index} specifies no URI nor buffer data`);
@@ -344,8 +344,8 @@ const loadNode = (url: string, meshes: Mesh[], nodes: Node[], siblings: any, nod
 
 		nodes[index] = {
 			children: children,
-			matrix: transform,
-			mesh: functional.map(node.mesh, mesh => convertReferenceTo(url, source, mesh, "mesh", meshes))
+			mesh: functional.map(node.mesh, mesh => convertReferenceTo(url, source, mesh, "mesh", meshes)),
+			transform: transform
 		};
 	}
 
@@ -405,14 +405,18 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 	if (scenes[defaultScene] === undefined)
 		throw invalidData(url, `default scene #${defaultScene} doesn't exist`);
 
-	const materialsMap: { [name: string]: mesh.Material } = {};
+	const materialsMap: { [name: string]: model.Material } = {};
 
 	for (const material of materials)
 		materialsMap[material.name] = expandMaterial(material);
 
 	return {
 		materials: materialsMap,
-		meshes: functional.flatten(scenes[defaultScene].nodes.map(node => expandNode(url, node)))
+		root: {
+			children: [],
+			geometries: functional.flatten(scenes[defaultScene].nodes.map(node => expandNode(url, node))),
+			transform: matrix.Matrix4.createIdentity()
+		}
 	};
 };
 

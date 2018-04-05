@@ -1,7 +1,6 @@
 import * as functional from "../language/functional";
 import * as matrix from "../math/matrix";
-import * as mesh from "./mesh";
-import * as model from "../graphic/model";
+import * as model from "./model";
 import * as vector from "../math/vector";
 
 interface Attachment {
@@ -456,7 +455,7 @@ const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | nul
 	return texture;
 };
 
-const createBuffer = (gl: WebGLRenderingContext, target: number, values: mesh.Array) => {
+const createBuffer = (gl: WebGLRenderingContext, target: number, values: model.Array) => {
 	const buffer = gl.createBuffer();
 
 	if (buffer === null)
@@ -472,7 +471,7 @@ const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with n
 const invalidMaterial = (name: string) => Error(`cannot use unknown material "${name}" on mesh`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
-const loadMaterial = (gl: WebGLRenderingContext, material: mesh.Material, quality: Quality) => {
+const loadMaterial = (gl: WebGLRenderingContext, material: model.Material, quality: Quality) => {
 	const toColorMap = (image: ImageData) => configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, quality, image.data);
 
 	return {
@@ -494,13 +493,13 @@ const loadMaterial = (gl: WebGLRenderingContext, material: mesh.Material, qualit
 	};
 };
 
-const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quality = qualityImage): Model => {
+const loadModel = (gl: WebGLRenderingContext, model: model.Mesh, quality: Quality = qualityImage): Model => {
 	const definitions = model.materials || {};
 	const meshes: { [name: string]: Mesh } = {};
 
 	const toIndices = (indices: [number, number, number]) => indices;
 
-	for (const mesh of model.meshes) {
+	for (const mesh of model.root.geometries) {
 		const materialName = mesh.materialName;
 
 		let geometries: Geometry[];

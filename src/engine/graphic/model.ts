@@ -1,200 +1,127 @@
-import * as functional from "../language/functional";
-import * as gltf from "./loaders/gltf";
-import * as json from "./loaders/json";
 import * as matrix from "../math/matrix";
-import * as mesh from "./mesh";
-import * as obj from "./loaders/obj";
-import * as tds from "./loaders/3ds";
 import * as vector from "../math/vector";
 
-interface Config {
-	transform?: matrix.Matrix4
+type Array = Float32Array | Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array;
+
+interface Attribute {
+	buffer: Array,
+	stride: number
 }
 
-interface Model {
-	materials?: { [key: string]: mesh.Material },
-	meshes: mesh.Mesh[]
+interface Geometry {
+	colors?: Attribute,
+	coords?: Attribute,
+	indices: Array
+	materialName?: string,
+	normals?: Attribute,
+	points: Attribute,
+	tangents?: Attribute,
 }
 
-/*
-** Based on:
-** http://www.iquilezles.org/www/articles/normals/normals.htm
-*/
-const computeNormals = (indices: mesh.Array, points: mesh.Attribute) => {
-	const pointsBuffer = points.buffer;
-	const pointsStride = points.stride;
-	const normals = functional.range(Math.floor(pointsBuffer.length / pointsStride), i => vector.Vector3.zero);
+interface Material {
+	albedoColor?: vector.Vector4,
+	albedoMap?: ImageData,
+	emissiveMap?: ImageData,
+	emissiveStrength?: number,
+	glossColor?: vector.Vector4,
+	glossMap?: ImageData,
+	heightMap?: ImageData,
+	metalnessMap?: ImageData,
+	normalMap?: ImageData,
+	occlusionMap?: ImageData,
+	occlusionStrength?: number,
+	parallaxBias?: number,
+	parallaxScale?: number,
+	roughnessMap?: ImageData,
+	shininess?: number
+}
 
-	for (let i = 0; i + 2 < indices.length; i += 3) {
-		const index1 = indices[i + 0];
-		const index2 = indices[i + 1];
-		const index3 = indices[i + 2];
-		const point1 = { x: pointsBuffer[index1 * pointsStride + 0], y: pointsBuffer[index1 * pointsStride + 1], z: pointsBuffer[index1 * pointsStride + 2] };
-		const point2 = { x: pointsBuffer[index2 * pointsStride + 0], y: pointsBuffer[index2 * pointsStride + 1], z: pointsBuffer[index2 * pointsStride + 2] };
-		const point3 = { x: pointsBuffer[index3 * pointsStride + 0], y: pointsBuffer[index3 * pointsStride + 1], z: pointsBuffer[index3 * pointsStride + 2] };
+interface Mesh {
+	materials: { [key: string]: Material },
+	root: Node
+}
 
-		const normal = vector.Vector3.cross(
-			vector.Vector3.sub(point3, point2),
-			vector.Vector3.sub(point1, point2)
-		);
+interface Node {
+	children: Node[],
+	geometries: Geometry[],
+	transform: matrix.Matrix4
+}
 
-		normals[index1] = vector.Vector3.add(normals[index1], normal);
-		normals[index2] = vector.Vector3.add(normals[index2], normal);
-		normals[index3] = vector.Vector3.add(normals[index3], normal);
-	}
-
-	const normalsBuffer = new Float32Array(normals.length * 3);
-	const normalsStride = 3;
-
-	for (let i = 0; i < normals.length; ++i) {
-		const normal = vector.Vector3.normalize(normals[i]);
-
-		normalsBuffer[i * normalsStride + 0] = normal.x;
-		normalsBuffer[i * normalsStride + 1] = normal.y;
-		normalsBuffer[i * normalsStride + 2] = normal.z;
-	}
-
-	return {
-		buffer: normalsBuffer,
-		stride: normalsStride
-	};
+const channelIndices: { [name: string]: number } = {
+	r: 0,
+	g: 1,
+	b: 2,
+	a: 3
 };
 
-/*
-** Based on:
-** http://fabiensanglard.net/bumpMapping/index.php
-** http://www.terathon.com/code/tangent.html
-*/
-const computeTangents = (indices: mesh.Array, points: mesh.Attribute, coords: mesh.Attribute, normals: mesh.Attribute) => {
-	const coordsBuffer = coords.buffer;
-	const coordsStride = coords.stride;
-	const pointsBuffer = points.buffer;
-	const pointsStride = points.stride;
-	const tangents = functional.range(Math.floor(pointsBuffer.length / pointsStride), i => vector.Vector3.zero);
+const defaultColor = {
+	x: 1,
+	y: 1,
+	z: 1,
+	w: 1
+};
 
-	for (let i = 0; i + 2 < indices.length; i += 3) {
-		const index1 = indices[i + 0];
-		const index2 = indices[i + 1];
-		const index3 = indices[i + 2];
-		const coord1 = { x: coordsBuffer[index1 * coordsStride + 0], y: coordsBuffer[index1 * coordsStride + 1] };
-		const coord2 = { x: coordsBuffer[index2 * coordsStride + 0], y: coordsBuffer[index2 * coordsStride + 1] };
-		const coord3 = { x: coordsBuffer[index3 * coordsStride + 0], y: coordsBuffer[index3 * coordsStride + 1] };
-		const point1 = { x: pointsBuffer[index1 * pointsStride + 0], y: pointsBuffer[index1 * pointsStride + 1], z: pointsBuffer[index1 * pointsStride + 2] };
-		const point2 = { x: pointsBuffer[index2 * pointsStride + 0], y: pointsBuffer[index2 * pointsStride + 1], z: pointsBuffer[index2 * pointsStride + 2] };
-		const point3 = { x: pointsBuffer[index3 * pointsStride + 0], y: pointsBuffer[index3 * pointsStride + 1], z: pointsBuffer[index3 * pointsStride + 2] };
+const loadImage = async (identifier: string) => {
+	const match = /(.*?)(?::([abgr]{1,4}))?$/.exec(identifier);
 
-		const c1 = vector.Vector2.sub(coord3, coord2);
-		const c2 = vector.Vector2.sub(coord1, coord2);
-		const p1 = vector.Vector3.sub(point3, point2);
-		const p2 = vector.Vector3.sub(point1, point2);
+	if (match === null)
+		return Promise.reject(`could not extract path from image identifier "${identifier}"`);
 
-		const coef = 1 / (c1.x * c2.y - c2.x * c1.y);
+	const channels = match[2];
+	const url = match[1];
 
-		const tangent = {
-			x: coef * (p1.x * c2.y - p2.x * c1.y),
-			y: coef * (p1.y * c2.y - p2.y * c1.y),
-			z: coef * (p1.z * c2.y - p2.z * c1.y)
+	// Read source channel indices
+	const indices: number[] = [];
+
+	if (channels) {
+		for (const channel of channels) {
+			const index = channelIndices[channel];
+
+			if (index === undefined)
+				return Promise.reject(`unknown channel "${channel}" in image identifier "${identifier}"`);
+
+			indices.push(index);
+		}
+	}
+
+	// Read image from URL
+	return new Promise<ImageData>((resolve, reject) => {
+		const image = new Image();
+
+		image.onabort = () => reject(`image load aborted on URL "${url}"`);
+		image.onerror = () => reject(`image load failed on URL "${url}"`);
+		image.onload = () => {
+			const canvas = document.createElement("canvas");
+
+			canvas.height = image.height;
+			canvas.width = image.width;
+
+			const context = canvas.getContext("2d");
+
+			if (context === null)
+				return reject(`image loaded failed (cannot get canvas 2d context) on URL "${url}"`);
+
+			context.drawImage(image, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+
+			const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+			if (indices.length > 0) {
+				for (let i = imageData.width * imageData.height; i > 0; --i) {
+					const offset = (i - 1) * 4;
+					const pixel = indices.map(i => imageData.data[offset + i]).concat([0, 0, 0]);
+
+					imageData.data[offset + 0] = pixel[0];
+					imageData.data[offset + 1] = pixel[1];
+					imageData.data[offset + 2] = pixel[2];
+					imageData.data[offset + 3] = pixel[3];
+				}
+			}
+
+			resolve(imageData);
 		};
 
-		tangents[index1] = vector.Vector3.add(tangents[index1], tangent);
-		tangents[index2] = vector.Vector3.add(tangents[index2], tangent);
-		tangents[index3] = vector.Vector3.add(tangents[index3], tangent);
-	}
-
-	const normalsBuffer = normals.buffer;
-	const normalsStride = normals.stride;
-	const tangentsBuffer = new Float32Array(tangents.length * 3);
-	const tangentsStride = 3;
-
-	for (let i = 0; i < tangents.length; ++i) {
-		const n = { x: normalsBuffer[i * normalsStride + 0], y: normalsBuffer[i * normalsStride + 1], z: normalsBuffer[i * normalsStride + 2] };
-		const t = tangents[i];
-
-		// Gram-Schmidt orthogonalize: t' = normalize(t - n * dot(n, t));
-		const tangent = vector.Vector3.normalize(
-			vector.Vector3.sub(t, vector.Vector3.scale(n, vector.Vector3.dot(n, t)))
-		);
-
-		tangentsBuffer[i * tangentsStride + 0] = tangent.x;
-		tangentsBuffer[i * tangentsStride + 1] = tangent.y;
-		tangentsBuffer[i * tangentsStride + 2] = tangent.z;
-	}
-
-	return {
-		buffer: tangentsBuffer,
-		stride: tangentsStride
-	};
+		image.src = url;
+	});
 };
 
-const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config | undefined) => {
-	const config = configOrUndefined || {};
-	const model = await modelPromise;
-
-	for (const mesh of model.meshes) {
-		const transform = config.transform || matrix.Matrix4.createIdentity();
-
-		// Transform points
-		const buffer = mesh.points.buffer;
-		const stride = mesh.points.stride;
-
-		for (let i = 0; i + 2 < buffer.length; i += stride) {
-			const point = transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 1 });
-
-			buffer[i + 0] = point.x;
-			buffer[i + 1] = point.y;
-			buffer[i + 2] = point.z;
-		}
-
-		// Transform normals or compute them from vertices
-		if (mesh.normals !== undefined) {
-			const buffer = mesh.normals.buffer;
-			const stride = mesh.normals.stride;
-
-			for (let i = 0; i + 2 < buffer.length; i += stride) {
-				const normal = vector.Vector3.normalize(transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 0 }));
-
-				buffer[i + 0] = normal.x;
-				buffer[i + 1] = normal.y;
-				buffer[i + 2] = normal.z;
-			}
-		}
-		else
-			mesh.normals = computeNormals(mesh.indices, mesh.points);
-
-		// Transform tangents or compute them from vertices, normals and texture coordinates
-		if (mesh.tangents !== undefined) {
-			const buffer = mesh.tangents.buffer;
-			const stride = mesh.tangents.stride;
-
-			for (let i = 0; i + 2 < buffer.length; i += stride) {
-				const tangent = vector.Vector3.normalize(transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 0 }));
-
-				buffer[i + 0] = tangent.x;
-				buffer[i + 1] = tangent.y;
-				buffer[i + 2] = tangent.z;
-			}
-		}
-		else if (mesh.coords !== undefined)
-			mesh.tangents = computeTangents(mesh.indices, mesh.points, mesh.coords, mesh.normals);
-	}
-
-	return model;
-};
-
-const from3DS = (url: string, config?: Config) => {
-	return finalize(tds.load(url), config);
-};
-
-const fromGLTF = (url: string, config?: Config) => {
-	return finalize(gltf.load(url), config);
-};
-
-const fromJSON = (urlOrData: any, config?: Config) => {
-	return finalize(json.load(urlOrData), config);
-};
-
-const fromOBJ = (url: string, config?: Config) => {
-	return finalize(obj.load(url), config);
-};
-
-export { Model, from3DS, fromGLTF, fromJSON, fromOBJ };
+export { Array, Attribute, Geometry, Material, Mesh, Node, defaultColor, loadImage }

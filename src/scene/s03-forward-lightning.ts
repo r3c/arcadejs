@@ -4,8 +4,8 @@ import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../engine/language/functional";
+import * as load from "../engine/graphic/load";
 import * as matrix from "../engine/math/matrix";
-import * as model from "../engine/graphic/model";
 import * as move from "./shared/move";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
@@ -68,9 +68,9 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 	const gl = screen.context;
 
 	// Load models
-	const cubeModel = await model.fromJSON("./obj/cube/model.json");
-	const groundModel = await model.fromJSON("./obj/ground/model.json");
-	const lightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const cubeModel = await load.fromJSON("./obj/cube/model.json");
+	const groundModel = await load.fromJSON("./obj/ground/model.json");
+	const lightModel = await load.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 
 	// Create state
 	return {

@@ -6,8 +6,8 @@ import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
 import * as deferredShading from "../engine/graphic/pipelines/deferred-shading";
 import * as display from "../engine/display";
 import * as functional from "../engine/language/functional";
+import * as load from "../engine/graphic/load";
 import * as matrix from "../engine/math/matrix";
-import * as model from "../engine/graphic/model";
 import * as move from "./shared/move";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
@@ -68,10 +68,10 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 	const gl = screen.context;
 
 	// Load models
-	const cubeModel = await model.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
-	const directionalLightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
-	const groundModel = await model.fromJSON("./obj/ground/model.json");
-	const pointLightModel = await model.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
+	const cubeModel = await load.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
+	const directionalLightModel = await load.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
+	const groundModel = await load.fromJSON("./obj/ground/model.json");
+	const pointLightModel = await load.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
 
 	// Create state
 	return {
