@@ -57,8 +57,9 @@ interface Mesh {
 }
 
 interface Node {
-	children: number[],
-	matrix: matrix.Matrix4
+	children: Node[],
+	matrix: matrix.Matrix4,
+	mesh: Mesh | undefined
 }
 
 interface Primitive {
@@ -76,6 +77,10 @@ interface Sampler {
 	minFilter: number,
 	wrapS: number,
 	wrapT: number
+}
+
+interface Scene {
+	nodes: Node[]
 }
 
 interface Texture {
@@ -144,6 +149,13 @@ const expandMesh = (url: string, mesh: Mesh): mesh.Mesh[] => {
 			tangents: functional.map(primitive.tangents, tangents => expandAccessor(url, tangents))
 		};
 	})
+};
+
+const expandNode = (url: string, node: Node): mesh.Mesh[] => {
+	const children = functional.flatten(node.children.map(child => expandNode(url, child)))
+	const meshes = functional.coalesce(functional.map(node.mesh, mesh => expandMesh(url, mesh)), []);
+
+	return children.concat(meshes);
 };
 
 const invalidData = (url: string, description: string) => Error(`invalid glTF data in file ${url}: ${description}`);
@@ -298,32 +310,46 @@ const loadMaterial = (url: string, textures: Texture[], material: any, index: nu
 	};
 };
 
-const loadMesh = (url: string, accessors: Accessor[], materials: Material[], mesh: any, index: number): Mesh => {
-	return {
-		primitives: convertArrayOf(url, `mesh #${index}`, "primitives", mesh.primitives, (value, index) => loadPrimitive(url, accessors, materials, value, index))
-	};
-};
+const loadMesh = (url: string, accessors: Accessor[], materials: Material[], mesh: any, index: number): Mesh => ({
+	primitives: convertArrayOf(url, `mesh #${index}`, "primitives", mesh.primitives, (value, index) => loadPrimitive(url, accessors, materials, value, index))
+});
 
-const loadNode = (url: string, node: any, index: number): Node => {
-	let m: matrix.Matrix4;
+const loadNode = (url: string, meshes: Mesh[], nodes: Node[], siblings: any, node: any, index: number): Node => {
+	if (nodes[index] === undefined) {
+		let transform: matrix.Matrix4;
 
-	if (node.matrix !== undefined) {
-		m = matrix.Matrix4.create(<number[]>node.matrix);
+		if (node.matrix !== undefined) {
+			transform = matrix.Matrix4.create(<number[]>node.matrix);
+		}
+		else if (node.rotation !== undefined && node.scale !== undefined && node.translation !== undefined) {
+			transform = matrix.Matrix4
+				.createIdentity()
+				.translate({ x: node.translation[0], y: node.translation[1], z: node.translation[2] })
+				.rotate({ x: node.rotation[0], y: node.rotation[1], z: node.rotation[2] }, node.rotation[3])
+				.scale({ x: node.scale[0], y: node.scale[1], z: node.scale[2] });
+		}
+		else
+			transform = matrix.Matrix4.createIdentity();
+
+		const source = `node #${index}`;
+		const childrenIndices = convertArrayOf(url, source, "children", node.children || [], value => parseInt(value));
+		const children = [];
+
+		for (const childIndex of childrenIndices) {
+			if (siblings[childIndex] === undefined)
+				throw invalidData(url, `invalid reference to child node ${childIndex} from node ${index}`);
+
+			children.push(loadNode(url, meshes, nodes, siblings, siblings[childIndex], childIndex));
+		}
+
+		nodes[index] = {
+			children: children,
+			matrix: transform,
+			mesh: functional.map(node.mesh, mesh => convertReferenceTo(url, source, mesh, "mesh", meshes))
+		};
 	}
-	else if (node.rotation !== undefined && node.scale !== undefined && node.translation !== undefined) {
-		m = matrix.Matrix4
-			.createIdentity()
-			.translate({ x: node.translation[0], y: node.translation[1], z: node.translation[2] })
-			.rotate({ x: node.rotation[0], y: node.rotation[1], z: node.rotation[2] }, node.rotation[3])
-			.scale({ x: node.scale[0], y: node.scale[1], z: node.scale[2] });
-	}
-	else
-		m = matrix.Matrix4.createIdentity();
 
-	return {
-		children: convertArrayOf(url, `node #${index}`, "children", node.children || [], parseInt),
-		matrix: m
-	};
+	return nodes[index];
 };
 
 const loadPrimitive = (url: string, accessors: Accessor[], materials: Material[], primitive: any, index: number): Primitive => {
@@ -346,9 +372,12 @@ const loadPrimitive = (url: string, accessors: Accessor[], materials: Material[]
 };
 
 const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | undefined) => {
-	const defaultScene = functional.coalesce(<number | undefined>structure.scene, 0);
+	const defaultScene = <number | undefined>structure.scene;
 	const source = "top-level node";
 	const version: string = functional.coalesce(functional.map(structure.asset, asset => asset.version), "unknown");
+
+	if (defaultScene === undefined)
+		throw invalidData(url, "no default scene is defined");
 
 	if (version !== "2.0")
 		throw invalidData(url, `version ${version} is not supported`);
@@ -367,9 +396,14 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 	// Meshes
 	const meshes: Mesh[] = convertArrayOf(url, source, "meshes", structure.meshes || [], (value, index) => loadMesh(url, accessors, materials, value, index));
 
-	// FIXME
-	const nodes: Node[] = convertArrayOf(url, source, "nodes", structure.nodes || [], (value, index) => loadNode(url, value, index));
-	const roots: number[] = convertArrayOf(url, source, "main scene", structure.scenes[defaultScene].nodes || [], parseFloat);
+	// Scenes
+	const nodesCache: Node[] = [];
+	const nodesRaw = structure.nodes || [];
+	const nodes: Node[] = convertArrayOf(url, source, "nodes", nodesRaw, (value, index) => loadNode(url, meshes, nodesCache, nodesRaw, value, index));
+	const scenes: Scene[] = convertArrayOf(url, source, "scenes", structure.scenes || [], (value, index) => loadScene(url, nodes, value, index));
+
+	if (scenes[defaultScene] === undefined)
+		throw invalidData(url, `default scene #${defaultScene} doesn't exist`);
 
 	const materialsMap: { [name: string]: mesh.Material } = {};
 
@@ -378,7 +412,7 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 
 	return {
 		materials: materialsMap,
-		meshes: functional.flatten(meshes.map(mesh => expandMesh(url, mesh)))
+		meshes: functional.flatten(scenes[defaultScene].nodes.map(node => expandNode(url, node)))
 	};
 };
 
@@ -388,6 +422,14 @@ const loadSampler = (url: string, sampler: any, index: number): Sampler => {
 		minFilter: parseInt(sampler.minFilter),
 		wrapS: parseInt(sampler.wrapS),
 		wrapT: parseInt(sampler.wrapT)
+	};
+};
+
+const loadScene = (url: string, nodes: Node[], scene: any, index: number): Scene => {
+	const nodeIndices = <any[]>(scene.nodes || []);
+
+	return {
+		nodes: nodeIndices.map((n, i) => convertReferenceTo(url, `scene #${index}`, n, `nodes[${i}]`, nodes))
 	};
 };
 
