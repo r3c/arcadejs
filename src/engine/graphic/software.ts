@@ -23,6 +23,11 @@ interface Vertex {
 	point: vector.Vector3
 }
 
+const defaultAttribute = {
+	buffer: new Float32Array(4).fill(0),
+	stride: 0
+};
+
 const defaultColor = {
 	x: 1,
 	y: 1,
@@ -295,17 +300,17 @@ class Renderer {
 		let index = 0;
 
 		for (const mesh of model.meshes) {
-			const colors = mesh.colors || [];
-			const coords = mesh.coords || [];
+			const colors = mesh.colors || defaultAttribute;
+			const coords = mesh.coords || defaultAttribute;
 			const indices = mesh.indices;
 			const material = model.materials !== undefined && mesh.materialName !== undefined ? model.materials[mesh.materialName] : undefined;
 			const points = mesh.points;
 
 			indices.forEach(i => {
 				vertices[index++] = {
-					color: { x: colors[i * 4 + 0], y: colors[i * 4 + 1], z: colors[i * 4 + 2], w: colors[i * 4 + 3] } || defaultColor,
-					coord: { x: coords[i * 2 + 0], y: coords[i * 2 + 1] } || defaultCoord,
-					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, { x: points[i * 3 + 0], y: points[i * 3 + 1], z: points[i * 3 + 2] })
+					color: { x: colors.buffer[i * colors.stride + 0], y: colors.buffer[i * colors.stride + 1], z: colors.buffer[i * colors.stride + 2], w: colors.buffer[i * colors.stride + 3] },
+					coord: { x: coords.buffer[i * coords.stride + 0], y: coords.buffer[i * coords.stride + 1] },
+					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, { x: points.buffer[i * points.stride + 0], y: points.buffer[i * points.stride + 1], z: points.buffer[i * points.stride + 2] })
 				};
 
 				if (index >= 3) {

@@ -77,10 +77,10 @@ const readEdit = async (context: Context, end: number, chunk: number, state: Mod
 
 			for (const mesh of meshes) {
 				state.meshes.push({
-					coords: mesh.coords.length > 0 ? new Float32Array(mesh.coords) : undefined,
+					coords: mesh.coords.length > 0 ? { buffer: new Float32Array(mesh.coords), stride: 2 } : undefined,
 					indices: new Uint32Array(mesh.indices),
 					materialName: mesh.materialName,
-					points: new Float32Array(mesh.points)
+					points: { buffer: new Float32Array(mesh.points), stride: 3 }
 				});
 			}
 

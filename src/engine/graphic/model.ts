@@ -19,16 +19,18 @@ interface Model {
 ** Based on:
 ** http://www.iquilezles.org/www/articles/normals/normals.htm
 */
-const computeNormals = (indices: Uint32Array, points: Float32Array) => {
-	const normals = functional.range(Math.floor(points.length / 3), i => vector.Vector3.zero);
+const computeNormals = (indices: Uint32Array, points: mesh.Attribute) => {
+	const pointsBuffer = points.buffer;
+	const pointsStride = points.stride;
+	const normals = functional.range(Math.floor(pointsBuffer.length / pointsStride), i => vector.Vector3.zero);
 
 	for (let i = 0; i + 2 < indices.length; i += 3) {
 		const index1 = indices[i + 0];
 		const index2 = indices[i + 1];
 		const index3 = indices[i + 2];
-		const point1 = { x: points[index1 * 3 + 0], y: points[index1 * 3 + 1], z: points[index1 * 3 + 2] };
-		const point2 = { x: points[index2 * 3 + 0], y: points[index2 * 3 + 1], z: points[index2 * 3 + 2] };
-		const point3 = { x: points[index3 * 3 + 0], y: points[index3 * 3 + 1], z: points[index3 * 3 + 2] };
+		const point1 = { x: pointsBuffer[index1 * pointsStride + 0], y: pointsBuffer[index1 * pointsStride + 1], z: pointsBuffer[index1 * pointsStride + 2] };
+		const point2 = { x: pointsBuffer[index2 * pointsStride + 0], y: pointsBuffer[index2 * pointsStride + 1], z: pointsBuffer[index2 * pointsStride + 2] };
+		const point3 = { x: pointsBuffer[index3 * pointsStride + 0], y: pointsBuffer[index3 * pointsStride + 1], z: pointsBuffer[index3 * pointsStride + 2] };
 
 		const normal = vector.Vector3.cross(
 			vector.Vector3.sub(point3, point2),
@@ -40,17 +42,21 @@ const computeNormals = (indices: Uint32Array, points: Float32Array) => {
 		normals[index3] = vector.Vector3.add(normals[index3], normal);
 	}
 
-	const array = new Float32Array(points.length);
+	const normalsBuffer = new Float32Array(normals.length * 3);
+	const normalsStride = 3;
 
 	for (let i = 0; i < normals.length; ++i) {
 		const normal = vector.Vector3.normalize(normals[i]);
 
-		array[i * 3 + 0] = normal.x;
-		array[i * 3 + 1] = normal.y;
-		array[i * 3 + 2] = normal.z;
+		normalsBuffer[i * normalsStride + 0] = normal.x;
+		normalsBuffer[i * normalsStride + 1] = normal.y;
+		normalsBuffer[i * normalsStride + 2] = normal.z;
 	}
 
-	return array;
+	return {
+		buffer: normalsBuffer,
+		stride: normalsStride
+	};
 };
 
 /*
@@ -58,19 +64,23 @@ const computeNormals = (indices: Uint32Array, points: Float32Array) => {
 ** http://fabiensanglard.net/bumpMapping/index.php
 ** http://www.terathon.com/code/tangent.html
 */
-const computeTangents = (indices: Uint32Array, points: Float32Array, coords: Float32Array, normals: Float32Array) => {
-	const tangents = functional.range(Math.floor(points.length / 3), i => vector.Vector3.zero);
+const computeTangents = (indices: Uint32Array, points: mesh.Attribute, coords: mesh.Attribute, normals: mesh.Attribute) => {
+	const coordsBuffer = coords.buffer;
+	const coordsStride = coords.stride;
+	const pointsBuffer = points.buffer;
+	const pointsStride = points.stride;
+	const tangents = functional.range(Math.floor(pointsBuffer.length / pointsStride), i => vector.Vector3.zero);
 
 	for (let i = 0; i + 2 < indices.length; i += 3) {
 		const index1 = indices[i + 0];
 		const index2 = indices[i + 1];
 		const index3 = indices[i + 2];
-		const coord1 = { x: coords[index1 * 2 + 0], y: coords[index1 * 2 + 1] };
-		const coord2 = { x: coords[index2 * 2 + 0], y: coords[index2 * 2 + 1] };
-		const coord3 = { x: coords[index3 * 2 + 0], y: coords[index3 * 2 + 1] };
-		const point1 = { x: points[index1 * 3 + 0], y: points[index1 * 3 + 1], z: points[index1 * 3 + 2] };
-		const point2 = { x: points[index2 * 3 + 0], y: points[index2 * 3 + 1], z: points[index2 * 3 + 2] };
-		const point3 = { x: points[index3 * 3 + 0], y: points[index3 * 3 + 1], z: points[index3 * 3 + 2] };
+		const coord1 = { x: coordsBuffer[index1 * coordsStride + 0], y: coordsBuffer[index1 * coordsStride + 1] };
+		const coord2 = { x: coordsBuffer[index2 * coordsStride + 0], y: coordsBuffer[index2 * coordsStride + 1] };
+		const coord3 = { x: coordsBuffer[index3 * coordsStride + 0], y: coordsBuffer[index3 * coordsStride + 1] };
+		const point1 = { x: pointsBuffer[index1 * pointsStride + 0], y: pointsBuffer[index1 * pointsStride + 1], z: pointsBuffer[index1 * pointsStride + 2] };
+		const point2 = { x: pointsBuffer[index2 * pointsStride + 0], y: pointsBuffer[index2 * pointsStride + 1], z: pointsBuffer[index2 * pointsStride + 2] };
+		const point3 = { x: pointsBuffer[index3 * pointsStride + 0], y: pointsBuffer[index3 * pointsStride + 1], z: pointsBuffer[index3 * pointsStride + 2] };
 
 		const c1 = vector.Vector2.sub(coord3, coord2);
 		const c2 = vector.Vector2.sub(coord1, coord2);
@@ -90,10 +100,13 @@ const computeTangents = (indices: Uint32Array, points: Float32Array, coords: Flo
 		tangents[index3] = vector.Vector3.add(tangents[index3], tangent);
 	}
 
-	const array = new Float32Array(points.length);
+	const normalsBuffer = normals.buffer;
+	const normalsStride = normals.stride;
+	const tangentsBuffer = new Float32Array(tangents.length * 3);
+	const tangentsStride = 3;
 
 	for (let i = 0; i < tangents.length; ++i) {
-		const n = { x: normals[i * 3 + 0], y: normals[i * 3 + 1], z: normals[i * 3 + 2] };
+		const n = { x: normalsBuffer[i * normalsStride + 0], y: normalsBuffer[i * normalsStride + 1], z: normalsBuffer[i * normalsStride + 2] };
 		const t = tangents[i];
 
 		// Gram-Schmidt orthogonalize: t' = normalize(t - n * dot(n, t));
@@ -101,12 +114,15 @@ const computeTangents = (indices: Uint32Array, points: Float32Array, coords: Flo
 			vector.Vector3.sub(t, vector.Vector3.scale(n, vector.Vector3.dot(n, t)))
 		);
 
-		array[i * 3 + 0] = tangent.x;
-		array[i * 3 + 1] = tangent.y;
-		array[i * 3 + 2] = tangent.z;
+		tangentsBuffer[i * tangentsStride + 0] = tangent.x;
+		tangentsBuffer[i * tangentsStride + 1] = tangent.y;
+		tangentsBuffer[i * tangentsStride + 2] = tangent.z;
 	}
 
-	return array;
+	return {
+		buffer: tangentsBuffer,
+		stride: tangentsStride
+	};
 };
 
 const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config | undefined) => {
@@ -117,22 +133,28 @@ const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config 
 		const transform = config.transform || matrix.Matrix4.createIdentity();
 
 		// Transform points
-		for (let i = 0; i + 2 < mesh.points.length; i += 3) {
-			const point = transform.transform({ x: mesh.points[i + 0], y: mesh.points[i + 1], z: mesh.points[i + 2], w: 1 });
+		const buffer = mesh.points.buffer;
+		const stride = mesh.points.stride;
 
-			mesh.points[i + 0] = point.x;
-			mesh.points[i + 1] = point.y;
-			mesh.points[i + 2] = point.z;
+		for (let i = 0; i + 2 < buffer.length; i += stride) {
+			const point = transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 1 });
+
+			buffer[i + 0] = point.x;
+			buffer[i + 1] = point.y;
+			buffer[i + 2] = point.z;
 		}
 
 		// Transform normals or compute them from vertices
 		if (mesh.normals !== undefined) {
-			for (let i = 0; i + 2 < mesh.normals.length; i += 3) {
-				const normal = vector.Vector3.normalize(transform.transform({ x: mesh.normals[i + 0], y: mesh.normals[i + 1], z: mesh.normals[i + 2], w: 0 }));
+			const buffer = mesh.normals.buffer;
+			const stride = mesh.normals.stride;
 
-				mesh.normals[i + 0] = normal.x;
-				mesh.normals[i + 1] = normal.y;
-				mesh.normals[i + 2] = normal.z;
+			for (let i = 0; i + 2 < buffer.length; i += stride) {
+				const normal = vector.Vector3.normalize(transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 0 }));
+
+				buffer[i + 0] = normal.x;
+				buffer[i + 1] = normal.y;
+				buffer[i + 2] = normal.z;
 			}
 		}
 		else
@@ -140,12 +162,15 @@ const finalize = async (modelPromise: Promise<Model>, configOrUndefined: Config 
 
 		// Transform tangents or compute them from vertices, normals and texture coordinates
 		if (mesh.tangents !== undefined) {
-			for (let i = 0; i + 2 < mesh.tangents.length; i += 3) {
-				const tangent = vector.Vector3.normalize(transform.transform({ x: mesh.tangents[i + 0], y: mesh.tangents[i + 1], z: mesh.tangents[i + 2], w: 0 }));
+			const buffer = mesh.tangents.buffer;
+			const stride = mesh.tangents.stride;
 
-				mesh.tangents[i + 0] = tangent.x;
-				mesh.tangents[i + 1] = tangent.y;
-				mesh.tangents[i + 2] = tangent.z;
+			for (let i = 0; i + 2 < buffer.length; i += stride) {
+				const tangent = vector.Vector3.normalize(transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 0 }));
+
+				buffer[i + 0] = tangent.x;
+				buffer[i + 1] = tangent.y;
+				buffer[i + 2] = tangent.z;
 			}
 		}
 		else if (mesh.coords !== undefined)

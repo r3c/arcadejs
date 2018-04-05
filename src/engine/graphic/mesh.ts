@@ -1,5 +1,10 @@
 import * as vector from "../math/vector";
 
+interface Attribute {
+	buffer: Float32Array,
+	stride: number
+}
+
 interface Material {
 	albedoColor?: vector.Vector4,
 	albedoMap?: ImageData,
@@ -19,13 +24,13 @@ interface Material {
 }
 
 interface Mesh {
-	colors?: Float32Array,
-	coords?: Float32Array,
+	colors?: Attribute,
+	coords?: Attribute,
 	indices: Uint32Array
 	materialName?: string,
-	normals?: Float32Array,
-	points: Float32Array,
-	tangents?: Float32Array,
+	normals?: Attribute,
+	points: Attribute,
+	tangents?: Attribute,
 }
 
 const channelIndices: { [name: string]: number } = {
@@ -105,4 +110,4 @@ const loadImage = async (identifier: string) => {
 	});
 };
 
-export { Material, Mesh, defaultColor, loadImage }
+export { Attribute, Material, Mesh, defaultColor, loadImage }

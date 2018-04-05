@@ -118,22 +118,27 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 };
 
 const toMesh = (name: string, instance: any): mesh.Mesh => {
+	const toAttribute = <T>(values: T[], converter: (value: T) => number[], stride: number) => ({
+		buffer: new Float32Array(functional.flatten(values.map(converter))),
+		stride: stride
+	});
+
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "mesh");
 
 	return {
 		colors: instance.colors !== undefined
-			? new Float32Array(functional.flatten(toArrayOf(`${name}.colors`, instance.colors, toColor).map(vector.Vector4.toArray)))
+			? toAttribute(toArrayOf(`${name}.colors`, instance.colors, toColor), vector.Vector4.toArray, 4)
 			: undefined,
 		coords: instance.coords !== undefined
-			? new Float32Array(functional.flatten(toArrayOf(`${name}.coords`, instance.coords, toCoord).map(vector.Vector2.toArray)))
+			? toAttribute(toArrayOf(`${name}.coords`, instance.coords, toCoord), vector.Vector2.toArray, 2)
 			: undefined,
 		indices: new Uint32Array(functional.flatten(toArrayOf(`${name}.faces`, instance.faces, (name, item) => toTuple3(name, item, toInteger)))),
 		materialName: instance.materialName !== undefined ? toString(`${name}.materialName`, instance.materialName) : undefined,
 		normals: instance.normals !== undefined
-			? new Float32Array(functional.flatten(toArrayOf(`${name}.normals`, instance.normals, toVertex).map(vector.Vector3.toArray)))
+			? toAttribute(toArrayOf(`${name}.normals`, instance.normals, toVertex), vector.Vector3.toArray, 3)
 			: undefined,
-		points: new Float32Array(functional.flatten(toArrayOf(`${name}.points`, instance.points, toVertex).map(vector.Vector3.toArray)))
+		points: toAttribute(toArrayOf(`${name}.points`, instance.points, toVertex), vector.Vector3.toArray, 3)
 	};
 };
 

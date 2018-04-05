@@ -19,8 +19,14 @@ interface AttachmentTexture {
 	handle: WebGLTexture
 }
 
+interface Attribute {
+	buffer: WebGLBuffer,
+	stride: number
+}
+
 interface AttributeBinding<T> {
-	getter: (source: T) => WebGLBuffer | undefined,
+	block: number,
+	getter: (source: T) => Attribute | undefined,
 	location: number,
 	name: string,
 	size: number,
@@ -44,13 +50,13 @@ const enum Format {
 }
 
 interface Geometry {
-	colors: WebGLBuffer | undefined,
-	coords: WebGLBuffer | undefined,
+	colors: Attribute | undefined,
+	coords: Attribute | undefined,
 	count: number,
 	indices: WebGLBuffer,
-	normals: WebGLBuffer | undefined,
-	points: WebGLBuffer,
-	tangents: WebGLBuffer | undefined
+	normals: Attribute | undefined,
+	points: Attribute,
+	tangents: Attribute | undefined
 }
 
 interface GeometryState<State> {
@@ -189,10 +195,38 @@ class Shader<CallState> {
 		this.program = program;
 	}
 
-	public bindAttributePerGeometry(name: string, size: number, type: number, getter: (state: GeometryState<CallState>) => WebGLBuffer | undefined) {
+	public bindAttributePerGeometry(name: string, size: number, type: number, getter: (state: GeometryState<CallState>) => Attribute | undefined) {
+		const gl = this.gl;
 		const location = this.findAttribute(name);
 
+		let block: number;
+
+		// Get size from allowed attribute types.
+		// See: https://developer.mozilla.org/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
+		switch (type) {
+			case gl.BYTE:
+			case gl.UNSIGNED_BYTE:
+				block = 1;
+
+				break;
+
+			case gl.FLOAT:
+				block = 4;
+
+				break;
+
+			case gl.SHORT:
+			case gl.UNSIGNED_SHORT:
+				block = 2;
+
+				break;
+
+			default:
+				throw Error(`unsupported type ${type} for attribute ${name}`);
+		}
+
 		this.attributePerGeometryBindings.push({
+			block: block,
 			getter: getter,
 			location: location,
 			name: name,
@@ -498,13 +532,28 @@ const loadModel = (gl: WebGLRenderingContext, model: model.Model, quality: Quali
 		}
 
 		geometries.push({
-			colors: functional.map(mesh.colors, colors => createBuffer(gl, gl.ARRAY_BUFFER, colors)),
-			coords: functional.map(mesh.coords, coords => createBuffer(gl, gl.ARRAY_BUFFER, coords)),
+			colors: functional.map(mesh.colors, colors => ({
+				buffer: createBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
+				stride: colors.stride
+			})),
+			coords: functional.map(mesh.coords, coords => ({
+				buffer: createBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
+				stride: coords.stride
+			})),
 			count: mesh.indices.length,
 			indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, mesh.indices),
-			normals: functional.map(mesh.normals, normals => createBuffer(gl, gl.ARRAY_BUFFER, normals)),
-			points: createBuffer(gl, gl.ARRAY_BUFFER, mesh.points),
-			tangents: functional.map(mesh.tangents, tangents => createBuffer(gl, gl.ARRAY_BUFFER, tangents))
+			normals: functional.map(mesh.normals, normals => ({
+				buffer: createBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
+				stride: normals.stride
+			})),
+			points: {
+				buffer: createBuffer(gl, gl.ARRAY_BUFFER, mesh.points.buffer),
+				stride: mesh.points.stride
+			},
+			tangents: functional.map(mesh.tangents, tangents => ({
+				buffer: createBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
+				stride: tangents.stride
+			}))
 		});
 	}
 
@@ -626,13 +675,13 @@ class Target {
 
 					// Assign per-geometry attributes
 					for (const binding of shader.getAttributePerGeometryBindings()) {
-						const buffer = binding.getter(globalState);
+						const attribute = binding.getter(globalState);
 
-						if (buffer === undefined)
+						if (attribute === undefined)
 							throw invalidAttributeBinding(binding.name);
 
-						gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-						gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, 0, 0);
+						gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
+						gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, attribute.stride * binding.block, 0);
 						gl.enableVertexAttribArray(binding.location);
 					}
 
