@@ -456,7 +456,7 @@ const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | nul
 	return texture;
 };
 
-const createBuffer = (gl: WebGLRenderingContext, target: number, values: Float32Array | Uint32Array) => {
+const createBuffer = (gl: WebGLRenderingContext, target: number, values: mesh.Array) => {
 	const buffer = gl.createBuffer();
 
 	if (buffer === null)

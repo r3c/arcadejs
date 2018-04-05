@@ -91,6 +91,7 @@ class Vector3 {
 }
 
 class Vector4 {
+	public static readonly one: Vector4 = { x: 1, y: 1, z: 1, w: 1 };
 	public static readonly zero: Vector4 = { x: 0, y: 0, z: 0, w: 0 };
 
 	public static toArray(vector: Vector4) {

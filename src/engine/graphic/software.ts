@@ -297,7 +297,7 @@ class Renderer {
 		const triangle = drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
 		const vertices: Vertex[] = [];
 
-		let index = 0;
+		let which = 0;
 
 		for (const mesh of model.meshes) {
 			const colors = mesh.colors || defaultAttribute;
@@ -306,19 +306,33 @@ class Renderer {
 			const material = model.materials !== undefined && mesh.materialName !== undefined ? model.materials[mesh.materialName] : undefined;
 			const points = mesh.points;
 
-			indices.forEach(i => {
-				vertices[index++] = {
-					color: { x: colors.buffer[i * colors.stride + 0], y: colors.buffer[i * colors.stride + 1], z: colors.buffer[i * colors.stride + 2], w: colors.buffer[i * colors.stride + 3] },
-					coord: { x: coords.buffer[i * coords.stride + 0], y: coords.buffer[i * coords.stride + 1] },
-					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, { x: points.buffer[i * points.stride + 0], y: points.buffer[i * points.stride + 1], z: points.buffer[i * points.stride + 2] })
+			for (let i = 0; i < indices.length; ++i) {
+				const index = indices[i];
+
+				vertices[which++] = {
+					color: {
+						x: colors.buffer[index * colors.stride + 0],
+						y: colors.buffer[index * colors.stride + 1],
+						z: colors.buffer[index * colors.stride + 2],
+						w: colors.buffer[index * colors.stride + 3]
+					},
+					coord: {
+						x: coords.buffer[index * coords.stride + 0],
+						y: coords.buffer[index * coords.stride + 1]
+					},
+					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, {
+						x: points.buffer[index * points.stride + 0],
+						y: points.buffer[index * points.stride + 1],
+						z: points.buffer[index * points.stride + 2]
+					})
 				};
 
-				if (index >= 3) {
+				if (which >= 3) {
 					triangle(image, vertices[0], vertices[1], vertices[2], material);
 
-					index = 0;
+					which = 0;
 				}
-			});
+			}
 		}
 
 		screen.context.putImageData(capture, 0, 0);
