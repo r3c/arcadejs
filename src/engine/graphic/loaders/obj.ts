@@ -1,4 +1,5 @@
-import * as mesh from "../mesh";
+import * as matrix from "../../math/matrix";
+import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
 import * as vector from "../../math/vector";
@@ -38,8 +39,8 @@ const load = async (url: string) => {
 	return loadObject(data, url);
 };
 
-const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: string, fileName: string) => {
-	let current: mesh.Material | undefined;
+const loadMaterial = async (materials: { [name: string]: model.Material }, data: string, fileName: string) => {
+	let current: model.Material | undefined;
 
 	for (const { line, fields } of parseFile(data)) {
 		switch (fields[0]) {
@@ -63,7 +64,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "bump map");
 
-				current.heightMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.heightMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -71,7 +72,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "albedo map");
 
-				current.albedoMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.albedoMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -79,7 +80,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "specular map");
 
-				current.glossMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.glossMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -87,7 +88,7 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "normal map");
 
-				current.normalMap = await mesh.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.normalMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
 
 				break;
 
@@ -115,9 +116,9 @@ const loadMaterial = async (materials: { [name: string]: mesh.Material }, data: 
 
 const loadObject = async (data: string, fileName: string) => {
 	const coords: vector.Vector2[] = [];
+	const geometries: model.Geometry[] = [];
 	const groups: WavefrontOBJGroup[] = [];
-	const materials: { [name: string]: mesh.Material } = {};
-	const meshes: mesh.Mesh[] = [];
+	const materials: { [name: string]: model.Material } = {};
 	const normals: vector.Vector3[] = [];
 	const points: vector.Vector3[] = [];
 
@@ -257,7 +258,7 @@ const loadObject = async (data: string, fileName: string) => {
 			}
 		}
 
-		meshes.push({
+		geometries.push({
 			coords: undefined,
 			indices: new Uint32Array(groupIndices),
 			materialName: group.materialName,
@@ -268,7 +269,11 @@ const loadObject = async (data: string, fileName: string) => {
 
 	return {
 		materials: materials,
-		meshes: meshes
+		root: {
+			children: [],
+			geometries: geometries,
+			transform: matrix.Matrix4.createIdentity()
+		}
 	};
 };
 

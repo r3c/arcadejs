@@ -1,7 +1,6 @@
 import * as display from "../display";
 import * as functional from "../language/functional";
 import * as matrix from "../math/matrix";
-import * as mesh from "../graphic/mesh";
 import * as model from "../graphic/model";
 import * as vector from "../math/vector";
 
@@ -60,7 +59,7 @@ const lerpVector4 = (min: vector.Vector4, max: vector.Vector4, ratio: number) =>
 	}
 };
 
-const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, material: mesh.Material | undefined) => {
+const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Vertex, vd: Vertex, material: model.Material | undefined) => {
 	if (y < 0 || y >= image.height)
 		return;
 
@@ -141,7 +140,7 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 /*
 ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
 */
-const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material: mesh.Material | undefined) => {
+const fillTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex, material: model.Material | undefined) => {
 	// Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
 	if (v1.point.y > v2.point.y)
 		[v1, v2] = [v2, v1];
@@ -277,7 +276,7 @@ class Renderer {
 		screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 	}
 
-	public draw(model: model.Model, projection: matrix.Matrix4, modelView: matrix.Matrix4, drawMode: DrawMode) {
+	public draw(model: model.Mesh, projection: matrix.Matrix4, modelView: matrix.Matrix4, drawMode: DrawMode) {
 		const screen = this.screen;
 		const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
@@ -299,7 +298,7 @@ class Renderer {
 
 		let which = 0;
 
-		for (const mesh of model.meshes) {
+		for (const mesh of model.root.geometries) {
 			const colors = mesh.colors || defaultAttribute;
 			const coords = mesh.coords || defaultAttribute;
 			const indices = mesh.indices;

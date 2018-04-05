@@ -1,5 +1,6 @@
 import * as functional from "../../language/functional";
-import * as mesh from "../mesh";
+import * as matrix from "../../math/matrix";
+import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
 import * as vector from "../../math/vector";
@@ -25,7 +26,11 @@ const load = async (urlOrData: any) => {
 		materials: root.materials !== undefined
 			? await toMapOf("materials", root.materials, toMaterial, directory)
 			: {},
-		meshes: toArrayOf("meshes", root.meshes, toMesh)
+		root: {
+			children: [],
+			geometries: toArrayOf("geometries", root.geometries, toGeometry),
+			transform: matrix.Matrix4.createIdentity()
+		}
 	};
 };
 
@@ -69,9 +74,34 @@ const toDecimal = (name: string, instance: any) => {
 	return <number>instance;
 };
 
+const toGeometry = (name: string, instance: any): model.Geometry => {
+	const toAttribute = <T>(values: T[], converter: (value: T) => number[], stride: number) => ({
+		buffer: new Float32Array(functional.flatten(values.map(converter))),
+		stride: stride
+	});
+
+	if (typeof instance !== "object")
+		throw invalid(name, instance, "geometry");
+
+	return {
+		colors: instance.colors !== undefined
+			? toAttribute(toArrayOf(`${name}.colors`, instance.colors, toColor), vector.Vector4.toArray, 4)
+			: undefined,
+		coords: instance.coords !== undefined
+			? toAttribute(toArrayOf(`${name}.coords`, instance.coords, toCoord), vector.Vector2.toArray, 2)
+			: undefined,
+		indices: new Uint32Array(functional.flatten(toArrayOf(`${name}.faces`, instance.faces, (name, item) => toTuple3(name, item, toInteger)))),
+		materialName: instance.materialName !== undefined ? toString(`${name}.materialName`, instance.materialName) : undefined,
+		normals: instance.normals !== undefined
+			? toAttribute(toArrayOf(`${name}.normals`, instance.normals, toVertex), vector.Vector3.toArray, 3)
+			: undefined,
+		points: toAttribute(toArrayOf(`${name}.points`, instance.points, toVertex), vector.Vector3.toArray, 3)
+	};
+};
+
 const toImageData = async (name: string, instance: any, directory: string) => {
 	return instance !== undefined
-		? await mesh.loadImage(toString(name, path.combine(directory, instance)))
+		? await model.loadImage(toString(name, path.combine(directory, instance)))
 		: undefined;
 };
 
@@ -94,7 +124,7 @@ const toMapOf = async <T>(name: string, instance: any, converter: (name: string,
 	return map;
 };
 
-const toMaterial = async (name: string, instance: any, directory: string): Promise<mesh.Material> => {
+const toMaterial = async (name: string, instance: any, directory: string): Promise<model.Material> => {
 	if (typeof instance !== "object")
 		throw invalid(name, instance, "material");
 
@@ -114,31 +144,6 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 		parallaxScale: toOptional(`${name}.parallaxScale`, instance.parallaxScale, toDecimal),
 		roughnessMap: await toImageData(`${name}.roughnessMap`, instance.roughnessMap, directory),
 		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger)
-	};
-};
-
-const toMesh = (name: string, instance: any): mesh.Mesh => {
-	const toAttribute = <T>(values: T[], converter: (value: T) => number[], stride: number) => ({
-		buffer: new Float32Array(functional.flatten(values.map(converter))),
-		stride: stride
-	});
-
-	if (typeof instance !== "object")
-		throw invalid(name, instance, "mesh");
-
-	return {
-		colors: instance.colors !== undefined
-			? toAttribute(toArrayOf(`${name}.colors`, instance.colors, toColor), vector.Vector4.toArray, 4)
-			: undefined,
-		coords: instance.coords !== undefined
-			? toAttribute(toArrayOf(`${name}.coords`, instance.coords, toCoord), vector.Vector2.toArray, 2)
-			: undefined,
-		indices: new Uint32Array(functional.flatten(toArrayOf(`${name}.faces`, instance.faces, (name, item) => toTuple3(name, item, toInteger)))),
-		materialName: instance.materialName !== undefined ? toString(`${name}.materialName`, instance.materialName) : undefined,
-		normals: instance.normals !== undefined
-			? toAttribute(toArrayOf(`${name}.normals`, instance.normals, toVertex), vector.Vector3.toArray, 3)
-			: undefined,
-		points: toAttribute(toArrayOf(`${name}.points`, instance.points, toVertex), vector.Vector3.toArray, 3)
 	};
 };
 
