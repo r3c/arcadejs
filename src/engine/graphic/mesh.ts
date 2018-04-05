@@ -1,7 +1,9 @@
 import * as vector from "../math/vector";
 
+type Array = Float32Array | Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array;
+
 interface Attribute {
-	buffer: Float32Array,
+	buffer: Array,
 	stride: number
 }
 
@@ -26,7 +28,7 @@ interface Material {
 interface Mesh {
 	colors?: Attribute,
 	coords?: Attribute,
-	indices: Uint32Array
+	indices: Array
 	materialName?: string,
 	normals?: Attribute,
 	points: Attribute,
@@ -110,4 +112,4 @@ const loadImage = async (identifier: string) => {
 	});
 };
 
-export { Attribute, Material, Mesh, defaultColor, loadImage }
+export { Array, Attribute, Material, Mesh, defaultColor, loadImage }

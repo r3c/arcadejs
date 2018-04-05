@@ -11,6 +11,16 @@ class Matrix4 {
 	private readonly values: number[];
 
 	/*
+	** Create new matrix with custom values.
+	*/
+	public static create(values: number[]) {
+		if (values.length !== 16)
+			throw Error("4x4 matrix must contain 16 elements");
+
+		return new Matrix4(values);
+	}
+
+	/*
 	** Create new matrix for "looking to given direction" transformation.
 	** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
 	*/

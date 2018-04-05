@@ -1,4 +1,5 @@
 import * as functional from "../language/functional";
+import * as gltf from "./loaders/gltf";
 import * as json from "./loaders/json";
 import * as matrix from "../math/matrix";
 import * as mesh from "./mesh";
@@ -19,7 +20,7 @@ interface Model {
 ** Based on:
 ** http://www.iquilezles.org/www/articles/normals/normals.htm
 */
-const computeNormals = (indices: Uint32Array, points: mesh.Attribute) => {
+const computeNormals = (indices: mesh.Array, points: mesh.Attribute) => {
 	const pointsBuffer = points.buffer;
 	const pointsStride = points.stride;
 	const normals = functional.range(Math.floor(pointsBuffer.length / pointsStride), i => vector.Vector3.zero);
@@ -64,7 +65,7 @@ const computeNormals = (indices: Uint32Array, points: mesh.Attribute) => {
 ** http://fabiensanglard.net/bumpMapping/index.php
 ** http://www.terathon.com/code/tangent.html
 */
-const computeTangents = (indices: Uint32Array, points: mesh.Attribute, coords: mesh.Attribute, normals: mesh.Attribute) => {
+const computeTangents = (indices: mesh.Array, points: mesh.Attribute, coords: mesh.Attribute, normals: mesh.Attribute) => {
 	const coordsBuffer = coords.buffer;
 	const coordsStride = coords.stride;
 	const pointsBuffer = points.buffer;
@@ -184,6 +185,10 @@ const from3DS = (url: string, config?: Config) => {
 	return finalize(tds.load(url), config);
 };
 
+const fromGLTF = (url: string, config?: Config) => {
+	return finalize(gltf.load(url), config);
+};
+
 const fromJSON = (urlOrData: any, config?: Config) => {
 	return finalize(json.load(urlOrData), config);
 };
@@ -192,4 +197,4 @@ const fromOBJ = (url: string, config?: Config) => {
 	return finalize(obj.load(url), config);
 };
 
-export { Model, from3DS, fromJSON, fromOBJ };
+export { Model, from3DS, fromGLTF, fromJSON, fromOBJ };

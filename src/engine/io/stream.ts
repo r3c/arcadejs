@@ -77,13 +77,23 @@ class BinaryReader {
 		return this.view.getUint32(this.skip(4), this.little);
 	}
 
+	public readString(length: number) {
+		let string = "";
+
+		for (; length > 0; --length) {
+			string += String.fromCharCode(this.readInt8u());
+		}
+
+		return string;
+	}
+
 	public readStringZero() {
 		let string = "";
 
 		while (true) {
 			const char = this.readInt8u();
 
-			if (char === 0 || char === undefined)
+			if (char === 0)
 				return string;
 
 			string += String.fromCharCode(char);
