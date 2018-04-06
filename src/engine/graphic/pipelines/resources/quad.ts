@@ -2,7 +2,7 @@ import * as matrix from "../../../math/matrix";
 
 const mesh = {
 	materials: {},
-	root: {
+	nodes: [{
 		children: [],
 		geometries: [
 			{
@@ -31,7 +31,7 @@ const mesh = {
 			}
 		],
 		transform: matrix.Matrix4.createIdentity()
-	}
+	}]
 };
 
 export { mesh }

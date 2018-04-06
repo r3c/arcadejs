@@ -26,11 +26,11 @@ const load = async (urlOrData: any) => {
 		materials: root.materials !== undefined
 			? await toMapOf("materials", root.materials, toMaterial, directory)
 			: {},
-		root: {
+		nodes: [{
 			children: [],
 			geometries: toArrayOf("geometries", root.geometries, toGeometry),
 			transform: matrix.Matrix4.createIdentity()
-		}
+		}]
 	};
 };
 

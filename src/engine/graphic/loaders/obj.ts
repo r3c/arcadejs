@@ -269,11 +269,11 @@ const loadObject = async (data: string, fileName: string) => {
 
 	return {
 		materials: materials,
-		root: {
+		nodes: [{
 			children: [],
 			geometries: geometries,
 			transform: matrix.Matrix4.createIdentity()
-		}
+		}]
 	};
 };
 
