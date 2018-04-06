@@ -178,7 +178,7 @@ const finalize = async (modelPromise: Promise<model.Mesh>, configOrUndefined: Co
 	const config = configOrUndefined || {};
 	const model = await modelPromise;
 
-	finalizeNode(model.root, config);
+	model.nodes.forEach(node => finalizeNode(node, config));
 
 	return model;
 };

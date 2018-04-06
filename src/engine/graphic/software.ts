@@ -276,7 +276,7 @@ class Renderer {
 		screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
 	}
 
-	public draw(model: model.Mesh, projection: matrix.Matrix4, modelView: matrix.Matrix4, drawMode: DrawMode) {
+	public draw(mesh: model.Mesh, projection: matrix.Matrix4, modelView: matrix.Matrix4, drawMode: DrawMode) {
 		const screen = this.screen;
 		const capture = screen.context.getImageData(0, 0, screen.getWidth(), screen.getHeight());
 
@@ -289,52 +289,59 @@ class Renderer {
 
 		image.depths.fill(Math.pow(2, 127));
 
-		const halfWidth = screen.getWidth() * 0.5;
-		const halfHeight = screen.getHeight() * 0.5;
-		const modelViewProjection = projection.compose(modelView);
+		Renderer.drawNodes(image, mesh.nodes, projection.compose(modelView), mesh.materials, drawMode);
 
+		screen.context.putImageData(capture, 0, 0);
+	}
+
+	private static drawNodes(image: Image, nodes: Iterable<model.Node>, modelViewProjection: matrix.Matrix4, materials: { [name: string]: model.Material }, drawMode: DrawMode) {
+		const halfWidth = image.width * 0.5;
+		const halfHeight = image.height * 0.5;
 		const triangle = drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
-		const vertices: Vertex[] = [];
 
-		let which = 0;
+		for (const node of nodes) {
+			Renderer.drawNodes(image, node.children, modelViewProjection, materials, drawMode);
 
-		for (const mesh of model.root.geometries) {
-			const colors = mesh.colors || defaultAttribute;
-			const coords = mesh.coords || defaultAttribute;
-			const indices = mesh.indices;
-			const material = model.materials !== undefined && mesh.materialName !== undefined ? model.materials[mesh.materialName] : undefined;
-			const points = mesh.points;
+			for (const mesh of node.geometries) {
+				const colors = mesh.colors || defaultAttribute;
+				const coords = mesh.coords || defaultAttribute;
+				const indices = mesh.indices;
+				const material = materials !== undefined && mesh.materialName !== undefined ? materials[mesh.materialName] : undefined;
+				const points = mesh.points;
 
-			for (let i = 0; i < indices.length; ++i) {
-				const index = indices[i];
+				const vertices: Vertex[] = [];
 
-				vertices[which++] = {
-					color: {
-						x: colors.buffer[index * colors.stride + 0],
-						y: colors.buffer[index * colors.stride + 1],
-						z: colors.buffer[index * colors.stride + 2],
-						w: colors.buffer[index * colors.stride + 3]
-					},
-					coord: {
-						x: coords.buffer[index * coords.stride + 0],
-						y: coords.buffer[index * coords.stride + 1]
-					},
-					point: projectToScreen(modelViewProjection, halfWidth, halfHeight, {
-						x: points.buffer[index * points.stride + 0],
-						y: points.buffer[index * points.stride + 1],
-						z: points.buffer[index * points.stride + 2]
-					})
-				};
+				let which = 0;
 
-				if (which >= 3) {
-					triangle(image, vertices[0], vertices[1], vertices[2], material);
+				for (let i = 0; i < indices.length; ++i) {
+					const index = indices[i];
 
-					which = 0;
+					vertices[which++] = {
+						color: {
+							x: colors.buffer[index * colors.stride + 0],
+							y: colors.buffer[index * colors.stride + 1],
+							z: colors.buffer[index * colors.stride + 2],
+							w: colors.buffer[index * colors.stride + 3]
+						},
+						coord: {
+							x: coords.buffer[index * coords.stride + 0],
+							y: coords.buffer[index * coords.stride + 1]
+						},
+						point: projectToScreen(modelViewProjection, halfWidth, halfHeight, {
+							x: points.buffer[index * points.stride + 0],
+							y: points.buffer[index * points.stride + 1],
+							z: points.buffer[index * points.stride + 2]
+						})
+					};
+
+					if (which >= 3) {
+						triangle(image, vertices[0], vertices[1], vertices[2], material);
+
+						which = 0;
+					}
 				}
 			}
 		}
-
-		screen.context.putImageData(capture, 0, 0);
 	}
 }
 

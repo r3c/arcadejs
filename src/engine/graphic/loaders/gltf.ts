@@ -151,12 +151,11 @@ const expandMesh = (url: string, mesh: Mesh): model.Geometry[] => {
 	})
 };
 
-const expandNode = (url: string, node: Node): model.Geometry[] => {
-	const children = functional.flatten(node.children.map(child => expandNode(url, child)))
-	const meshes = functional.coalesce(functional.map(node.mesh, mesh => expandMesh(url, mesh)), []);
-
-	return children.concat(meshes);
-};
+const expandNode = (url: string, node: Node): model.Node => ({
+	children: node.children.map(child => expandNode(url, child)),
+	geometries: functional.coalesce(functional.map(node.mesh, mesh => expandMesh(url, mesh)), []),
+	transform: node.transform
+});
 
 const invalidData = (url: string, description: string) => Error(`invalid glTF data in file ${url}: ${description}`);
 
@@ -412,11 +411,7 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 
 	return {
 		materials: materialsMap,
-		root: {
-			children: [],
-			geometries: functional.flatten(scenes[defaultScene].nodes.map(node => expandNode(url, node))),
-			transform: matrix.Matrix4.createIdentity()
-		}
+		nodes: scenes[defaultScene].nodes.map(node => expandNode(url, node))
 	};
 };
 

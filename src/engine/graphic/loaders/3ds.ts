@@ -36,11 +36,7 @@ const load = async (url: string) => {
 
 	return scan(context, context.reader.getLength(), readRoot, {
 		materials: {},
-		root: {
-			children: [],
-			geometries: [],
-			transform: matrix.Matrix4.createIdentity()
-		}
+		nodes: []
 	});
 };
 
@@ -75,14 +71,16 @@ const readEdit = async (context: Context, end: number, chunk: number, state: mod
 
 			const meshes = await scan(context, end, readObject, []);
 
-			for (const mesh of meshes) {
-				state.root.geometries.push({
+			state.nodes.push({
+				children: [],
+				geometries: meshes.map(mesh => ({
 					coords: mesh.coords.length > 0 ? { buffer: new Float32Array(mesh.coords), stride: 2 } : undefined,
 					indices: new Uint32Array(mesh.indices),
 					materialName: mesh.materialName,
 					points: { buffer: new Float32Array(mesh.points), stride: 3 }
-				});
-			}
+				})),
+				transform: matrix.Matrix4.createIdentity()
+			});
 
 			return state;
 

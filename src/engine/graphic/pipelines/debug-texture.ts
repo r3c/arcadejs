@@ -165,7 +165,7 @@ class Pipeline implements webgl.Pipeline {
 			subjects: [{
 				matrix: matrix.Matrix4.createIdentity(),
 				mesh: {
-					root: {
+					nodes: [{
 						children: [],
 						primitives: [{
 							geometry: undefined,
@@ -188,7 +188,7 @@ class Pipeline implements webgl.Pipeline {
 							}
 						}],
 						transform: matrix.Matrix4.createIdentity()
-					}
+					}]
 				}
 			}]
 		};
@@ -220,13 +220,15 @@ class Pipeline implements webgl.Pipeline {
 
 		// Hack: find first defined albedo map from subject models and use it as debug source
 		for (const subject of scene.subjects) {
-			for (const primitive of subject.mesh.root.primitives) {
-				if (primitive.material !== undefined && primitive.material.albedoMap !== undefined) {
-					target.draw(this.shader, subjects, {
-						source: primitive.material.albedoMap
-					});
+			for (const node of subject.mesh.nodes) {
+				for (const primitive of node.primitives) {
+					if (primitive.material !== undefined && primitive.material.albedoMap !== undefined) {
+						target.draw(this.shader, subjects, {
+							source: primitive.material.albedoMap
+						});
 
-					return;
+						return;
+					}
 				}
 			}
 		}

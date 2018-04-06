@@ -381,7 +381,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	// Bind matrix uniforms
 	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
-	shader.bindMatrixPerNode("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.matrix).getTransposedInverse3x3());
+	shader.bindMatrixPerNode("normalMatrix", gl => gl.uniformMatrix3fv, state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3());
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
