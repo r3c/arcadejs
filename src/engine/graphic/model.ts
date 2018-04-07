@@ -18,21 +18,26 @@ interface Geometry {
 	tangents?: Attribute,
 }
 
+const enum Interpolation {
+	Linear,
+	Nearest
+}
+
 interface Material {
 	albedoColor?: vector.Vector4,
-	albedoMap?: ImageData,
-	emissiveMap?: ImageData,
+	albedoMap?: Texture,
+	emissiveMap?: Texture,
 	emissiveStrength?: number,
 	glossColor?: vector.Vector4,
-	glossMap?: ImageData,
-	heightMap?: ImageData,
-	metalnessMap?: ImageData,
-	normalMap?: ImageData,
-	occlusionMap?: ImageData,
+	glossMap?: Texture,
+	heightMap?: Texture,
+	metalnessMap?: Texture,
+	normalMap?: Texture,
+	occlusionMap?: Texture,
 	occlusionStrength?: number,
 	parallaxBias?: number,
 	parallaxScale?: number,
-	roughnessMap?: ImageData,
+	roughnessMap?: Texture,
 	shininess?: number
 }
 
@@ -47,6 +52,20 @@ interface Node {
 	transform: matrix.Matrix4
 }
 
+interface Texture {
+	image: ImageData,
+	magnifier: Interpolation,
+	minifier: Interpolation,
+	mipmap: boolean,
+	wrap: Wrap
+}
+
+const enum Wrap {
+	Clamp,
+	Repeat,
+	Mirror
+}
+
 const channelIndices: { [name: string]: number } = {
 	r: 0,
 	g: 1,
@@ -54,7 +73,7 @@ const channelIndices: { [name: string]: number } = {
 	a: 3
 };
 
-const defaultColor = {
+const defaultColor: vector.Vector4 = {
 	x: 1,
 	y: 1,
 	z: 1,
@@ -124,4 +143,4 @@ const loadImage = async (identifier: string) => {
 	});
 };
 
-export { Array, Attribute, Geometry, Material, Mesh, Node, defaultColor, loadImage }
+export { Array, Attribute, Geometry, Interpolation, Material, Mesh, Node, Texture, Wrap, defaultColor, loadImage }

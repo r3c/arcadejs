@@ -74,10 +74,10 @@ interface Primitive {
 }
 
 interface Sampler {
-	magFilter: number,
-	minFilter: number,
-	wrapS: number,
-	wrapT: number
+	magnifier: model.Interpolation,
+	minifier: model.Interpolation,
+	mipmap: boolean,
+	wrap: model.Wrap
 }
 
 interface Scene {
@@ -132,7 +132,13 @@ const expandAccessor = (url: string, accessor: Accessor): model.Attribute => {
 const expandMaterial = (material: Material): model.Material => {
 	return {
 		albedoColor: material.albedoColor,
-		albedoMap: functional.map(material.albedoMap, texture => texture.image)
+		albedoMap: functional.map(material.albedoMap, texture => ({
+			image: texture.image,
+			magnifier: texture.sampler.magnifier,
+			minifier: texture.sampler.minifier,
+			mipmap: texture.sampler.mipmap,
+			wrap: texture.sampler.wrap
+		}))
 	};
 };
 
@@ -417,11 +423,23 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 };
 
 const loadSampler = (url: string, sampler: any, index: number): Sampler => {
+	const magFilter = parseInt(sampler.magFilter);
+	const minFilter = parseInt(sampler.minFilter);
+	const wrap = Math.min(parseInt(sampler.wrapS), parseInt(sampler.wrapT));
+
 	return {
-		magFilter: parseInt(sampler.magFilter),
-		minFilter: parseInt(sampler.minFilter),
-		wrapS: parseInt(sampler.wrapS),
-		wrapT: parseInt(sampler.wrapT)
+		magnifier: magFilter === 9729 /* LINEAR */
+			? model.Interpolation.Linear
+			: model.Interpolation.Nearest,
+		minifier: minFilter === 9729 /* LINEAR */ || minFilter === 9986 /* NEAREST_MIPMAP_LINEAR */ || minFilter === 9987 /* LINEAR_MIPMAP_LINEAR */
+			? model.Interpolation.Linear
+			: model.Interpolation.Nearest,
+		mipmap: minFilter === 9984 /* NEAREST_MIPMAP_NEAREST */ || minFilter === 9985 /* LINEAR_MIPMAP_NEAREST */ || minFilter === 9986 /* NEAREST_MIPMAP_LINEAR */ || minFilter === 9987/* LINEAR_MIPMAP_LINEAR */,
+		wrap: wrap === 10497 /* REPEAT */
+			? model.Wrap.Repeat
+			: (wrap === 33648 /* MIRRORED_REPEAT */
+				? model.Wrap.Mirror
+				: model.Wrap.Clamp)
 	};
 };
 

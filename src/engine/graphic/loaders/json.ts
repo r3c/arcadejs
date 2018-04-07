@@ -99,11 +99,16 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
 	};
 };
 
-const toImageData = async (name: string, instance: any, directory: string) => {
-	return instance !== undefined
-		? await model.loadImage(toString(name, path.combine(directory, instance)))
+const toTexture = async (name: string, instance: any, directory: string) =>
+	instance !== undefined
+		? {
+			image: await model.loadImage(toString(name, path.combine(directory, instance))),
+			magnifier: model.Interpolation.Linear,
+			minifier: model.Interpolation.Linear,
+			mipmap: true,
+			wrap: model.Wrap.Clamp
+		}
 		: undefined;
-};
 
 const toInteger = (name: string, instance: any) => {
 	if (typeof instance !== "number" || ~~instance !== instance)
@@ -130,19 +135,19 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 
 	return {
 		albedoColor: toOptional(`${name}.albedoColor`, instance.albedoColor, toColor),
-		albedoMap: await toImageData(`${name}.albedoMap`, instance.albedoMap, directory),
-		emissiveMap: await toImageData(`${name}.emissiveMap`, instance.emissiveMap, directory),
+		albedoMap: await toTexture(`${name}.albedoMap`, instance.albedoMap, directory),
+		emissiveMap: await toTexture(`${name}.emissiveMap`, instance.emissiveMap, directory),
 		emissiveStrength: toOptional(`${name}.emissiveStrength`, instance.emissiveStrength, toDecimal),
 		glossColor: toOptional(`${name}.glossColor`, instance.glossColor, toColor),
-		glossMap: await toImageData(`${name}.glossMap`, instance.glossMap, directory),
-		heightMap: await toImageData(`${name}.heightMap`, instance.heightMap, directory),
-		metalnessMap: await toImageData(`${name}.metalnessMap`, instance.metalnessMap, directory),
-		normalMap: await toImageData(`${name}.normalMap`, instance.normalMap, directory),
-		occlusionMap: await toImageData(`${name}.occlusionMap`, instance.occlusionMap, directory),
+		glossMap: await toTexture(`${name}.glossMap`, instance.glossMap, directory),
+		heightMap: await toTexture(`${name}.heightMap`, instance.heightMap, directory),
+		metalnessMap: await toTexture(`${name}.metalnessMap`, instance.metalnessMap, directory),
+		normalMap: await toTexture(`${name}.normalMap`, instance.normalMap, directory),
+		occlusionMap: await toTexture(`${name}.occlusionMap`, instance.occlusionMap, directory),
 		occlusionStrength: toOptional(`${name}.occlusionStrength`, instance.occlusionStrength, toDecimal),
 		parallaxBias: toOptional(`${name}.parallaxBias`, instance.parallaxBias, toDecimal),
 		parallaxScale: toOptional(`${name}.parallaxScale`, instance.parallaxScale, toDecimal),
-		roughnessMap: await toImageData(`${name}.roughnessMap`, instance.roughnessMap, directory),
+		roughnessMap: await toTexture(`${name}.roughnessMap`, instance.roughnessMap, directory),
 		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger)
 	};
 };
