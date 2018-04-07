@@ -20,6 +20,8 @@ interface AttachmentTexture {
 
 interface Attribute {
 	buffer: WebGLBuffer,
+	componentCount: number,
+	componentType: number,
 	stride: number
 }
 
@@ -27,8 +29,6 @@ interface AttributeBinding<T> {
 	getter: (source: T) => Attribute | undefined,
 	location: number,
 	name: string,
-	size: number,
-	type: number
 }
 
 interface DirectionalLight {
@@ -304,10 +304,14 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 		geometry: {
 			colors: functional.map(geometry.colors, colors => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
+				componentType: convertType(gl, colors.buffer),
+				componentCount: colors.stride,
 				stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT
 			})),
 			coords: functional.map(geometry.coords, coords => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
+				componentType: convertType(gl, coords.buffer),
+				componentCount: coords.stride,
 				stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT
 			})),
 			count: geometry.indices.length,
@@ -315,14 +319,20 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 			indexType: convertType(gl, geometry.indices),
 			normals: functional.map(geometry.normals, normals => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
+				componentType: convertType(gl, normals.buffer),
+				componentCount: normals.stride,
 				stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT
 			})),
 			points: {
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
+				componentType: convertType(gl, geometry.points.buffer),
+				componentCount: geometry.points.stride,
 				stride: geometry.points.stride * geometry.points.buffer.BYTES_PER_ELEMENT
 			},
 			tangents: functional.map(geometry.tangents, tangents => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
+				componentType: convertType(gl, tangents.buffer),
+				componentCount: tangents.stride,
 				stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT
 			}))
 		},
@@ -421,16 +431,14 @@ class Shader<CallState> {
 		this.program = program;
 	}
 
-	public bindAttributePerGeometry(name: string, size: number, type: number, getter: (state: GeometryState<CallState>) => Attribute | undefined) {
+	public bindAttributePerGeometry(name: string, getter: (state: GeometryState<CallState>) => Attribute | undefined) {
 		const gl = this.gl;
 		const location = this.findAttribute(name);
 
 		this.attributePerGeometryBindings.push({
 			getter: getter,
 			location: location,
-			name: name,
-			size: size,
-			type: type
+			name: name
 		});
 	}
 
@@ -795,7 +803,7 @@ class Target {
 							throw invalidAttributeBinding(binding.name);
 
 						gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
-						gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, attribute.stride, 0);
+						gl.vertexAttribPointer(binding.location, attribute.componentCount, attribute.componentType, false, attribute.stride, 0);
 						gl.enableVertexAttribArray(binding.location);
 					}
 

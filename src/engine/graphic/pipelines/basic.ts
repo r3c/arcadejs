@@ -27,7 +27,7 @@ interface State {
 const load = (gl: WebGLRenderingContext) => {
 	const shader = new webgl.Shader<State>(gl, vertexShader, fragmentShader);
 
-	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
 	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());

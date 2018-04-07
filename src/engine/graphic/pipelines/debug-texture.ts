@@ -137,8 +137,8 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	const shader = new webgl.Shader<State>(gl, vertexSource, fragmentSource, directives);
 
-	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
+	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
 	shader.bindTexturePerTarget("source", state => state.source);
 
