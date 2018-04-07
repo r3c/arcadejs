@@ -1,3 +1,4 @@
+import * as encoding from "../../text/encoding";
 import * as functional from "../../language/functional";
 import * as matrix from "../../math/matrix";
 import * as model from "../model";
@@ -443,6 +444,7 @@ const loadTexture = (url: string, images: ImageData[], samplers: Sampler[], text
 
 const load = async (url: string) => {
 	const buffer = await stream.readURL(stream.BinaryFormat, url);
+	const codec = new encoding.ASCIICodec();
 	const reader = new stream.BinaryReader(buffer, stream.Endian.Little);
 	const first = String.fromCharCode(reader.readInt8u());
 
@@ -451,11 +453,11 @@ const load = async (url: string) => {
 
 	// Looks like a JSON glTF file
 	if (first === "{") {
-		structure = JSON.parse(first + reader.readString(reader.getLength() - reader.getOffset()));
+		structure = JSON.parse(first + codec.decode(reader.readBuffer(reader.getLength() - reader.getOffset())));
 	}
 
 	// Looks like a binary glTF file
-	else if (first + reader.readString(3) === "glTF") {
+	else if (first + codec.decode(reader.readBuffer(3)) === "glTF") {
 		const version = reader.readInt32u();
 
 		if (version !== 2)
@@ -470,7 +472,7 @@ const load = async (url: string) => {
 		if (jsonType !== 0x4E4F534A)
 			throw invalidData(url, "first chunk is expected to be JSON");
 
-		structure = JSON.parse(reader.readString(jsonLength));
+		structure = JSON.parse(codec.decode(reader.readBuffer(jsonLength)));
 
 		// Second chunk: binary
 		if (reader.getOffset() < fileLength) {

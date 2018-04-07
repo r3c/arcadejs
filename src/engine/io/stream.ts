@@ -61,6 +61,23 @@ class BinaryReader {
 		return this.offset;
 	}
 
+	public readBuffer(length: number) {
+		const begin = this.skip(length);
+
+		return this.view.buffer.slice(begin, length);
+	}
+
+	public readBufferZero() {
+		const begin = this.offset;
+
+		while (true) {
+			const value = this.view.getInt8(this.offset++);
+
+			if (value === 0)
+				return this.view.buffer.slice(begin, this.offset - begin - 1);
+		}
+	}
+
 	public readFloat32() {
 		return this.view.getFloat32(this.skip(4), this.little);
 	}
@@ -76,30 +93,6 @@ class BinaryReader {
 	public readInt32u() {
 		return this.view.getUint32(this.skip(4), this.little);
 	}
-
-	public readString(length: number) {
-		let string = "";
-
-		for (; length > 0; --length) {
-			string += String.fromCharCode(this.readInt8u());
-		}
-
-		return string;
-	}
-
-	public readStringZero() {
-		let string = "";
-
-		while (true) {
-			const char = this.readInt8u();
-
-			if (char === 0)
-				return string;
-
-			string += String.fromCharCode(char);
-		}
-	}
-
 	public skip(count: number) {
 		const current = this.offset;
 
