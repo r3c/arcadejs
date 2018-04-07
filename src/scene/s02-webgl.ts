@@ -64,9 +64,9 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 	const gl = screen.context;
 	const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
-	shader.bindAttributePerGeometry("colors", 4, gl.FLOAT, state => state.geometry.colors);
-	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+	shader.bindAttributePerGeometry("colors", state => state.geometry.colors);
+	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
+	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
 	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
 	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);

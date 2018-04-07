@@ -300,7 +300,7 @@ const loadAmbient = (gl: WebGLRenderingContext, configuration: Configuration) =>
 	// Setup light shader
 	const shader = new webgl.Shader<AmbientState>(gl, ambientVertexShader, ambientFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
 	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
 
@@ -326,10 +326,10 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("coords", 2, gl.FLOAT, state => state.geometry.coords);
-	shader.bindAttributePerGeometry("normals", 3, gl.FLOAT, state => state.geometry.normals);
-	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
-	shader.bindAttributePerGeometry("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
+	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
+	shader.bindAttributePerGeometry("normals", state => state.geometry.normals);
+	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+	shader.bindAttributePerGeometry("tangents", state => state.geometry.tangents);
 
 	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
 	shader.bindMatrixPerNode("normalMatrix", gl => gl.uniformMatrix3fv, state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3());
@@ -373,7 +373,7 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 	// Setup light shader
 	const shader = new webgl.Shader<LightState<T>>(gl, lightVertexShader, lightFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
+	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
 	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
 
