@@ -1,3 +1,4 @@
+import * as encoding from "../../text/encoding";
 import * as matrix from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
@@ -11,6 +12,7 @@ import * as vector from "../../math/vector";
 */
 
 interface Context {
+	codec: encoding.Codec,
 	directory: string,
 	file: string,
 	reader: stream.BinaryReader
@@ -29,6 +31,7 @@ const invalidChunk = (file: string, chunk: number, description: string) => {
 
 const load = async (url: string) => {
 	const context = {
+		codec: new encoding.ASCIICodec(),
 		directory: path.directory(url),
 		file: url,
 		reader: new stream.BinaryReader(await stream.readURL(stream.BinaryFormat, url), stream.Endian.Little)
@@ -67,7 +70,7 @@ const readColor = async (context: Context, end: number, chunk: number, state: ve
 const readEdit = async (context: Context, end: number, chunk: number, state: model.Mesh) => {
 	switch (chunk) {
 		case 0x4000: // DIT_OBJECT
-			context.reader.readStringZero(); // Skip object name
+			context.reader.readBufferZero(); // Skip object name
 
 			const meshes = await scan(context, end, readObject, []);
 
@@ -110,7 +113,7 @@ const readMain = async (context: Context, end: number, chunk: number, state: mod
 const readMaterial = async (context: Context, end: number, chunk: number, state: { material: model.Material, name: string }) => {
 	switch (chunk) {
 		case 0xa000: // Material name
-			state.name = context.reader.readStringZero();
+			state.name = context.codec.decode(context.reader.readBufferZero());
 
 			break;
 
@@ -151,7 +154,7 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 const readMaterialMap = async (context: Context, end: number, chunk: number, state: ImageData | undefined) => {
 	switch (chunk) {
 		case 0xa300:
-			return model.loadImage(path.combine(context.directory, context.reader.readStringZero()));
+			return model.loadImage(path.combine(context.directory, context.codec.decode(context.reader.readBufferZero())));
 	}
 
 	return state;
@@ -226,7 +229,7 @@ const readPolygon = async (context: Context, end: number, chunk: number, state: 
 const readPolygonMaterial = async (context: Context, end: number, chunk: number, state: string) => {
 	switch (chunk) {
 		case 0x4130: // TRI_MATERIAL
-			const name = context.reader.readStringZero();
+			const name = context.codec.decode(context.reader.readBufferZero());
 
 			context.reader.readInt16u(); // Number of faces using material
 
