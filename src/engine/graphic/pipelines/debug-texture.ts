@@ -142,7 +142,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	shader.bindTexturePerTarget("source", state => state.source);
 
-	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
 
 	return shader;
 };
