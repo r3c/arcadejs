@@ -24,7 +24,7 @@ interface Vertex {
 
 const defaultAttribute = {
 	buffer: new Float32Array(4).fill(0),
-	stride: 0
+	componentCount: 0
 };
 
 const defaultColor = {
@@ -318,19 +318,19 @@ class Renderer {
 
 					vertices[which++] = {
 						color: {
-							x: colors.buffer[index * colors.stride + 0],
-							y: colors.buffer[index * colors.stride + 1],
-							z: colors.buffer[index * colors.stride + 2],
-							w: colors.buffer[index * colors.stride + 3]
+							x: colors.buffer[index * colors.componentCount + 0],
+							y: colors.buffer[index * colors.componentCount + 1],
+							z: colors.buffer[index * colors.componentCount + 2],
+							w: colors.buffer[index * colors.componentCount + 3]
 						},
 						coord: {
-							x: coords.buffer[index * coords.stride + 0],
-							y: coords.buffer[index * coords.stride + 1]
+							x: coords.buffer[index * coords.componentCount + 0],
+							y: coords.buffer[index * coords.componentCount + 1]
 						},
 						point: projectToScreen(modelViewProjection, halfWidth, halfHeight, {
-							x: points.buffer[index * points.stride + 0],
-							y: points.buffer[index * points.stride + 1],
-							z: points.buffer[index * points.stride + 2]
+							x: points.buffer[index * points.componentCount + 0],
+							y: points.buffer[index * points.componentCount + 1],
+							z: points.buffer[index * points.componentCount + 2]
 						})
 					};
 

@@ -75,9 +75,9 @@ const toDecimal = (name: string, instance: any) => {
 };
 
 const toGeometry = (name: string, instance: any): model.Geometry => {
-	const toAttribute = <T>(values: T[], converter: (value: T) => number[], stride: number) => ({
+	const toAttribute = <T>(values: T[], converter: (value: T) => number[], componentCount: number) => ({
 		buffer: new Float32Array(functional.flatten(values.map(converter))),
-		stride: stride
+		componentCount: componentCount
 	});
 
 	if (typeof instance !== "object")

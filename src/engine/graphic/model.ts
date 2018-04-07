@@ -5,7 +5,7 @@ type Array = Float32Array | Int8Array | Int16Array | Int32Array | Uint8Array | U
 
 interface Attribute {
 	buffer: Array,
-	stride: number
+	componentCount: number
 }
 
 interface Geometry {
