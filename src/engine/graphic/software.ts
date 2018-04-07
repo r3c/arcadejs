@@ -115,7 +115,7 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 			// Albedo map
 			if (material.albedoMap !== undefined) {
 				const coord = lerpVector2(begin.coord, end.coord, ratio);
-				const image = material.albedoMap;
+				const image = material.albedoMap.image;
 
 				const x = ~~(coord.x * image.width) % image.width;
 				const y = ~~(coord.y * image.height) % image.height;

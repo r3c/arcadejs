@@ -151,10 +151,16 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 	return state;
 };
 
-const readMaterialMap = async (context: Context, end: number, chunk: number, state: ImageData | undefined) => {
+const readMaterialMap = async (context: Context, end: number, chunk: number, state: model.Texture | undefined) => {
 	switch (chunk) {
 		case 0xa300:
-			return model.loadImage(path.combine(context.directory, context.codec.decode(context.reader.readBufferZero())));
+			return {
+				image: await model.loadImage(path.combine(context.directory, context.codec.decode(context.reader.readBufferZero()))),
+				magnifier: model.Interpolation.Linear,
+				minifier: model.Interpolation.Linear,
+				mipmap: true,
+				wrap: model.Wrap.Clamp
+			};
 	}
 
 	return state;

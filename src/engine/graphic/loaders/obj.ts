@@ -64,7 +64,7 @@ const loadMaterial = async (materials: { [name: string]: model.Material }, data:
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "bump map");
 
-				current.heightMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.heightMap = await loadTexture(fileName, fields[1]);
 
 				break;
 
@@ -72,7 +72,7 @@ const loadMaterial = async (materials: { [name: string]: model.Material }, data:
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "albedo map");
 
-				current.albedoMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.albedoMap = await loadTexture(fileName, fields[1]);
 
 				break;
 
@@ -80,7 +80,7 @@ const loadMaterial = async (materials: { [name: string]: model.Material }, data:
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "specular map");
 
-				current.glossMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.glossMap = await loadTexture(fileName, fields[1]);
 
 				break;
 
@@ -88,7 +88,7 @@ const loadMaterial = async (materials: { [name: string]: model.Material }, data:
 				if (fields.length < 2 || current === undefined)
 					throw invalidLine(fileName, line, "normal map");
 
-				current.normalMap = await model.loadImage(path.combine(path.directory(fileName), fields[1]));
+				current.normalMap = await loadTexture(fileName, fields[1]);
 
 				break;
 
@@ -276,6 +276,14 @@ const loadObject = async (data: string, fileName: string) => {
 		}]
 	};
 };
+
+const loadTexture = async (fileName: string, textureName: string) => ({
+	image: await model.loadImage(path.combine(path.directory(fileName), textureName)),
+	magnifier: model.Interpolation.Linear,
+	minifier: model.Interpolation.Linear,
+	mipmap: true,
+	wrap: model.Wrap.Clamp
+});
 
 const parseFace = (face: string) => {
 	const indices = face.split(/\//);

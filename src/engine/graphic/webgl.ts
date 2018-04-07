@@ -116,12 +116,6 @@ interface Primitive {
 	material: Material | undefined
 }
 
-interface Quality {
-	textureFilterLinear: boolean,
-	textureMipmap: boolean,
-	textureMipmapLinear: boolean
-}
-
 interface Scene {
 	ambientLightColor?: vector.Vector3,
 	directionalLights?: DirectionalLight[],
@@ -152,18 +146,6 @@ type UniformValueSetter<T> = (location: WebGLUniformLocation, value: T) => void;
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 1 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
-
-const qualityBuffer = {
-	textureFilterLinear: false,
-	textureMipmap: false,
-	textureMipmapLinear: false
-};
-
-const qualityImage = {
-	textureFilterLinear: true,
-	textureMipmap: true,
-	textureMipmapLinear: false
-};
 
 const configureRenderbuffer = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer | null, width: number, height: number, format: Format, samples: number) => {
 	if (renderbuffer === null)
@@ -198,19 +180,15 @@ const configureRenderbuffer = (gl: WebGLRenderingContext, renderbuffer: WebGLRen
 	return renderbuffer;
 };
 
-const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | null, width: number, height: number, format: Format, quality: Quality, pixels?: Uint8ClampedArray) => {
+const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | null, width: number, height: number, format: Format, source: model.Texture | undefined) => {
 	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
 
 	if (texture === null)
 		throw Error("could not create texture");
 
-	if (quality.textureMipmap && !isPowerOfTwo)
-		throw Error("cannot generate mipmaps for non-power-of-2 image");
-
-	const textureFilter = quality.textureFilterLinear ? gl.LINEAR : gl.NEAREST;
-
 	gl.bindTexture(gl.TEXTURE_2D, texture);
 
+	// Define texture format
 	let glFormat: number;
 	let glInternal: number;
 	let glType: number;
@@ -237,22 +215,45 @@ const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | nul
 			throw Error(`invalid texture format ${format}`);
 	}
 
-	// TODO: remove unwanted wrapping of "pixels" array when https://github.com/KhronosGroup/WebGL/issues/1533 is fixed
-	gl.texImage2D(gl.TEXTURE_2D, 0, glInternal, width, height, 0, glFormat, glType, pixels !== undefined ? new Uint8Array(pixels) : null);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, textureFilter);
+	// Define texture filtering
+	const glMagnifierFilter = functional.coalesce(functional.map(source, t => t.magnifier), model.Interpolation.Nearest) === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+	const glMinifierFilter = functional.coalesce(functional.map(source, t => t.minifier), model.Interpolation.Nearest) === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+	const glMipmapFilter = functional.coalesce(functional.map(source, t => t.minifier), model.Interpolation.Nearest) === model.Interpolation.Linear ? gl.NEAREST_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_NEAREST;
 
-	if (quality.textureMipmap) {
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, quality.textureFilterLinear
-			? (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_LINEAR)
-			: (quality.textureMipmapLinear ? gl.LINEAR_MIPMAP_NEAREST : gl.NEAREST_MIPMAP_NEAREST));
+	// Define texture wrapping
+	let glWrap: number;
+
+	switch (functional.coalesce(functional.map(source, t => t.wrap), model.Wrap.Clamp)) {
+		case model.Wrap.Mirror:
+			glWrap = gl.MIRRORED_REPEAT;
+
+			break;
+
+		case model.Wrap.Repeat:
+			glWrap = gl.REPEAT;
+
+			break;
+
+		default:
+			glWrap = gl.CLAMP_TO_EDGE;
+
+			break;
+	}
+
+	// TODO: remove unwanted wrapping of "pixels" array when https://github.com/KhronosGroup/WebGL/issues/1533 is fixed
+	gl.texImage2D(gl.TEXTURE_2D, 0, glInternal, width, height, 0, glFormat, glType, source !== undefined ? new Uint8Array(source.image.data) : null);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, glMagnifierFilter);
+
+	if (source !== undefined && source.mipmap && isPowerOfTwo) {
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, glMipmapFilter);
 		gl.generateMipmap(gl.TEXTURE_2D);
 	}
 	else {
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, textureFilter);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, glMinifierFilter);
 	}
 
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, isPowerOfTwo ? gl.REPEAT : gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, isPowerOfTwo ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, glWrap);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, glWrap);
 	gl.bindTexture(gl.TEXTURE_2D, null);
 
 	return texture;
@@ -342,8 +343,8 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 	};
 };
 
-const loadMaterial = (gl: WebGLRenderingContext, material: model.Material, quality: Quality) => {
-	const toColorMap = (image: ImageData) => configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, quality, image.data);
+const loadMaterial = (gl: WebGLRenderingContext, material: model.Material) => {
+	const toColorMap = (texture: model.Texture) => configureTexture(gl, gl.createTexture(), texture.image.width, texture.image.height, Format.RGBA8, texture);
 
 	return {
 		albedoColor: vector.Vector4.toArray(material.albedoColor || colorWhite),
@@ -364,12 +365,12 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material, quali
 	};
 };
 
-const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh, quality: Quality = qualityImage): Mesh => {
+const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh): Mesh => {
 	const materials: { [name: string]: Material } = {};
 	const nodes: Node[] = [];
 
 	for (const name in mesh.materials)
-		materials[name] = loadMaterial(gl, mesh.materials[name], quality);
+		materials[name] = loadMaterial(gl, mesh.materials[name]);
 
 	for (const node of mesh.nodes)
 		nodes.push(loadNode(gl, node, materials));
@@ -622,7 +623,7 @@ class Target {
 
 			// Resize previously existing texture attachments if any
 			for (const texture of attachment.textures)
-				configureTexture(gl, texture.handle, width, height, texture.format, qualityBuffer);
+				configureTexture(gl, texture.handle, width, height, texture.format, undefined);
 		}
 
 		this.viewHeight = height;
@@ -738,7 +739,7 @@ class Target {
 		Target.clearRenderbufferAttachments(gl, attachment);
 
 		// Create and append new texture attachment
-		const texture = configureTexture(gl, gl.createTexture(), this.viewWidth, this.viewHeight, format, qualityBuffer);
+		const texture = configureTexture(gl, gl.createTexture(), this.viewWidth, this.viewHeight, format, undefined);
 		const offset = attachment.textures.push({
 			format: format,
 			handle: texture
