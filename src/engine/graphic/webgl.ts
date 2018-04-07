@@ -20,11 +20,11 @@ interface AttachmentTexture {
 
 interface Attribute {
 	buffer: WebGLBuffer,
+	bytesPerComponent: number,
 	stride: number
 }
 
 interface AttributeBinding<T> {
-	block: number,
 	getter: (source: T) => Attribute | undefined,
 	location: number,
 	name: string,
@@ -52,17 +52,15 @@ interface Geometry {
 	colors: Attribute | undefined,
 	coords: Attribute | undefined,
 	count: number,
-	indices: WebGLBuffer,
+	indexBuffer: WebGLBuffer,
+	indexType: number,
 	normals: Attribute | undefined,
 	points: Attribute,
 	tangents: Attribute | undefined
 }
 
-interface GeometryState<State> {
-	geometry: Geometry,
-	material: Material,
-	subject: Subject,
-	target: State
+interface GeometryState<State> extends MaterialState<State> {
+	geometry: Geometry
 }
 
 interface Material {
@@ -83,10 +81,8 @@ interface Material {
 	shininess: number
 }
 
-interface MaterialState<State> {
-	material: Material,
-	subject: Subject,
-	target: State
+interface MaterialState<State> extends NodeState<State> {
+	material: Material
 }
 
 interface Mesh {
@@ -97,6 +93,12 @@ interface Node {
 	children: Node[],
 	primitives: Primitive[],
 	transform: matrix.Matrix4
+}
+
+interface NodeState<State> {
+	matrix: matrix.Matrix4,
+	shadow: boolean,
+	target: State
 }
 
 interface Pipeline {
@@ -134,11 +136,6 @@ interface Subject {
 	shadow?: boolean
 }
 
-interface SubjectState<State> {
-	subject: Subject
-	target: State,
-}
-
 interface TextureBinding<T> {
 	getter: (source: T) => WebGLTexture | undefined,
 	location: WebGLUniformLocation,
@@ -160,7 +157,7 @@ class Shader<CallState> {
 	private readonly attributePerGeometryBindings: AttributeBinding<GeometryState<CallState>>[];
 	private readonly gl: WebGLRenderingContext;
 	private readonly propertyPerMaterialBindings: UniformBinding<MaterialState<CallState>>[];
-	private readonly propertyPerModelBindings: UniformBinding<SubjectState<CallState>>[];
+	private readonly propertyPerNodeBindings: UniformBinding<NodeState<CallState>>[];
 	private readonly propertyPerTargetBindings: UniformBinding<CallState>[];
 	private readonly texturePerMaterialBindings: TextureBinding<MaterialState<CallState>>[];
 	private readonly texturePerTargetBindings: TextureBinding<CallState>[];
@@ -193,7 +190,7 @@ class Shader<CallState> {
 		this.attributePerGeometryBindings = [];
 		this.gl = gl;
 		this.propertyPerMaterialBindings = [];
-		this.propertyPerModelBindings = [];
+		this.propertyPerNodeBindings = [];
 		this.propertyPerTargetBindings = [];
 		this.texturePerMaterialBindings = [];
 		this.texturePerTargetBindings = [];
@@ -204,34 +201,7 @@ class Shader<CallState> {
 		const gl = this.gl;
 		const location = this.findAttribute(name);
 
-		let block: number;
-
-		// Get size from allowed attribute types.
-		// See: https://developer.mozilla.org/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
-		switch (type) {
-			case gl.BYTE:
-			case gl.UNSIGNED_BYTE:
-				block = 1;
-
-				break;
-
-			case gl.FLOAT:
-				block = 4;
-
-				break;
-
-			case gl.SHORT:
-			case gl.UNSIGNED_SHORT:
-				block = 2;
-
-				break;
-
-			default:
-				throw Error(`unsupported type ${type} for attribute ${name}`);
-		}
-
 		this.attributePerGeometryBindings.push({
-			block: block,
 			getter: getter,
 			location: location,
 			name: name,
@@ -240,11 +210,11 @@ class Shader<CallState> {
 		});
 	}
 
-	public bindMatrixPerModel(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: SubjectState<CallState>) => Iterable<number>) {
+	public bindMatrixPerNode(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: NodeState<CallState>) => Iterable<number>) {
 		const location = this.findUniform(name);
 		const method = assign(this.gl);
 
-		this.propertyPerModelBindings.push((gl: WebGLRenderingContext, state: SubjectState<CallState>) => method.call(gl, location, false, new Float32Array(getter(state))));
+		this.propertyPerNodeBindings.push((gl: WebGLRenderingContext, state: NodeState<CallState>) => method.call(gl, location, false, new Float32Array(getter(state))));
 	}
 
 	public bindMatrixPerTarget(name: string, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>, getter: (state: CallState) => Iterable<number>) {
@@ -290,8 +260,8 @@ class Shader<CallState> {
 		return this.propertyPerMaterialBindings;
 	}
 
-	public getPropertyPerModelBindings(): Iterable<UniformBinding<SubjectState<CallState>>> {
-		return this.propertyPerModelBindings;
+	public getPropertyPerNodeBindings(): Iterable<UniformBinding<NodeState<CallState>>> {
+		return this.propertyPerNodeBindings;
 	}
 
 	public getPropertyPerTargetBindings(): Iterable<UniformBinding<CallState>> {
@@ -461,7 +431,7 @@ const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | nul
 	return texture;
 };
 
-const createBuffer = (gl: WebGLRenderingContext, target: number, values: model.Array) => {
+const convertBuffer = (gl: WebGLRenderingContext, target: number, values: model.Array) => {
 	const buffer = gl.createBuffer();
 
 	if (buffer === null)
@@ -473,39 +443,72 @@ const createBuffer = (gl: WebGLRenderingContext, target: number, values: model.A
 	return buffer;
 };
 
+/*
+** Find OpenGL type from associated array type.
+** See: https://developer.mozilla.org/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
+*/
+const convertType = (gl: WebGLRenderingContext, array: model.Array) => {
+	if (array instanceof Float32Array)
+		return gl.FLOAT;
+	else if (array instanceof Int32Array)
+		return gl.INT;
+	else if (array instanceof Uint32Array)
+		return gl.UNSIGNED_INT;
+	else if (array instanceof Int16Array)
+		return gl.SHORT;
+	else if (array instanceof Uint16Array)
+		return gl.UNSIGNED_SHORT;
+	else if (array instanceof Int8Array)
+		return gl.BYTE;
+	else if (array instanceof Uint8Array)
+		return gl.UNSIGNED_BYTE;
+
+	throw Error(`unsupported array type for indices`);
+};
+
 const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
 const invalidMaterial = (name: string) => Error(`cannot use unknown material "${name}" on mesh`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
-const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, quality: Quality, materials: { [name: string]: model.Material }): Primitive => ({
-	geometry: {
-		colors: functional.map(geometry.colors, colors => ({
-			buffer: createBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
-			stride: colors.stride
-		})),
-		coords: functional.map(geometry.coords, coords => ({
-			buffer: createBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
-			stride: coords.stride
-		})),
-		count: geometry.indices.length,
-		indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
-		normals: functional.map(geometry.normals, normals => ({
-			buffer: createBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
-			stride: normals.stride
-		})),
-		points: {
-			buffer: createBuffer(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
-			stride: geometry.points.stride
+const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, materials: { [name: string]: Material }): Primitive => {
+	const indicesType = geometry.indices.BYTES_PER_ELEMENT === 4 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+
+	return {
+		geometry: {
+			colors: functional.map(geometry.colors, colors => ({
+				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
+				bytesPerComponent: colors.buffer.BYTES_PER_ELEMENT,
+				stride: colors.stride
+			})),
+			coords: functional.map(geometry.coords, coords => ({
+				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
+				bytesPerComponent: coords.buffer.BYTES_PER_ELEMENT,
+				stride: coords.stride
+			})),
+			count: geometry.indices.length,
+			indexBuffer: convertBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
+			indexType: convertType(gl, geometry.indices),
+			normals: functional.map(geometry.normals, normals => ({
+				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
+				bytesPerComponent: normals.buffer.BYTES_PER_ELEMENT,
+				stride: normals.stride
+			})),
+			points: {
+				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
+				bytesPerComponent: geometry.points.buffer.BYTES_PER_ELEMENT,
+				stride: geometry.points.stride
+			},
+			tangents: functional.map(geometry.tangents, tangents => ({
+				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
+				bytesPerComponent: tangents.buffer.BYTES_PER_ELEMENT,
+				stride: tangents.stride
+			}))
 		},
-		tangents: functional.map(geometry.tangents, tangents => ({
-			buffer: createBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
-			stride: tangents.stride
-		}))
-	},
-	material: geometry.materialName !== undefined && materials[geometry.materialName] !== undefined
-		? loadMaterial(gl, materials[geometry.materialName], quality)
-		: undefined
-});
+		material: geometry.materialName !== undefined
+			? materials[geometry.materialName]
+			: undefined
+	};
+};
 
 const loadMaterial = (gl: WebGLRenderingContext, material: model.Material, quality: Quality) => {
 	const toColorMap = (image: ImageData) => configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, quality, image.data);
@@ -529,13 +532,20 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material, quali
 	};
 };
 
-const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh, quality: Quality = qualityImage): Mesh => ({
-	root: loadNode(gl, mesh.root, quality, mesh.materials)
-});
+const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh, quality: Quality = qualityImage): Mesh => {
+	const materials: { [name: string]: Material } = {};
 
-const loadNode = (gl: WebGLRenderingContext, node: model.Node, quality: Quality, materials: { [name: string]: model.Material }): Node => ({
-	children: node.children.map(child => loadNode(gl, child, quality, materials)),
-	primitives: node.geometries.map(geometry => loadGeometry(gl, geometry, quality, materials)),
+	for (const name in mesh.materials)
+		materials[name] = loadMaterial(gl, mesh.materials[name], quality);
+
+	return {
+		root: loadNode(gl, mesh.root, materials)
+	};
+};
+
+const loadNode = (gl: WebGLRenderingContext, node: model.Node, materials: { [name: string]: Material }): Node => ({
+	children: node.children.map(child => loadNode(gl, child, materials)),
+	primitives: node.geometries.map(geometry => loadGeometry(gl, geometry, materials)),
 	transform: node.transform
 });
 
@@ -592,7 +602,8 @@ class Target {
 		const globalState: GeometryState<T> = {
 			geometry: <Geometry><any>undefined,
 			material: <Material><any>undefined,
-			subject: <Subject><any>undefined,
+			matrix: <matrix.Matrix4><any>undefined,
+			shadow: false,
 			target: state
 		};
 
@@ -615,12 +626,9 @@ class Target {
 		}
 
 		for (const subject of subjects) {
-			globalState.subject = subject;
+			globalState.shadow = functional.coalesce(subject.shadow, true);
 
-			for (const binding of shader.getPropertyPerModelBindings())
-				binding(gl, globalState);
-
-			this.drawNode(shader, subject.mesh.root, globalState, callTextureIndex);
+			this.drawNode(shader, subject.mesh.root, subject.matrix, globalState, callTextureIndex);
 		}
 	}
 
@@ -767,11 +775,17 @@ class Target {
 		return texture;
 	}
 
-	private drawNode<T>(shader: Shader<T>, node: Node, globalState: GeometryState<T>, callTextureIndex: number) {
+	private drawNode<T>(shader: Shader<T>, node: Node, modelMatrix: matrix.Matrix4, globalState: GeometryState<T>, callTextureIndex: number) {
 		const gl = this.gl;
+		const nodeMatrix = modelMatrix.compose(node.transform);
 
 		for (const child of node.children)
-			this.drawNode(shader, child, globalState, callTextureIndex);
+			this.drawNode(shader, child, nodeMatrix, globalState, callTextureIndex);
+
+		globalState.matrix = nodeMatrix;
+
+		for (const binding of shader.getPropertyPerNodeBindings())
+			binding(gl, globalState);
 
 		for (const primitive of node.primitives) {
 			if (primitive.material !== undefined) {
@@ -808,13 +822,13 @@ class Target {
 						throw invalidAttributeBinding(binding.name);
 
 					gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
-					gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, attribute.stride * binding.block, 0);
+					gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, attribute.stride * attribute.bytesPerComponent, 0);
 					gl.enableVertexAttribArray(binding.location);
 				}
 
 				// Perform draw call
-				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, primitive.geometry.indices);
-				gl.drawElements(gl.TRIANGLES, primitive.geometry.count, gl.UNSIGNED_INT, 0);
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, primitive.geometry.indexBuffer);
+				gl.drawElements(gl.TRIANGLES, primitive.geometry.count, primitive.geometry.indexType, 0);
 			}
 		}
 	}

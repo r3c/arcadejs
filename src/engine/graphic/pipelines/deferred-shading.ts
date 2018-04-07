@@ -302,7 +302,7 @@ const loadAmbient = (gl: WebGLRenderingContext, configuration: Configuration) =>
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
 
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
@@ -331,8 +331,8 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 	shader.bindAttributePerGeometry("tangents", 3, gl.FLOAT, state => state.geometry.tangents);
 
-	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
-	shader.bindMatrixPerModel("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.subject.matrix).getTransposedInverse3x3());
+	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
+	shader.bindMatrixPerNode("normalMatrix", gl => gl.uniformMatrix3fv, state => state.target.viewMatrix.compose(state.matrix).getTransposedInverse3x3());
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
@@ -375,7 +375,7 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 
 	shader.bindAttributePerGeometry("points", 3, gl.FLOAT, state => state.geometry.points);
 
-	shader.bindMatrixPerModel("modelMatrix", gl => gl.uniformMatrix4fv, state => state.subject.matrix.getValues());
+	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
 
 	shader.bindMatrixPerTarget("inverseProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.inverse().getValues());
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
