@@ -107,6 +107,7 @@ const loadImage = async (identifier: string) => {
 	return new Promise<ImageData>((resolve, reject) => {
 		const image = new Image();
 
+		image.crossOrigin = "anonymous";
 		image.onabort = () => reject(`image load aborted on URL "${url}"`);
 		image.onerror = () => reject(`image load failed on URL "${url}"`);
 		image.onload = () => {
