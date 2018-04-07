@@ -74,10 +74,10 @@ const readEdit = async (context: Context, end: number, chunk: number, state: mod
 			state.nodes.push({
 				children: [],
 				geometries: meshes.map(mesh => ({
-					coords: mesh.coords.length > 0 ? { buffer: new Float32Array(mesh.coords), stride: 2 } : undefined,
+					coords: mesh.coords.length > 0 ? { buffer: new Float32Array(mesh.coords), componentCount: 2 } : undefined,
 					indices: new Uint32Array(mesh.indices),
 					materialName: mesh.materialName,
-					points: { buffer: new Float32Array(mesh.points), stride: 3 }
+					points: { buffer: new Float32Array(mesh.points), componentCount: 3 }
 				})),
 				transform: matrix.Matrix4.createIdentity()
 			});

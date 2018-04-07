@@ -124,7 +124,7 @@ const expandAccessor = (url: string, accessor: Accessor): model.Attribute => {
 
 	return {
 		buffer: buffer,
-		stride: stride
+		componentCount: stride
 	};
 };
 
