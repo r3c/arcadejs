@@ -24,11 +24,11 @@ const enum Interpolation {
 }
 
 interface Material {
-	albedoColor?: vector.Vector4,
+	albedoFactor?: vector.Vector4,
 	albedoMap?: Texture,
+	emissiveFactor?: vector.Vector4,
 	emissiveMap?: Texture,
-	emissiveStrength?: number,
-	glossColor?: vector.Vector4,
+	glossFactor?: vector.Vector4,
 	glossMap?: Texture,
 	heightMap?: Texture,
 	metalnessMap?: Texture,

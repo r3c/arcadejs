@@ -118,12 +118,12 @@ const readMaterial = async (context: Context, end: number, chunk: number, state:
 			break;
 
 		case 0xa020: // Albedo color
-			state.material.albedoColor = await scan(context, end, readColor, model.defaultColor);
+			state.material.albedoFactor = await scan(context, end, readColor, model.defaultColor);
 
 			break;
 
 		case 0xa030: // Specular color
-			state.material.glossColor = await scan(context, end, readColor, model.defaultColor);
+			state.material.glossFactor = await scan(context, end, readColor, model.defaultColor);
 
 			break;
 

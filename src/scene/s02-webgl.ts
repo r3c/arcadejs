@@ -36,13 +36,13 @@ const fsSource = `
 in vec4 color;
 in vec2 coord;
 
-uniform vec4 albedoColor;
+uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
 
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-	fragColor = color * albedoColor * texture(albedoMap, coord);
+	fragColor = color * albedoFactor * texture(albedoMap, coord);
 }`;
 
 interface SceneState {
@@ -68,7 +68,7 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
 	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
-	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+	shader.bindPropertyPerMaterial("albedoFactor", gl => gl.uniform4fv, state => state.material.albedoFactor);
 	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());

@@ -106,7 +106,7 @@ const toTexture = async (name: string, instance: any, directory: string) =>
 			magnifier: model.Interpolation.Linear,
 			minifier: model.Interpolation.Linear,
 			mipmap: true,
-			wrap: model.Wrap.Clamp
+			wrap: model.Wrap.Repeat
 		}
 		: undefined;
 
@@ -134,11 +134,11 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 		throw invalid(name, instance, "material");
 
 	return {
-		albedoColor: toOptional(`${name}.albedoColor`, instance.albedoColor, toColor),
+		albedoFactor: toOptional(`${name}.albedoFactor`, instance.albedoFactor, toColor),
 		albedoMap: await toTexture(`${name}.albedoMap`, instance.albedoMap, directory),
+		emissiveFactor: toOptional(`${name}.emissiveFactor`, instance.emissiveFactor, toColor),
 		emissiveMap: await toTexture(`${name}.emissiveMap`, instance.emissiveMap, directory),
-		emissiveStrength: toOptional(`${name}.emissiveStrength`, instance.emissiveStrength, toDecimal),
-		glossColor: toOptional(`${name}.glossColor`, instance.glossColor, toColor),
+		glossFactor: toOptional(`${name}.glossFactor`, instance.glossFactor, toColor),
 		glossMap: await toTexture(`${name}.glossMap`, instance.glossMap, directory),
 		heightMap: await toTexture(`${name}.heightMap`, instance.heightMap, directory),
 		metalnessMap: await toTexture(`${name}.metalnessMap`, instance.metalnessMap, directory),
