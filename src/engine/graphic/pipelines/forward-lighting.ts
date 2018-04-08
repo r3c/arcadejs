@@ -160,15 +160,15 @@ uniform sampler2D emissiveMap;
 uniform vec4 glossFactor;
 uniform sampler2D glossMap;
 uniform sampler2D heightMap;
+uniform float heightParallaxBias;
+uniform float heightParallaxScale;
 uniform sampler2D metalnessMap;
+uniform float metalnessStrength;
 uniform sampler2D normalMap;
 uniform sampler2D occlusionMap;
 uniform float occlusionStrength;
-uniform float parallaxBias;
-uniform float parallaxScale;
-uniform float perceptualRoughness;
-uniform float perceptualMetalness;
 uniform sampler2D roughnessMap;
+uniform float roughnessStrength;
 uniform float shininess;
 
 in vec2 coord;
@@ -195,8 +195,8 @@ vec3 getLight(in vec3 materialAlbedo, in vec2 coord, in vec3 normal, in vec3 eye
 			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * materialAlbedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
 			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
 	#elif LIGHT_MODEL == ${LightModel.Physical}
-			float materialMetalness = clamp(texture(metalnessMap, coord).r * perceptualMetalness, 0.0, 1.0);
-			float materialRoughness = clamp(texture(roughnessMap, coord).r * perceptualRoughness, 0.04, 1.0);
+			float materialMetalness = clamp(texture(metalnessMap, coord).r * metalnessStrength, 0.0, 1.0);
+			float materialRoughness = clamp(texture(roughnessMap, coord).r * roughnessStrength, 0.04, 1.0);
 	
 			vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "materialAlbedo", "materialRoughness", "materialMetalness")};
 	
@@ -208,7 +208,7 @@ void main(void) {
 	vec3 eyeDirection = normalize(eye);
 
 	#ifdef USE_HEIGHT_MAP
-		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirection", "parallaxScale", "parallaxBias")};
+		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirection", "heightParallaxScale", "heightParallaxBias")};
 	#else
 		vec2 parallaxCoord = coord;
 	#endif
@@ -409,9 +409,9 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 		case LightModel.Physical:
 			shader.bindTexturePerMaterial("metalnessMap", state => state.material.metalnessMap);
+			shader.bindPropertyPerMaterial("metalnessStrength", gl => gl.uniform1f, state => state.material.metalnessStrength);
 			shader.bindTexturePerMaterial("roughnessMap", state => state.material.roughnessMap);
-			shader.bindPropertyPerTarget("perceptualMetalness", gl => gl.uniform1f, state => 1.0); // FIXME: not available from model
-			shader.bindPropertyPerTarget("perceptualRoughness", gl => gl.uniform1f, state => 1.0); // FIXME: not available from model
+			shader.bindPropertyPerMaterial("roughnessStrength", gl => gl.uniform1f, state => state.material.roughnessStrength);
 
 			break;
 	}
@@ -423,8 +423,8 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	if (configuration.useHeightMap) {
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-		shader.bindPropertyPerMaterial("parallaxBias", gl => gl.uniform1f, state => state.material.parallaxBias);
-		shader.bindPropertyPerMaterial("parallaxScale", gl => gl.uniform1f, state => state.material.parallaxScale);
+		shader.bindPropertyPerMaterial("heightParallaxBias", gl => gl.uniform1f, state => state.material.heightParallaxBias);
+		shader.bindPropertyPerMaterial("heightParallaxScale", gl => gl.uniform1f, state => state.material.heightParallaxScale);
 	}
 
 	if (configuration.useNormalMap)

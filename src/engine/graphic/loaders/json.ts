@@ -141,13 +141,15 @@ const toMaterial = async (name: string, instance: any, directory: string): Promi
 		glossFactor: toOptional(`${name}.glossFactor`, instance.glossFactor, toColor),
 		glossMap: await toTexture(`${name}.glossMap`, instance.glossMap, directory),
 		heightMap: await toTexture(`${name}.heightMap`, instance.heightMap, directory),
+		heightParallaxBias: toOptional(`${name}.heightParallaxBias`, instance.heightParallaxBias, toDecimal),
+		heightParallaxScale: toOptional(`${name}.heightParallaxScale`, instance.heightParallaxScale, toDecimal),
 		metalnessMap: await toTexture(`${name}.metalnessMap`, instance.metalnessMap, directory),
+		metalnessStrength: toOptional(`${name}.metalnessStrength`, instance.metalnessStrength, toDecimal),
 		normalMap: await toTexture(`${name}.normalMap`, instance.normalMap, directory),
 		occlusionMap: await toTexture(`${name}.occlusionMap`, instance.occlusionMap, directory),
 		occlusionStrength: toOptional(`${name}.occlusionStrength`, instance.occlusionStrength, toDecimal),
-		parallaxBias: toOptional(`${name}.parallaxBias`, instance.parallaxBias, toDecimal),
-		parallaxScale: toOptional(`${name}.parallaxScale`, instance.parallaxScale, toDecimal),
 		roughnessMap: await toTexture(`${name}.roughnessMap`, instance.roughnessMap, directory),
+		roughnessStrength: toOptional(`${name}.roughnessStrength`, instance.roughnessStrength, toDecimal),
 		shininess: toOptional(`${name}.shininess`, instance.shininess, toInteger)
 	};
 };
