@@ -32,10 +32,10 @@ interface SceneState {
 	camera: view.Camera,
 	input: controller.Input,
 	lightPositions: vector.Vector3[],
-	models: {
-		cube: webgl.Model,
-		ground: webgl.Model,
-		light: webgl.Model
+	meshes: {
+		cube: webgl.Mesh,
+		ground: webgl.Mesh,
+		light: webgl.Mesh
 	},
 	move: number,
 	pipelines: {
@@ -68,19 +68,19 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 	const gl = screen.context;
 
 	// Load models
-	const cubeModel = await load.fromJSON("./obj/cube/model.json");
-	const groundModel = await load.fromJSON("./obj/ground/model.json");
-	const lightModel = await load.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
+	const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
+	const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
+	const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 
 	// Create state
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		input: input,
 		lightPositions: functional.range(3, i => vector.Vector3.zero),
-		models: {
-			cube: webgl.loadModel(gl, cubeModel),
-			ground: webgl.loadModel(gl, groundModel),
-			light: webgl.loadModel(gl, lightModel)
+		meshes: {
+			cube: webgl.loadMesh(gl, cubeMesh),
+			ground: webgl.loadMesh(gl, groundMesh),
+			light: webgl.loadMesh(gl, lightMesh)
 		},
 		move: 0,
 		pipelines: {
@@ -106,7 +106,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
-	const models = state.models;
+	const meshes = state.meshes;
 	const pipelines = state.pipelines;
 	const target = state.target;
 
@@ -133,13 +133,13 @@ const render = (state: SceneState) => {
 		})),
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity(),
-			model: models.cube
+			mesh: meshes.cube
 		}, {
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
-			model: models.ground
+			mesh: meshes.ground
 		}].concat(state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
 			matrix: matrix.Matrix4.createIdentity().translate(position),
-			model: models.light
+			mesh: meshes.light
 		})))
 	};
 

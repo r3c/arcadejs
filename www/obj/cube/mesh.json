@@ -13,7 +13,7 @@
 			"shininess": 100
 		}
 	},
-	"meshes": [
+	"geometries": [
 		{
 			"colors": [
 				{

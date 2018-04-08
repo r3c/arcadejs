@@ -31,11 +31,11 @@ interface SceneState {
 	camera: view.Camera,
 	directionalLights: webgl.DirectionalLight[],
 	input: controller.Input,
-	models: {
-		cube: webgl.Model,
-		directionalLight: webgl.Model,
-		ground: webgl.Model,
-		pointLight: webgl.Model
+	meshes: {
+		cube: webgl.Mesh,
+		directionalLight: webgl.Mesh,
+		ground: webgl.Mesh,
+		pointLight: webgl.Mesh
 	},
 	move: number,
 	pipelines: {
@@ -67,11 +67,11 @@ const getOptions = (tweak: application.Tweak<Configuration>) => [
 const prepare = () => application.runtime(display.WebGLScreen, configuration, async (screen, input, tweak) => {
 	const gl = screen.context;
 
-	// Load models
-	const cubeModel = await load.fromJSON("./obj/cube/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
-	const directionalLightModel = await load.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
-	const groundModel = await load.fromJSON("./obj/ground/model.json");
-	const pointLightModel = await load.fromJSON("./obj/sphere/model.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
+	// Load meshes
+	const cubeMesh = await load.fromJSON("./obj/cube/mesh.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.4, y: 0.4, z: 0.4 }) });
+	const directionalLightMesh = await load.fromJSON("./obj/sphere/mesh.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.5, y: 0.5, z: 0.5 }) });
+	const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
+	const pointLightMesh = await load.fromJSON("./obj/sphere/mesh.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.1, y: 0.1, z: 0.1 }) });
 
 	// Create state
 	return {
@@ -82,11 +82,11 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 			shadow: false
 		})),
 		input: input,
-		models: {
-			cube: webgl.loadModel(gl, cubeModel),
-			directionalLight: webgl.loadModel(gl, directionalLightModel),
-			ground: webgl.loadModel(gl, groundModel),
-			pointLight: webgl.loadModel(gl, pointLightModel)
+		meshes: {
+			cube: webgl.loadMesh(gl, cubeMesh),
+			directionalLight: webgl.loadMesh(gl, directionalLightMesh),
+			ground: webgl.loadMesh(gl, groundMesh),
+			pointLight: webgl.loadMesh(gl, pointLightMesh)
 		},
 		move: 0,
 		pipelines: {
@@ -124,7 +124,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 
 const render = (state: SceneState) => {
 	const camera = state.camera;
-	const models = state.models;
+	const meshes = state.meshes;
 	const pipelines = state.pipelines;
 	const target = state.target;
 	const tweak = state.tweak;
@@ -150,16 +150,16 @@ const render = (state: SceneState) => {
 		pointLights: pointLights,
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
-			model: models.ground
+			mesh: meshes.ground
 		}].concat(functional.range(16, i => ({
 			matrix: matrix.Matrix4.createIdentity().translate({ x: (i % 4 - 1.5) * 2, y: 0, z: (Math.floor(i / 4) - 1.5) * 2 }),
-			model: models.cube
+			mesh: meshes.cube
 		}))).concat(directionalLights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(vector.Vector3.scale(vector.Vector3.normalize(light.direction), 10)),
-			model: models.directionalLight
+			mesh: meshes.directionalLight
 		}))).concat(pointLights.map(light => ({
 			matrix: matrix.Matrix4.createIdentity().translate(light.position),
-			model: models.pointLight
+			mesh: meshes.pointLight
 		})))
 	};
 

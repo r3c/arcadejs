@@ -149,7 +149,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 class Pipeline implements webgl.Pipeline {
 	private readonly gl: WebGLRenderingContext;
-	private readonly quad: webgl.Model;
+	private readonly quad: webgl.Mesh;
 	private readonly scale: number;
 	private readonly shader: webgl.Shader<State>;
 
@@ -164,27 +164,31 @@ class Pipeline implements webgl.Pipeline {
 		return {
 			subjects: [{
 				matrix: matrix.Matrix4.createIdentity(),
-				model: {
-					meshes: [{
-						geometries: [],
-						material: {
-							albedoColor: defaultColor,
-							albedoMap: source,
-							emissiveMap: undefined,
-							emissiveStrength: 0,
-							glossColor: defaultColor,
-							glossMap: undefined,
-							heightMap: undefined,
-							metalnessMap: undefined,
-							normalMap: undefined,
-							occlusionMap: undefined,
-							occlusionStrength: 0,
-							parallaxBias: 0,
-							parallaxScale: 0,
-							roughnessMap: defaultColor,
-							shininess: 0
-						}
-					}]
+				mesh: {
+					root: {
+						children: [],
+						primitives: [{
+							geometry: undefined,
+							material: {
+								albedoColor: defaultColor,
+								albedoMap: source,
+								emissiveMap: undefined,
+								emissiveStrength: 0,
+								glossColor: defaultColor,
+								glossMap: undefined,
+								heightMap: undefined,
+								metalnessMap: undefined,
+								normalMap: undefined,
+								occlusionMap: undefined,
+								occlusionStrength: 0,
+								parallaxBias: 0,
+								parallaxScale: 0,
+								roughnessMap: defaultColor,
+								shininess: 0
+							}
+						}],
+						transform: matrix.Matrix4.createIdentity()
+					}
 				}
 			}]
 		};
@@ -192,7 +196,7 @@ class Pipeline implements webgl.Pipeline {
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		this.gl = gl;
-		this.quad = webgl.loadModel(gl, quad.model);
+		this.quad = webgl.loadMesh(gl, quad.mesh);
 		this.scale = functional.coalesce(configuration.scale, 0.4);
 		this.shader = load(gl, configuration);
 	}
@@ -211,17 +215,21 @@ class Pipeline implements webgl.Pipeline {
 				.createIdentity()
 				.translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 })
 				.scale({ x: this.scale, y: this.scale, z: 0 }),
-			model: this.quad
+			mesh: this.quad
 		}];
 
 		// Hack: find first defined albedo map from subject models and use it as debug source
-		const source = <WebGLTexture>functional
-			.flatten(scene.subjects.map(s => s.model.meshes.map(m => m.material.albedoMap)))
-			.find(v => v !== undefined);
+		for (const subject of scene.subjects) {
+			for (const primitive of subject.mesh.root.primitives) {
+				if (primitive.material !== undefined && primitive.material.albedoMap !== undefined) {
+					target.draw(this.shader, subjects, {
+						source: primitive.material.albedoMap
+					});
 
-		target.draw(this.shader, subjects, {
-			source: source
-		});
+					return;
+				}
+			}
+		}
 	}
 
 	public resize(width: number, height: number) {

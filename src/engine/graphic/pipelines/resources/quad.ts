@@ -1,6 +1,6 @@
 import * as matrix from "../../../math/matrix";
 
-const model = {
+const mesh = {
 	materials: {},
 	root: {
 		children: [],
@@ -34,4 +34,4 @@ const model = {
 	}
 };
 
-export { model }
+export { mesh }

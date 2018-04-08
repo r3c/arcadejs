@@ -10,7 +10,7 @@
 			"shininess": 10
 		}
 	},
-	"meshes": [
+	"geometries": [
 		{
 			"coords": [
 				{

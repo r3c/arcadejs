@@ -90,12 +90,13 @@ interface MaterialState<State> {
 }
 
 interface Mesh {
-	geometries: Geometry[],
-	material: Material
+	root: Node
 }
 
-interface Model {
-	meshes: Mesh[]
+interface Node {
+	children: Node[],
+	primitives: Primitive[],
+	transform: matrix.Matrix4
 }
 
 interface Pipeline {
@@ -107,6 +108,11 @@ interface PointLight {
 	color: vector.Vector3,
 	position: vector.Vector3,
 	radius: number
+}
+
+interface Primitive {
+	geometry: Geometry | undefined,
+	material: Material | undefined
 }
 
 interface Quality {
@@ -124,7 +130,7 @@ interface Scene {
 
 interface Subject {
 	matrix: matrix.Matrix4,
-	model: Model,
+	mesh: Mesh,
 	shadow?: boolean
 }
 
@@ -471,6 +477,36 @@ const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with n
 const invalidMaterial = (name: string) => Error(`cannot use unknown material "${name}" on mesh`);
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
+const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, quality: Quality, materials: { [name: string]: model.Material }): Primitive => ({
+	geometry: {
+		colors: functional.map(geometry.colors, colors => ({
+			buffer: createBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
+			stride: colors.stride
+		})),
+		coords: functional.map(geometry.coords, coords => ({
+			buffer: createBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
+			stride: coords.stride
+		})),
+		count: geometry.indices.length,
+		indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
+		normals: functional.map(geometry.normals, normals => ({
+			buffer: createBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
+			stride: normals.stride
+		})),
+		points: {
+			buffer: createBuffer(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
+			stride: geometry.points.stride
+		},
+		tangents: functional.map(geometry.tangents, tangents => ({
+			buffer: createBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
+			stride: tangents.stride
+		}))
+	},
+	material: geometry.materialName !== undefined && materials[geometry.materialName] !== undefined
+		? loadMaterial(gl, materials[geometry.materialName], quality)
+		: undefined
+});
+
 const loadMaterial = (gl: WebGLRenderingContext, material: model.Material, quality: Quality) => {
 	const toColorMap = (image: ImageData) => configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, quality, image.data);
 
@@ -493,78 +529,15 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material, quali
 	};
 };
 
-const loadModel = (gl: WebGLRenderingContext, model: model.Mesh, quality: Quality = qualityImage): Model => {
-	const definitions = model.materials || {};
-	const meshes: { [name: string]: Mesh } = {};
+const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh, quality: Quality = qualityImage): Mesh => ({
+	root: loadNode(gl, mesh.root, quality, mesh.materials)
+});
 
-	const toIndices = (indices: [number, number, number]) => indices;
-
-	for (const mesh of model.root.geometries) {
-		const materialName = mesh.materialName;
-
-		let geometries: Geometry[];
-
-		if (materialName !== undefined) {
-			if (definitions[materialName] === undefined)
-				throw invalidMaterial(materialName);
-
-			if (meshes[materialName] === undefined) {
-				meshes[materialName] = {
-					geometries: [],
-					material: loadMaterial(gl, definitions[materialName], quality)
-				}
-			}
-
-			geometries = meshes[materialName].geometries;
-		}
-		else {
-			const defaultMaterialName = "";
-
-			if (meshes[defaultMaterialName] === undefined) {
-				meshes[defaultMaterialName] = {
-					geometries: [],
-					material: loadMaterial(gl, {}, quality)
-				};
-			}
-
-			geometries = meshes[defaultMaterialName].geometries;
-		}
-
-		geometries.push({
-			colors: functional.map(mesh.colors, colors => ({
-				buffer: createBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
-				stride: colors.stride
-			})),
-			coords: functional.map(mesh.coords, coords => ({
-				buffer: createBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
-				stride: coords.stride
-			})),
-			count: mesh.indices.length,
-			indices: createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, mesh.indices),
-			normals: functional.map(mesh.normals, normals => ({
-				buffer: createBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
-				stride: normals.stride
-			})),
-			points: {
-				buffer: createBuffer(gl, gl.ARRAY_BUFFER, mesh.points.buffer),
-				stride: mesh.points.stride
-			},
-			tangents: functional.map(mesh.tangents, tangents => ({
-				buffer: createBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
-				stride: tangents.stride
-			}))
-		});
-	}
-
-	const result = [];
-
-	for (const name in meshes)
-		result.push(meshes[name]);
-
-	return {
-		meshes: result
-	};
-};
+const loadNode = (gl: WebGLRenderingContext, node: model.Node, quality: Quality, materials: { [name: string]: model.Material }): Node => ({
+	children: node.children.map(child => loadNode(gl, child, quality, materials)),
+	primitives: node.geometries.map(geometry => loadGeometry(gl, geometry, quality, materials)),
+	transform: node.transform
+});
 
 class Target {
 	private readonly gl: WebGLRenderingContext;
@@ -647,48 +620,7 @@ class Target {
 			for (const binding of shader.getPropertyPerModelBindings())
 				binding(gl, globalState);
 
-			for (const mesh of subject.model.meshes) {
-				let materialTextureIndex = callTextureIndex;
-
-				globalState.material = mesh.material;
-
-				// Assign per-material uniforms
-				for (const binding of shader.getTexturePerMaterialBindings()) {
-					const texture = binding.getter(globalState);
-
-					if (texture === undefined)
-						throw invalidUniformBinding(binding.name);
-
-					gl.activeTexture(gl.TEXTURE0 + materialTextureIndex);
-					gl.bindTexture(gl.TEXTURE_2D, texture);
-					gl.uniform1i(binding.location, materialTextureIndex);
-
-					++materialTextureIndex;
-				}
-
-				for (const binding of shader.getPropertyPerMaterialBindings())
-					binding(gl, globalState);
-
-				for (const geometry of mesh.geometries) {
-					globalState.geometry = geometry;
-
-					// Assign per-geometry attributes
-					for (const binding of shader.getAttributePerGeometryBindings()) {
-						const attribute = binding.getter(globalState);
-
-						if (attribute === undefined)
-							throw invalidAttributeBinding(binding.name);
-
-						gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
-						gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, attribute.stride * binding.block, 0);
-						gl.enableVertexAttribArray(binding.location);
-					}
-
-					// Perform draw call
-					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geometry.indices);
-					gl.drawElements(gl.TRIANGLES, geometry.count, gl.UNSIGNED_INT, 0);
-				}
-			}
+			this.drawNode(shader, subject.mesh.root, globalState, callTextureIndex);
 		}
 	}
 
@@ -834,6 +766,58 @@ class Target {
 
 		return texture;
 	}
+
+	private drawNode<T>(shader: Shader<T>, node: Node, globalState: GeometryState<T>, callTextureIndex: number) {
+		const gl = this.gl;
+
+		for (const child of node.children)
+			this.drawNode(shader, child, globalState, callTextureIndex);
+
+		for (const primitive of node.primitives) {
+			if (primitive.material !== undefined) {
+				let materialTextureIndex = callTextureIndex;
+
+				globalState.material = primitive.material;
+
+				// Assign per-material uniforms
+				for (const binding of shader.getTexturePerMaterialBindings()) {
+					const texture = binding.getter(globalState);
+
+					if (texture === undefined)
+						throw invalidUniformBinding(binding.name);
+
+					gl.activeTexture(gl.TEXTURE0 + materialTextureIndex);
+					gl.bindTexture(gl.TEXTURE_2D, texture);
+					gl.uniform1i(binding.location, materialTextureIndex);
+
+					++materialTextureIndex;
+				}
+
+				for (const binding of shader.getPropertyPerMaterialBindings())
+					binding(gl, globalState);
+			}
+
+			if (primitive.geometry !== undefined) {
+				globalState.geometry = primitive.geometry;
+
+				// Assign per-geometry attributes
+				for (const binding of shader.getAttributePerGeometryBindings()) {
+					const attribute = binding.getter(globalState);
+
+					if (attribute === undefined)
+						throw invalidAttributeBinding(binding.name);
+
+					gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
+					gl.vertexAttribPointer(binding.location, binding.size, binding.type, false, attribute.stride * binding.block, 0);
+					gl.enableVertexAttribArray(binding.location);
+				}
+
+				// Perform draw call
+				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, primitive.geometry.indices);
+				gl.drawElements(gl.TRIANGLES, primitive.geometry.count, gl.UNSIGNED_INT, 0);
+			}
+		}
+	}
 }
 
-export { DirectionalLight, Directive, Format, Geometry, Mesh, Model, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadModel }
+export { Attribute, DirectionalLight, Directive, Format, Geometry, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadMesh }

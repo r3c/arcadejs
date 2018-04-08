@@ -40,7 +40,7 @@ const prepare = () => application.runtime(display.Context2DScreen, configuration
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
-		cubeWithTexture: await load.fromJSON("./obj/cube/model.json"),
+		cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
 		input: input,
 		projection: matrix.Matrix4.createIdentity(),
 		renderer: renderer,
