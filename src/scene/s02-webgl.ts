@@ -49,7 +49,7 @@ interface SceneState {
 	camera: view.Camera,
 	gl: WebGLRenderingContext,
 	input: controller.Input,
-	model: webgl.Model,
+	mesh: webgl.Mesh,
 	projectionMatrix: matrix.Matrix4,
 	shader: webgl.Shader<ShaderState>,
 	target: webgl.Target
@@ -79,7 +79,7 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
 		gl: gl,
 		input: input,
-		model: webgl.loadModel(gl, await load.fromJSON("./obj/cube/model.json")),
+		mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
 		projectionMatrix: matrix.Matrix4.createIdentity(),
 		screen: screen,
 		shader: shader,
@@ -100,7 +100,7 @@ const render = (state: SceneState) => {
 
 	const cube = {
 		matrix: matrix.Matrix4.createIdentity(),
-		model: state.model
+		mesh: state.mesh
 	};
 
 	gl.enable(gl.CULL_FACE);

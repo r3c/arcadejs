@@ -37,7 +37,7 @@ interface Material {
 }
 
 interface Mesh {
-	materials: { [key: string]: Material },
+	materials: { [name: string]: Material },
 	root: Node
 }
 

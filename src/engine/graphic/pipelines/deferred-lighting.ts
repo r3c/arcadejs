@@ -457,7 +457,7 @@ class Pipeline implements webgl.Pipeline {
 	public readonly normalAndGlossBuffer: WebGLTexture;
 
 	private readonly directionalLightShader: webgl.Shader<LightState<webgl.DirectionalLight>>;
-	private readonly fullscreenModel: webgl.Model;
+	private readonly fullscreenMesh: webgl.Mesh;
 	private readonly fullscreenProjection: matrix.Matrix4;
 	private readonly geometryTarget: webgl.Target;
 	private readonly geometryShader: webgl.Shader<State>;
@@ -465,7 +465,7 @@ class Pipeline implements webgl.Pipeline {
 	private readonly lightTarget: webgl.Target;
 	private readonly materialShader: webgl.Shader<MaterialState>;
 	private readonly pointLightShader: webgl.Shader<LightState<webgl.PointLight>>;
-	private readonly sphereModel: webgl.Model;
+	private readonly sphereMesh: webgl.Mesh;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		const geometry = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
@@ -473,7 +473,7 @@ class Pipeline implements webgl.Pipeline {
 
 		this.depthBuffer = geometry.setupDepthTexture(webgl.Format.Depth16);
 		this.directionalLightShader = loadLightDirectional(gl, configuration);
-		this.fullscreenModel = webgl.loadModel(gl, quad.model);
+		this.fullscreenMesh = webgl.loadMesh(gl, quad.mesh);
 		this.fullscreenProjection = matrix.Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
 		this.geometryShader = loadGeometry(gl, configuration);
 		this.geometryTarget = geometry;
@@ -483,7 +483,7 @@ class Pipeline implements webgl.Pipeline {
 		this.materialShader = loadMaterial(gl, configuration);
 		this.pointLightShader = loadLightPoint(gl, configuration);
 		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.Format.RGBA8);
-		this.sphereModel = webgl.loadModel(gl, sphere.model);
+		this.sphereMesh = webgl.loadMesh(gl, sphere.mesh);
 	}
 
 	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
@@ -519,7 +519,7 @@ class Pipeline implements webgl.Pipeline {
 			// - One for computing light directions in camera space
 			const subjects = [{
 				matrix: transform.viewMatrix.inverse(),
-				model: this.fullscreenModel
+				mesh: this.fullscreenMesh
 			}];
 
 			for (const directionalLight of scene.directionalLights) {
@@ -537,7 +537,7 @@ class Pipeline implements webgl.Pipeline {
 		if (scene.pointLights !== undefined) {
 			const subjects = [{
 				matrix: matrix.Matrix4.createIdentity(),
-				model: this.sphereModel
+				mesh: this.sphereMesh
 			}];
 
 			gl.cullFace(gl.FRONT);
