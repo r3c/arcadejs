@@ -11,6 +11,7 @@ ToDo
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
 - Use same tangent space transform methods in forward and deferred renderers
 - Detect canvas resizing and stop violating encapsulation [canvas-resize]
+- Use RGB standard to linear conversion in deferred shader
 
 Done
 ----
