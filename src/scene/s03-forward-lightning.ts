@@ -90,6 +90,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 				lightModelPhongNoDiffuse: !flags[1],
 				lightModelPhongNoSpecular: !flags[2],
 				maxPointLights: 3,
+				useAlbedoMap: true,
 				useEmissiveMap: false,
 				useGlossMap: true,
 				useHeightMap: flags[3],

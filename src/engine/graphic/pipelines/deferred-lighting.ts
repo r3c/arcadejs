@@ -3,6 +3,7 @@ import * as normal from "./snippets/normal";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import * as quad from "./resources/quad";
+import * as rgb from "./snippets/rgb";
 import * as shininess from "./snippets/shininess";
 import * as sphere from "./resources/sphere";
 import * as vector from "../../math/vector";
@@ -238,6 +239,8 @@ void main(void) {
 
 const materialFragmentShader = `
 ${parallax.heightDeclare}
+${rgb.linearToStandardDeclare}
+${rgb.standardToLinearDeclare}
 
 uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
@@ -281,11 +284,13 @@ void main(void) {
 		vec2 parallaxCoord = coord;
 	#endif
 
-	vec4 albedo = albedoFactor * texture(albedoMap, parallaxCoord);
-	vec4 gloss = glossFactor * texture(glossMap, parallaxCoord);
+	vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, parallaxCoord).rgb")};
+	vec3 gloss = glossFactor.rgb * texture(glossMap, parallaxCoord).rgb;
 
 	// Emit final fragment color
-	fragColor = vec4(albedo.rgb * (ambientLight + diffuseLight) + gloss.rgb * specularLight, 1.0);
+	vec3 color = albedo * (ambientLight + diffuseLight) + gloss * specularLight;
+
+	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
 }`;
 
 interface Configuration {

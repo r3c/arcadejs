@@ -183,7 +183,7 @@ in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in vec3 materialAlbedo, in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
+vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
 	#if LIGHT_MODEL == ${LightModel.Phong}
 		#ifdef USE_GLOSS_MAP
 			vec4 materialGloss = glossFactor * texture(glossMap, coord);
@@ -192,13 +192,13 @@ vec3 getLight(in vec3 materialAlbedo, in vec2 coord, in vec3 normal, in vec3 eye
 		#endif
 
 		return
-			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * materialAlbedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
+			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * albedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
 			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
 	#elif LIGHT_MODEL == ${LightModel.Physical}
 			float materialMetalness = clamp(texture(metalnessMap, coord).r * metalnessStrength, 0.0, 1.0);
 			float materialRoughness = clamp(texture(roughnessMap, coord).r * roughnessStrength, 0.04, 1.0);
 	
-			vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "materialAlbedo", "materialRoughness", "materialMetalness")};
+			vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "materialRoughness", "materialMetalness")};
 	
 			return color;
 	#endif
@@ -219,11 +219,14 @@ void main(void) {
 		vec3 modifiedNormal = normal;
 	#endif
 
-	vec3 materialAlbedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, parallaxCoord).rgb")};
-	vec3 outputColor = vec3(0, 0, 0);
+	#ifdef USE_ALBEDO_MAP
+		vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, parallaxCoord).rgb")};
+	#else
+		vec3 albedo = albedoFactor.rgb;
+	#endif
 
 	// Apply ambient component
-	outputColor += materialAlbedo * ambientLightColor * float(LIGHT_MODEL_AMBIENT);
+	vec3 color = albedo * ambientLightColor * float(LIGHT_MODEL_AMBIENT);
 
 	// Apply components from directional lights
 	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
@@ -234,8 +237,8 @@ void main(void) {
 				continue;
 		#endif
 
-		outputColor += directionalLights[i].visibility * getLight(
-			materialAlbedo,
+		color += directionalLights[i].visibility * getLight(
+			albedo,
 			parallaxCoord,
 			modifiedNormal,
 			eyeDirection,
@@ -246,8 +249,8 @@ void main(void) {
 
 	// Apply components from point lights
 	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
-		outputColor += pointLights[i].visibility * getLight(
-			materialAlbedo,
+		color += pointLights[i].visibility * getLight(
+			albedo,
 			parallaxCoord,
 			modifiedNormal,
 			eyeDirection,
@@ -258,15 +261,15 @@ void main(void) {
 
 	// Apply emissive component
 	#ifdef USE_EMISSIVE_MAP
-		outputColor += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, parallaxCoord).rgb")};
+		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, parallaxCoord).rgb")};
 	#endif
 
 	// Apply ambient occlusion component
 	#ifdef USE_OCCLUSION_MAP
-		outputColor = mix(outputColor, outputColor * texture(occlusionMap, parallaxCoord).r, occlusionStrength);
+		color = mix(color, color * texture(occlusionMap, parallaxCoord).r, occlusionStrength);
 	#endif
 
-	fragColor = vec4(${rgb.linearToStandardInvoke("outputColor")}, 1.0);
+	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
 }`;
 
 const shadowVertexShader = `
@@ -295,6 +298,7 @@ interface Configuration {
 	lightModelPhysicalNoAmbient?: boolean,
 	maxDirectionalLights?: number,
 	maxPointLights?: number,
+	useAlbedoMap: boolean,
 	useEmissiveMap: boolean
 	useGlossMap: boolean,
 	useHeightMap: boolean,
@@ -351,6 +355,9 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 			break;
 	}
 
+	if (configuration.useAlbedoMap)
+		directives.push({ name: "USE_ALBEDO_MAP", value: 1 });
+
 	if (configuration.useEmissiveMap)
 		directives.push({ name: "USE_EMISSIVE_MAP", value: 1 });
 
@@ -388,14 +395,11 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	if (configuration.useShadowMap)
 		shader.bindMatrixPerTarget("shadowProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.shadowProjectionMatrix.getValues());
 
-	// Bind light uniforms
-	const defaultColor = [0, 0, 0];
-	const defaultDirection = [1, 0, 0];
-	const defaultPosition = [0, 0, 0];
+	// Bind material uniforms
+	if (configuration.useAlbedoMap)
+		shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 	shader.bindPropertyPerMaterial("albedoFactor", gl => gl.uniform4fv, state => state.material.albedoFactor);
-	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
-	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 
 	switch (configuration.lightModel) {
 		case LightModel.Phong:
@@ -434,6 +438,13 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 		shader.bindTexturePerMaterial("occlusionMap", state => state.material.occlusionMap);
 		shader.bindPropertyPerMaterial("occlusionStrength", gl => gl.uniform1f, state => state.material.occlusionStrength);
 	}
+
+	// Bind light uniforms
+	const defaultColor = [0, 0, 0];
+	const defaultDirection = [1, 0, 0];
+	const defaultPosition = [0, 0, 0];
+
+	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 
 	for (let i = 0; i < maxDirectionalLights; ++i) {
 		const index = i;

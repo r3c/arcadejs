@@ -94,10 +94,10 @@ void main(void) {
 	#endif
 
 	// Color target 1: [albedo.rgb, shininess]
-	vec4 albedo = albedoFactor * texture(albedoMap, parallaxCoord);
+	vec3 albedo = albedoFactor.rgb * texture(albedoMap, parallaxCoord).rgb;
 	float shininessPack = ${shininess.encodeInvoke("shininess")};
 
-	albedoAndShininess = vec4(albedo.rgb, shininessPack);
+	albedoAndShininess = vec4(albedo, shininessPack);
 
 	// Color target 2: [normal.pp, zero, gloss]
 	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
