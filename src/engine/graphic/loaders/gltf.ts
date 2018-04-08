@@ -108,19 +108,19 @@ enum Type {
 	VEC4
 }
 
-const convertArrayOf = <T>(url: string, source: string, name: string, array: any, converter: (value: any, index: number) => T) => {
+const convertArrayOf = <T>(url: string, source: string, array: any, converter: (value: any, index: number) => T) => {
 	if (array === undefined)
-		throw invalidData(url, `${source} is missing a ${name} array`);
+		throw invalidData(url, `${source} is not a value array`);
 
 	return (<any[]>array).map(converter);
 };
 
-const convertReferenceTo = <T>(url: string, source: string, name: string, reference: any, pool: T[]) => {
-	if (reference === undefined)
-		throw invalidData(url, `${source} is missing a reference to ${name}`);
+const convertReferenceTo = <T>(url: string, source: string, reference: any, pool: T[]) => {
+	if (typeof reference !== "number")
+		throw invalidData(url, `${source} is not a valid reference`);
 
 	if (reference < 0 || reference >= pool.length)
-		throw invalidData(url, `${source} references invalid ${name} #${reference}`);
+		throw invalidData(url, `${source} references out-of-bound entry #${reference}`);
 
 	return pool[reference];
 };
@@ -153,14 +153,14 @@ const expandMaterial = (material: Material): model.Material => {
 		albedoMap: toMap(material.baseColorTexture),
 		emissiveFactor: material.emissiveFactor,
 		emissiveMap: toMap(material.emissiveTexture),
-		//metalnessFactor: material.metallicFactor, // FIXME
-		metalnessMap: toMap(material.metallicRoughnessTexture), // FIXME
-		//normalFactor: material.normalFactor,
+		metalnessMap: toMap(material.metallicRoughnessTexture), // FIXME: only 1 component
+		metalnessStrength: material.metallicFactor,
+		//normalFactor: material.normalFactor, // FIXME: normalFactor is ignored
 		normalMap: toMap(material.normalTexture),
-		//occlusionFactor: material.occlusionFactor, // FIXME
 		occlusionMap: toMap(material.occlusionTexture),
-		//roughnessFactor: material.roughnessFactor, // FIXME
-		roughnessMap: toMap(material.metallicRoughnessTexture) // FIXME
+		occlusionStrength: Math.max(material.occlusionFactor.x, material.occlusionFactor.y, material.occlusionFactor.z, material.occlusionFactor.w),
+		roughnessMap: toMap(material.metallicRoughnessTexture), // FIXME: only 1 component
+		roughnessStrength: material.roughnessFactor,
 	};
 };
 
@@ -189,14 +189,15 @@ const expandNode = (url: string, node: Node): model.Node => ({
 const invalidData = (url: string, description: string) => Error(`invalid glTF data in file ${url}: ${description}`);
 
 const loadAccessor = (url: string, bufferViews: BufferView[], accessor: any, index: number): Accessor => {
+	const source = `accessor[${index}]`;
 	const byteOffset = functional.coalesce(<number | undefined>accessor.byteOffset, 0);
-	const bufferView = convertReferenceTo(url, `accessor #${index}`, "buffer view", accessor.bufferView, bufferViews);
+	const bufferView = convertReferenceTo(url, source + ".bufferView", accessor.bufferView, bufferViews);
 	const componentType = functional.coalesce(<number | undefined>accessor.componentType, 0);
 	const count = functional.coalesce(<number | undefined>accessor.count, 0);
 	const typeName = functional.coalesce(<string | undefined>accessor.type, "undefined");
 
 	if (accessor.sparse !== undefined)
-		throw invalidData(url, `accessor #${index} has unsupported sparse attribute`);
+		throw invalidData(url, source + " has unsupported sparse attribute");
 
 	let arrayConstructor: ArrayConstructor;
 
@@ -232,7 +233,7 @@ const loadAccessor = (url: string, bufferViews: BufferView[], accessor: any, ind
 			break;
 
 		default:
-			throw invalidData(url, `accessor #${index} has unsupported component type ${componentType}`);
+			throw invalidData(url, source + ` has unsupported component type ${componentType}`);
 	}
 
 	let componentsPerElement: number;
@@ -259,13 +260,13 @@ const loadAccessor = (url: string, bufferViews: BufferView[], accessor: any, ind
 			break;
 
 		default:
-			throw invalidData(url, `accessor #${index} has unknown type ${typeName}`);
+			throw invalidData(url, source + ` has unknown type ${typeName}`);
 	}
 
 	const stop = byteOffset + count * componentsPerElement * arrayConstructor.BYTES_PER_ELEMENT;
 
 	if (bufferView.length < stop)
-		throw invalidData(url, `accessor #${index} overflows underlying buffer view #${accessor.bufferView} by ${stop - bufferView.length} byte(s)`);
+		throw invalidData(url, source + ` overflows underlying buffer view #${accessor.bufferView} by ${stop - bufferView.length} byte(s)`);
 
 	return {
 		arrayBuffer: bufferView.buffer,
@@ -294,13 +295,14 @@ const loadBuffer = async (url: string, embedded: ArrayBuffer | undefined, buffer
 };
 
 const loadBufferView = (url: string, buffers: Buffer[], bufferView: any, index: number): BufferView => {
-	const buffer = convertReferenceTo(url, `bufferView #${index}`, "buffer", bufferView.buffer, buffers);
+	const source = `bufferView[${index}]`;
+	const buffer = convertReferenceTo(url, source + ".buffer", bufferView.buffer, buffers);
 	const byteLength = functional.coalesce(<number | undefined>bufferView.byteLength, 0);
 	const byteOffset = functional.coalesce(<number | undefined>bufferView.byteOffset, 0);
 	const stop = byteOffset + byteLength;
 
 	if (buffer.length < stop)
-		throw invalidData(url, `bufferView #${index} overflows underlying buffer ${bufferView.buffer} by ${stop - buffer.length} byte(s)`);
+		throw invalidData(url, source + ` overflows underlying buffer ${bufferView.buffer} by ${stop - buffer.length} byte(s)`);
 
 	return {
 		buffer: buffer.buffer,
@@ -314,8 +316,10 @@ const loadImage = async (url: string, bufferViews: BufferView[], image: any, ind
 	if (image.uri !== undefined)
 		return await model.loadImage(path.combine(path.directory(url), image.uri));
 
+	const source = `image[${index}]`;
+
 	if (image.bufferView !== undefined && image.mimeType !== undefined) {
-		const bufferView = convertReferenceTo(url, `image #${index}`, "buffer view", image.bufferView, bufferViews);
+		const bufferView = convertReferenceTo(url, source + ".bufferView", image.bufferView, bufferViews);
 		const blob = new Blob([bufferView.buffer], { type: image.mimeType });
 		const uri = window.URL.createObjectURL(blob);
 
@@ -324,18 +328,18 @@ const loadImage = async (url: string, bufferViews: BufferView[], image: any, ind
 		return model.loadImage(uri);
 	}
 
-	throw invalidData(url, `image #${index} specifies no URI nor buffer data`);
+	throw invalidData(url, source + " specifies no URI nor buffer data");
 };
 
 const loadMaterial = (url: string, textures: Texture[], material: any, index: number): Material => {
 	const pbr = material.pbrMetallicRoughness || {};
-	const source = `material #${index}`;
+	const source = `material[${index}]`;
 
 	const toFactor = (property: any, name: string) =>
 		property !== undefined ? { x: property[0], y: property[1], z: property[2], w: property[3] } : vector.Vector4.one;
 
 	const toTexture = (property: any, name: string) =>
-		functional.map(property, texture => convertReferenceTo(url, source, name, texture.index, textures));
+		functional.map(property, texture => convertReferenceTo(url, source + "." + name, texture.index, textures));
 
 	return {
 		baseColorFactor: toFactor(pbr.baseColorFactor, "baseColorFactor"),
@@ -354,17 +358,17 @@ const loadMaterial = (url: string, textures: Texture[], material: any, index: nu
 };
 
 const loadMesh = (url: string, accessors: Accessor[], materials: Material[], mesh: any, index: number): Mesh => ({
-	primitives: convertArrayOf(url, `mesh #${index}`, "primitives", mesh.primitives, (value, index) => loadPrimitive(url, accessors, materials, value, index))
+	primitives: convertArrayOf(url, `mesh[${index}].primitives`, mesh.primitives, (value, index) => loadPrimitive(url, accessors, materials, value, index))
 });
 
 const loadNode = (url: string, meshes: Mesh[], nodes: Node[], siblings: any, node: any, index: number): Node => {
 	if (nodes[index] === undefined) {
-		const source = `node #${index}`;
+		const source = `node[${index}]`;
 
 		let transform: matrix.Matrix4;
 
 		if (node.matrix !== undefined) {
-			transform = matrix.Matrix4.create(convertArrayOf(url, source, "matrix", node.matrix, value => parseFloat(value)));
+			transform = matrix.Matrix4.create(convertArrayOf(url, source + ".matrix", node.matrix, value => parseFloat(value)));
 		}
 		else if (node.rotation !== undefined && node.scale !== undefined && node.translation !== undefined) {
 			transform = matrix.Matrix4
@@ -376,7 +380,7 @@ const loadNode = (url: string, meshes: Mesh[], nodes: Node[], siblings: any, nod
 		else
 			transform = matrix.Matrix4.createIdentity();
 
-		const childrenIndices = convertArrayOf(url, source, "children", node.children || [], value => parseInt(value));
+		const childrenIndices = convertArrayOf(url, source + ".children", node.children || [], value => parseInt(value));
 		const children = [];
 
 		for (const childIndex of childrenIndices) {
@@ -388,7 +392,7 @@ const loadNode = (url: string, meshes: Mesh[], nodes: Node[], siblings: any, nod
 
 		nodes[index] = {
 			children: children,
-			mesh: functional.map(node.mesh, mesh => convertReferenceTo(url, source, "mesh", mesh, meshes)),
+			mesh: functional.map(node.mesh, mesh => convertReferenceTo(url, source + ".mesh", mesh, meshes)),
 			transform: transform
 		};
 	}
@@ -405,19 +409,18 @@ const loadPrimitive = (url: string, accessors: Accessor[], materials: Material[]
 		throw invalidData(url, `${source} has no attributes defined`);
 
 	return {
-		colors: attributes.COLOR_0 !== undefined ? convertReferenceTo(url, source, "color_0", parseInt(attributes.COLOR_0), accessors) : undefined,
-		coords: attributes.TEXCOORD_0 !== undefined ? convertReferenceTo(url, source, "texcoord_0", parseInt(attributes.TEXCOORD_0), accessors) : undefined,
-		indices: convertReferenceTo(url, source, "indices", parseInt(primitive.indices), accessors),
-		normals: attributes.NORMAL !== undefined ? convertReferenceTo(url, source, "normal", parseInt(attributes.NORMAL), accessors) : undefined,
-		materialName: material !== undefined ? convertReferenceTo(url, source, "material", material, materials).name : undefined,
-		points: convertReferenceTo(url, source, "position", parseInt(attributes.POSITION), accessors),
-		tangents: attributes.TANGENT !== undefined ? convertReferenceTo(url, source, "tangent", parseInt(attributes.TANGENT), accessors) : undefined
+		colors: attributes.COLOR_0 !== undefined ? convertReferenceTo(url, source + ".attributes.COLOR_0", parseInt(attributes.COLOR_0), accessors) : undefined,
+		coords: attributes.TEXCOORD_0 !== undefined ? convertReferenceTo(url, source + ".attributes.TEXCOORD_0", parseInt(attributes.TEXCOORD_0), accessors) : undefined,
+		indices: convertReferenceTo(url, source + ".indices", parseInt(primitive.indices), accessors),
+		normals: attributes.NORMAL !== undefined ? convertReferenceTo(url, source + ".attributes.NORMAL", parseInt(attributes.NORMAL), accessors) : undefined,
+		materialName: material !== undefined ? convertReferenceTo(url, source + ".material", material, materials).name : undefined,
+		points: convertReferenceTo(url, source + ".attributes.POSITION", parseInt(attributes.POSITION), accessors),
+		tangents: attributes.TANGENT !== undefined ? convertReferenceTo(url, source + ".attributes.TANGENT", parseInt(attributes.TANGENT), accessors) : undefined
 	};
 };
 
 const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | undefined) => {
 	const defaultScene = <number | undefined>structure.scene;
-	const source = "top-level node";
 	const version: string = functional.coalesce(functional.map(structure.asset, asset => asset.version), "unknown");
 
 	if (defaultScene === undefined)
@@ -427,24 +430,24 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 		throw invalidData(url, `version ${version} is not supported`);
 
 	// Accessors
-	const buffers: Buffer[] = await Promise.all(convertArrayOf(url, source, "buffers", structure.buffers || [], (value, index) => loadBuffer(url, embedded, value, index)));
-	const bufferViews: BufferView[] = convertArrayOf(url, source, "bufferViews", structure.bufferViews || [], (value, index) => loadBufferView(url, buffers, value, index));
-	const accessors: Accessor[] = convertArrayOf(url, source, "accessors", structure.accessors || [], (value, index) => loadAccessor(url, bufferViews, value, index));
+	const buffers: Buffer[] = await Promise.all(convertArrayOf(url, "buffers", structure.buffers || [], (value, index) => loadBuffer(url, embedded, value, index)));
+	const bufferViews: BufferView[] = convertArrayOf(url, "bufferViews", structure.bufferViews || [], (value, index) => loadBufferView(url, buffers, value, index));
+	const accessors: Accessor[] = convertArrayOf(url, "accessors", structure.accessors || [], (value, index) => loadAccessor(url, bufferViews, value, index));
 
 	// Materials
-	const images: ImageData[] = await Promise.all(convertArrayOf(url, source, "images", structure.images || [], (value, index) => loadImage(url, bufferViews, value, index)));
-	const samplers: Sampler[] = convertArrayOf(url, source, "samplers", structure.samplers || [], (value, index) => loadSampler(url, value, index));
-	const textures: Texture[] = convertArrayOf(url, source, "textures", structure.textures || [], (value, index) => loadTexture(url, images, samplers, value, index));
-	const materials: Material[] = convertArrayOf(url, source, "materials", structure.materials || [], (value, index) => loadMaterial(url, textures, value, index));
+	const images: ImageData[] = await Promise.all(convertArrayOf(url, "images", structure.images || [], (value, index) => loadImage(url, bufferViews, value, index)));
+	const samplers: Sampler[] = convertArrayOf(url, "samplers", structure.samplers || [], (value, index) => loadSampler(url, value, index));
+	const textures: Texture[] = convertArrayOf(url, "textures", structure.textures || [], (value, index) => loadTexture(url, images, samplers, value, index));
+	const materials: Material[] = convertArrayOf(url, "materials", structure.materials || [], (value, index) => loadMaterial(url, textures, value, index));
 
 	// Meshes
-	const meshes: Mesh[] = convertArrayOf(url, source, "meshes", structure.meshes || [], (value, index) => loadMesh(url, accessors, materials, value, index));
+	const meshes: Mesh[] = convertArrayOf(url, "meshes", structure.meshes || [], (value, index) => loadMesh(url, accessors, materials, value, index));
 
 	// Scenes
 	const nodesCache: Node[] = [];
 	const nodesRaw = structure.nodes || [];
-	const nodes: Node[] = convertArrayOf(url, source, "nodes", nodesRaw, (value, index) => loadNode(url, meshes, nodesCache, nodesRaw, value, index));
-	const scenes: Scene[] = convertArrayOf(url, source, "scenes", structure.scenes || [], (value, index) => loadScene(url, nodes, value, index));
+	const nodes: Node[] = convertArrayOf(url, "nodes", nodesRaw, (value, index) => loadNode(url, meshes, nodesCache, nodesRaw, value, index));
+	const scenes: Scene[] = convertArrayOf(url, "scenes", structure.scenes || [], (value, index) => loadScene(url, nodes, value, index));
 
 	if (scenes[defaultScene] === undefined)
 		throw invalidData(url, `default scene #${defaultScene} doesn't exist`);
@@ -485,16 +488,16 @@ const loadScene = (url: string, nodes: Node[], scene: any, index: number): Scene
 	const nodeIndices = <any[]>(scene.nodes || []);
 
 	return {
-		nodes: nodeIndices.map((node, index) => convertReferenceTo(url, `scene #${index}`, `nodes[${index}]`, node, nodes))
+		nodes: nodeIndices.map((node, i) => convertReferenceTo(url, `scene[${index}].nodes[${i}]`, node, nodes))
 	};
 };
 
 const loadTexture = (url: string, images: ImageData[], samplers: Sampler[], texture: any, index: number): Texture => {
-	const source = `texture #${index}`;
+	const source = `texture[${index}]`;
 
 	return {
-		image: convertReferenceTo(url, source, "source", texture.source, images),
-		sampler: convertReferenceTo(url, source, "sampler", texture.sampler, samplers)
+		image: convertReferenceTo(url, source + ".source", texture.source, images),
+		sampler: convertReferenceTo(url, source + ".sampler", texture.sampler, samplers)
 	};
 };
 

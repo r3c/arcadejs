@@ -4,9 +4,9 @@
 			"albedoMap": "ground-albedo.png",
 			"glossMap": "ground-gloss.png",
 			"heightMap": "ground-height.png",
+			"heightParallaxBias": 0.02,
+			"heightParallaxScale": 0.04,
 			"normalMap": "ground-normal.png",
-			"parallaxBias": 0.02,
-			"parallaxScale": 0.04,
 			"shininess": 10
 		}
 	},

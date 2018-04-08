@@ -70,13 +70,15 @@ interface Material {
 	glossFactor: number[],
 	glossMap: WebGLTexture | undefined,
 	heightMap: WebGLTexture | undefined,
+	heightParallaxBias: number,
+	heightParallaxScale: number,
 	metalnessMap: WebGLTexture | undefined,
+	metalnessStrength: number,
 	normalMap: WebGLTexture | undefined,
 	occlusionMap: WebGLTexture | undefined,
 	occlusionStrength: number,
-	parallaxBias: number,
-	parallaxScale: number,
 	roughnessMap: WebGLTexture | undefined,
+	roughnessStrength: number,
 	shininess: number
 }
 
@@ -354,13 +356,15 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material) => {
 		glossFactor: vector.Vector4.toArray(material.glossFactor || material.albedoFactor || colorWhite),
 		glossMap: functional.map(material.glossMap, toColorMap),
 		heightMap: functional.map(material.heightMap, toColorMap),
+		heightParallaxBias: functional.coalesce(material.heightParallaxBias, 0),
+		heightParallaxScale: functional.coalesce(material.heightParallaxScale, 0),
 		metalnessMap: functional.map(material.metalnessMap, toColorMap),
+		metalnessStrength: functional.coalesce(material.metalnessStrength, 1),
 		normalMap: functional.map(material.normalMap, toColorMap),
 		occlusionMap: functional.map(material.occlusionMap, toColorMap),
 		occlusionStrength: functional.coalesce(material.occlusionStrength, 1),
-		parallaxBias: functional.coalesce(material.parallaxBias, 0),
-		parallaxScale: functional.coalesce(material.parallaxScale, 0),
 		roughnessMap: functional.map(material.roughnessMap, toColorMap),
+		roughnessStrength: functional.coalesce(material.roughnessStrength, 1),
 		shininess: functional.coalesce(material.shininess, 1)
 	};
 };

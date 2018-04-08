@@ -4,11 +4,11 @@
 			"albedoMap": "mybricks1_basecolor.png",
 			"glossMap": "mybricks1_gloss.png",
 			"heightMap": "mybricks1_height.png",
+			"heightParallaxBias": 0.02,
+			"heightParallaxScale": 0.04,
 			"metalnessMap": "mybricks1_metallic.png",
 			"normalMap": "mybricks1_normal.png",
 			"occlusionMap": "mybricks1_AO.png",
-			"parallaxBias": 0.02,
-			"parallaxScale": 0.04,
 			"roughnessMap": "mybricks1_roughness.png",
 			"shininess": 100
 		}

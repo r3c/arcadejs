@@ -177,13 +177,15 @@ class Pipeline implements webgl.Pipeline {
 								glossFactor: defaultColor,
 								glossMap: undefined,
 								heightMap: undefined,
+								heightParallaxBias: 0,
+								heightParallaxScale: 0,
 								metalnessMap: undefined,
+								metalnessStrength: 0,
 								normalMap: undefined,
 								occlusionMap: undefined,
 								occlusionStrength: 0,
-								parallaxBias: 0,
-								parallaxScale: 0,
 								roughnessMap: defaultColor,
+								roughnessStrength: 0,
 								shininess: 0
 							}
 						}],

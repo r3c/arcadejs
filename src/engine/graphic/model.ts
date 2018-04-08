@@ -31,13 +31,15 @@ interface Material {
 	glossFactor?: vector.Vector4,
 	glossMap?: Texture,
 	heightMap?: Texture,
+	heightParallaxBias?: number,
+	heightParallaxScale?: number,
 	metalnessMap?: Texture,
+	metalnessStrength?: number,
 	normalMap?: Texture,
 	occlusionMap?: Texture,
 	occlusionStrength?: number,
-	parallaxBias?: number,
-	parallaxScale?: number,
 	roughnessMap?: Texture,
+	roughnessStrength?: number,
 	shininess?: number
 }
 

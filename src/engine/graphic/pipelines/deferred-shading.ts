@@ -56,10 +56,10 @@ ${shininess.encodeDeclare}
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
 uniform sampler2D heightMap;
+uniform float heightParallaxBias;
+uniform float heightParallaxScale;
 uniform sampler2D glossMap;
 uniform sampler2D normalMap;
-uniform float parallaxBias;
-uniform float parallaxScale;
 uniform float shininess;
 
 in vec3 bitangent;
@@ -88,7 +88,7 @@ void main(void) {
 	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, tangent), dot(eyeDirection, bitangent), dot(eyeDirection, normal));
 
 	#ifdef USE_HEIGHT_MAP
-		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "parallaxScale", "parallaxBias")};
+		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "heightParallaxScale", "heightParallaxBias")};
 	#else
 		vec2 parallaxCoord = coord;
 	#endif
@@ -346,8 +346,8 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 
 	if (configuration.useHeightMap) {
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-		shader.bindPropertyPerMaterial("parallaxBias", gl => gl.uniform1f, state => state.material.parallaxBias);
-		shader.bindPropertyPerMaterial("parallaxScale", gl => gl.uniform1f, state => state.material.parallaxScale);
+		shader.bindPropertyPerMaterial("heightParallaxBias", gl => gl.uniform1f, state => state.material.heightParallaxBias);
+		shader.bindPropertyPerMaterial("heightParallaxScale", gl => gl.uniform1f, state => state.material.heightParallaxScale);
 	}
 
 	if (configuration.useNormalMap)
