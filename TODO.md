@@ -11,7 +11,6 @@ ToDo
 - Implement smooth shadows
 - Implement PBR lighting model for deferred {shading,lighting}
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
-- Use same tangent space transform methods in forward and deferred renderers
 - Detect canvas resizing and stop violating encapsulation [canvas-resize]
 - Use RGB standard to linear conversion in deferred shader
 - Extract model textures out of materials to factorize bitmaps
@@ -43,3 +42,4 @@ Done
 - Factorize common GLSL methods from renderer implementations
 - Support specular light color in deferred lighing shader
 - Compute shadow view matrix from light direction and not the opposite in forward renderer
+- Use same tangent space transform methods in forward and deferred renderers

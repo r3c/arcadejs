@@ -22,13 +22,20 @@ vec2 normalEncode(in vec3 decoded) {
 const encodeInvoke = (decoded: string) =>
 	`normalEncode(${decoded})`;
 
-const modifyDeclare = `
-vec3 normalModify(in vec3 initialNormal, in sampler2D normalMap, in vec2 coord) {
-	// Initial normal is always (0, 0, 1) here and can be safely ignored, see vertex shader
-	return normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
+const perturbDeclare = (enable: string) => `
+vec3 normalPerturb(in sampler2D normalMap, in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
+	vec3 normalFace;
+
+	#ifdef ${enable}
+		normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
+	#else
+		normalFace = vec3(0.0, 0.0, 1.0);
+	#endif
+	
+	return normalize(normalFace.x * t + normalFace.y * b + normalFace.z * n);
 }`;
 
-const modifyInvoke = (normal: string, normalMap: string, coord: string) =>
-	`normalModify(${normal}, ${normalMap}, ${coord})`;
+const perturbInvoke = (normalMap: string, coord: string, t: string, b: string, n: string) =>
+	`normalPerturb(${normalMap}, ${coord}, ${t}, ${b}, ${n})`;
 
-export { decodeDeclare, decodeInvoke, encodeDeclare, encodeInvoke, modifyDeclare, modifyInvoke }
+export { decodeDeclare, decodeInvoke, encodeDeclare, encodeInvoke, perturbDeclare, perturbInvoke }
