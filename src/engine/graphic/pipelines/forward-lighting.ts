@@ -65,9 +65,11 @@ in vec3 normals;
 in vec3 points;
 in vec3 tangents;
 
+out vec3 bitangent; // Bitangent at point in camera space
 out vec2 coord; // Texture coordinate
-out vec3 eye; // Direction from point to eye in camera space (normal mapping disabled) or tangent space (normal mapping enabled)
-out vec3 normal; // Normal at point in same space than eye vector
+out vec3 eye; // Direction from point to eye in camera space
+out vec3 normal; // Normal at point in camera space
+out vec3 tangent; // Tangent at point in camera space
 
 out vec3 directionalLightDirections[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 out vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
@@ -84,32 +86,20 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 }
 
 void main(void) {
-	vec4 point = viewMatrix * modelMatrix * vec4(points, 1.0);
-	vec3 pointCamera = point.xyz;
-
-	#ifdef USE_NORMAL_MAP
-		vec3 n = normalize(normalMatrix * normals);
-		vec3 t = normalize(normalMatrix * tangents);
-		vec3 b = cross(n, t);
-	#endif
+	vec4 pointWorld = modelMatrix * vec4(points, 1.0);
+	vec4 pointCamera = viewMatrix * pointWorld;
 
 	// Process directional lights
 	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
 		#ifdef USE_SHADOW_MAP
 			if (directionalLights[i].castShadow) {
-				vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * modelMatrix * vec4(points, 1.0);
+				vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * pointWorld;
 
 				directionalLightShadows[i] = pointShadow.xyz;
 			}
 		#endif
 
-		vec3 lightDirection = normalize(toCameraDirection(directionalLights[i].direction));
-
-		#ifdef USE_NORMAL_MAP
-			lightDirection = normalize(vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n)));
-		#endif
-
-		directionalLightDirections[i] = lightDirection;
+		directionalLightDirections[i] = toCameraDirection(directionalLights[i].direction);
 	}
 
 	// Process point lights
@@ -118,35 +108,23 @@ void main(void) {
 			// FIXME: shadow map code
 		#endif
 
-		vec3 lightDirection = normalize(toCameraPosition(pointLights[i].position) - pointCamera);
-
-		#ifdef USE_NORMAL_MAP
-			lightDirection = normalize(vec3(dot(lightDirection, t), dot(lightDirection, b), dot(lightDirection, n)));
-		#endif
-
-		pointLightDirections[i] = lightDirection;
+		pointLightDirections[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
 	}
 
-	vec3 eyeDirectionCamera = normalize(-pointCamera);
-
-	#ifdef USE_NORMAL_MAP
-		eye = vec3(dot(eyeDirectionCamera, t), dot(eyeDirectionCamera, b), dot(eyeDirectionCamera, n));
-		normal = vec3(0.0, 0.0, 1.0);
-	#else
-		eye = eyeDirectionCamera;
-		normal = normalize(normalMatrix * normals);
-	#endif
-
 	coord = coords;
+	eye = -pointCamera.xyz;
+	normal = normalize(normalMatrix * normals);
+	tangent = normalize(normalMatrix * tangents);
+	bitangent = cross(normal, tangent);
 
-	gl_Position = projectionMatrix * point;
+	gl_Position = projectionMatrix * pointCamera;
 }`;
 
 const lightFragmentShader = `
 ${lightHeaderShader}
 
-${parallax.heightDeclare}
-${normal.modifyDeclare}
+${parallax.perturbDeclare("USE_HEIGHT_MAP")}
+${normal.perturbDeclare("USE_NORMAL_MAP")}
 ${pbr.lightDeclare}
 ${phong.getDiffusePowerDeclare}
 ${phong.getSpecularPowerDeclare}
@@ -171,9 +149,11 @@ uniform sampler2D roughnessMap;
 uniform float roughnessStrength;
 uniform float shininess;
 
+in vec3 bitangent;
 in vec2 coord;
 in vec3 eye;
 in vec3 normal;
+in vec3 tangent;
 
 in vec3 directionalLightDirections[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 in vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
@@ -195,32 +175,26 @@ vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirectio
 			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * albedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
 			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
 	#elif LIGHT_MODEL == ${LightModel.Physical}
-			float materialMetalness = clamp(texture(metalnessMap, coord).r * metalnessStrength, 0.0, 1.0);
-			float materialRoughness = clamp(texture(roughnessMap, coord).r * roughnessStrength, 0.04, 1.0);
-	
-			vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "materialRoughness", "materialMetalness")};
-	
-			return color;
+		float metalness = clamp(texture(metalnessMap, coord).r * metalnessStrength, 0.0, 1.0);
+		float roughness = clamp(texture(roughnessMap, coord).r * roughnessStrength, 0.04, 1.0);
+
+		vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "roughness", "metalness")};
+
+		return color;
 	#endif
 }
 
 void main(void) {
+	vec3 b = normalize(bitangent);
+	vec3 n = normalize(normal);
+	vec3 t = normalize(tangent);
+
 	vec3 eyeDirection = normalize(eye);
-
-	#ifdef USE_HEIGHT_MAP
-		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirection", "heightParallaxScale", "heightParallaxBias")};
-	#else
-		vec2 parallaxCoord = coord;
-	#endif
-
-	#ifdef USE_NORMAL_MAP
-		vec3 modifiedNormal = ${normal.modifyInvoke("normal", "normalMap", "parallaxCoord")};
-	#else
-		vec3 modifiedNormal = normal;
-	#endif
+	vec2 coordParallax = ${parallax.perturbInvoke("coord", "heightMap", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec3 modifiedNormal = ${normal.perturbInvoke("normalMap", "coordParallax", "t", "b", "n")};
 
 	#ifdef USE_ALBEDO_MAP
-		vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, parallaxCoord).rgb")};
+		vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, coordParallax).rgb")};
 	#else
 		vec3 albedo = albedoFactor.rgb;
 	#endif
@@ -239,7 +213,7 @@ void main(void) {
 
 		color += directionalLights[i].visibility * getLight(
 			albedo,
-			parallaxCoord,
+			coordParallax,
 			modifiedNormal,
 			eyeDirection,
 			normalize(directionalLightDirections[i]),
@@ -251,7 +225,7 @@ void main(void) {
 	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
 		color += pointLights[i].visibility * getLight(
 			albedo,
-			parallaxCoord,
+			coordParallax,
 			modifiedNormal,
 			eyeDirection,
 			normalize(pointLightDirections[i]),
@@ -261,14 +235,14 @@ void main(void) {
 
 	// Apply emissive component
 	#ifdef USE_EMISSIVE_MAP
-		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, parallaxCoord).rgb")};
+		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")};
 	#else
 		color += emissiveFactor.rgb;
 	#endif
 
 	// Apply ambient occlusion component
 	#ifdef USE_OCCLUSION_MAP
-		color = mix(color, color * texture(occlusionMap, parallaxCoord).r, occlusionStrength);
+		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 	#endif
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);

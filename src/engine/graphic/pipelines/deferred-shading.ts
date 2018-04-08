@@ -30,27 +30,23 @@ out vec3 normal; // Normal at point in camera space
 out vec3 point; // Point position in camera space
 out vec3 tangent; // Tangent at point in camera space
 
-vec3 toCameraPosition(in vec3 worldPosition) {
-	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
-}
-
 void main(void) {
 	vec4 pointCamera = viewMatrix * modelMatrix * vec4(points, 1.0);
-	vec3 eyeDirectionCamera = normalize(-pointCamera.xyz);
 
+	coord = coords;
 	normal = normalize(normalMatrix * normals);
+	point = pointCamera.xyz;
 	tangent = normalize(normalMatrix * tangents);
 
 	bitangent = cross(normal, tangent);
-	coord = coords;
-	point = pointCamera.xyz;
 
 	gl_Position = projectionMatrix * pointCamera;
 }`;
 
 const geometryFragmentShader = `
-${parallax.heightDeclare}
 ${normal.encodeDeclare}
+${normal.perturbDeclare("USE_NORMAL_MAP")}
+${parallax.perturbDeclare("USE_HEIGHT_MAP")}
 ${shininess.encodeDeclare}
 
 uniform vec4 albedoFactor;
@@ -71,37 +67,25 @@ in vec3 tangent;
 layout(location=0) out vec4 albedoAndShininess;
 layout(location=1) out vec4 normalAndGloss;
 
-vec3 getNormal(in vec3 normal, in vec2 coord) {
-	vec3 normalFace;
-
-	#ifdef USE_NORMAL_MAP
-		normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
-	#else
-		normalFace = vec3(0.0, 0.0, 1.0);
-	#endif
-
-	return normalize(normalFace.x * tangent + normalFace.y * bitangent + normalFace.z * normal);
-}
-
 void main(void) {
-	vec3 eyeDirection = normalize(-point);
-	vec3 eyeDirectionTangent = vec3(dot(eyeDirection, tangent), dot(eyeDirection, bitangent), dot(eyeDirection, normal));
+	vec3 t = normalize(tangent);
+	vec3 b = normalize(bitangent);
+	vec3 n = normalize(normal);
 
-	#ifdef USE_HEIGHT_MAP
-		vec2 parallaxCoord = ${parallax.heightInvoke("coord", "heightMap", "eyeDirectionTangent", "heightParallaxScale", "heightParallaxBias")};
-	#else
-		vec2 parallaxCoord = coord;
-	#endif
+	vec3 eyeDirection = normalize(-point);
+	vec2 coordParallax = ${parallax.perturbInvoke("coord", "heightMap", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	// Color target 1: [albedo.rgb, shininess]
-	vec3 albedo = albedoFactor.rgb * texture(albedoMap, parallaxCoord).rgb;
+	vec3 albedo = albedoFactor.rgb * texture(albedoMap, coordParallax).rgb;
 	float shininessPack = ${shininess.encodeInvoke("shininess")};
 
 	albedoAndShininess = vec4(albedo, shininessPack);
 
 	// Color target 2: [normal.pp, zero, gloss]
-	vec2 normalPack = ${normal.encodeInvoke("getNormal(normal, parallaxCoord)")};
-	float gloss = texture(glossMap, parallaxCoord).r;
+	vec3 normalModified = ${normal.perturbInvoke("normalMap", "coordParallax", "t", "b", "n")};
+	vec2 normalPack = ${normal.encodeInvoke("normalModified")};
+
+	float gloss = texture(glossMap, coordParallax).r;
 	float unused = 0.0;
 
 	normalAndGloss = vec4(normalPack, unused, gloss);
@@ -230,6 +214,7 @@ void main(void) {
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(depthSample.r);
+	vec3 eyeDirection = normalize(-point);
 
 	// Compute lightning
 	#if LIGHT_TYPE == ${LightType.Directional}
@@ -245,7 +230,7 @@ void main(void) {
 	#endif
 
 	float lightDiffusePower = ${phong.getDiffusePowerInvoke("normal", "lightDirection")};
-	float lightSpecularPower = ${phong.getSpecularPowerInvoke("normal", "lightDirection", "normalize(-point)", "shininess")};
+	float lightSpecularPower = ${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")};
 
 	vec3 lightColor =
 		lightDiffusePower * lightDiffuseColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
