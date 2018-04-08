@@ -11,22 +11,21 @@ const getDiffusePowerInvoke = (normal: string, lightDirection: string) =>
 const getSpecularPowerDeclare = `
 float phongGetLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
 	float lightNormalCosine = dot(normal, lightDirection);
-	float lightVisible = step(0.0, lightNormalCosine);
-	float lightSpecularCosine;
+	float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
 	#ifdef LIGHT_MODEL_PHONG_STANDARD
 		// Phong model
 		vec3 specularReflection = normalize(normal * clamp(lightNormalCosine, 0.0, 1.0) * 2.0 - lightDirection);
 
-		lightSpecularCosine = max(dot(specularReflection, eyeDirection), 0.0);
+		float lightCosine = max(dot(specularReflection, eyeDirection), 0.0);
 	#else
 		// Blinn-Phong model
 		vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
 
-		lightSpecularCosine = max(dot(normal, cameraLightMidway), 0.0);
+		float lightCosine = max(dot(normal, cameraLightMidway), 0.0);
 	#endif
 
-	return pow(lightSpecularCosine, shininess) * lightVisible;
+	return pow(lightCosine, shininess) * lightVisible;
 }`;
 
 const getSpecularPowerInvoke = (normal: string, lightDirection: string, eyeDirection: string, shininess: string) =>
