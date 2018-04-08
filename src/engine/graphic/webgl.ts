@@ -146,7 +146,7 @@ type UniformBinding<T> = (gl: WebGLRenderingContext, source: T) => void;
 type UniformMatrixSetter<T> = (location: WebGLUniformLocation, transpose: boolean, value: T) => void;
 type UniformValueSetter<T> = (location: WebGLUniformLocation, value: T) => void;
 
-const colorBlack = { x: 0, y: 0, z: 0, w: 1 };
+const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
 const configureRenderbuffer = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer | null, width: number, height: number, format: Format, samples: number) => {
@@ -351,7 +351,7 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material) => {
 	return {
 		albedoFactor: vector.Vector4.toArray(material.albedoFactor || colorWhite),
 		albedoMap: functional.map(material.albedoMap, toColorMap),
-		emissiveFactor: vector.Vector4.toArray(material.emissiveFactor || colorWhite),
+		emissiveFactor: vector.Vector4.toArray(material.emissiveFactor || colorBlack),
 		emissiveMap: functional.map(material.emissiveMap, toColorMap),
 		glossFactor: vector.Vector4.toArray(material.glossFactor || material.albedoFactor || colorWhite),
 		glossMap: functional.map(material.glossMap, toColorMap),

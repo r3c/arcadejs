@@ -48,17 +48,17 @@ const enum ComponentType {
 }
 
 interface Material {
-	baseColorFactor: vector.Vector4,
+	baseColorFactor: vector.Vector4 | undefined,
 	baseColorTexture: Texture | undefined,
-	emissiveFactor: vector.Vector4,
+	emissiveFactor: vector.Vector4 | undefined,
 	emissiveTexture: Texture | undefined,
 	metallicFactor: number,
 	metallicRoughnessTexture: Texture | undefined,
 	roughnessFactor: number,
 	name: string,
-	normalFactor: vector.Vector4,
+	normalFactor: vector.Vector4 | undefined,
 	normalTexture: Texture | undefined,
-	occlusionFactor: vector.Vector4,
+	occlusionFactor: vector.Vector4 | undefined,
 	occlusionTexture: Texture | undefined
 }
 
@@ -139,8 +139,8 @@ const expandAccessor = (url: string, accessor: Accessor): model.Attribute => {
 };
 
 const expandMaterial = (material: Material): model.Material => {
-	const toMap = (texture: Texture | undefined) =>
-		functional.map(material.baseColorTexture, texture => ({
+	const toMap = (textureOrUndefined: Texture | undefined) =>
+		functional.map(textureOrUndefined, texture => ({
 			image: texture.image,
 			magnifier: texture.sampler.magnifier,
 			minifier: texture.sampler.minifier,
@@ -155,10 +155,10 @@ const expandMaterial = (material: Material): model.Material => {
 		emissiveMap: toMap(material.emissiveTexture),
 		metalnessMap: toMap(material.metallicRoughnessTexture), // FIXME: only 1 component
 		metalnessStrength: material.metallicFactor,
-		//normalFactor: material.normalFactor, // FIXME: normalFactor is ignored
+		//normalFactor: material.normalFactor, // FIXME: normalFactor is not supported yet
 		normalMap: toMap(material.normalTexture),
 		occlusionMap: toMap(material.occlusionTexture),
-		occlusionStrength: Math.max(material.occlusionFactor.x, material.occlusionFactor.y, material.occlusionFactor.z, material.occlusionFactor.w),
+		occlusionStrength: functional.map(material.occlusionFactor, factor => Math.max(factor.x, factor.y, factor.z, factor.w)),
 		roughnessMap: toMap(material.metallicRoughnessTexture), // FIXME: only 1 component
 		roughnessStrength: material.roughnessFactor,
 	};
@@ -336,7 +336,7 @@ const loadMaterial = (url: string, textures: Texture[], material: any, index: nu
 	const source = `material[${index}]`;
 
 	const toFactor = (property: any, name: string) =>
-		property !== undefined ? { x: property[0], y: property[1], z: property[2], w: property[3] } : vector.Vector4.one;
+		functional.map(property, factor => ({ x: factor[0], y: factor[1], z: factor[2], w: factor[3] }));
 
 	const toTexture = (property: any, name: string) =>
 		functional.map(property, texture => convertReferenceTo(url, source + "." + name, texture.index, textures));
@@ -452,13 +452,13 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 	if (scenes[defaultScene] === undefined)
 		throw invalidData(url, `default scene #${defaultScene} doesn't exist`);
 
-	const materialsMap: { [name: string]: model.Material } = {};
+	const materialMap: { [name: string]: model.Material } = {};
 
 	for (const material of materials)
-		materialsMap[material.name] = expandMaterial(material);
+		materialMap[material.name] = expandMaterial(material);
 
 	return {
-		materials: materialsMap,
+		materials: materialMap,
 		nodes: scenes[defaultScene].nodes.map(node => expandNode(url, node))
 	};
 };

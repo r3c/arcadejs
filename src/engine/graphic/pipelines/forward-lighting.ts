@@ -262,6 +262,8 @@ void main(void) {
 	// Apply emissive component
 	#ifdef USE_EMISSIVE_MAP
 		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, parallaxCoord).rgb")};
+	#else
+		color += emissiveFactor.rgb;
 	#endif
 
 	// Apply ambient occlusion component
@@ -420,10 +422,10 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 			break;
 	}
 
-	if (configuration.useEmissiveMap) {
-		shader.bindPropertyPerMaterial("emissiveFactor", gl => gl.uniform4fv, state => state.material.emissiveFactor);
+	if (configuration.useEmissiveMap)
 		shader.bindTexturePerMaterial("emissiveMap", state => state.material.emissiveMap);
-	}
+
+	shader.bindPropertyPerMaterial("emissiveFactor", gl => gl.uniform4fv, state => state.material.emissiveFactor);
 
 	if (configuration.useHeightMap) {
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);

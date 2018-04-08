@@ -5,13 +5,16 @@ ToDo
 ----
 
 - Fix "operation requires zeroing texture data" error
+- Implement point light radius in forward rendering
 - Implement directional light shadow maps for deferred {shading,lighting}
 - Implement point light shadow maps
 - Implement smooth shadows
+- Implement PBR lighting model for deferred {shading,lighting}
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
 - Use same tangent space transform methods in forward and deferred renderers
 - Detect canvas resizing and stop violating encapsulation [canvas-resize]
 - Use RGB standard to linear conversion in deferred shader
+- Extract model textures out of materials to factorize bitmaps
 
 Done
 ----
