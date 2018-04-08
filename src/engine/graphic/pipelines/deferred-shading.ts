@@ -53,7 +53,7 @@ ${parallax.heightDeclare}
 ${normal.encodeDeclare}
 ${shininess.encodeDeclare}
 
-uniform vec4 albedoColor;
+uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
 uniform sampler2D heightMap;
 uniform sampler2D glossMap;
@@ -94,7 +94,7 @@ void main(void) {
 	#endif
 
 	// Color target 1: [albedo.rgb, shininess]
-	vec4 albedo = albedoColor * texture(albedoMap, parallaxCoord);
+	vec4 albedo = albedoFactor * texture(albedoMap, parallaxCoord);
 	float shininessPack = ${shininess.encodeInvoke("shininess")};
 
 	albedoAndShininess = vec4(albedo.rgb, shininessPack);
@@ -336,7 +336,7 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
 	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
 
-	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+	shader.bindPropertyPerMaterial("albedoFactor", gl => gl.uniform4fv, state => state.material.albedoFactor);
 	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 	if (configuration.lightModel === LightModel.Phong) {

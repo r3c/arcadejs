@@ -63,11 +63,11 @@ interface GeometryState<CallState> extends MaterialState<CallState> {
 }
 
 interface Material {
-	albedoColor: number[],
+	albedoFactor: number[],
 	albedoMap: WebGLTexture | undefined,
+	emissiveFactor: number[],
 	emissiveMap: WebGLTexture | undefined,
-	emissiveStrength: number,
-	glossColor: number[],
+	glossFactor: number[],
 	glossMap: WebGLTexture | undefined,
 	heightMap: WebGLTexture | undefined,
 	metalnessMap: WebGLTexture | undefined,
@@ -347,11 +347,11 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material) => {
 	const toColorMap = (texture: model.Texture) => configureTexture(gl, gl.createTexture(), texture.image.width, texture.image.height, Format.RGBA8, texture);
 
 	return {
-		albedoColor: vector.Vector4.toArray(material.albedoColor || colorWhite),
+		albedoFactor: vector.Vector4.toArray(material.albedoFactor || colorWhite),
 		albedoMap: functional.map(material.albedoMap, toColorMap),
+		emissiveFactor: vector.Vector4.toArray(material.emissiveFactor || colorWhite),
 		emissiveMap: functional.map(material.emissiveMap, toColorMap),
-		emissiveStrength: functional.coalesce(material.emissiveStrength, 1),
-		glossColor: vector.Vector4.toArray(material.glossColor || material.albedoColor || colorWhite),
+		glossFactor: vector.Vector4.toArray(material.glossFactor || material.albedoFactor || colorWhite),
 		glossMap: functional.map(material.glossMap, toColorMap),
 		heightMap: functional.map(material.heightMap, toColorMap),
 		metalnessMap: functional.map(material.metalnessMap, toColorMap),

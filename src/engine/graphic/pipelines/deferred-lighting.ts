@@ -242,9 +242,9 @@ ${parallax.heightDeclare}
 uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
 
-uniform vec4 albedoColor;
+uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
-uniform vec4 glossColor;
+uniform vec4 glossFactor;
 uniform sampler2D glossMap;
 uniform sampler2D heightMap;
 uniform float parallaxBias;
@@ -281,8 +281,8 @@ void main(void) {
 		vec2 parallaxCoord = coord;
 	#endif
 
-	vec4 albedo = albedoColor * texture(albedoMap, parallaxCoord);
-	vec4 gloss = glossColor * texture(glossMap, parallaxCoord);
+	vec4 albedo = albedoFactor * texture(albedoMap, parallaxCoord);
+	vec4 gloss = glossFactor * texture(glossMap, parallaxCoord);
 
 	// Emit final fragment color
 	fragColor = vec4(albedo.rgb * (ambientLight + diffuseLight) + gloss.rgb * specularLight, 1.0);
@@ -434,11 +434,11 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 	shader.bindTexturePerTarget("lightBuffer", state => state.lightBuffer);
 
-	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+	shader.bindPropertyPerMaterial("albedoFactor", gl => gl.uniform4fv, state => state.material.albedoFactor);
 	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
-		shader.bindPropertyPerMaterial("glossColor", gl => gl.uniform4fv, state => state.material.glossColor);
+		shader.bindPropertyPerMaterial("glossFactor", gl => gl.uniform4fv, state => state.material.glossFactor);
 		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
 	}
 

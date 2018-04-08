@@ -153,11 +153,11 @@ ${phong.getSpecularPowerDeclare}
 ${rgb.linearToStandardDeclare}
 ${rgb.standardToLinearDeclare}
 
-uniform vec4 albedoColor;
+uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
+uniform vec4 emissiveFactor;
 uniform sampler2D emissiveMap;
-uniform float emissiveStrength;
-uniform vec4 glossColor;
+uniform vec4 glossFactor;
 uniform sampler2D glossMap;
 uniform sampler2D heightMap;
 uniform sampler2D metalnessMap;
@@ -186,9 +186,9 @@ layout(location=0) out vec4 fragColor;
 vec3 getLight(in vec3 materialAlbedo, in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
 	#if LIGHT_MODEL == ${LightModel.Phong}
 		#ifdef USE_GLOSS_MAP
-			vec4 materialGloss = glossColor * texture(glossMap, coord);
+			vec4 materialGloss = glossFactor * texture(glossMap, coord);
 		#else
-			vec4 materialGloss = glossColor;
+			vec4 materialGloss = glossFactor;
 		#endif
 
 		return
@@ -219,7 +219,7 @@ void main(void) {
 		vec3 modifiedNormal = normal;
 	#endif
 
-	vec3 materialAlbedo = albedoColor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, parallaxCoord).rgb")};
+	vec3 materialAlbedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, parallaxCoord).rgb")};
 	vec3 outputColor = vec3(0, 0, 0);
 
 	// Apply ambient component
@@ -258,7 +258,7 @@ void main(void) {
 
 	// Apply emissive component
 	#ifdef USE_EMISSIVE_MAP
-		outputColor += ${rgb.standardToLinearInvoke("texture(emissiveMap, parallaxCoord).rgb")} * emissiveStrength;
+		outputColor += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, parallaxCoord).rgb")};
 	#endif
 
 	// Apply ambient occlusion component
@@ -393,7 +393,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const defaultDirection = [1, 0, 0];
 	const defaultPosition = [0, 0, 0];
 
-	shader.bindPropertyPerMaterial("albedoColor", gl => gl.uniform4fv, state => state.material.albedoColor);
+	shader.bindPropertyPerMaterial("albedoFactor", gl => gl.uniform4fv, state => state.material.albedoFactor);
 	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
 
@@ -402,7 +402,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 			if (configuration.useGlossMap)
 				shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
 
-			shader.bindPropertyPerMaterial("glossColor", gl => gl.uniform4fv, state => state.material.glossColor);
+			shader.bindPropertyPerMaterial("glossFactor", gl => gl.uniform4fv, state => state.material.glossFactor);
 			shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
 
 			break;
@@ -417,8 +417,8 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	}
 
 	if (configuration.useEmissiveMap) {
+		shader.bindPropertyPerMaterial("emissiveFactor", gl => gl.uniform4fv, state => state.material.emissiveFactor);
 		shader.bindTexturePerMaterial("emissiveMap", state => state.material.emissiveMap);
-		shader.bindPropertyPerMaterial("emissiveStrength", gl => gl.uniform1f, state => state.material.emissiveStrength);
 	}
 
 	if (configuration.useHeightMap) {

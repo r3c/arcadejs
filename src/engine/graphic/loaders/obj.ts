@@ -48,7 +48,7 @@ const loadMaterial = async (materials: { [name: string]: model.Material }, data:
 				if (fields.length < 4 || current === undefined)
 					throw invalidLine(fileName, line, "albedo color");
 
-				current.albedoColor = parseVector4(fields);
+				current.albedoFactor = parseVector4(fields);
 
 				break;
 
@@ -56,7 +56,7 @@ const loadMaterial = async (materials: { [name: string]: model.Material }, data:
 				if (fields.length < 4 || current === undefined)
 					throw invalidLine(fileName, line, "gloss color");
 
-				current.glossColor = parseVector4(fields);
+				current.glossFactor = parseVector4(fields);
 
 				break;
 

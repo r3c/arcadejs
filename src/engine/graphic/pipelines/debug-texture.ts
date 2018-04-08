@@ -170,11 +170,11 @@ class Pipeline implements webgl.Pipeline {
 						primitives: [{
 							geometry: undefined,
 							material: {
-								albedoColor: defaultColor,
+								albedoFactor: defaultColor,
 								albedoMap: source,
+								emissiveFactor: defaultColor,
 								emissiveMap: undefined,
-								emissiveStrength: 0,
-								glossColor: defaultColor,
+								glossFactor: defaultColor,
 								glossMap: undefined,
 								heightMap: undefined,
 								metalnessMap: undefined,

@@ -105,11 +105,11 @@ const fillScanline = (image: Image, y: number, va: Vertex, vb: Vertex, vc: Verte
 		// Apply material properties
 		if (material !== undefined) {
 			// Albedo color
-			if (material.albedoColor !== undefined) {
-				color.x *= material.albedoColor.x;
-				color.y *= material.albedoColor.y;
-				color.z *= material.albedoColor.z;
-				color.w *= material.albedoColor.w;
+			if (material.albedoFactor !== undefined) {
+				color.x *= material.albedoFactor.x;
+				color.y *= material.albedoFactor.y;
+				color.z *= material.albedoFactor.z;
+				color.w *= material.albedoFactor.w;
 			}
 
 			// Albedo map
