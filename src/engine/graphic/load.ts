@@ -174,13 +174,13 @@ const finalizeNode = (node: model.Node, config: Config) => {
 	node.geometries.forEach(mesh => finalizeMesh(mesh, config));
 };
 
-const finalize = async (modelPromise: Promise<model.Mesh>, configOrUndefined: Config | undefined) => {
+const finalize = async (meshPromise: Promise<model.Mesh>, configOrUndefined: Config | undefined) => {
 	const config = configOrUndefined || {};
-	const model = await modelPromise;
+	const mesh = await meshPromise;
 
-	model.nodes.forEach(node => finalizeNode(node, config));
+	mesh.nodes.forEach(node => finalizeNode(node, config));
 
-	return model;
+	return mesh;
 };
 
 const from3DS = (url: string, config?: Config) => {
