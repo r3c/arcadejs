@@ -168,7 +168,7 @@ class Pipeline implements webgl.Pipeline {
 					nodes: [{
 						children: [],
 						primitives: [{
-							geometry: undefined,
+							geometry: <any>undefined,
 							material: {
 								albedoFactor: defaultColor,
 								albedoMap: source,
@@ -224,7 +224,7 @@ class Pipeline implements webgl.Pipeline {
 		for (const subject of scene.subjects) {
 			for (const node of subject.mesh.nodes) {
 				for (const primitive of node.primitives) {
-					if (primitive.material !== undefined && primitive.material.albedoMap !== undefined) {
+					if (primitive.material.albedoMap !== undefined) {
 						target.draw(this.shader, subjects, {
 							source: primitive.material.albedoMap
 						});
