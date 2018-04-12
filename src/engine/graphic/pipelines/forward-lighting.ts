@@ -355,9 +355,11 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
 
 	// Bind geometry attributes
-	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
 	shader.bindAttributePerGeometry("normals", state => state.geometry.normals);
 	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+
+	if (configuration.useAlbedoMap || configuration.useEmissiveMap || configuration.useGlossMap || configuration.useHeightMap || configuration.useNormalMap)
+		shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
 
 	if (configuration.useNormalMap)
 		shader.bindAttributePerGeometry("tangents", state => state.geometry.tangents);
