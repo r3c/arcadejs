@@ -72,6 +72,7 @@ interface Material {
 	heightMap: WebGLTexture | undefined,
 	heightParallaxBias: number,
 	heightParallaxScale: number,
+	id: string,
 	metalnessMap: WebGLTexture | undefined,
 	metalnessStrength: number,
 	normalMap: WebGLTexture | undefined,
@@ -345,7 +346,7 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 	};
 };
 
-const loadMaterial = (gl: WebGLRenderingContext, material: model.Material) => {
+const loadMaterial = (gl: WebGLRenderingContext, id: string, material: model.Material) => {
 	const toColorMap = (texture: model.Texture) => configureTexture(gl, gl.createTexture(), texture.image.width, texture.image.height, Format.RGBA8, texture);
 
 	return {
@@ -358,6 +359,7 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material) => {
 		heightMap: functional.map(material.heightMap, toColorMap),
 		heightParallaxBias: functional.coalesce(material.heightParallaxBias, 0),
 		heightParallaxScale: functional.coalesce(material.heightParallaxScale, 0),
+		id: id,
 		metalnessMap: functional.map(material.metalnessMap, toColorMap),
 		metalnessStrength: functional.coalesce(material.metalnessStrength, 1),
 		normalMap: functional.map(material.normalMap, toColorMap),
@@ -370,12 +372,22 @@ const loadMaterial = (gl: WebGLRenderingContext, material: model.Material) => {
 };
 
 const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh): Mesh => {
-	const defaultMaterial = loadMaterial(gl, {});
+	// Create pseudo-unique identifier
+	// See: https://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
+	const guid = () => {
+		const s4 = () => Math.floor((1 + Math.random()) * 0x10000)
+			.toString(16)
+			.substring(1);
+
+		return s4() + s4() + s4() + s4() + s4() + s4() + s4() + s4();
+	};
+
+	const defaultMaterial = loadMaterial(gl, guid(), {});
 	const materials: { [name: string]: Material } = {};
 	const nodes: Node[] = [];
 
 	for (const name in mesh.materials)
-		materials[name] = loadMaterial(gl, mesh.materials[name]);
+		materials[name] = loadMaterial(gl, guid(), mesh.materials[name]);
 
 	for (const node of mesh.nodes)
 		nodes.push(loadNode(gl, node, materials, defaultMaterial));
