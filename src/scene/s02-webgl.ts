@@ -68,12 +68,12 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
 	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
-	shader.bindPropertyPerMaterial("albedoFactor", gl => gl.uniform4fv, state => state.material.albedoFactor);
+	shader.bindPropertyPerMaterial("albedoFactor", state => state.material.albedoFactor, gl => gl.uniform4fv);
 	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
-	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
-	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),

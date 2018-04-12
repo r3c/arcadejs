@@ -317,20 +317,20 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 	shader.bindAttributePerGeometry("tangents", state => state.geometry.tangents);
 
-	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
-	shader.bindMatrixPerNode("normalMatrix", gl => gl.uniformMatrix3fv, state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3());
-	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("normalMatrix", state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3(), gl => gl.uniformMatrix3fv);
+	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	if (configuration.lightModel === LightModel.Phong) {
 		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
-		shader.bindPropertyPerMaterial("shininess", gl => gl.uniform1f, state => state.material.shininess);
+		shader.bindPropertyPerMaterial("shininess", state => state.material.shininess, gl => gl.uniform1f);
 	}
 
 	if (configuration.useHeightMap) {
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-		shader.bindPropertyPerMaterial("heightParallaxBias", gl => gl.uniform1f, state => state.material.heightParallaxBias);
-		shader.bindPropertyPerMaterial("heightParallaxScale", gl => gl.uniform1f, state => state.material.heightParallaxScale);
+		shader.bindPropertyPerMaterial("heightParallaxBias", state => state.material.heightParallaxBias, gl => gl.uniform1f);
+		shader.bindPropertyPerMaterial("heightParallaxScale", state => state.material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (configuration.useNormalMap)
@@ -349,13 +349,13 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 
 	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 
-	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
+	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindMatrixPerTarget("inverseProjectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.inverse().getValues());
-	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	shader.bindMatrixPerTarget("inverseProjectionMatrix", state => state.projectionMatrix.inverse().getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindPropertyPerTarget("viewportSize", gl => gl.uniform2fv, state => vector.Vector2.toArray(state.viewportSize));
+	shader.bindPropertyPerTarget("viewportSize", state => vector.Vector2.toArray(state.viewportSize), gl => gl.uniform2fv);
 
 	shader.bindTexturePerTarget("depthBuffer", state => state.depthBuffer);
 	shader.bindTexturePerTarget("normalAndGlossBuffer", state => state.normalAndGlossBuffer);
@@ -366,8 +366,8 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const shader = loadLight<webgl.DirectionalLight>(gl, configuration, LightType.Directional);
 
-	shader.bindPropertyPerTarget("directionalLight.color", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.color));
-	shader.bindPropertyPerTarget("directionalLight.direction", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.direction));
+	shader.bindPropertyPerTarget("directionalLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
+	shader.bindPropertyPerTarget("directionalLight.direction", state => vector.Vector3.toArray(state.light.direction), gl => gl.uniform3fv);
 
 	return shader;
 };
@@ -375,9 +375,9 @@ const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configur
 const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const shader = loadLight<webgl.PointLight>(gl, configuration, LightType.Point);
 
-	shader.bindPropertyPerTarget("pointLight.color", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.color));
-	shader.bindPropertyPerTarget("pointLight.position", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.light.position));
-	shader.bindPropertyPerTarget("pointLight.radius", gl => gl.uniform1f, state => state.light.radius);
+	shader.bindPropertyPerTarget("pointLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
+	shader.bindPropertyPerTarget("pointLight.position", state => vector.Vector3.toArray(state.light.position), gl => gl.uniform3fv);
+	shader.bindPropertyPerTarget("pointLight.radius", state => state.light.radius, gl => gl.uniform1f);
 
 	return shader;
 };
@@ -406,26 +406,26 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindAttributePerGeometry("points", state => state.geometry.points);
 	shader.bindAttributePerGeometry("tangents", state => state.geometry.tangents);
 
-	shader.bindMatrixPerNode("modelMatrix", gl => gl.uniformMatrix4fv, state => state.matrix.getValues());
-	shader.bindMatrixPerNode("normalMatrix", gl => gl.uniformMatrix3fv, state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3());
-	shader.bindMatrixPerTarget("projectionMatrix", gl => gl.uniformMatrix4fv, state => state.projectionMatrix.getValues());
-	shader.bindMatrixPerTarget("viewMatrix", gl => gl.uniformMatrix4fv, state => state.viewMatrix.getValues());
+	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("normalMatrix", state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3(), gl => gl.uniformMatrix3fv);
+	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindPropertyPerTarget("ambientLightColor", gl => gl.uniform3fv, state => vector.Vector3.toArray(state.ambientLightColor));
+	shader.bindPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
 	shader.bindTexturePerTarget("lightBuffer", state => state.lightBuffer);
 
-	shader.bindPropertyPerMaterial("albedoFactor", gl => gl.uniform4fv, state => state.material.albedoFactor);
+	shader.bindPropertyPerMaterial("albedoFactor", state => state.material.albedoFactor, gl => gl.uniform4fv);
 	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
-		shader.bindPropertyPerMaterial("glossFactor", gl => gl.uniform4fv, state => state.material.glossFactor);
+		shader.bindPropertyPerMaterial("glossFactor", state => state.material.glossFactor, gl => gl.uniform4fv);
 		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
 	}
 
 	if (configuration.useHeightMap) {
 		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-		shader.bindPropertyPerMaterial("heightParallaxBias", gl => gl.uniform1f, state => state.material.heightParallaxBias);
-		shader.bindPropertyPerMaterial("heightParallaxScale", gl => gl.uniform1f, state => state.material.heightParallaxScale);
+		shader.bindPropertyPerMaterial("heightParallaxBias", state => state.material.heightParallaxBias, gl => gl.uniform1f);
+		shader.bindPropertyPerMaterial("heightParallaxScale", state => state.material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	return shader;
