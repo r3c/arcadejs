@@ -169,24 +169,8 @@ class Pipeline implements webgl.Pipeline {
 						children: [],
 						primitives: [{
 							geometry: <any>undefined,
-							material: {
-								albedoFactor: defaultColor,
-								albedoMap: source,
-								emissiveFactor: defaultColor,
-								emissiveMap: undefined,
-								glossFactor: defaultColor,
-								glossMap: undefined,
-								heightMap: undefined,
-								heightParallaxBias: 0,
-								heightParallaxScale: 0,
-								metalnessMap: undefined,
-								metalnessStrength: 0,
-								normalMap: undefined,
-								occlusionMap: undefined,
-								occlusionStrength: 0,
-								roughnessMap: defaultColor,
-								roughnessStrength: 0,
-								shininess: 0
+							material: <any>{
+								albedoMap: source
 							}
 						}],
 						transform: matrix.Matrix4.createIdentity()
