@@ -57,10 +57,6 @@ interface Geometry {
 	tangents: Attribute | undefined
 }
 
-interface GeometryState<CallState> extends MaterialState<CallState> {
-	geometry: Geometry
-}
-
 interface Material {
 	albedoFactor: number[],
 	albedoMap: WebGLTexture | undefined,
@@ -82,10 +78,6 @@ interface Material {
 	shininess: number
 }
 
-interface MaterialState<CallState> extends NodeState<CallState> {
-	material: Material
-}
-
 interface Mesh {
 	nodes: Node[]
 }
@@ -96,10 +88,13 @@ interface Node {
 	transform: matrix.Matrix4
 }
 
-interface NodeState<CallState> {
-	global: CallState,
-	matrix: matrix.Matrix4,
-	shadow: boolean
+interface NodeState {
+	normalMatrix: Iterable<number>, // FIXME: inconsistent type
+	transform: matrix.Matrix4
+}
+
+interface Painter<T> {
+	paint(subjects: Iterable<Subject>, view: matrix.Matrix4, state: T): void
 }
 
 interface Pipeline {
@@ -133,7 +128,7 @@ interface Scene {
 interface Subject {
 	matrix: matrix.Matrix4,
 	mesh: Mesh,
-	shadow?: boolean
+	noShadow?: boolean
 }
 
 interface TextureBinding<T> {
@@ -405,16 +400,16 @@ const loadNode = (gl: WebGLRenderingContext, node: model.Node, materials: { [nam
 	transform: node.transform
 });
 
-class Shader<CallState> {
+class Shader<State> {
 	public readonly program: WebGLProgram;
 
-	private readonly attributePerGeometryBindings: AttributeBinding<GeometryState<CallState>>[];
+	private readonly attributePerGeometryBindings: AttributeBinding<Geometry>[];
 	private readonly gl: WebGLRenderingContext;
-	private readonly propertyPerMaterialBindings: PropertyBinding<MaterialState<CallState>>[];
-	private readonly propertyPerNodeBindings: PropertyBinding<NodeState<CallState>>[];
-	private readonly propertyPerTargetBindings: PropertyBinding<CallState>[];
-	private readonly texturePerMaterialBindings: TextureBinding<MaterialState<CallState>>[];
-	private readonly texturePerTargetBindings: TextureBinding<CallState>[];
+	private readonly propertyPerMaterialBindings: PropertyBinding<Material>[];
+	private readonly propertyPerNodeBindings: PropertyBinding<NodeState>[];
+	private readonly propertyPerTargetBindings: PropertyBinding<State>[];
+	private readonly texturePerMaterialBindings: TextureBinding<Material>[];
+	private readonly texturePerTargetBindings: TextureBinding<State>[];
 
 	public constructor(gl: WebGLRenderingContext, vsSource: string, fsSource: string, directives: Directive[] = []) {
 		const program = gl.createProgram();
@@ -451,11 +446,11 @@ class Shader<CallState> {
 		this.program = program;
 	}
 
-	public bindAttributePerGeometry(name: string, getter: (state: GeometryState<CallState>) => Attribute | undefined) {
+	public bindAttributePerGeometry(name: string, getter: (state: Geometry) => Attribute | undefined) {
 		const location = this.findAttribute(name);
 
 		this.attributePerGeometryBindings.push({
-			bind: (gl: WebGLRenderingContext, source: GeometryState<CallState>) => {
+			bind: (gl: WebGLRenderingContext, source: Geometry) => {
 				const attribute = getter(source);
 
 				if (attribute === undefined)
@@ -471,51 +466,51 @@ class Shader<CallState> {
 		});
 	}
 
-	public bindMatrixPerNode(name: string, getter: (state: NodeState<CallState>) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
+	public bindMatrixPerNode(name: string, getter: (state: NodeState) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
 		this.propertyPerNodeBindings.push(this.declareMatrix(name, getter, assign));
 	}
 
-	public bindMatrixPerTarget(name: string, getter: (state: CallState) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
+	public bindMatrixPerTarget(name: string, getter: (state: State) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
 		this.propertyPerTargetBindings.push(this.declareMatrix(name, getter, assign));
 	}
 
-	public bindPropertyPerMaterial<TValue>(name: string, getter: (state: MaterialState<CallState>) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
+	public bindPropertyPerMaterial<TValue>(name: string, getter: (state: Material) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
 		this.propertyPerMaterialBindings.push(this.declareProperty(name, getter, assign));
 	}
 
-	public bindPropertyPerTarget<TValue>(name: string, getter: (state: CallState) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
+	public bindPropertyPerTarget<TValue>(name: string, getter: (state: State) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
 		this.propertyPerTargetBindings.push(this.declareProperty(name, getter, assign));
 	}
 
-	public bindTexturePerMaterial(name: string, getter: (state: MaterialState<CallState>) => WebGLTexture | undefined) {
+	public bindTexturePerMaterial(name: string, getter: (state: Material) => WebGLTexture | undefined) {
 		this.texturePerMaterialBindings.push(this.declareTexture(name, getter));
 	}
 
-	public bindTexturePerTarget(name: string, getter: (state: CallState) => WebGLTexture | undefined) {
+	public bindTexturePerTarget(name: string, getter: (state: State) => WebGLTexture | undefined) {
 		this.texturePerTargetBindings.push(this.declareTexture(name, getter));
 	}
 
-	public getAttributePerGeometryBindings(): Iterable<AttributeBinding<GeometryState<CallState>>> {
+	public getAttributePerGeometryBindings(): Iterable<AttributeBinding<Geometry>> {
 		return this.attributePerGeometryBindings;
 	}
 
-	public getPropertyPerMaterialBindings(): Iterable<PropertyBinding<MaterialState<CallState>>> {
+	public getPropertyPerMaterialBindings(): Iterable<PropertyBinding<Material>> {
 		return this.propertyPerMaterialBindings;
 	}
 
-	public getPropertyPerNodeBindings(): Iterable<PropertyBinding<NodeState<CallState>>> {
+	public getPropertyPerNodeBindings(): Iterable<PropertyBinding<NodeState>> {
 		return this.propertyPerNodeBindings;
 	}
 
-	public getPropertyPerTargetBindings(): Iterable<PropertyBinding<CallState>> {
+	public getPropertyPerTargetBindings(): Iterable<PropertyBinding<State>> {
 		return this.propertyPerTargetBindings;
 	}
 
-	public getTexturePerMaterialBindings(): Iterable<TextureBinding<MaterialState<CallState>>> {
+	public getTexturePerMaterialBindings(): Iterable<TextureBinding<Material>> {
 		return this.texturePerMaterialBindings;
 	}
 
-	public getTexturePerTargetBindings(): Iterable<TextureBinding<CallState>> {
+	public getTexturePerTargetBindings(): Iterable<TextureBinding<State>> {
 		return this.texturePerTargetBindings;
 	}
 
@@ -639,21 +634,13 @@ class Target {
 		Target.clearTextureAttachments(gl, this.depthAttachment);
 	}
 
-	public draw<T>(shader: Shader<T>, subjects: Subject[], state: T) {
+	public draw<T>(batcher: Painter<T>, subjects: Subject[], view: matrix.Matrix4, state: T) {
 		const gl = this.gl;
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
-		gl.useProgram(shader.program);
-
-		this.drawSubjects(shader, subjects, {
-			geometry: <Geometry><any>undefined,
-			material: <Material><any>undefined,
-			matrix: <matrix.Matrix4><any>undefined,
-			shadow: false,
-			global: state
-		});
+		batcher.paint(subjects, view, state);
 	}
 
 	public resize(width: number, height: number) {
@@ -798,70 +785,6 @@ class Target {
 
 		return texture;
 	}
-
-	private drawNodes<T>(shader: Shader<T>, nodes: Iterable<Node>, modelMatrix: matrix.Matrix4, state: GeometryState<T>, callTextureIndex: number) {
-		const gl = this.gl;
-
-		for (const node of nodes) {
-			const nodeMatrix = modelMatrix.compose(node.transform);
-
-			this.drawNodes(shader, node.children, nodeMatrix, state, callTextureIndex);
-
-			state.matrix = nodeMatrix;
-
-			for (const binding of shader.getPropertyPerNodeBindings())
-				binding.bind(gl, state);
-
-			for (const primitive of node.primitives) {
-				let materialTextureIndex = callTextureIndex;
-
-				state.material = primitive.material;
-
-				// Assign per-material uniforms
-				for (const binding of shader.getTexturePerMaterialBindings()) {
-					if (!binding.bind(gl, state, materialTextureIndex++))
-						throw invalidUniformBinding(binding.name);
-				}
-
-				for (const binding of shader.getPropertyPerMaterialBindings())
-					binding.bind(gl, state);
-
-				state.geometry = primitive.geometry;
-
-				// Assign per-geometry attributes
-				for (const binding of shader.getAttributePerGeometryBindings()) {
-					if (!binding.bind(gl, state))
-						throw invalidAttributeBinding(binding.name);
-				}
-
-				// Perform draw call
-				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, primitive.geometry.indexBuffer);
-				gl.drawElements(gl.TRIANGLES, primitive.geometry.count, primitive.geometry.indexType, 0);
-			}
-		}
-	}
-
-	private drawSubjects<T>(shader: Shader<T>, subjects: Iterable<Subject>, globalState: GeometryState<T>) {
-		const gl = this.gl;
-
-		let callTextureIndex = 0;
-
-		// Bind per-call uniforms
-		for (const binding of shader.getPropertyPerTargetBindings())
-			binding.bind(gl, globalState.global);
-
-		for (const binding of shader.getTexturePerTargetBindings()) {
-			if (!binding.bind(gl, globalState.global, callTextureIndex++))
-				throw invalidUniformBinding(binding.name);
-		}
-
-		// Draw subject nodes
-		for (const subject of subjects) {
-			globalState.shadow = functional.coalesce(subject.shadow, true);
-
-			this.drawNodes(shader, subject.mesh.nodes, subject.matrix, globalState, callTextureIndex);
-		}
-	}
 }
 
-export { Attribute, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadMesh }
+export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadMesh }

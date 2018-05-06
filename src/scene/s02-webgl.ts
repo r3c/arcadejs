@@ -3,6 +3,7 @@ import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as load from "../engine/graphic/load";
 import * as matrix from "../engine/math/matrix";
+import * as painter from "../engine/graphic/painters/singular";
 import * as vector from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
@@ -50,8 +51,8 @@ interface SceneState {
 	gl: WebGLRenderingContext,
 	input: controller.Input,
 	mesh: webgl.Mesh,
+	painter: webgl.Painter<ShaderState>,
 	projectionMatrix: matrix.Matrix4,
-	shader: webgl.Shader<ShaderState>,
 	target: webgl.Target
 }
 
@@ -64,14 +65,14 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 	const gl = screen.context;
 	const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
-	shader.bindAttributePerGeometry("colors", state => state.geometry.colors);
-	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+	shader.bindAttributePerGeometry("colors", geometry => geometry.colors);
+	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindPropertyPerMaterial("albedoFactor", state => state.material.albedoFactor, gl => gl.uniform4fv);
-	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
+	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
+	shader.bindTexturePerMaterial("albedoMap", material => material.albedoMap);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
@@ -80,9 +81,9 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 		gl: gl,
 		input: input,
 		mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
+		painter: new painter.Painter(gl, shader),
 		projectionMatrix: matrix.Matrix4.createIdentity(),
 		screen: screen,
-		shader: shader,
 		target: new webgl.Target(screen.context, screen.getWidth(), screen.getHeight())
 	};
 });
@@ -109,7 +110,7 @@ const render = (state: SceneState) => {
 	gl.cullFace(gl.BACK);
 
 	target.clear();
-	target.draw(state.shader, [cube], {
+	target.draw(state.painter, [cube], viewMatrix, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: viewMatrix
 	});

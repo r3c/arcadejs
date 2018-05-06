@@ -1,4 +1,5 @@
 import * as matrix from "../../math/matrix";
+import * as painter from "../painters/singular";
 import * as webgl from "../webgl";
 
 const vertexShader = `
@@ -27,9 +28,9 @@ interface State {
 const load = (gl: WebGLRenderingContext) => {
 	const shader = new webgl.Shader<State>(gl, vertexShader, fragmentShader);
 
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
@@ -38,11 +39,11 @@ const load = (gl: WebGLRenderingContext) => {
 
 class Pipeline implements webgl.Pipeline {
 	private readonly gl: WebGLRenderingContext;
-	private readonly shader: webgl.Shader<State>;
+	private readonly painter: painter.Painter<State>;
 
 	public constructor(gl: WebGLRenderingContext) {
 		this.gl = gl;
-		this.shader = load(gl);
+		this.painter = new painter.Painter(gl, load(gl));
 	}
 
 	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
@@ -53,7 +54,7 @@ class Pipeline implements webgl.Pipeline {
 
 		gl.cullFace(gl.BACK);
 
-		target.draw(this.shader, scene.subjects, {
+		target.draw(this.painter, scene.subjects, transform.viewMatrix, {
 			projectionMatrix: transform.projectionMatrix,
 			viewMatrix: transform.viewMatrix
 		});

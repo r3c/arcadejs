@@ -1,5 +1,6 @@
 import * as functional from "../../language/functional";
 import * as matrix from "../../math/matrix";
+import * as painter from "../painters/singular";
 import * as quad from "./resources/quad";
 import * as webgl from "../webgl";
 
@@ -137,21 +138,21 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	const shader = new webgl.Shader<State>(gl, vertexSource, fragmentSource, directives);
 
-	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
 	shader.bindTexturePerTarget("source", state => state.source);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 
 	return shader;
 };
 
 class Pipeline implements webgl.Pipeline {
 	private readonly gl: WebGLRenderingContext;
+	private readonly painter: painter.Painter<State>;
 	private readonly quad: webgl.Mesh;
 	private readonly scale: number;
-	private readonly shader: webgl.Shader<State>;
 
 	/*
 	** Helper function used to build fake scene with a single subject using
@@ -182,9 +183,9 @@ class Pipeline implements webgl.Pipeline {
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		this.gl = gl;
+		this.painter = new painter.Painter(gl, load(gl, configuration));
 		this.quad = webgl.loadMesh(gl, quad.mesh);
 		this.scale = functional.coalesce(configuration.scale, 0.4);
-		this.shader = load(gl, configuration);
 	}
 
 	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
@@ -209,7 +210,7 @@ class Pipeline implements webgl.Pipeline {
 			for (const node of subject.mesh.nodes) {
 				for (const primitive of node.primitives) {
 					if (primitive.material.albedoMap !== undefined) {
-						target.draw(this.shader, subjects, {
+						target.draw(this.painter, subjects, matrix.Matrix4.createIdentity(), {
 							source: primitive.material.albedoMap
 						});
 
