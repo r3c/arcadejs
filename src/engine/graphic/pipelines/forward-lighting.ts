@@ -5,6 +5,7 @@ import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
+import * as singular from "../painters/singular";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
 
@@ -355,18 +356,18 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
 
 	// Bind geometry attributes
-	shader.bindAttributePerGeometry("normals", state => state.geometry.normals);
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+	shader.bindAttributePerGeometry("normals", geometry => geometry.normals);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
 	if (configuration.useAlbedoMap || configuration.useEmissiveMap || configuration.useGlossMap || configuration.useHeightMap || configuration.useNormalMap)
-		shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
+		shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
 
 	if (configuration.useNormalMap)
-		shader.bindAttributePerGeometry("tangents", state => state.geometry.tangents);
+		shader.bindAttributePerGeometry("tangents", geometry => geometry.tangents);
 
 	// Bind matrix uniforms
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerNode("normalMatrix", state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3(), gl => gl.uniformMatrix3fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("normalMatrix", state => state.normalMatrix, gl => gl.uniformMatrix3fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
@@ -375,46 +376,46 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	// Bind material uniforms
 	if (configuration.useAlbedoMap)
-		shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
+		shader.bindTexturePerMaterial("albedoMap", material => material.albedoMap);
 
-	shader.bindPropertyPerMaterial("albedoFactor", state => state.material.albedoFactor, gl => gl.uniform4fv);
+	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
 
 	switch (configuration.lightModel) {
 		case LightModel.Phong:
 			if (configuration.useGlossMap)
-				shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
+				shader.bindTexturePerMaterial("glossMap", material => material.glossMap);
 
-			shader.bindPropertyPerMaterial("glossFactor", state => state.material.glossFactor, gl => gl.uniform4fv);
-			shader.bindPropertyPerMaterial("shininess", state => state.material.shininess, gl => gl.uniform1f);
+			shader.bindPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
+			shader.bindPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 
 			break;
 
 		case LightModel.Physical:
-			shader.bindTexturePerMaterial("metalnessMap", state => state.material.metalnessMap);
-			shader.bindPropertyPerMaterial("metalnessStrength", state => state.material.metalnessStrength, gl => gl.uniform1f);
-			shader.bindTexturePerMaterial("roughnessMap", state => state.material.roughnessMap);
-			shader.bindPropertyPerMaterial("roughnessStrength", state => state.material.roughnessStrength, gl => gl.uniform1f);
+			shader.bindTexturePerMaterial("metalnessMap", material => material.metalnessMap);
+			shader.bindPropertyPerMaterial("metalnessStrength", material => material.metalnessStrength, gl => gl.uniform1f);
+			shader.bindTexturePerMaterial("roughnessMap", material => material.roughnessMap);
+			shader.bindPropertyPerMaterial("roughnessStrength", material => material.roughnessStrength, gl => gl.uniform1f);
 
 			break;
 	}
 
 	if (configuration.useEmissiveMap)
-		shader.bindTexturePerMaterial("emissiveMap", state => state.material.emissiveMap);
+		shader.bindTexturePerMaterial("emissiveMap", material => material.emissiveMap);
 
-	shader.bindPropertyPerMaterial("emissiveFactor", state => state.material.emissiveFactor, gl => gl.uniform4fv);
+	shader.bindPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
 
 	if (configuration.useHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-		shader.bindPropertyPerMaterial("heightParallaxBias", state => state.material.heightParallaxBias, gl => gl.uniform1f);
-		shader.bindPropertyPerMaterial("heightParallaxScale", state => state.material.heightParallaxScale, gl => gl.uniform1f);
+		shader.bindTexturePerMaterial("heightMap", material => material.heightMap);
+		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
+		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (configuration.useNormalMap)
-		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
+		shader.bindTexturePerMaterial("normalMap", material => material.normalMap);
 
 	if (configuration.useOcclusionMap) {
-		shader.bindTexturePerMaterial("occlusionMap", state => state.material.occlusionMap);
-		shader.bindPropertyPerMaterial("occlusionStrength", state => state.material.occlusionStrength, gl => gl.uniform1f);
+		shader.bindTexturePerMaterial("occlusionMap", material => material.occlusionMap);
+		shader.bindPropertyPerMaterial("occlusionStrength", material => material.occlusionStrength, gl => gl.uniform1f);
 	}
 
 	// Bind light uniforms
@@ -453,9 +454,9 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 const loadShadow = (gl: WebGLRenderingContext) => {
 	const shader = new webgl.Shader<ShadowState>(gl, shadowVertexShader, shadowFragmentShader);
 
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
@@ -466,11 +467,11 @@ class Pipeline implements webgl.Pipeline {
 	public readonly shadowBuffers: WebGLTexture[];
 
 	private readonly gl: WebGLRenderingContext;
-	private readonly lightShader: webgl.Shader<LightState>;
+	private readonly lightPainter: singular.Painter<LightState>;
 	private readonly maxDirectionalLights: number;
 	private readonly maxPointLights: number;
+	private readonly shadowPainter: singular.Painter<ShadowState>;
 	private readonly shadowProjectionMatrix: matrix.Matrix4;
-	private readonly shadowShader: webgl.Shader<ShadowState>;
 	private readonly shadowTargets: webgl.Target[];
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
@@ -479,12 +480,12 @@ class Pipeline implements webgl.Pipeline {
 		const targets = functional.range(maxDirectionalLights + maxPointLights, i => new webgl.Target(gl, 1024, 1024));
 
 		this.gl = gl;
-		this.lightShader = loadLight(gl, configuration);
+		this.lightPainter = new singular.Painter(gl, loadLight(gl, configuration));
 		this.maxDirectionalLights = maxDirectionalLights;
 		this.maxPointLights = maxPointLights;
+		this.shadowPainter = new singular.Painter(gl, loadShadow(gl));
 		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Format.Depth16));
 		this.shadowProjectionMatrix = matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20);
-		this.shadowShader = loadShadow(gl);
 		this.shadowTargets = targets;
 	}
 
@@ -498,7 +499,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.enable(gl.CULL_FACE);
 		gl.enable(gl.DEPTH_TEST);
 
-		const obstacles = scene.subjects.filter(subject => subject.shadow !== false);
+		const obstacles = scene.subjects.filter(subject => !subject.noShadow);
 		let bufferIndex = 0;
 
 		// Create shadow maps for directional lights
@@ -517,7 +518,7 @@ class Pipeline implements webgl.Pipeline {
 			gl.cullFace(gl.FRONT);
 
 			this.shadowTargets[bufferIndex].clear();
-			this.shadowTargets[bufferIndex].draw(this.shadowShader, obstacles, {
+			this.shadowTargets[bufferIndex].draw(this.shadowPainter, obstacles, viewMatrix, {
 				projectionMatrix: this.shadowProjectionMatrix,
 				viewMatrix: viewMatrix
 			});
@@ -539,7 +540,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.colorMask(true, true, true, true);
 		gl.cullFace(gl.BACK);
 
-		target.draw(this.lightShader, scene.subjects, {
+		target.draw(this.lightPainter, scene.subjects, transform.viewMatrix, {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			directionalLights: directionalLightStates,
 			pointLights: pointLights,

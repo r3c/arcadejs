@@ -1,5 +1,6 @@
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
+import * as painter from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import * as quad from "./resources/quad";
@@ -312,29 +313,29 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
-	shader.bindAttributePerGeometry("normals", state => state.geometry.normals);
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
-	shader.bindAttributePerGeometry("tangents", state => state.geometry.tangents);
+	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
+	shader.bindAttributePerGeometry("normals", geometry => geometry.normals);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.bindAttributePerGeometry("tangents", geometry => geometry.tangents);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerNode("normalMatrix", state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3(), gl => gl.uniformMatrix3fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("normalMatrix", state => state.normalMatrix, gl => gl.uniformMatrix3fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	if (configuration.lightModel === LightModel.Phong) {
-		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
-		shader.bindPropertyPerMaterial("shininess", state => state.material.shininess, gl => gl.uniform1f);
+		shader.bindTexturePerMaterial("glossMap", material => material.glossMap);
+		shader.bindPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-		shader.bindPropertyPerMaterial("heightParallaxBias", state => state.material.heightParallaxBias, gl => gl.uniform1f);
-		shader.bindPropertyPerMaterial("heightParallaxScale", state => state.material.heightParallaxScale, gl => gl.uniform1f);
+		shader.bindTexturePerMaterial("heightMap", material => material.heightMap);
+		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
+		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (configuration.useNormalMap)
-		shader.bindTexturePerMaterial("normalMap", state => state.material.normalMap);
+		shader.bindTexturePerMaterial("normalMap", material => material.normalMap);
 
 	return shader;
 };
@@ -347,9 +348,9 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 	// Setup light shader
 	const shader = new webgl.Shader<LightState<T>>(gl, lightVertexShader, lightFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 
 	shader.bindMatrixPerTarget("inverseProjectionMatrix", state => state.projectionMatrix.inverse().getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
@@ -401,31 +402,31 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	// Setup material shader
 	const shader = new webgl.Shader<MaterialState>(gl, materialVertexShader, materialFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("coords", state => state.geometry.coords);
-	shader.bindAttributePerGeometry("normals", state => state.geometry.normals);
-	shader.bindAttributePerGeometry("points", state => state.geometry.points);
-	shader.bindAttributePerGeometry("tangents", state => state.geometry.tangents);
+	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
+	shader.bindAttributePerGeometry("normals", geometry => geometry.normals);
+	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.bindAttributePerGeometry("tangents", geometry => geometry.tangents);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.matrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerNode("normalMatrix", state => state.global.viewMatrix.compose(state.matrix).getTransposedInverse3x3(), gl => gl.uniformMatrix3fv);
+	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.bindMatrixPerNode("normalMatrix", state => state.normalMatrix, gl => gl.uniformMatrix3fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	shader.bindPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
 	shader.bindTexturePerTarget("lightBuffer", state => state.lightBuffer);
 
-	shader.bindPropertyPerMaterial("albedoFactor", state => state.material.albedoFactor, gl => gl.uniform4fv);
-	shader.bindTexturePerMaterial("albedoMap", state => state.material.albedoMap);
+	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
+	shader.bindTexturePerMaterial("albedoMap", material => material.albedoMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
-		shader.bindPropertyPerMaterial("glossFactor", state => state.material.glossFactor, gl => gl.uniform4fv);
-		shader.bindTexturePerMaterial("glossMap", state => state.material.glossMap);
+		shader.bindPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
+		shader.bindTexturePerMaterial("glossMap", material => material.glossMap);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", state => state.material.heightMap);
-		shader.bindPropertyPerMaterial("heightParallaxBias", state => state.material.heightParallaxBias, gl => gl.uniform1f);
-		shader.bindPropertyPerMaterial("heightParallaxScale", state => state.material.heightParallaxScale, gl => gl.uniform1f);
+		shader.bindTexturePerMaterial("heightMap", material => material.heightMap);
+		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
+		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	return shader;
@@ -436,15 +437,15 @@ class Pipeline implements webgl.Pipeline {
 	public readonly lightBuffer: WebGLTexture;
 	public readonly normalAndGlossBuffer: WebGLTexture;
 
-	private readonly directionalLightShader: webgl.Shader<LightState<webgl.DirectionalLight>>;
+	private readonly directionalLightPainter: painter.Painter<LightState<webgl.DirectionalLight>>;
 	private readonly fullscreenMesh: webgl.Mesh;
 	private readonly fullscreenProjection: matrix.Matrix4;
+	private readonly geometryPainter: painter.Painter<State>;
 	private readonly geometryTarget: webgl.Target;
-	private readonly geometryShader: webgl.Shader<State>;
 	private readonly gl: WebGLRenderingContext;
 	private readonly lightTarget: webgl.Target;
-	private readonly materialShader: webgl.Shader<MaterialState>;
-	private readonly pointLightShader: webgl.Shader<LightState<webgl.PointLight>>;
+	private readonly materialPainter: painter.Painter<MaterialState>;
+	private readonly pointLightPainter: painter.Painter<LightState<webgl.PointLight>>;
 	private readonly sphereMesh: webgl.Mesh;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
@@ -452,16 +453,16 @@ class Pipeline implements webgl.Pipeline {
 		const light = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 
 		this.depthBuffer = geometry.setupDepthTexture(webgl.Format.Depth16);
-		this.directionalLightShader = loadLightDirectional(gl, configuration);
+		this.directionalLightPainter = new painter.Painter(gl, loadLightDirectional(gl, configuration));
 		this.fullscreenMesh = webgl.loadMesh(gl, quad.mesh);
 		this.fullscreenProjection = matrix.Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
-		this.geometryShader = loadGeometry(gl, configuration);
+		this.geometryPainter = new painter.Painter(gl, loadGeometry(gl, configuration));
 		this.geometryTarget = geometry;
 		this.gl = gl;
 		this.lightBuffer = light.setupColorTexture(webgl.Format.RGBA8);
 		this.lightTarget = light;
-		this.materialShader = loadMaterial(gl, configuration);
-		this.pointLightShader = loadLightPoint(gl, configuration);
+		this.materialPainter = new painter.Painter(gl, loadMaterial(gl, configuration));
+		this.pointLightPainter = new painter.Painter(gl, loadLightPoint(gl, configuration));
 		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.Format.RGBA8);
 		this.sphereMesh = webgl.loadMesh(gl, sphere.mesh);
 	}
@@ -480,7 +481,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.depthMask(true);
 
 		this.geometryTarget.clear();
-		this.geometryTarget.draw(this.geometryShader, scene.subjects, transform);
+		this.geometryTarget.draw(this.geometryPainter, scene.subjects, transform.viewMatrix, transform);
 
 		// Render lights to light buffer
 		gl.disable(gl.DEPTH_TEST);
@@ -503,7 +504,7 @@ class Pipeline implements webgl.Pipeline {
 			}];
 
 			for (const directionalLight of scene.directionalLights) {
-				this.lightTarget.draw(this.directionalLightShader, subjects, {
+				this.lightTarget.draw(this.directionalLightPainter, subjects, transform.viewMatrix, {
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					light: directionalLight,
@@ -527,7 +528,7 @@ class Pipeline implements webgl.Pipeline {
 					.translate(pointLight.position)
 					.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius });
 
-				this.lightTarget.draw(this.pointLightShader, subjects, {
+				this.lightTarget.draw(this.pointLightPainter, subjects, transform.viewMatrix, {
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
 					light: pointLight,
@@ -547,7 +548,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthMask(true);
 
-		target.draw(this.materialShader, scene.subjects, {
+		target.draw(this.materialPainter, scene.subjects, transform.viewMatrix, {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			lightBuffer: this.lightBuffer,
 			projectionMatrix: transform.projectionMatrix,

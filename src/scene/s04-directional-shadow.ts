@@ -135,7 +135,7 @@ const render = (state: SceneState) => {
 				.createIdentity()
 				.translate(vector.Vector3.scale(vector.Vector3.normalize(lightDirection), 10)),
 			mesh: meshes.light,
-			shadow: false
+			noShadow: true
 		}]
 	}
 
