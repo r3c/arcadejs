@@ -79,7 +79,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Pipeline(gl, {
 				lightModel: forwardLighting.LightModel.Phong,
 				maxDirectionalLights: 1,
-				noShadowMap: !flags[0]
+				noShadow: !flags[0]
 			}))
 		},
 		projectionMatrix: matrix.Matrix4.createIdentity(),

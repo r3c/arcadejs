@@ -70,7 +70,7 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
 	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
-	shader.bindTexturePerMaterial("albedoMap", material => material.albedoMap);
+	shader.bindTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
 
 	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);

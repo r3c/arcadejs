@@ -47,8 +47,8 @@ void main(void) {
 
 const geometryFragmentShader = `
 ${normal.encodeDeclare}
-${normal.perturbDeclare("USE_NORMAL_MAP")}
-${parallax.perturbDeclare("USE_HEIGHT_MAP")}
+${normal.perturbDeclare("FORCE_NORMAL_MAP")}
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
 ${shininess.encodeDeclare}
 
 uniform sampler2D glossMap;
@@ -72,10 +72,10 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke("coord", "heightMap", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnabled", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	// Color target: [normal, normal, shininess, gloss]
-	vec3 normalModified = ${normal.perturbInvoke("normalMap", "coordParallax", "t", "b", "n")};
+	vec3 normalModified = ${normal.perturbInvoke("FORCE_NORMAL_MAP", "normalMap", "normalMapEnabled", "coordParallax", "t", "b", "n")};
 	vec2 normalPack = ${normal.encodeInvoke("normalModified")};
 
 	float gloss = texture(glossMap, coordParallax).r;
@@ -220,7 +220,7 @@ void main(void) {
 }`;
 
 const materialFragmentShader = `
-${parallax.perturbDeclare("USE_HEIGHT_MAP")}
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
 ${rgb.linearToStandardDeclare}
 ${rgb.standardToLinearDeclare}
 
@@ -258,7 +258,7 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke("coord", "heightMap", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnable", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, coordParallax).rgb")};
 	vec3 gloss = glossFactor.rgb * texture(glossMap, coordParallax).rgb;
@@ -302,13 +302,10 @@ interface State {
 
 const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
-	const directives = [];
-
-	if (configuration.useHeightMap)
-		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
-
-	if (configuration.useNormalMap)
-		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
+	const directives = [
+		{ name: "FORCE_HEIGHT_MAP", value: configuration.useHeightMap ? 1 : 0 },
+		{ name: "FORCE_NORMAL_MAP", value: configuration.useNormalMap ? 1 : 0 }
+	];
 
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
@@ -324,18 +321,18 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	if (configuration.lightModel === LightModel.Phong) {
-		shader.bindTexturePerMaterial("glossMap", material => material.glossMap);
+		shader.bindTexturePerMaterial("glossMap", undefined, material => material.glossMap);
 		shader.bindPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", material => material.heightMap);
+		shader.bindTexturePerMaterial("heightMap", undefined, material => material.heightMap);
 		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (configuration.useNormalMap)
-		shader.bindTexturePerMaterial("normalMap", material => material.normalMap);
+		shader.bindTexturePerMaterial("normalMap", undefined, material => material.normalMap);
 
 	return shader;
 };
@@ -358,8 +355,8 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 
 	shader.bindPropertyPerTarget("viewportSize", state => vector.Vector2.toArray(state.viewportSize), gl => gl.uniform2fv);
 
-	shader.bindTexturePerTarget("depthBuffer", state => state.depthBuffer);
-	shader.bindTexturePerTarget("normalAndGlossBuffer", state => state.normalAndGlossBuffer);
+	shader.bindTexturePerTarget("depthBuffer", undefined, state => state.depthBuffer);
+	shader.bindTexturePerTarget("normalAndGlossBuffer", undefined, state => state.normalAndGlossBuffer);
 
 	return shader;
 };
@@ -396,8 +393,7 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 			break;
 	}
 
-	if (configuration.useHeightMap)
-		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
+	directives.push({ name: "FORCE_HEIGHT_MAP", value: configuration.useHeightMap ? 1 : 0 });
 
 	// Setup material shader
 	const shader = new webgl.Shader<MaterialState>(gl, materialVertexShader, materialFragmentShader, directives);
@@ -413,18 +409,18 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	shader.bindPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
-	shader.bindTexturePerTarget("lightBuffer", state => state.lightBuffer);
+	shader.bindTexturePerTarget("lightBuffer", undefined, state => state.lightBuffer);
 
 	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
-	shader.bindTexturePerMaterial("albedoMap", material => material.albedoMap);
+	shader.bindTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
 		shader.bindPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
-		shader.bindTexturePerMaterial("glossMap", material => material.glossMap);
+		shader.bindTexturePerMaterial("glossMap", undefined, material => material.glossMap);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", material => material.heightMap);
+		shader.bindTexturePerMaterial("heightMap", undefined, material => material.heightMap);
 		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
@@ -437,15 +433,15 @@ class Pipeline implements webgl.Pipeline {
 	public readonly lightBuffer: WebGLTexture;
 	public readonly normalAndGlossBuffer: WebGLTexture;
 
-	private readonly directionalLightPainter: painter.Painter<LightState<webgl.DirectionalLight>>;
+	private readonly directionalLightPainter: webgl.Painter<LightState<webgl.DirectionalLight>>;
 	private readonly fullscreenMesh: webgl.Mesh;
 	private readonly fullscreenProjection: matrix.Matrix4;
-	private readonly geometryPainter: painter.Painter<State>;
+	private readonly geometryPainter: webgl.Painter<State>;
 	private readonly geometryTarget: webgl.Target;
 	private readonly gl: WebGLRenderingContext;
 	private readonly lightTarget: webgl.Target;
-	private readonly materialPainter: painter.Painter<MaterialState>;
-	private readonly pointLightPainter: painter.Painter<LightState<webgl.PointLight>>;
+	private readonly materialPainter: webgl.Painter<MaterialState>;
+	private readonly pointLightPainter: webgl.Painter<LightState<webgl.PointLight>>;
 	private readonly sphereMesh: webgl.Mesh;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
