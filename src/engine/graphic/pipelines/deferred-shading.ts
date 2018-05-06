@@ -46,8 +46,8 @@ void main(void) {
 
 const geometryFragmentShader = `
 ${normal.encodeDeclare}
-${normal.perturbDeclare("USE_NORMAL_MAP")}
-${parallax.perturbDeclare("USE_HEIGHT_MAP")}
+${normal.perturbDeclare("FORCE_NORMAL_MAP")}
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
 ${shininess.encodeDeclare}
 
 uniform vec4 albedoFactor;
@@ -74,7 +74,7 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke("coord", "heightMap", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnabled", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	// Color target 1: [albedo.rgb, shininess]
 	vec3 albedo = albedoFactor.rgb * texture(albedoMap, coordParallax).rgb;
@@ -83,7 +83,7 @@ void main(void) {
 	albedoAndShininess = vec4(albedo, shininessPack);
 
 	// Color target 2: [normal.pp, zero, gloss]
-	vec3 normalModified = ${normal.perturbInvoke("normalMap", "coordParallax", "t", "b", "n")};
+	vec3 normalModified = ${normal.perturbInvoke("FORCE_NORMAL_MAP", "normalMap", "normalMapEnabled", "coordParallax", "t", "b", "n")};
 	vec2 normalPack = ${normal.encodeInvoke("normalModified")};
 
 	float gloss = texture(glossMap, coordParallax).r;
@@ -293,7 +293,7 @@ const loadAmbient = (gl: WebGLRenderingContext, configuration: Configuration) =>
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);
+	shader.bindTexturePerTarget("albedoAndShininess", undefined, state => state.albedoAndShininessBuffer);
 	shader.bindPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
 
 	return shader;
@@ -301,13 +301,10 @@ const loadAmbient = (gl: WebGLRenderingContext, configuration: Configuration) =>
 
 const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	// Build directives from configuration
-	const directives = [];
-
-	if (configuration.useHeightMap)
-		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
-
-	if (configuration.useNormalMap)
-		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
+	const directives = [
+		{ name: "FORCE_HEIGHT_MAP", value: configuration.useHeightMap ? 1 : 0 },
+		{ name: "FORCE_NORMAL_MAP", value: configuration.useNormalMap ? 1 : 0 }
+	];
 
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
@@ -323,21 +320,21 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
-	shader.bindTexturePerMaterial("albedoMap", material => material.albedoMap);
+	shader.bindTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
 
 	if (configuration.lightModel === LightModel.Phong) {
-		shader.bindTexturePerMaterial("glossMap", material => material.glossMap);
+		shader.bindTexturePerMaterial("glossMap", undefined, material => material.glossMap);
 		shader.bindPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", material => material.heightMap);
+		shader.bindTexturePerMaterial("heightMap", undefined, material => material.heightMap);
 		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (configuration.useNormalMap)
-		shader.bindTexturePerMaterial("normalMap", material => material.normalMap);
+		shader.bindTexturePerMaterial("normalMap", undefined, material => material.normalMap);
 
 	return shader;
 };
@@ -369,9 +366,9 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 
 	shader.bindPropertyPerTarget("viewportSize", state => vector.Vector2.toArray(state.viewportSize), gl => gl.uniform2fv);
 
-	shader.bindTexturePerTarget("albedoAndShininess", state => state.albedoAndShininessBuffer);
-	shader.bindTexturePerTarget("depth", state => state.depthBuffer);
-	shader.bindTexturePerTarget("normalAndGloss", state => state.normalAndGlossBuffer);
+	shader.bindTexturePerTarget("albedoAndShininess", undefined, state => state.albedoAndShininessBuffer);
+	shader.bindTexturePerTarget("depth", undefined, state => state.depthBuffer);
+	shader.bindTexturePerTarget("normalAndGloss", undefined, state => state.normalAndGlossBuffer);
 
 	return shader;
 };
@@ -400,14 +397,14 @@ class Pipeline implements webgl.Pipeline {
 	public readonly depthBuffer: WebGLTexture;
 	public readonly normalAndGlossBuffer: WebGLTexture;
 
-	private readonly ambientLightPainter: painter.Painter<AmbientState>;
-	private readonly directionalLightPainter: painter.Painter<LightState<webgl.DirectionalLight>>;
+	private readonly ambientLightPainter: webgl.Painter<AmbientState>;
+	private readonly directionalLightPainter: webgl.Painter<LightState<webgl.DirectionalLight>>;
 	private readonly fullscreenMesh: webgl.Mesh;
 	private readonly fullscreenProjection: matrix.Matrix4;
-	private readonly geometryPainter: painter.Painter<State>;
+	private readonly geometryPainter: webgl.Painter<State>;
 	private readonly geometryTarget: webgl.Target;
 	private readonly gl: WebGLRenderingContext;
-	private readonly pointLightPainter: painter.Painter<LightState<webgl.PointLight>>;
+	private readonly pointLightPainter: webgl.Painter<LightState<webgl.PointLight>>;
 	private readonly sphereModel: webgl.Mesh;
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {

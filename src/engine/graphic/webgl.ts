@@ -25,10 +25,7 @@ interface Attribute {
 	stride: number
 }
 
-interface AttributeBinding<T> {
-	bind: (gl: WebGLRenderingContext, source: T) => boolean,
-	name: string
-}
+type AttributeBinding<TSource> = (gl: WebGLRenderingContext, source: TSource) => void;
 
 interface DirectionalLight {
 	color: vector.Vector3,
@@ -113,10 +110,7 @@ interface Primitive {
 	material: Material
 }
 
-interface PropertyBinding<T> {
-	bind: (gl: WebGLRenderingContext, source: T) => void,
-	name: string
-}
+type PropertyBinding<T> = (gl: WebGLRenderingContext, source: T) => void;
 
 interface Scene {
 	ambientLightColor?: vector.Vector3,
@@ -131,10 +125,7 @@ interface Subject {
 	noShadow?: boolean
 }
 
-interface TextureBinding<T> {
-	bind: (gl: WebGLRenderingContext, source: T, textureIndex: number) => boolean,
-	name: string
-}
+type TextureBinding<T> = (gl: WebGLRenderingContext, source: T, textureIndex: number) => number;
 
 interface Transform {
 	projectionMatrix: matrix.Matrix4,
@@ -449,20 +440,17 @@ class Shader<State> {
 	public bindAttributePerGeometry(name: string, getter: (state: Geometry) => Attribute | undefined) {
 		const location = this.findAttribute(name);
 
-		this.attributePerGeometryBindings.push({
-			bind: (gl: WebGLRenderingContext, source: Geometry) => {
-				const attribute = getter(source);
+		this.attributePerGeometryBindings.push((gl: WebGLRenderingContext, source: Geometry) => {
+			const attribute = getter(source);
 
-				if (attribute === undefined)
-					return false;
+			if (attribute === undefined)
+				throw Error(`undefined geometry attribute "${name}"`);
 
-				gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
-				gl.vertexAttribPointer(location, attribute.componentCount, attribute.componentType, false, attribute.stride, 0);
-				gl.enableVertexAttribArray(location);
+			gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
+			gl.vertexAttribPointer(location, attribute.componentCount, attribute.componentType, false, attribute.stride, 0);
+			gl.enableVertexAttribArray(location);
 
-				return true;
-			},
-			name: name
+			return true;
 		});
 	}
 
@@ -482,12 +470,25 @@ class Shader<State> {
 		this.propertyPerTargetBindings.push(this.declareProperty(name, getter, assign));
 	}
 
-	public bindTexturePerMaterial(name: string, getter: (state: Material) => WebGLTexture | undefined) {
-		this.texturePerMaterialBindings.push(this.declareTexture(name, getter));
+	/*
+	** Declare sampler on shader and bind it to texture on current material. An
+	** optional second boolean uniform can be specified to allow texture to be
+	** left undefined on some materials. In that case this second uniform will
+	** be set to "true" or "false" depending on whether texture is defined or
+	** not. If second uniform is undefined, texture is assumed to be always
+	** defined.
+	*/
+	public bindTexturePerMaterial(samplerName: string, enabledName: string | undefined, getter: (state: Material) => WebGLTexture | undefined) {
+		this.texturePerMaterialBindings.push(this.declareTexture(samplerName, enabledName, getter));
 	}
 
-	public bindTexturePerTarget(name: string, getter: (state: State) => WebGLTexture | undefined) {
-		this.texturePerTargetBindings.push(this.declareTexture(name, getter));
+	/*
+	** Declare sampler on shader and bind it to texture on current target. See
+	** method "bindTexturePerMaterial" for details about the optional second
+	** uniform.
+	*/
+	public bindTexturePerTarget(samplerName: string, enabledName: string | undefined, getter: (state: State) => WebGLTexture | undefined) {
+		this.texturePerTargetBindings.push(this.declareTexture(samplerName, enabledName, getter));
 	}
 
 	public getAttributePerGeometryBindings(): Iterable<AttributeBinding<Geometry>> {
@@ -518,40 +519,52 @@ class Shader<State> {
 		const location = this.findUniform(name);
 		const method = assign(this.gl);
 
-		return {
-			bind: (gl: WebGLRenderingContext, state: TSource) => method.call(gl, location, false, new Float32Array(getter(state))),
-			name: name
-		};
+		return (gl: WebGLRenderingContext, state: TSource) => method.call(gl, location, false, new Float32Array(getter(state)));
 	}
 
 	private declareProperty<TSource, TValue>(name: string, getter: (source: TSource) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
 		const location = this.findUniform(name);
 		const method = assign(this.gl);
 
-		return {
-			bind: (gl: WebGLRenderingContext, source: TSource) => method.call(gl, location, getter(source)),
-			name: name
-		};
+		return (gl: WebGLRenderingContext, source: TSource) => method.call(gl, location, getter(source));
 	}
 
-	private declareTexture<TSource>(name: string, getter: (source: TSource) => WebGLTexture | undefined) {
-		const location = this.findUniform(name);
+	private declareTexture<TSource>(samplerName: string, enabledName: string | undefined, getter: (source: TSource) => WebGLTexture | undefined) {
+		const enabledLocation = functional.map(enabledName, name => this.findUniform(name));
+		const samplerLocation = this.findUniform(samplerName);
 
-		return {
-			bind: (gl: WebGLRenderingContext, source: TSource, textureIndex: number) => {
+		if (enabledLocation !== undefined) {
+			return (gl: WebGLRenderingContext, source: TSource, textureIndex: number) => {
 				const texture = getter(source);
 
-				if (texture === undefined)
-					return false;
+				if (texture === undefined) {
+					gl.uniform1i(enabledLocation, 0);
+
+					return 0;
+				}
 
 				gl.activeTexture(gl.TEXTURE0 + textureIndex);
 				gl.bindTexture(gl.TEXTURE_2D, texture);
-				gl.uniform1i(location, textureIndex);
+				gl.uniform1i(enabledLocation, 1);
+				gl.uniform1i(samplerLocation, textureIndex);
 
-				return true;
-			},
-			name: name
-		};
+				return 1;
+			}
+		}
+		else {
+			return (gl: WebGLRenderingContext, source: TSource, textureIndex: number) => {
+				const texture = getter(source);
+
+				if (texture === undefined)
+					throw Error(`missing mandatory texture uniform "${samplerName}"`);
+
+				gl.activeTexture(gl.TEXTURE0 + textureIndex);
+				gl.bindTexture(gl.TEXTURE_2D, texture);
+				gl.uniform1i(samplerLocation, textureIndex);
+
+				return 1;
+			}
+		}
 	}
 
 	private findAttribute(name: string) {

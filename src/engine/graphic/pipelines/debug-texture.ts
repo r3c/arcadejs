@@ -141,7 +141,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
 	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindTexturePerTarget("source", state => state.source);
+	shader.bindTexturePerTarget("source", undefined, state => state.source);
 
 	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 
@@ -150,7 +150,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 class Pipeline implements webgl.Pipeline {
 	private readonly gl: WebGLRenderingContext;
-	private readonly painter: painter.Painter<State>;
+	private readonly painter: webgl.Painter<State>;
 	private readonly quad: webgl.Mesh;
 	private readonly scale: number;
 

@@ -92,7 +92,7 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 				maxPointLights: 3,
 				noHeightMap: !flags[3],
 				noNormalMap: !flags[4],
-				noShadowMap: true
+				noShadow: true
 			}))
 		},
 		projectionMatrix: matrix.Matrix4.createIdentity(),

@@ -1,9 +1,6 @@
 import * as matrix from "../../math/matrix";
 import * as webgl from "../webgl";
 
-const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
-const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
-
 class Painter<State> implements webgl.Painter<State> {
 	private readonly context: WebGLRenderingContext;
 	private readonly shader: webgl.Shader<State>;
@@ -22,15 +19,13 @@ class Painter<State> implements webgl.Painter<State> {
 		for (const subject of subjects) {
 			// Assign per-call property uniforms
 			for (const binding of shader.getPropertyPerTargetBindings())
-				binding.bind(gl, state);
+				binding(gl, state);
 
 			// Assign per-call texture uniforms
 			let textureIndex = 0;
 
-			for (const binding of shader.getTexturePerTargetBindings()) {
-				if (!binding.bind(gl, state, textureIndex++))
-					throw invalidUniformBinding(binding.name);
-			}
+			for (const binding of shader.getTexturePerTargetBindings())
+				textureIndex += binding(gl, state, textureIndex);
 
 			// Draw subject nodes
 			this.draw(subject.mesh.nodes, subject.matrix, view, textureIndex);
@@ -52,27 +47,23 @@ class Painter<State> implements webgl.Painter<State> {
 
 				// Assign per-material property uniforms
 				for (const binding of shader.getPropertyPerMaterialBindings())
-					binding.bind(gl, material);
+					binding(gl, material);
 
 				// Assign per-material texture uniforms
-				for (const binding of shader.getTexturePerMaterialBindings()) {
-					if (!binding.bind(gl, material, textureIndex++))
-						throw invalidUniformBinding(binding.name);
-				}
+				for (const binding of shader.getTexturePerMaterialBindings())
+					textureIndex += binding(gl, material, textureIndex);
 
 				// Assign per-geometry property uniforms
 				for (const binding of shader.getPropertyPerNodeBindings()) {
-					binding.bind(gl, {
+					binding(gl, {
 						normalMatrix: viewMatrix.compose(transform).getTransposedInverse3x3(),
 						transform: transform
 					});
 				}
 
 				// Assign per-geometry attributes
-				for (const binding of shader.getAttributePerGeometryBindings()) {
-					if (!binding.bind(gl, geometry))
-						throw invalidAttributeBinding(binding.name);
-				}
+				for (const binding of shader.getAttributePerGeometryBindings())
+					binding(gl, geometry);
 
 				// Perform draw call
 				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geometry.indexBuffer);

@@ -39,7 +39,7 @@ const load = (gl: WebGLRenderingContext) => {
 
 class Pipeline implements webgl.Pipeline {
 	private readonly gl: WebGLRenderingContext;
-	private readonly painter: painter.Painter<State>;
+	private readonly painter: webgl.Painter<State>;
 
 	public constructor(gl: WebGLRenderingContext) {
 		this.gl = gl;
