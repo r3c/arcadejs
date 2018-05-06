@@ -275,13 +275,13 @@ interface Configuration {
 	lightModelPhysicalNoAmbient?: boolean,
 	maxDirectionalLights?: number,
 	maxPointLights?: number,
-	useAlbedoMap: boolean,
-	useEmissiveMap: boolean
-	useGlossMap: boolean,
-	useHeightMap: boolean,
-	useNormalMap: boolean,
-	useOcclusionMap: boolean,
-	useShadowMap: boolean
+	noAlbedoMap?: boolean,
+	noEmissiveMap?: boolean,
+	noGlossMap?: boolean,
+	noHeightMap?: boolean,
+	noNormalMap?: boolean,
+	noOcclusionMap?: boolean
+	noShadowMap?: boolean
 }
 
 interface DirectionalLight extends webgl.DirectionalLight {
@@ -332,25 +332,25 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 			break;
 	}
 
-	if (configuration.useAlbedoMap)
+	if (!configuration.noAlbedoMap)
 		directives.push({ name: "USE_ALBEDO_MAP", value: 1 });
 
-	if (configuration.useEmissiveMap)
+	if (!configuration.noEmissiveMap)
 		directives.push({ name: "USE_EMISSIVE_MAP", value: 1 });
 
-	if (configuration.useGlossMap)
+	if (!configuration.noGlossMap)
 		directives.push({ name: "USE_GLOSS_MAP", value: 1 });
 
-	if (configuration.useHeightMap)
+	if (!configuration.noHeightMap)
 		directives.push({ name: "USE_HEIGHT_MAP", value: 1 });
 
-	if (configuration.useNormalMap)
+	if (!configuration.noNormalMap)
 		directives.push({ name: "USE_NORMAL_MAP", value: 1 });
 
-	if (configuration.useOcclusionMap)
+	if (!configuration.noOcclusionMap)
 		directives.push({ name: "USE_OCCLUSION_MAP", value: 1 });
 
-	if (configuration.useShadowMap)
+	if (!configuration.noShadowMap)
 		directives.push({ name: "USE_SHADOW_MAP", value: 1 });
 
 	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
@@ -359,10 +359,10 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindAttributePerGeometry("normals", geometry => geometry.normals);
 	shader.bindAttributePerGeometry("points", geometry => geometry.points);
 
-	if (configuration.useAlbedoMap || configuration.useEmissiveMap || configuration.useGlossMap || configuration.useHeightMap || configuration.useNormalMap)
+	if (!configuration.noAlbedoMap && !configuration.noEmissiveMap && !configuration.noGlossMap && !configuration.noHeightMap && !configuration.noNormalMap)
 		shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
 
-	if (configuration.useNormalMap)
+	if (!configuration.noHeightMap && !configuration.noNormalMap)
 		shader.bindAttributePerGeometry("tangents", geometry => geometry.tangents);
 
 	// Bind matrix uniforms
@@ -371,18 +371,18 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	if (configuration.useShadowMap)
+	if (!configuration.noShadowMap)
 		shader.bindMatrixPerTarget("shadowProjectionMatrix", state => state.shadowProjectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	// Bind material uniforms
-	if (configuration.useAlbedoMap)
+	if (!configuration.noAlbedoMap)
 		shader.bindTexturePerMaterial("albedoMap", material => material.albedoMap);
 
 	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
 
 	switch (configuration.lightModel) {
 		case LightModel.Phong:
-			if (configuration.useGlossMap)
+			if (!configuration.noGlossMap)
 				shader.bindTexturePerMaterial("glossMap", material => material.glossMap);
 
 			shader.bindPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
@@ -391,29 +391,32 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 			break;
 
 		case LightModel.Physical:
-			shader.bindTexturePerMaterial("metalnessMap", material => material.metalnessMap);
+			if (true) {
+				shader.bindTexturePerMaterial("metalnessMap", material => material.metalnessMap);
+				shader.bindTexturePerMaterial("roughnessMap", material => material.roughnessMap);
+			}
+
 			shader.bindPropertyPerMaterial("metalnessStrength", material => material.metalnessStrength, gl => gl.uniform1f);
-			shader.bindTexturePerMaterial("roughnessMap", material => material.roughnessMap);
 			shader.bindPropertyPerMaterial("roughnessStrength", material => material.roughnessStrength, gl => gl.uniform1f);
 
 			break;
 	}
 
-	if (configuration.useEmissiveMap)
+	if (!configuration.noEmissiveMap)
 		shader.bindTexturePerMaterial("emissiveMap", material => material.emissiveMap);
 
 	shader.bindPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
 
-	if (configuration.useHeightMap) {
+	if (!configuration.noHeightMap) {
 		shader.bindTexturePerMaterial("heightMap", material => material.heightMap);
 		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
-	if (configuration.useNormalMap)
+	if (!configuration.noNormalMap)
 		shader.bindTexturePerMaterial("normalMap", material => material.normalMap);
 
-	if (configuration.useOcclusionMap) {
+	if (!configuration.noOcclusionMap) {
 		shader.bindTexturePerMaterial("occlusionMap", material => material.occlusionMap);
 		shader.bindPropertyPerMaterial("occlusionStrength", material => material.occlusionStrength, gl => gl.uniform1f);
 	}
@@ -428,7 +431,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	for (let i = 0; i < maxDirectionalLights; ++i) {
 		const index = i;
 
-		if (configuration.useShadowMap) {
+		if (!configuration.noShadowMap) {
 			shader.bindPropertyPerTarget(`directionalLights[${i}].castShadow`, state => index < state.directionalLights.length && state.directionalLights[index].shadow ? 1 : 0, gl => gl.uniform1i);
 			shader.bindMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues(), gl => gl.uniformMatrix4fv);
 			shader.bindTexturePerTarget(`directionalLightShadowMaps[${i}]`, state => state.directionalLights[index].shadowMap);

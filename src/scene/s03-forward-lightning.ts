@@ -90,13 +90,9 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 				lightModelPhongNoDiffuse: !flags[1],
 				lightModelPhongNoSpecular: !flags[2],
 				maxPointLights: 3,
-				useAlbedoMap: true,
-				useEmissiveMap: false,
-				useGlossMap: true,
-				useHeightMap: flags[3],
-				useNormalMap: flags[4],
-				useOcclusionMap: false,
-				useShadowMap: false
+				noHeightMap: !flags[3],
+				noNormalMap: !flags[4],
+				noShadowMap: true
 			}))
 		},
 		projectionMatrix: matrix.Matrix4.createIdentity(),
