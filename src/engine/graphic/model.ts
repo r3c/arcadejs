@@ -8,6 +8,15 @@ interface Attribute {
 	componentCount: number
 }
 
+interface Bounds {
+	xMax: number,
+	xMin: number,
+	yMax: number,
+	yMin: number,
+	zMax: number,
+	zMin: number
+}
+
 interface Geometry {
 	colors?: Attribute,
 	coords?: Attribute,
@@ -82,6 +91,52 @@ const defaultColor: vector.Vector4 = {
 	w: 1
 };
 
+const reduceNode = <TState>(nodes: Node[], parent: matrix.Matrix4, state: TState, reduce: (previous: TState, geometry: Geometry, transform: matrix.Matrix4) => TState) => {
+	for (const node of nodes) {
+		const transform = parent.compose(node.transform);
+
+		for (const geometry of node.geometries)
+			state = reduce(state, geometry, transform);
+
+		state = reduceNode(node.children, transform, state, reduce);
+	}
+
+	return state;
+};
+
+const reduceNodePoints = <TState>(nodes: Node[], parent: matrix.Matrix4, state: TState, reduce: (previous: TState, point: vector.Vector3) => TState) => {
+	return reduceNode(nodes, parent, state, (previous: TState, geometry: Geometry, transform: matrix.Matrix4) => {
+		const points = geometry.points;
+		const buffer = points.buffer;
+		const count = points.componentCount;
+
+		for (let i = 0; i + count - 1 < buffer.length; i += count)
+			state = reduce(previous, transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 1 }));
+
+		return state;
+	});
+};
+
+const computeBounds = (mesh: Mesh) => {
+	const initial = {
+		xMax: Number.MIN_VALUE,
+		xMin: Number.MAX_VALUE,
+		yMax: Number.MIN_VALUE,
+		yMin: Number.MAX_VALUE,
+		zMax: Number.MIN_VALUE,
+		zMin: Number.MAX_VALUE
+	};
+
+	return reduceNodePoints<Bounds>(mesh.nodes, matrix.Matrix4.createIdentity(), initial, (previous: Bounds, point: vector.Vector3) => ({
+		xMax: Math.max(previous.xMax, point.x),
+		xMin: Math.min(previous.xMin, point.x),
+		yMax: Math.max(previous.yMax, point.y),
+		yMin: Math.min(previous.yMin, point.y),
+		zMax: Math.max(previous.zMax, point.z),
+		zMin: Math.min(previous.zMin, point.z)
+	}));
+};
+
 const loadImage = async (identifier: string) => {
 	const match = /(.*?)(?::([abgr]{1,4}))?$/.exec(identifier);
 
@@ -146,4 +201,4 @@ const loadImage = async (identifier: string) => {
 	});
 };
 
-export { Array, Attribute, Geometry, Interpolation, Material, Mesh, Node, Texture, Wrap, defaultColor, loadImage }
+export { Array, Attribute, Geometry, Interpolation, Material, Mesh, Node, Texture, Wrap, computeBounds, defaultColor, loadImage }
