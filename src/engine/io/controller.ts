@@ -30,7 +30,7 @@ class Input {
 	private mouseOffset: Position;
 	private mouseOrigin: HTMLElement;
 	private mouseWheel: number;
-	private presses: { [key: string]: boolean };
+	private presses: { [buttonId: string]: boolean };
 
 	constructor(eventSource: HTMLElement, mouseOrigin?: HTMLElement) {
 		if (eventSource.tabIndex < 0)
