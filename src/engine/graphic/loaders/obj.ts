@@ -263,7 +263,10 @@ const loadObject = async (data: string, fileName: string) => {
 			indices: new Uint32Array(groupIndices),
 			materialName: group.materialName,
 			normals: undefined,
-			points: { buffer: new Float32Array(groupPoints), componentCount: 3 }
+			points: {
+				buffer: new Float32Array(groupPoints),
+				stride: 3
+			}
 		});
 	}
 

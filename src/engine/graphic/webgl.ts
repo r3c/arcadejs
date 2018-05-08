@@ -20,9 +20,9 @@ interface AttachmentTexture {
 
 interface Attribute {
 	buffer: WebGLBuffer,
-	componentCount: number,
-	componentType: number,
-	stride: number
+	size: number,
+	stride: number,
+	type: number
 }
 
 type AttributeBinding<TSource> = (gl: WebGLRenderingContext, source: TSource) => void;
@@ -296,36 +296,36 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 		geometry: {
 			colors: functional.map(geometry.colors, colors => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
-				componentType: convertType(gl, colors.buffer),
-				componentCount: colors.componentCount,
-				stride: colors.componentCount * colors.buffer.BYTES_PER_ELEMENT
+				size: colors.stride,
+				stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT,
+				type: convertType(gl, colors.buffer)
 			})),
 			coords: functional.map(geometry.coords, coords => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
-				componentType: convertType(gl, coords.buffer),
-				componentCount: coords.componentCount,
-				stride: coords.componentCount * coords.buffer.BYTES_PER_ELEMENT
+				size: coords.stride,
+				stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
+				type: convertType(gl, coords.buffer)
 			})),
 			count: geometry.indices.length,
 			indexBuffer: convertBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
 			indexType: convertType(gl, geometry.indices),
 			normals: functional.map(geometry.normals, normals => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
-				componentType: convertType(gl, normals.buffer),
-				componentCount: normals.componentCount,
-				stride: normals.componentCount * normals.buffer.BYTES_PER_ELEMENT
+				size: normals.stride,
+				stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT,
+				type: convertType(gl, normals.buffer)
 			})),
 			points: {
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
-				componentType: convertType(gl, geometry.points.buffer),
-				componentCount: geometry.points.componentCount,
-				stride: geometry.points.componentCount * geometry.points.buffer.BYTES_PER_ELEMENT
+				size: geometry.points.stride,
+				stride: geometry.points.stride * geometry.points.buffer.BYTES_PER_ELEMENT,
+				type: convertType(gl, geometry.points.buffer)
 			},
 			tangents: functional.map(geometry.tangents, tangents => ({
 				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
-				componentType: convertType(gl, tangents.buffer),
-				componentCount: tangents.componentCount,
-				stride: tangents.componentCount * tangents.buffer.BYTES_PER_ELEMENT
+				size: tangents.stride,
+				stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT,
+				type: convertType(gl, tangents.buffer)
 			}))
 		},
 		material: geometry.materialName !== undefined
@@ -455,7 +455,7 @@ class Shader<State> {
 				throw Error(`undefined geometry attribute "${name}"`);
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
-			gl.vertexAttribPointer(location, attribute.componentCount, attribute.componentType, false, attribute.stride, 0);
+			gl.vertexAttribPointer(location, attribute.size, attribute.type, false, attribute.stride, 0);
 			gl.enableVertexAttribArray(location);
 		});
 	}

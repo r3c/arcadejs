@@ -16,6 +16,7 @@ interface Accessor {
 	arrayConstructor: ArrayConstructor,
 	componentsPerElement: number,
 	elements: number,
+	index: number,
 	offset: number,
 	stride: number | undefined,
 }
@@ -125,16 +126,19 @@ const convertReferenceTo = <T>(url: string, source: string, reference: any, pool
 	return pool[reference];
 };
 
-const expandAccessor = (url: string, accessor: Accessor): model.Attribute => {
+const expandAccessor = (url: string, accessor: Accessor, cardinality: number, type: string): model.Attribute => {
 	const stride = accessor.stride !== undefined
 		? accessor.stride / accessor.arrayConstructor.BYTES_PER_ELEMENT
 		: accessor.componentsPerElement;
+
+	if (cardinality > stride)
+		throw invalidData(url, `accessor[${accessor.index}] has a smaller stride size (${stride}) than required for a ${type} buffer (${cardinality})`);
 
 	const buffer = new accessor.arrayConstructor(accessor.arrayBuffer, accessor.offset, accessor.elements * stride);
 
 	return {
 		buffer: buffer,
-		componentCount: stride
+		stride: stride
 	};
 };
 
@@ -166,16 +170,16 @@ const expandMaterial = (material: Material): model.Material => {
 
 const expandMesh = (url: string, mesh: Mesh): model.Geometry[] => {
 	return mesh.primitives.map(primitive => {
-		const indices = expandAccessor(url, primitive.indices);
+		const indices = expandAccessor(url, primitive.indices, 1, "index");
 
 		return {
-			colors: functional.map(primitive.colors, colors => expandAccessor(url, colors)),
-			coords: functional.map(primitive.coords, coords => expandAccessor(url, coords)),
+			colors: functional.map(primitive.colors, colors => expandAccessor(url, colors, 4, "colors")),
+			coords: functional.map(primitive.coords, coords => expandAccessor(url, coords, 2, "coords")),
 			indices: indices.buffer,
 			materialName: primitive.materialName,
-			normals: functional.map(primitive.normals, normals => expandAccessor(url, normals)),
-			points: expandAccessor(url, primitive.points),
-			tangents: functional.map(primitive.tangents, tangents => expandAccessor(url, tangents))
+			normals: functional.map(primitive.normals, normals => expandAccessor(url, normals, 3, "normals")),
+			points: expandAccessor(url, primitive.points, 3, "points"),
+			tangents: functional.map(primitive.tangents, tangents => expandAccessor(url, tangents, 3, "tangents"))
 		};
 	})
 };
@@ -273,6 +277,7 @@ const loadAccessor = (url: string, bufferViews: BufferView[], accessor: any, ind
 		arrayConstructor: arrayConstructor,
 		componentsPerElement: componentsPerElement,
 		elements: count,
+		index: index,
 		offset: bufferView.offset + byteOffset,
 		stride: bufferView.stride
 	};
