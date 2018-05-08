@@ -286,15 +286,15 @@ const loadAmbient = (gl: WebGLRenderingContext, configuration: Configuration) =>
 	// Setup light shader
 	const shader = new webgl.Shader<AmbientState>(gl, ambientVertexShader, ambientFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindTexturePerTarget("albedoAndShininess", undefined, state => state.albedoAndShininessBuffer);
-	shader.bindPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
+	shader.setupTexturePerTarget("albedoAndShininess", undefined, state => state.albedoAndShininessBuffer);
+	shader.setupPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
 
 	return shader;
 };
@@ -309,32 +309,32 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	// Setup geometry shader
 	const shader = new webgl.Shader<State>(gl, geometryVertexShader, geometryFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
-	shader.bindAttributePerGeometry("normals", geometry => geometry.normals);
-	shader.bindAttributePerGeometry("points", geometry => geometry.points);
-	shader.bindAttributePerGeometry("tangents", geometry => geometry.tangents);
+	shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
+	shader.setupAttributePerGeometry("normals", geometry => geometry.normals);
+	shader.setupAttributePerGeometry("points", geometry => geometry.points);
+	shader.setupAttributePerGeometry("tangents", geometry => geometry.tangents);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerNode("normalMatrix", state => state.normalMatrix, gl => gl.uniformMatrix3fv);
-	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("normalMatrix", state => state.normalMatrix, gl => gl.uniformMatrix3fv);
+	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
-	shader.bindTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
+	shader.setupPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
+	shader.setupTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
 
 	if (configuration.lightModel === LightModel.Phong) {
-		shader.bindTexturePerMaterial("glossMap", undefined, material => material.glossMap);
-		shader.bindPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
+		shader.setupTexturePerMaterial("glossMap", undefined, material => material.glossMap);
+		shader.setupPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", undefined, material => material.heightMap);
-		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
-		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
+		shader.setupTexturePerMaterial("heightMap", undefined, material => material.heightMap);
+		shader.setupPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
+		shader.setupPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (configuration.useNormalMap)
-		shader.bindTexturePerMaterial("normalMap", undefined, material => material.normalMap);
+		shader.setupTexturePerMaterial("normalMap", undefined, material => material.normalMap);
 
 	return shader;
 };
@@ -356,19 +356,19 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 	// Setup light shader
 	const shader = new webgl.Shader<LightState<T>>(gl, lightVertexShader, lightFragmentShader, directives);
 
-	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindMatrixPerTarget("inverseProjectionMatrix", state => state.projectionMatrix.inverse().getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("inverseProjectionMatrix", state => state.projectionMatrix.inverse().getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	shader.bindPropertyPerTarget("viewportSize", state => vector.Vector2.toArray(state.viewportSize), gl => gl.uniform2fv);
+	shader.setupPropertyPerTarget("viewportSize", state => vector.Vector2.toArray(state.viewportSize), gl => gl.uniform2fv);
 
-	shader.bindTexturePerTarget("albedoAndShininess", undefined, state => state.albedoAndShininessBuffer);
-	shader.bindTexturePerTarget("depth", undefined, state => state.depthBuffer);
-	shader.bindTexturePerTarget("normalAndGloss", undefined, state => state.normalAndGlossBuffer);
+	shader.setupTexturePerTarget("albedoAndShininess", undefined, state => state.albedoAndShininessBuffer);
+	shader.setupTexturePerTarget("depth", undefined, state => state.depthBuffer);
+	shader.setupTexturePerTarget("normalAndGloss", undefined, state => state.normalAndGlossBuffer);
 
 	return shader;
 };
@@ -376,8 +376,8 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const shader = loadLight<webgl.DirectionalLight>(gl, configuration, LightType.Directional);
 
-	shader.bindPropertyPerTarget("directionalLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
-	shader.bindPropertyPerTarget("directionalLight.direction", state => vector.Vector3.toArray(state.light.direction), gl => gl.uniform3fv);
+	shader.setupPropertyPerTarget("directionalLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
+	shader.setupPropertyPerTarget("directionalLight.direction", state => vector.Vector3.toArray(state.light.direction), gl => gl.uniform3fv);
 
 	return shader;
 };
@@ -385,9 +385,9 @@ const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configur
 const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const shader = loadLight<webgl.PointLight>(gl, configuration, LightType.Point);
 
-	shader.bindPropertyPerTarget("pointLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
-	shader.bindPropertyPerTarget("pointLight.position", state => vector.Vector3.toArray(state.light.position), gl => gl.uniform3fv);
-	shader.bindPropertyPerTarget("pointLight.radius", state => state.light.radius, gl => gl.uniform1f);
+	shader.setupPropertyPerTarget("pointLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
+	shader.setupPropertyPerTarget("pointLight.position", state => vector.Vector3.toArray(state.light.position), gl => gl.uniform3fv);
+	shader.setupPropertyPerTarget("pointLight.radius", state => state.light.radius, gl => gl.uniform1f);
 
 	return shader;
 };

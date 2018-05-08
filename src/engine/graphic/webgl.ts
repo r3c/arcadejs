@@ -437,11 +437,19 @@ class Shader<State> {
 		this.program = program;
 	}
 
-	public bindAttributePerGeometry(name: string, getter: (state: Geometry) => Attribute | undefined) {
+	public clearAttributePerGeometry(name: string) {
 		const location = this.findAttribute(name);
 
-		this.attributePerGeometryBindings.push((gl: WebGLRenderingContext, source: Geometry) => {
-			const attribute = getter(source);
+		this.attributePerGeometryBindings.push((gl: WebGLRenderingContext, geometry: Geometry) => {
+			gl.disableVertexAttribArray(location);
+		});
+	}
+
+	public setupAttributePerGeometry(name: string, getter: (state: Geometry) => Attribute | undefined) {
+		const location = this.findAttribute(name);
+
+		this.attributePerGeometryBindings.push((gl: WebGLRenderingContext, geometry: Geometry) => {
+			const attribute = getter(geometry);
 
 			if (attribute === undefined)
 				throw Error(`undefined geometry attribute "${name}"`);
@@ -449,24 +457,22 @@ class Shader<State> {
 			gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
 			gl.vertexAttribPointer(location, attribute.componentCount, attribute.componentType, false, attribute.stride, 0);
 			gl.enableVertexAttribArray(location);
-
-			return true;
 		});
 	}
 
-	public bindMatrixPerNode(name: string, getter: (state: NodeState) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
+	public setupMatrixPerNode(name: string, getter: (state: NodeState) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
 		this.propertyPerNodeBindings.push(this.declareMatrix(name, getter, assign));
 	}
 
-	public bindMatrixPerTarget(name: string, getter: (state: State) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
+	public setupMatrixPerTarget(name: string, getter: (state: State) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
 		this.propertyPerTargetBindings.push(this.declareMatrix(name, getter, assign));
 	}
 
-	public bindPropertyPerMaterial<TValue>(name: string, getter: (state: Material) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
+	public setupPropertyPerMaterial<TValue>(name: string, getter: (state: Material) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
 		this.propertyPerMaterialBindings.push(this.declareProperty(name, getter, assign));
 	}
 
-	public bindPropertyPerTarget<TValue>(name: string, getter: (state: State) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
+	public setupPropertyPerTarget<TValue>(name: string, getter: (state: State) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
 		this.propertyPerTargetBindings.push(this.declareProperty(name, getter, assign));
 	}
 
@@ -478,7 +484,7 @@ class Shader<State> {
 	** not. If second uniform is undefined, texture is assumed to be always
 	** defined.
 	*/
-	public bindTexturePerMaterial(samplerName: string, enabledName: string | undefined, getter: (state: Material) => WebGLTexture | undefined) {
+	public setupTexturePerMaterial(samplerName: string, enabledName: string | undefined, getter: (state: Material) => WebGLTexture | undefined) {
 		this.texturePerMaterialBindings.push(this.declareTexture(samplerName, enabledName, getter));
 	}
 
@@ -487,7 +493,7 @@ class Shader<State> {
 	** method "bindTexturePerMaterial" for details about the optional second
 	** uniform.
 	*/
-	public bindTexturePerTarget(samplerName: string, enabledName: string | undefined, getter: (state: State) => WebGLTexture | undefined) {
+	public setupTexturePerTarget(samplerName: string, enabledName: string | undefined, getter: (state: State) => WebGLTexture | undefined) {
 		this.texturePerTargetBindings.push(this.declareTexture(samplerName, enabledName, getter));
 	}
 

@@ -138,12 +138,12 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
 	const shader = new webgl.Shader<State>(gl, vertexSource, fragmentSource, directives);
 
-	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
-	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
+	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindTexturePerTarget("source", undefined, state => state.source);
+	shader.setupTexturePerTarget("source", undefined, state => state.source);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 
 	return shader;
 };

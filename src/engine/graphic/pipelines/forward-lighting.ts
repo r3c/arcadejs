@@ -381,69 +381,73 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
 
 	// Bind geometry attributes
-	shader.bindAttributePerGeometry("normals", geometry => geometry.normals);
-	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.setupAttributePerGeometry("normals", geometry => geometry.normals);
+	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
 	if (!configuration.noAlbedoMap || !configuration.noEmissiveMap || !configuration.noGlossMap || !configuration.noHeightMap || !configuration.noNormalMap)
-		shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
+		shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
+	else
+		shader.clearAttributePerGeometry("coords");
 
 	if (!configuration.noHeightMap || !configuration.noNormalMap)
-		shader.bindAttributePerGeometry("tangents", geometry => geometry.tangents);
+		shader.setupAttributePerGeometry("tangents", geometry => geometry.tangents);
+	else
+		shader.clearAttributePerGeometry("tangents");
 
 	// Bind matrix uniforms
-	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerNode("normalMatrix", state => state.normalMatrix, gl => gl.uniformMatrix3fv);
-	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("normalMatrix", state => state.normalMatrix, gl => gl.uniformMatrix3fv);
+	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	if (!configuration.noShadow)
-		shader.bindMatrixPerTarget("shadowProjectionMatrix", state => state.shadowProjectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+		shader.setupMatrixPerTarget("shadowProjectionMatrix", state => state.shadowProjectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	// Bind material uniforms
 	if (!configuration.noAlbedoMap)
-		shader.bindTexturePerMaterial("albedoMap", "albedoMapEnabled", material => material.albedoMap);
+		shader.setupTexturePerMaterial("albedoMap", "albedoMapEnabled", material => material.albedoMap);
 
-	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
+	shader.setupPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
 
 	switch (configuration.lightModel) {
 		case LightModel.Phong:
 			if (!configuration.noGlossMap)
-				shader.bindTexturePerMaterial("glossMap", "glossMapEnabled", material => material.glossMap);
+				shader.setupTexturePerMaterial("glossMap", "glossMapEnabled", material => material.glossMap);
 
-			shader.bindPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
-			shader.bindPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
+			shader.setupPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
+			shader.setupPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 
 			break;
 
 		case LightModel.Physical:
 			if (true) {
-				shader.bindTexturePerMaterial("metalnessMap", "metalnessMapEnabled", material => material.metalnessMap);
-				shader.bindTexturePerMaterial("roughnessMap", "roughnessMapEnabled", material => material.roughnessMap);
+				shader.setupTexturePerMaterial("metalnessMap", "metalnessMapEnabled", material => material.metalnessMap);
+				shader.setupTexturePerMaterial("roughnessMap", "roughnessMapEnabled", material => material.roughnessMap);
 			}
 
-			shader.bindPropertyPerMaterial("metalnessStrength", material => material.metalnessStrength, gl => gl.uniform1f);
-			shader.bindPropertyPerMaterial("roughnessStrength", material => material.roughnessStrength, gl => gl.uniform1f);
+			shader.setupPropertyPerMaterial("metalnessStrength", material => material.metalnessStrength, gl => gl.uniform1f);
+			shader.setupPropertyPerMaterial("roughnessStrength", material => material.roughnessStrength, gl => gl.uniform1f);
 
 			break;
 	}
 
 	if (!configuration.noEmissiveMap)
-		shader.bindTexturePerMaterial("emissiveMap", "emissiveMapEnabled", material => material.emissiveMap);
+		shader.setupTexturePerMaterial("emissiveMap", "emissiveMapEnabled", material => material.emissiveMap);
 
-	shader.bindPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
+	shader.setupPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
 
 	if (!configuration.noHeightMap) {
-		shader.bindTexturePerMaterial("heightMap", "heightMapEnabled", material => material.heightMap);
-		shader.bindPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
-		shader.bindPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
+		shader.setupTexturePerMaterial("heightMap", "heightMapEnabled", material => material.heightMap);
+		shader.setupPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
+		shader.setupPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (!configuration.noNormalMap)
-		shader.bindTexturePerMaterial("normalMap", "normalMapEnabled", material => material.normalMap);
+		shader.setupTexturePerMaterial("normalMap", "normalMapEnabled", material => material.normalMap);
 
 	if (!configuration.noOcclusionMap) {
-		shader.bindTexturePerMaterial("occlusionMap", "occlusionMapEnabled", material => material.occlusionMap);
-		shader.bindPropertyPerMaterial("occlusionStrength", material => material.occlusionStrength, gl => gl.uniform1f);
+		shader.setupTexturePerMaterial("occlusionMap", "occlusionMapEnabled", material => material.occlusionMap);
+		shader.setupPropertyPerMaterial("occlusionStrength", material => material.occlusionStrength, gl => gl.uniform1f);
 	}
 
 	// Bind light uniforms
@@ -451,29 +455,29 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	const defaultDirection = [1, 0, 0];
 	const defaultPosition = [0, 0, 0];
 
-	shader.bindPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
+	shader.setupPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
 
 	for (let i = 0; i < maxDirectionalLights; ++i) {
 		const index = i;
 
 		if (!configuration.noShadow) {
-			shader.bindPropertyPerTarget(`directionalLights[${i}].castShadow`, state => index < state.directionalLights.length && state.directionalLights[index].shadow ? 1 : 0, gl => gl.uniform1i);
-			shader.bindMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues(), gl => gl.uniformMatrix4fv);
-			shader.bindTexturePerTarget(`directionalLightShadowMaps[${i}]`, undefined, state => state.directionalLights[index].shadowMap);
+			shader.setupPropertyPerTarget(`directionalLights[${i}].castShadow`, state => index < state.directionalLights.length && state.directionalLights[index].shadow ? 1 : 0, gl => gl.uniform1i);
+			shader.setupMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues(), gl => gl.uniformMatrix4fv);
+			shader.setupTexturePerTarget(`directionalLightShadowMaps[${i}]`, undefined, state => state.directionalLights[index].shadowMap);
 		}
 
-		shader.bindPropertyPerTarget(`directionalLights[${i}].color`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].color) : defaultColor, gl => gl.uniform3fv);
-		shader.bindPropertyPerTarget(`directionalLights[${i}].direction`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].direction) : defaultDirection, gl => gl.uniform3fv);
-		shader.bindPropertyPerTarget(`directionalLights[${i}].visibility`, state => index < state.directionalLights.length ? 1 : 0, gl => gl.uniform1f);
+		shader.setupPropertyPerTarget(`directionalLights[${i}].color`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].color) : defaultColor, gl => gl.uniform3fv);
+		shader.setupPropertyPerTarget(`directionalLights[${i}].direction`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].direction) : defaultDirection, gl => gl.uniform3fv);
+		shader.setupPropertyPerTarget(`directionalLights[${i}].visibility`, state => index < state.directionalLights.length ? 1 : 0, gl => gl.uniform1f);
 	}
 
 	for (let i = 0; i < maxPointLights; ++i) {
 		const index = i;
 
-		shader.bindPropertyPerTarget(`pointLights[${i}].color`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].color) : defaultColor, gl => gl.uniform3fv);
-		shader.bindPropertyPerTarget(`pointLights[${i}].position`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].position) : defaultPosition, gl => gl.uniform3fv);
-		shader.bindPropertyPerTarget(`pointLights[${i}].radius`, state => index < state.pointLights.length ? state.pointLights[index].radius : 0, gl => gl.uniform1f);
-		shader.bindPropertyPerTarget(`pointLights[${i}].visibility`, state => index < state.pointLights.length ? 1 : 0, gl => gl.uniform1f);
+		shader.setupPropertyPerTarget(`pointLights[${i}].color`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].color) : defaultColor, gl => gl.uniform3fv);
+		shader.setupPropertyPerTarget(`pointLights[${i}].position`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].position) : defaultPosition, gl => gl.uniform3fv);
+		shader.setupPropertyPerTarget(`pointLights[${i}].radius`, state => index < state.pointLights.length ? state.pointLights[index].radius : 0, gl => gl.uniform1f);
+		shader.setupPropertyPerTarget(`pointLights[${i}].visibility`, state => index < state.pointLights.length ? 1 : 0, gl => gl.uniform1f);
 	}
 
 	return shader;
@@ -482,11 +486,11 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 const loadShadow = (gl: WebGLRenderingContext) => {
 	const shader = new webgl.Shader<ShadowState>(gl, shadowVertexShader, shadowFragmentShader);
 
-	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	return shader;
 };
