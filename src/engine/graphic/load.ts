@@ -122,19 +122,9 @@ const computeTangents = (indices: model.Array, points: model.Attribute, coords: 
 };
 
 const finalizeMesh = (mesh: model.Geometry, config: Config) => {
-	const transform = config.transform || matrix.Matrix4.createIdentity();
-
 	// Transform points
 	const buffer = mesh.points.buffer;
 	const count = mesh.points.componentCount;
-
-	for (let i = 0; i + 2 < buffer.length; i += count) {
-		const point = transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 1 });
-
-		buffer[i + 0] = point.x;
-		buffer[i + 1] = point.y;
-		buffer[i + 2] = point.z;
-	}
 
 	// Transform normals or compute them from vertices
 	if (mesh.normals !== undefined) {
@@ -142,7 +132,7 @@ const finalizeMesh = (mesh: model.Geometry, config: Config) => {
 		const count = mesh.normals.componentCount;
 
 		for (let i = 0; i + 2 < buffer.length; i += count) {
-			const normal = vector.Vector3.normalize(transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 0 }));
+			const normal = vector.Vector3.normalize({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2] });
 
 			buffer[i + 0] = normal.x;
 			buffer[i + 1] = normal.y;
@@ -158,7 +148,7 @@ const finalizeMesh = (mesh: model.Geometry, config: Config) => {
 		const count = mesh.tangents.componentCount;
 
 		for (let i = 0; i + 2 < buffer.length; i += count) {
-			const tangent = vector.Vector3.normalize(transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 0 }));
+			const tangent = vector.Vector3.normalize({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2] });
 
 			buffer[i + 0] = tangent.x;
 			buffer[i + 1] = tangent.y;
@@ -178,6 +168,13 @@ const finalize = async (meshPromise: Promise<model.Mesh>, configOrUndefined: Con
 	const config = configOrUndefined || {};
 	const mesh = await meshPromise;
 
+	// Transform top-level nodes using provided transform matrix if any
+	const transform = config.transform;
+
+	if (transform !== undefined)
+		mesh.nodes.forEach(node => node.transform = transform.compose(node.transform));
+
+	// Finalize mesh nodes recursively
 	mesh.nodes.forEach(node => finalizeNode(node, config));
 
 	return mesh;
