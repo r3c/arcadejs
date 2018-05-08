@@ -25,7 +25,7 @@ interface Attribute {
 	type: number
 }
 
-type AttributeBinding<TSource> = (gl: WebGLRenderingContext, source: TSource) => void;
+type AttributeBinding<TSource> = (source: TSource) => void;
 
 interface DirectionalLight {
 	color: vector.Vector3,
@@ -91,7 +91,7 @@ interface NodeState {
 }
 
 interface Painter<T> {
-	paint(subjects: Iterable<Subject>, view: matrix.Matrix4, state: T): void
+	paint(target: Target, subjects: Iterable<Subject>, view: matrix.Matrix4, state: T): void
 }
 
 interface Pipeline {
@@ -110,7 +110,7 @@ interface Primitive {
 	material: Material
 }
 
-type PropertyBinding<T> = (gl: WebGLRenderingContext, source: T) => void;
+type PropertyBinding<T> = (source: T) => void;
 
 interface Scene {
 	ambientLightColor?: vector.Vector3,
@@ -125,7 +125,7 @@ interface Subject {
 	noShadow?: boolean
 }
 
-type TextureBinding<T> = (gl: WebGLRenderingContext, source: T, textureIndex: number) => number;
+type TextureBinding<T> = (source: T, textureIndex: number) => number;
 
 interface Transform {
 	projectionMatrix: matrix.Matrix4,
@@ -392,10 +392,9 @@ const loadNode = (gl: WebGLRenderingContext, node: model.Node, materials: { [nam
 });
 
 class Shader<State> {
-	public readonly program: WebGLProgram;
-
 	private readonly attributePerGeometryBindings: AttributeBinding<Geometry>[];
 	private readonly gl: WebGLRenderingContext;
+	private readonly program: WebGLProgram;
 	private readonly propertyPerMaterialBindings: PropertyBinding<Material>[];
 	private readonly propertyPerNodeBindings: PropertyBinding<NodeState>[];
 	private readonly propertyPerTargetBindings: PropertyBinding<State>[];
@@ -437,18 +436,24 @@ class Shader<State> {
 		this.program = program;
 	}
 
+	public activate() {
+		this.gl.useProgram(this.program);
+	}
+
 	public clearAttributePerGeometry(name: string) {
+		const gl = this.gl;
 		const location = this.findAttribute(name);
 
-		this.attributePerGeometryBindings.push((gl: WebGLRenderingContext, geometry: Geometry) => {
+		this.attributePerGeometryBindings.push((geometry: Geometry) => {
 			gl.disableVertexAttribArray(location);
 		});
 	}
 
 	public setupAttributePerGeometry(name: string, getter: (state: Geometry) => Attribute | undefined) {
+		const gl = this.gl;
 		const location = this.findAttribute(name);
 
-		this.attributePerGeometryBindings.push((gl: WebGLRenderingContext, geometry: Geometry) => {
+		this.attributePerGeometryBindings.push((geometry: Geometry) => {
 			const attribute = getter(geometry);
 
 			if (attribute === undefined)
@@ -522,25 +527,28 @@ class Shader<State> {
 	}
 
 	private declareMatrix<TSource>(name: string, getter: (state: TSource) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
+		const gl = this.gl;
 		const location = this.findUniform(name);
-		const method = assign(this.gl);
+		const method = assign(gl);
 
-		return (gl: WebGLRenderingContext, state: TSource) => method.call(gl, location, false, new Float32Array(getter(state)));
+		return (state: TSource) => method.call(gl, location, false, new Float32Array(getter(state)));
 	}
 
 	private declareProperty<TSource, TValue>(name: string, getter: (source: TSource) => TValue, assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>) {
+		const gl = this.gl;
 		const location = this.findUniform(name);
-		const method = assign(this.gl);
+		const method = assign(gl);
 
-		return (gl: WebGLRenderingContext, source: TSource) => method.call(gl, location, getter(source));
+		return (source: TSource) => method.call(gl, location, getter(source));
 	}
 
 	private declareTexture<TSource>(samplerName: string, enabledName: string | undefined, getter: (source: TSource) => WebGLTexture | undefined) {
 		const enabledLocation = functional.map(enabledName, name => this.findUniform(name));
+		const gl = this.gl;
 		const samplerLocation = this.findUniform(samplerName);
 
 		if (enabledLocation !== undefined) {
-			return (gl: WebGLRenderingContext, source: TSource, textureIndex: number) => {
+			return (source: TSource, textureIndex: number) => {
 				const texture = getter(source);
 
 				if (texture === undefined) {
@@ -558,7 +566,7 @@ class Shader<State> {
 			}
 		}
 		else {
-			return (gl: WebGLRenderingContext, source: TSource, textureIndex: number) => {
+			return (source: TSource, textureIndex: number) => {
 				const texture = getter(source);
 
 				if (texture === undefined)
@@ -653,13 +661,14 @@ class Target {
 		Target.clearTextureAttachments(gl, this.depthAttachment);
 	}
 
-	public draw<T>(batcher: Painter<T>, subjects: Subject[], view: matrix.Matrix4, state: T) {
+	public draw(indices: WebGLBuffer, count: number, type: number) {
 		const gl = this.gl;
 
 		gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 		gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
-		batcher.paint(subjects, view, state);
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
+		gl.drawElements(gl.TRIANGLES, count, type, 0);
 	}
 
 	public resize(width: number, height: number) {

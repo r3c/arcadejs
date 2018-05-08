@@ -183,7 +183,7 @@ class Pipeline implements webgl.Pipeline {
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
 		this.gl = gl;
-		this.painter = new painter.Painter(gl, load(gl, configuration));
+		this.painter = new painter.Painter(load(gl, configuration));
 		this.quad = webgl.loadMesh(gl, quad.mesh);
 		this.scale = functional.coalesce(configuration.scale, 0.4);
 	}
@@ -210,7 +210,7 @@ class Pipeline implements webgl.Pipeline {
 			for (const node of subject.mesh.nodes) {
 				for (const primitive of node.primitives) {
 					if (primitive.material.albedoMap !== undefined) {
-						target.draw(this.painter, subjects, matrix.Matrix4.createIdentity(), {
+						this.painter.paint(target, subjects, matrix.Matrix4.createIdentity(), {
 							source: primitive.material.albedoMap
 						});
 

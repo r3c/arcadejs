@@ -43,7 +43,7 @@ class Pipeline implements webgl.Pipeline {
 
 	public constructor(gl: WebGLRenderingContext) {
 		this.gl = gl;
-		this.painter = new painter.Painter(gl, load(gl));
+		this.painter = new painter.Painter(load(gl));
 	}
 
 	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
@@ -54,7 +54,7 @@ class Pipeline implements webgl.Pipeline {
 
 		gl.cullFace(gl.BACK);
 
-		target.draw(this.painter, scene.subjects, transform.viewMatrix, {
+		this.painter.paint(target, scene.subjects, transform.viewMatrix, {
 			projectionMatrix: transform.projectionMatrix,
 			viewMatrix: transform.viewMatrix
 		});

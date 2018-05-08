@@ -57,17 +57,15 @@ const variantToIndex = (variant: Variant) =>
 	(variant.hasOcclusionMap ? 32 : 0);
 
 class Painter<State> implements webgl.Painter<State> {
-	private readonly context: WebGLRenderingContext;
 	private readonly shaderConstructor: (variant: Variant) => webgl.Shader<State>;
-	private readonly shaders: webgl.Shader<State>[];
+	private readonly shaderRepository: webgl.Shader<State>[];
 
-	public constructor(gl: WebGLRenderingContext, shaderConstructor: (variant: Variant) => webgl.Shader<State>) {
-		this.context = gl;
+	public constructor(shaderConstructor: (variant: Variant) => webgl.Shader<State>) {
 		this.shaderConstructor = shaderConstructor;
-		this.shaders = new Array<webgl.Shader<State>>(64);
+		this.shaderRepository = new Array<webgl.Shader<State>>(64);
 	}
 
-	public paint(subjects: Iterable<webgl.Subject>, view: matrix.Matrix4, state: State) {
+	public paint(target: webgl.Target, subjects: Iterable<webgl.Subject>, view: matrix.Matrix4, state: State) {
 		const batch: RootBatch<State> = {
 			shaders: {}
 		};
@@ -75,28 +73,33 @@ class Painter<State> implements webgl.Painter<State> {
 		for (const subject of subjects)
 			this.sort(batch, subject.mesh.nodes, subject.matrix);
 
-		this.draw(batch, view, state);
+		this.draw(target, batch, view, state);
 	}
 
-	private draw(batch: RootBatch<State>, view: matrix.Matrix4, state: State) {
-		const gl = this.context;
+	private create(index: number) {
+		if (this.shaderRepository[index] === undefined)
+			this.shaderRepository[index] = this.shaderConstructor(indexToVariant(index));
 
+		return this.shaderRepository[index];
+	}
+
+	private draw(target: webgl.Target, batch: RootBatch<State>, view: matrix.Matrix4, state: State) {
 		// Process batch shaders
 		for (const shaderIndex in batch.shaders) {
 			const shaderBatch = batch.shaders[shaderIndex];
 			const shader = shaderBatch.shader;
 
-			gl.useProgram(shader.program);
+			shader.activate();
 
 			// Assign per-call property uniforms
 			for (const binding of shader.getPropertyPerTargetBindings())
-				binding(gl, state);
+				binding(state);
 
 			// Assign per-call texture uniforms
 			let shaderTextureIndex = 0;
 
 			for (const binding of shader.getTexturePerTargetBindings())
-				shaderTextureIndex += binding(gl, state, shaderTextureIndex);
+				shaderTextureIndex += binding(state, shaderTextureIndex);
 
 			// Process batch materials
 			for (const id in shaderBatch.materials) {
@@ -105,43 +108,35 @@ class Painter<State> implements webgl.Painter<State> {
 
 				// Assign per-material property uniforms
 				for (const binding of shader.getPropertyPerMaterialBindings())
-					binding(gl, material);
+					binding(material);
 
 				// Assign per-material texture uniforms
 				let materialTextureIndex = shaderTextureIndex;
 
 				for (const binding of shader.getTexturePerMaterialBindings())
-					materialTextureIndex += binding(gl, material, materialTextureIndex);
+					materialTextureIndex += binding(material, materialTextureIndex);
 
 				// Process batch models
 				for (const model of materialBatch.models) {
 					const geometry = model.geometry;
+					const state = {
+						normalMatrix: view.compose(model.transform).getTransposedInverse3x3(),
+						transform: model.transform
+					};
 
 					// Assign per-model property uniforms
-					for (const binding of shader.getPropertyPerNodeBindings()) {
-						binding(gl, {
-							normalMatrix: view.compose(model.transform).getTransposedInverse3x3(),
-							transform: model.transform
-						});
-					}
+					for (const binding of shader.getPropertyPerNodeBindings())
+						binding(state);
 
 					// Assign per-model attributes
 					for (const binding of shader.getAttributePerGeometryBindings())
-						binding(gl, geometry);
+						binding(geometry);
 
 					// Perform draw call
-					gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, geometry.indexBuffer);
-					gl.drawElements(gl.TRIANGLES, geometry.count, geometry.indexType, 0);
+					target.draw(geometry.indexBuffer, geometry.count, geometry.indexType);
 				}
 			}
 		}
-	}
-
-	private create(index: number) {
-		if (this.shaders[index] === undefined)
-			this.shaders[index] = this.shaderConstructor(indexToVariant(index));
-
-		return this.shaders[index];
 	}
 
 	private sort(batch: RootBatch<State>, nodes: Iterable<webgl.Node>, parent: matrix.Matrix4) {

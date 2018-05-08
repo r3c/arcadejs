@@ -411,16 +411,16 @@ class Pipeline implements webgl.Pipeline {
 		const geometry = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 
 		this.albedoAndShininessBuffer = geometry.setupColorTexture(webgl.Format.RGBA8);
-		this.ambientLightPainter = new painter.Painter(gl, loadAmbient(gl, configuration));
+		this.ambientLightPainter = new painter.Painter(loadAmbient(gl, configuration));
 		this.depthBuffer = geometry.setupDepthTexture(webgl.Format.Depth16);
-		this.directionalLightPainter = new painter.Painter(gl, loadLightDirectional(gl, configuration));
+		this.directionalLightPainter = new painter.Painter(loadLightDirectional(gl, configuration));
 		this.fullscreenMesh = webgl.loadMesh(gl, quad.mesh);
 		this.fullscreenProjection = matrix.Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
-		this.geometryPainter = new painter.Painter(gl, loadGeometry(gl, configuration));
+		this.geometryPainter = new painter.Painter(loadGeometry(gl, configuration));
 		this.geometryTarget = geometry;
 		this.gl = gl;
 		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.Format.RGBA8);
-		this.pointLightPainter = new painter.Painter(gl, loadLightPoint(gl, configuration));
+		this.pointLightPainter = new painter.Painter(loadLightPoint(gl, configuration));
 		this.sphereModel = webgl.loadMesh(gl, sphere.mesh);
 	}
 
@@ -438,7 +438,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.depthMask(true);
 
 		this.geometryTarget.clear();
-		this.geometryTarget.draw(this.geometryPainter, scene.subjects, transform.viewMatrix, transform);
+		this.geometryPainter.paint(this.geometryTarget, scene.subjects, transform.viewMatrix, transform);
 
 		// Draw scene lights
 		gl.disable(gl.DEPTH_TEST);
@@ -454,7 +454,7 @@ class Pipeline implements webgl.Pipeline {
 				mesh: this.fullscreenMesh
 			}];
 
-			target.draw(this.ambientLightPainter, subjects, transform.viewMatrix, {
+			this.ambientLightPainter.paint(target, subjects, transform.viewMatrix, {
 				albedoAndShininessBuffer: this.albedoAndShininessBuffer,
 				ambientLightColor: scene.ambientLightColor,
 				projectionMatrix: this.fullscreenProjection,
@@ -474,7 +474,7 @@ class Pipeline implements webgl.Pipeline {
 			}];
 
 			for (const directionalLight of scene.directionalLights) {
-				target.draw(this.directionalLightPainter, subjects, transform.viewMatrix, {
+				this.directionalLightPainter.paint(target, subjects, transform.viewMatrix, {
 					albedoAndShininessBuffer: this.albedoAndShininessBuffer,
 					depthBuffer: this.depthBuffer,
 					light: directionalLight,
@@ -500,7 +500,7 @@ class Pipeline implements webgl.Pipeline {
 					.translate(pointLight.position)
 					.scale({ x: pointLight.radius, y: pointLight.radius, z: pointLight.radius });
 
-				target.draw(this.pointLightPainter, subjects, transform.viewMatrix, {
+				this.pointLightPainter.paint(target, subjects, transform.viewMatrix, {
 					albedoAndShininessBuffer: this.albedoAndShininessBuffer,
 					depthBuffer: this.depthBuffer,
 					normalAndGlossBuffer: this.normalAndGlossBuffer,
