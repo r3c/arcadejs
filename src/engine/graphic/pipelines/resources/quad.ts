@@ -13,7 +13,7 @@ const mesh = {
 						1.0, 1.0,
 						0.0, 1.0
 					]),
-					componentCount: 2
+					stride: 2
 				},
 				indices: new Uint32Array([
 					0, 1, 2,
@@ -26,7 +26,7 @@ const mesh = {
 						1.0, 1.0, 0.0,
 						-1.0, 1.0, 0.0
 					]),
-					componentCount: 3
+					stride: 3
 				}
 			}
 		],

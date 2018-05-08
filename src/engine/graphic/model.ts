@@ -5,7 +5,7 @@ type Array = Float32Array | Int8Array | Int16Array | Int32Array | Uint8Array | U
 
 interface Attribute {
 	buffer: Array,
-	componentCount: number
+	stride: number
 }
 
 interface Bounds {
@@ -108,7 +108,7 @@ const reduceNodePoints = <TState>(nodes: Node[], parent: matrix.Matrix4, state: 
 	return reduceNode(nodes, parent, state, (previous: TState, geometry: Geometry, transform: matrix.Matrix4) => {
 		const points = geometry.points;
 		const buffer = points.buffer;
-		const count = points.componentCount;
+		const count = points.stride;
 
 		for (let i = 0; i + count - 1 < buffer.length; i += count)
 			state = reduce(previous, transform.transform({ x: buffer[i + 0], y: buffer[i + 1], z: buffer[i + 2], w: 1 }));
