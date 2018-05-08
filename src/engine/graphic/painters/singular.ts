@@ -14,17 +14,8 @@ class Painter<State> implements webgl.Painter<State> {
 		shader.activate();
 
 		for (const subject of subjects) {
-			// Assign per-call property uniforms
-			for (const binding of shader.getPropertyPerTargetBindings())
-				binding(state);
+			const textureIndex = shader.bindTarget(state);
 
-			// Assign per-call texture uniforms
-			let textureIndex = 0;
-
-			for (const binding of shader.getTexturePerTargetBindings())
-				textureIndex += binding(state, textureIndex);
-
-			// Draw subject nodes
 			this.draw(target, subject.mesh.nodes, subject.matrix, view, textureIndex);
 		}
 	}
@@ -40,28 +31,14 @@ class Painter<State> implements webgl.Painter<State> {
 			for (const primitive of node.primitives) {
 				const geometry = primitive.geometry;
 				const material = primitive.material;
-				const state = {
+
+				shader.bindGeometry(geometry);
+				shader.bindMaterial(material, textureIndex);
+				shader.bindNode({
 					normalMatrix: viewMatrix.compose(transform).getTransposedInverse3x3(),
 					transform: transform
-				};
+				});
 
-				// Assign per-material property uniforms
-				for (const binding of shader.getPropertyPerMaterialBindings())
-					binding(material);
-
-				// Assign per-material texture uniforms
-				for (const binding of shader.getTexturePerMaterialBindings())
-					textureIndex += binding(material, textureIndex);
-
-				// Assign per-geometry property uniforms
-				for (const binding of shader.getPropertyPerNodeBindings())
-					binding(state);
-
-				// Assign per-geometry attributes
-				for (const binding of shader.getAttributePerGeometryBindings())
-					binding(geometry);
-
-				// Perform draw call
 				target.draw(geometry.indexBuffer, geometry.count, geometry.indexType);
 			}
 		}
