@@ -530,12 +530,12 @@ class Pipeline implements webgl.Pipeline {
 
 		this.gl = gl;
 		this.lightPainter = configuration.noMaterialShader
-			? new singularPainter.Painter(gl, loadLight(gl, configuration, configuration))
-			: new materialPainter.Painter(gl, variant => loadLight(gl, createMaterialConfiguration(configuration, variant), configuration));
+			? new singularPainter.Painter(loadLight(gl, configuration, configuration))
+			: new materialPainter.Painter(variant => loadLight(gl, createMaterialConfiguration(configuration, variant), configuration));
 		this.maxDirectionalLights = maxDirectionalLights;
 		this.maxPointLights = maxPointLights;
 		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Format.Depth16));
-		this.shadowPainter = new singularPainter.Painter(gl, loadShadow(gl));
+		this.shadowPainter = new singularPainter.Painter(loadShadow(gl));
 		this.shadowProjectionMatrix = matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20);
 		this.shadowTargets = targets;
 	}
@@ -569,7 +569,7 @@ class Pipeline implements webgl.Pipeline {
 			gl.cullFace(gl.FRONT);
 
 			this.shadowTargets[bufferIndex].clear();
-			this.shadowTargets[bufferIndex].draw(this.shadowPainter, obstacles, viewMatrix, {
+			this.shadowPainter.paint(this.shadowTargets[bufferIndex], obstacles, viewMatrix, {
 				projectionMatrix: this.shadowProjectionMatrix,
 				viewMatrix: viewMatrix
 			});
@@ -591,7 +591,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.colorMask(true, true, true, true);
 		gl.cullFace(gl.BACK);
 
-		target.draw(this.lightPainter, scene.subjects, transform.viewMatrix, {
+		this.lightPainter.paint(target, scene.subjects, transform.viewMatrix, {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			directionalLights: directionalLightStates,
 			pointLights: pointLights,

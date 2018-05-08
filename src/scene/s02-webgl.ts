@@ -81,7 +81,7 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 		gl: gl,
 		input: input,
 		mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
-		painter: new painter.Painter(gl, shader),
+		painter: new painter.Painter(shader),
 		projectionMatrix: matrix.Matrix4.createIdentity(),
 		screen: screen,
 		target: new webgl.Target(screen.context, screen.getWidth(), screen.getHeight())
@@ -110,7 +110,8 @@ const render = (state: SceneState) => {
 	gl.cullFace(gl.BACK);
 
 	target.clear();
-	target.draw(state.painter, [cube], viewMatrix, {
+
+	state.painter.paint(target, [cube], viewMatrix, {
 		projectionMatrix: state.projectionMatrix,
 		viewMatrix: viewMatrix
 	});
