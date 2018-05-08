@@ -1,7 +1,13 @@
 import * as vector from "./vector";
 
 class Matrix4 {
-	private static readonly identity: Matrix4 = new Matrix4([
+	private static readonly identity3: [
+		1, 0, 0,
+		0, 1, 0,
+		0, 0, 1
+	];
+
+	private static readonly identity4: Matrix4 = new Matrix4([
 		1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0,
@@ -41,7 +47,7 @@ class Matrix4 {
 	** Create new identity matrix (actually returns a static immutable instance).
 	*/
 	public static createIdentity() {
-		return Matrix4.identity;
+		return Matrix4.identity4;
 	}
 
 	/*
@@ -92,8 +98,8 @@ class Matrix4 {
 			m[1] * (m[4] * m[10] - m[6] * m[8]) +
 			m[2] * (m[4] * m[9] - m[5] * m[8]);
 
-		if (determinant < Number.EPSILON)
-			return m;
+		if (Math.abs(determinant) < Number.EPSILON)
+			return Matrix4.identity3;
 
 		const inverse = 1 / determinant;
 
