@@ -65,16 +65,16 @@ const prepare = () => application.runtime(display.WebGLScreen, undefined, async 
 	const gl = screen.context;
 	const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
-	shader.bindAttributePerGeometry("colors", geometry => geometry.colors);
-	shader.bindAttributePerGeometry("coords", geometry => geometry.coords);
-	shader.bindAttributePerGeometry("points", geometry => geometry.points);
+	shader.setupAttributePerGeometry("colors", geometry => geometry.colors);
+	shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
+	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.bindPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
-	shader.bindTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
+	shader.setupPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
+	shader.setupTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
 
-	shader.bindMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.bindMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
+	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	return {
 		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
