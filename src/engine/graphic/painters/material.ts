@@ -26,8 +26,10 @@ interface Variant {
 	hasEmissiveMap: boolean,
 	hasGlossMap: boolean,
 	hasHeightMap: boolean,
+	hasMetalnessMap: boolean,
 	hasNormalMap: boolean,
-	hasOcclusionMap: boolean
+	hasOcclusionMap: boolean,
+	hasRoughnessMap: boolean
 }
 
 const indexToVariant = (index: number): Variant => ({
@@ -35,8 +37,10 @@ const indexToVariant = (index: number): Variant => ({
 	hasEmissiveMap: (index & 2) !== 0,
 	hasGlossMap: (index & 4) !== 0,
 	hasHeightMap: (index & 8) !== 0,
-	hasNormalMap: (index & 16) !== 0,
-	hasOcclusionMap: (index & 32) !== 0
+	hasMetalnessMap: (index & 16) !== 0,
+	hasNormalMap: (index & 32) !== 0,
+	hasOcclusionMap: (index & 64) !== 0,
+	hasRoughnessMap: (index & 128) !== 0
 });
 
 const materialTovariant = (material: webgl.Material) => ({
@@ -44,8 +48,10 @@ const materialTovariant = (material: webgl.Material) => ({
 	hasEmissiveMap: material.emissiveMap !== undefined,
 	hasGlossMap: material.glossMap !== undefined,
 	hasHeightMap: material.heightMap !== undefined,
+	hasMetalnessMap: material.metalnessMap !== undefined,
 	hasNormalMap: material.normalMap !== undefined,
-	hasOcclusionMap: material.occlusionMap !== undefined
+	hasOcclusionMap: material.occlusionMap !== undefined,
+	hasRoughnessMap: material.roughnessMap !== undefined
 });
 
 const variantToIndex = (variant: Variant) =>
@@ -53,8 +59,10 @@ const variantToIndex = (variant: Variant) =>
 	(variant.hasEmissiveMap ? 2 : 0) +
 	(variant.hasGlossMap ? 4 : 0) +
 	(variant.hasHeightMap ? 8 : 0) +
-	(variant.hasNormalMap ? 16 : 0) +
-	(variant.hasOcclusionMap ? 32 : 0);
+	(variant.hasMetalnessMap ? 16 : 0) +
+	(variant.hasNormalMap ? 32 : 0) +
+	(variant.hasOcclusionMap ? 64 : 0) +
+	(variant.hasRoughnessMap ? 128 : 0);
 
 class Painter<State> implements webgl.Painter<State> {
 	private readonly shaderConstructor: (variant: Variant) => webgl.Shader<State>;

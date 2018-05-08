@@ -189,8 +189,21 @@ vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirectio
 			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * albedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
 			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
 	#elif LIGHT_MODEL == ${LightModel.Physical}
-		float metalness = clamp(texture(metalnessMap, coord).r * metalnessStrength, 0.0, 1.0);
-		float roughness = clamp(texture(roughnessMap, coord).r * roughnessStrength, 0.04, 1.0);
+		#ifdef FORCE_METALNESS_MAP
+			bool metalnessMapEnabledValue = bool(FORCE_METALNESS_MAP);
+		#else
+			bool metalnessMapEnabledValue = metalnessMapEnabled;
+		#endif
+
+		float metalness = clamp((metalnessMapEnabledValue ? texture(metalnessMap, coord).r : 1.0) * metalnessStrength, 0.0, 1.0);
+
+		#ifdef FORCE_ROUGHNESS_MAP
+			bool roughnessMapEnabledValue = bool(FORCE_ROUGHNESS_MAP);
+		#else
+			bool roughnessMapEnabledValue = roughnessMapEnabled;
+		#endif
+
+		float roughness = clamp((roughnessMapEnabledValue ? texture(roughnessMap, coord).r : 1.0) * roughnessStrength, 0.04, 1.0);
 
 		vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "roughness", "metalness")};
 
@@ -327,8 +340,10 @@ interface MaterialConfiguration {
 	forceEmissiveMap?: boolean,
 	forceGlossMap?: boolean,
 	forceHeightMap?: boolean,
+	forceMetalnessMap?: boolean,
 	forceNormalMap?: boolean,
-	forceOcclusionMap?: boolean
+	forceOcclusionMap?: boolean,
+	forceRoughnessMap?: boolean
 }
 
 interface ShadowState extends State {
@@ -377,11 +392,17 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 	if (materialConfiguration.forceHeightMap !== undefined)
 		directives.push({ name: "FORCE_HEIGHT_MAP", value: materialConfiguration.forceHeightMap ? 1 : 0 });
 
+	if (materialConfiguration.forceMetalnessMap !== undefined)
+		directives.push({ name: "FORCE_METALNESS_MAP", value: materialConfiguration.forceMetalnessMap ? 1 : 0 });
+
 	if (materialConfiguration.forceNormalMap !== undefined)
 		directives.push({ name: "FORCE_NORMAL_MAP", value: materialConfiguration.forceNormalMap ? 1 : 0 });
 
 	if (materialConfiguration.forceOcclusionMap !== undefined)
 		directives.push({ name: "FORCE_OCCLUSION_MAP", value: materialConfiguration.forceOcclusionMap ? 1 : 0 });
+
+	if (materialConfiguration.forceRoughnessMap !== undefined)
+		directives.push({ name: "FORCE_ROUGHNESS_MAP", value: materialConfiguration.forceRoughnessMap ? 1 : 0 });
 
 	if (!lightConfiguration.noShadow)
 		directives.push({ name: "HAS_SHADOW", value: 1 });
@@ -392,12 +413,20 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 	shader.setupAttributePerGeometry("normals", geometry => geometry.normals);
 	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	if (materialConfiguration.forceAlbedoMap !== false || materialConfiguration.forceEmissiveMap !== false || materialConfiguration.forceGlossMap !== false || materialConfiguration.forceHeightMap !== false || materialConfiguration.forceNormalMap !== false || materialConfiguration.forceOcclusionMap !== false)
+	if (materialConfiguration.forceAlbedoMap !== false ||
+		materialConfiguration.forceEmissiveMap !== false ||
+		materialConfiguration.forceGlossMap !== false ||
+		materialConfiguration.forceHeightMap !== false ||
+		materialConfiguration.forceMetalnessMap !== false ||
+		materialConfiguration.forceNormalMap !== false ||
+		materialConfiguration.forceOcclusionMap !== false ||
+		materialConfiguration.forceRoughnessMap !== false)
 		shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
 	else
 		shader.clearAttributePerGeometry("coords");
 
-	if (materialConfiguration.forceHeightMap !== false || materialConfiguration.forceNormalMap !== false)
+	if (materialConfiguration.forceHeightMap !== false ||
+		materialConfiguration.forceNormalMap !== false)
 		shader.setupAttributePerGeometry("tangents", geometry => geometry.tangents);
 	else
 		shader.clearAttributePerGeometry("tangents");
@@ -428,10 +457,11 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 			break;
 
 		case LightModel.Physical:
-			if (true) {
-				shader.setupTexturePerMaterial("metalnessMap", "metalnessMapEnabled", material => material.metalnessMap);
-				shader.setupTexturePerMaterial("roughnessMap", "roughnessMapEnabled", material => material.roughnessMap);
-			}
+			if (materialConfiguration.forceMetalnessMap !== false)
+				shader.setupTexturePerMaterial("metalnessMap", materialConfiguration.forceMetalnessMap !== true ? "metalnessMapEnabled" : undefined, material => material.metalnessMap);
+
+			if (materialConfiguration.forceRoughnessMap !== false)
+				shader.setupTexturePerMaterial("roughnessMap", materialConfiguration.forceRoughnessMap !== true ? "roughnessMapEnabled" : undefined, material => material.roughnessMap);
 
 			shader.setupPropertyPerMaterial("metalnessStrength", material => material.metalnessStrength, gl => gl.uniform1f);
 			shader.setupPropertyPerMaterial("roughnessStrength", material => material.roughnessStrength, gl => gl.uniform1f);
@@ -520,8 +550,10 @@ class Pipeline implements webgl.Pipeline {
 			forceEmissiveMap: functional.coalesce(configuration.forceEmissiveMap, variant.hasEmissiveMap),
 			forceGlossMap: functional.coalesce(configuration.forceGlossMap, variant.hasGlossMap),
 			forceHeightMap: functional.coalesce(configuration.forceHeightMap, variant.hasHeightMap),
+			forceMetalnessMap: functional.coalesce(configuration.forceMetalnessMap, variant.hasMetalnessMap),
 			forceNormalMap: functional.coalesce(configuration.forceNormalMap, variant.hasNormalMap),
-			forceOcclusionMap: functional.coalesce(configuration.forceOcclusionMap, variant.hasOcclusionMap)
+			forceOcclusionMap: functional.coalesce(configuration.forceOcclusionMap, variant.hasOcclusionMap),
+			forceRoughnessMap: functional.coalesce(configuration.forceRoughnessMap, variant.hasRoughnessMap)
 		});
 
 		const maxDirectionalLights = configuration.maxDirectionalLights || 0;
