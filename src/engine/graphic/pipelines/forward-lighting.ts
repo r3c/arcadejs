@@ -1,11 +1,12 @@
 import * as functional from "../../language/functional";
+import * as materialPainter from "../painters/material";
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
-import * as painter from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
+import * as singularPainter from "../painters/singular";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
 
@@ -292,7 +293,16 @@ void main(void) {
 	fragColor = vec4(1, 1, 1, 1);
 }`;
 
-interface Configuration {
+interface Configuration extends LightConfiguration, MaterialConfiguration {
+	noMaterialShader?: boolean
+}
+
+interface DirectionalLight extends webgl.DirectionalLight {
+	shadowMap: WebGLTexture,
+	shadowViewMatrix: matrix.Matrix4
+}
+
+interface LightConfiguration {
 	lightModel: LightModel,
 	lightModelPhongNoAmbient?: boolean,
 	lightModelPhongNoDiffuse?: boolean,
@@ -300,18 +310,7 @@ interface Configuration {
 	lightModelPhysicalNoAmbient?: boolean,
 	maxDirectionalLights?: number,
 	maxPointLights?: number,
-	noAlbedoMap?: boolean,
-	noEmissiveMap?: boolean,
-	noGlossMap?: boolean,
-	noHeightMap?: boolean,
-	noNormalMap?: boolean,
-	noOcclusionMap?: boolean
 	noShadow?: boolean
-}
-
-interface DirectionalLight extends webgl.DirectionalLight {
-	shadowMap: WebGLTexture,
-	shadowViewMatrix: matrix.Matrix4
 }
 
 interface LightState extends State {
@@ -321,6 +320,15 @@ interface LightState extends State {
 	projectionMatrix: matrix.Matrix4,
 	shadowProjectionMatrix: matrix.Matrix4
 	viewMatrix: matrix.Matrix4
+}
+
+interface MaterialConfiguration {
+	forceAlbedoMap?: boolean,
+	forceEmissiveMap?: boolean,
+	forceGlossMap?: boolean,
+	forceHeightMap?: boolean,
+	forceNormalMap?: boolean,
+	forceOcclusionMap?: boolean
 }
 
 interface ShadowState extends State {
@@ -333,49 +341,49 @@ interface State {
 	viewMatrix: matrix.Matrix4
 }
 
-const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
-	const maxDirectionalLights = functional.coalesce(configuration.maxDirectionalLights, 0);
-	const maxPointLights = functional.coalesce(configuration.maxPointLights, 0)
+const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialConfiguration, lightConfiguration: LightConfiguration) => {
+	const maxDirectionalLights = functional.coalesce(lightConfiguration.maxDirectionalLights, 0);
+	const maxPointLights = functional.coalesce(lightConfiguration.maxPointLights, 0)
 
 	const directives = [
-		{ name: "LIGHT_MODEL", value: <number>configuration.lightModel },
+		{ name: "LIGHT_MODEL", value: <number>lightConfiguration.lightModel },
 		{ name: "MAX_DIRECTIONAL_LIGHTS", value: maxDirectionalLights },
 		{ name: "MAX_POINT_LIGHTS", value: maxPointLights }
 	];
 
-	switch (configuration.lightModel) {
+	switch (lightConfiguration.lightModel) {
 		case LightModel.Phong:
-			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: configuration.lightModelPhongNoAmbient ? 0 : 1 });
-			directives.push({ name: "LIGHT_MODEL_PHONG_DIFFUSE", value: configuration.lightModelPhongNoDiffuse ? 0 : 1 });
-			directives.push({ name: "LIGHT_MODEL_PHONG_SPECULAR", value: configuration.lightModelPhongNoSpecular ? 0 : 1 });
+			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: lightConfiguration.lightModelPhongNoAmbient ? 0 : 1 });
+			directives.push({ name: "LIGHT_MODEL_PHONG_DIFFUSE", value: lightConfiguration.lightModelPhongNoDiffuse ? 0 : 1 });
+			directives.push({ name: "LIGHT_MODEL_PHONG_SPECULAR", value: lightConfiguration.lightModelPhongNoSpecular ? 0 : 1 });
 
 			break;
 
 		case LightModel.Physical:
-			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: configuration.lightModelPhysicalNoAmbient ? 0 : 1 });
+			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: lightConfiguration.lightModelPhysicalNoAmbient ? 0 : 1 });
 
 			break;
 	}
 
-	if (configuration.noAlbedoMap)
-		directives.push({ name: "FORCE_ALBEDO_MAP", value: 0 });
+	if (materialConfiguration.forceAlbedoMap !== undefined)
+		directives.push({ name: "FORCE_ALBEDO_MAP", value: materialConfiguration.forceAlbedoMap ? 1 : 0 });
 
-	if (configuration.noEmissiveMap)
-		directives.push({ name: "FORCE_EMISSIVE_MAP", value: 0 });
+	if (materialConfiguration.forceEmissiveMap !== undefined)
+		directives.push({ name: "FORCE_EMISSIVE_MAP", value: materialConfiguration.forceEmissiveMap ? 1 : 0 });
 
-	if (configuration.noGlossMap)
-		directives.push({ name: "FORCE_GLOSS_MAP", value: 0 });
+	if (materialConfiguration.forceGlossMap !== undefined)
+		directives.push({ name: "FORCE_GLOSS_MAP", value: materialConfiguration.forceGlossMap ? 1 : 0 });
 
-	if (configuration.noHeightMap)
-		directives.push({ name: "FORCE_HEIGHT_MAP", value: 0 });
+	if (materialConfiguration.forceHeightMap !== undefined)
+		directives.push({ name: "FORCE_HEIGHT_MAP", value: materialConfiguration.forceHeightMap ? 1 : 0 });
 
-	if (configuration.noNormalMap)
-		directives.push({ name: "FORCE_NORMAL_MAP", value: 0 });
+	if (materialConfiguration.forceNormalMap !== undefined)
+		directives.push({ name: "FORCE_NORMAL_MAP", value: materialConfiguration.forceNormalMap ? 1 : 0 });
 
-	if (configuration.noOcclusionMap)
-		directives.push({ name: "FORCE_OCCLUSION_MAP", value: 0 });
+	if (materialConfiguration.forceOcclusionMap !== undefined)
+		directives.push({ name: "FORCE_OCCLUSION_MAP", value: materialConfiguration.forceOcclusionMap ? 1 : 0 });
 
-	if (!configuration.noShadow)
+	if (!lightConfiguration.noShadow)
 		directives.push({ name: "HAS_SHADOW", value: 1 });
 
 	const shader = new webgl.Shader<LightState>(gl, lightVertexShader, lightFragmentShader, directives);
@@ -384,12 +392,12 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.setupAttributePerGeometry("normals", geometry => geometry.normals);
 	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	if (!configuration.noAlbedoMap || !configuration.noEmissiveMap || !configuration.noGlossMap || !configuration.noHeightMap || !configuration.noNormalMap)
+	if (materialConfiguration.forceAlbedoMap !== false || materialConfiguration.forceEmissiveMap !== false || materialConfiguration.forceGlossMap !== false || materialConfiguration.forceHeightMap !== false || materialConfiguration.forceNormalMap !== false || materialConfiguration.forceOcclusionMap !== false)
 		shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
 	else
 		shader.clearAttributePerGeometry("coords");
 
-	if (!configuration.noHeightMap || !configuration.noNormalMap)
+	if (materialConfiguration.forceHeightMap !== false || materialConfiguration.forceNormalMap !== false)
 		shader.setupAttributePerGeometry("tangents", geometry => geometry.tangents);
 	else
 		shader.clearAttributePerGeometry("tangents");
@@ -400,19 +408,19 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
-	if (!configuration.noShadow)
+	if (!lightConfiguration.noShadow)
 		shader.setupMatrixPerTarget("shadowProjectionMatrix", state => state.shadowProjectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	// Bind material uniforms
-	if (!configuration.noAlbedoMap)
-		shader.setupTexturePerMaterial("albedoMap", "albedoMapEnabled", material => material.albedoMap);
+	if (materialConfiguration.forceAlbedoMap !== false)
+		shader.setupTexturePerMaterial("albedoMap", materialConfiguration.forceAlbedoMap !== true ? "albedoMapEnabled" : undefined, material => material.albedoMap);
 
 	shader.setupPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
 
-	switch (configuration.lightModel) {
+	switch (lightConfiguration.lightModel) {
 		case LightModel.Phong:
-			if (!configuration.noGlossMap)
-				shader.setupTexturePerMaterial("glossMap", "glossMapEnabled", material => material.glossMap);
+			if (materialConfiguration.forceGlossMap !== false)
+				shader.setupTexturePerMaterial("glossMap", materialConfiguration.forceGlossMap !== true ? "glossMapEnabled" : undefined, material => material.glossMap);
 
 			shader.setupPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
 			shader.setupPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
@@ -431,22 +439,22 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 			break;
 	}
 
-	if (!configuration.noEmissiveMap)
-		shader.setupTexturePerMaterial("emissiveMap", "emissiveMapEnabled", material => material.emissiveMap);
+	if (materialConfiguration.forceEmissiveMap !== false)
+		shader.setupTexturePerMaterial("emissiveMap", materialConfiguration.forceEmissiveMap !== true ? "emissiveMapEnabled" : undefined, material => material.emissiveMap);
 
 	shader.setupPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
 
-	if (!configuration.noHeightMap) {
-		shader.setupTexturePerMaterial("heightMap", "heightMapEnabled", material => material.heightMap);
+	if (materialConfiguration.forceHeightMap !== false) {
+		shader.setupTexturePerMaterial("heightMap", materialConfiguration.forceHeightMap !== true ? "heightMapEnabled" : undefined, material => material.heightMap);
 		shader.setupPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.setupPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
-	if (!configuration.noNormalMap)
-		shader.setupTexturePerMaterial("normalMap", "normalMapEnabled", material => material.normalMap);
+	if (materialConfiguration.forceNormalMap !== false)
+		shader.setupTexturePerMaterial("normalMap", materialConfiguration.forceNormalMap !== true ? "normalMapEnabled" : undefined, material => material.normalMap);
 
-	if (!configuration.noOcclusionMap) {
-		shader.setupTexturePerMaterial("occlusionMap", "occlusionMapEnabled", material => material.occlusionMap);
+	if (materialConfiguration.forceOcclusionMap !== false) {
+		shader.setupTexturePerMaterial("occlusionMap", materialConfiguration.forceOcclusionMap !== true ? "occlusionMapEnabled" : undefined, material => material.occlusionMap);
 		shader.setupPropertyPerMaterial("occlusionStrength", material => material.occlusionStrength, gl => gl.uniform1f);
 	}
 
@@ -460,7 +468,7 @@ const loadLight = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	for (let i = 0; i < maxDirectionalLights; ++i) {
 		const index = i;
 
-		if (!configuration.noShadow) {
+		if (!lightConfiguration.noShadow) {
 			shader.setupPropertyPerTarget(`directionalLights[${i}].castShadow`, state => index < state.directionalLights.length && state.directionalLights[index].shadow ? 1 : 0, gl => gl.uniform1i);
 			shader.setupMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues(), gl => gl.uniformMatrix4fv);
 			shader.setupTexturePerTarget(`directionalLightShadowMaps[${i}]`, undefined, state => state.directionalLights[index].shadowMap);
@@ -507,16 +515,27 @@ class Pipeline implements webgl.Pipeline {
 	private readonly shadowTargets: webgl.Target[];
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+		const createMaterialConfiguration = (configuration: MaterialConfiguration, variant: materialPainter.Variant) => ({
+			forceAlbedoMap: functional.coalesce(configuration.forceAlbedoMap, variant.hasAlbedoMap),
+			forceEmissiveMap: functional.coalesce(configuration.forceEmissiveMap, variant.hasEmissiveMap),
+			forceGlossMap: functional.coalesce(configuration.forceGlossMap, variant.hasGlossMap),
+			forceHeightMap: functional.coalesce(configuration.forceHeightMap, variant.hasHeightMap),
+			forceNormalMap: functional.coalesce(configuration.forceNormalMap, variant.hasNormalMap),
+			forceOcclusionMap: functional.coalesce(configuration.forceOcclusionMap, variant.hasOcclusionMap)
+		});
+
 		const maxDirectionalLights = configuration.maxDirectionalLights || 0;
 		const maxPointLights = configuration.maxPointLights || 0;
 		const targets = functional.range(maxDirectionalLights + maxPointLights, i => new webgl.Target(gl, 1024, 1024));
 
 		this.gl = gl;
-		this.lightPainter = new painter.Painter(gl, loadLight(gl, configuration));
+		this.lightPainter = configuration.noMaterialShader
+			? new singularPainter.Painter(gl, loadLight(gl, configuration, configuration))
+			: new materialPainter.Painter(gl, variant => loadLight(gl, createMaterialConfiguration(configuration, variant), configuration));
 		this.maxDirectionalLights = maxDirectionalLights;
 		this.maxPointLights = maxPointLights;
 		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Format.Depth16));
-		this.shadowPainter = new painter.Painter(gl, loadShadow(gl));
+		this.shadowPainter = new singularPainter.Painter(gl, loadShadow(gl));
 		this.shadowProjectionMatrix = matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20);
 		this.shadowTargets = targets;
 	}

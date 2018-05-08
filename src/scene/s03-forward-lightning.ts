@@ -85,13 +85,13 @@ const prepare = () => application.runtime(display.WebGLScreen, configuration, as
 		move: 0,
 		pipelines: {
 			lights: bitfield.enumerate(getOptions(tweak)).map(flags => new forwardLighting.Pipeline(gl, {
+				forceHeightMap: flags[3] ? undefined : false,
+				forceNormalMap: flags[4] ? undefined : false,
 				lightModel: forwardLighting.LightModel.Phong,
 				lightModelPhongNoAmbient: !flags[0],
 				lightModelPhongNoDiffuse: !flags[1],
 				lightModelPhongNoSpecular: !flags[2],
 				maxPointLights: 3,
-				noHeightMap: !flags[3],
-				noNormalMap: !flags[4],
 				noShadow: true
 			}))
 		},
