@@ -355,7 +355,7 @@ const loadMaterial = (gl: WebGLRenderingContext, id: string, material: model.Mat
 		occlusionStrength: functional.coalesce(material.occlusionStrength, 1),
 		roughnessMap: functional.map(material.roughnessMap, toColorMap),
 		roughnessStrength: functional.coalesce(material.roughnessStrength, 1),
-		shininess: functional.coalesce(material.shininess, 1)
+		shininess: functional.coalesce(material.shininess, 30)
 	};
 };
 
