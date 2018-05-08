@@ -290,8 +290,6 @@ const invalidMaterial = (name: string) => Error(`cannot use unknown material "${
 const invalidUniformBinding = (name: string) => Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
 
 const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, materials: { [name: string]: Material }, defaultMaterial: Material): Primitive => {
-	const indicesType = geometry.indices.BYTES_PER_ELEMENT === 4 ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
-
 	return {
 		geometry: {
 			colors: functional.map(geometry.colors, colors => ({
