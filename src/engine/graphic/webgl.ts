@@ -440,6 +440,50 @@ class Shader<State> {
 		this.gl.useProgram(this.program);
 	}
 
+	/*
+	** Assign per-geometry attributes.
+	*/
+	public bindGeometry(geometry: Geometry) {
+		for (const binding of this.attributePerGeometryBindings)
+			binding(geometry);
+	}
+
+	/*
+	** Assign per-material uniforms.
+	*/
+	public bindMaterial(material: Material, textureIndex: number) {
+		for (const binding of this.propertyPerMaterialBindings)
+			binding(material);
+
+		for (const binding of this.texturePerMaterialBindings)
+			textureIndex += binding(material, textureIndex);
+
+		return textureIndex;
+	}
+
+	/*
+	** Assign per-node uniforms.
+	*/
+	public bindNode(nodeState: NodeState) {
+		for (const binding of this.propertyPerNodeBindings)
+			binding(nodeState);
+	}
+
+	/*
+	** Assign per-target uniforms.
+	*/
+	public bindTarget(state: State) {
+		let textureIndex = 0;
+
+		for (const binding of this.propertyPerTargetBindings)
+			binding(state);
+
+		for (const binding of this.texturePerTargetBindings)
+			textureIndex += binding(state, textureIndex);
+
+		return textureIndex;
+	}
+
 	public clearAttributePerGeometry(name: string) {
 		const gl = this.gl;
 		const location = this.findAttribute(name);
@@ -500,30 +544,6 @@ class Shader<State> {
 	*/
 	public setupTexturePerTarget(samplerName: string, enabledName: string | undefined, getter: (state: State) => WebGLTexture | undefined) {
 		this.texturePerTargetBindings.push(this.declareTexture(samplerName, enabledName, getter));
-	}
-
-	public getAttributePerGeometryBindings(): Iterable<AttributeBinding<Geometry>> {
-		return this.attributePerGeometryBindings;
-	}
-
-	public getPropertyPerMaterialBindings(): Iterable<PropertyBinding<Material>> {
-		return this.propertyPerMaterialBindings;
-	}
-
-	public getPropertyPerNodeBindings(): Iterable<PropertyBinding<NodeState>> {
-		return this.propertyPerNodeBindings;
-	}
-
-	public getPropertyPerTargetBindings(): Iterable<PropertyBinding<State>> {
-		return this.propertyPerTargetBindings;
-	}
-
-	public getTexturePerMaterialBindings(): Iterable<TextureBinding<Material>> {
-		return this.texturePerMaterialBindings;
-	}
-
-	public getTexturePerTargetBindings(): Iterable<TextureBinding<State>> {
-		return this.texturePerTargetBindings;
 	}
 
 	private declareMatrix<TSource>(name: string, getter: (state: TSource) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {

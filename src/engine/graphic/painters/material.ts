@@ -91,48 +91,27 @@ class Painter<State> implements webgl.Painter<State> {
 
 			shader.activate();
 
-			// Assign per-call property uniforms
-			for (const binding of shader.getPropertyPerTargetBindings())
-				binding(state);
-
-			// Assign per-call texture uniforms
-			let shaderTextureIndex = 0;
-
-			for (const binding of shader.getTexturePerTargetBindings())
-				shaderTextureIndex += binding(state, shaderTextureIndex);
+			// Assign per-call properties
+			const shaderTextureIndex = shader.bindTarget(state);
 
 			// Process batch materials
 			for (const id in shaderBatch.materials) {
 				const materialBatch = shaderBatch.materials[id];
 				const material = materialBatch.material;
 
-				// Assign per-material property uniforms
-				for (const binding of shader.getPropertyPerMaterialBindings())
-					binding(material);
-
-				// Assign per-material texture uniforms
-				let materialTextureIndex = shaderTextureIndex;
-
-				for (const binding of shader.getTexturePerMaterialBindings())
-					materialTextureIndex += binding(material, materialTextureIndex);
+				// Assign per-material properties
+				shader.bindMaterial(material, shaderTextureIndex);
 
 				// Process batch models
 				for (const model of materialBatch.models) {
 					const geometry = model.geometry;
-					const state = {
+
+					shader.bindGeometry(geometry);
+					shader.bindNode({
 						normalMatrix: view.compose(model.transform).getTransposedInverse3x3(),
 						transform: model.transform
-					};
+					});
 
-					// Assign per-model property uniforms
-					for (const binding of shader.getPropertyPerNodeBindings())
-						binding(state);
-
-					// Assign per-model attributes
-					for (const binding of shader.getAttributePerGeometryBindings())
-						binding(geometry);
-
-					// Perform draw call
 					target.draw(geometry.indexBuffer, geometry.count, geometry.indexType);
 				}
 			}
