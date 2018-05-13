@@ -3,18 +3,18 @@
 
 const linearToStandardDeclare = `
 vec3 rgbLinearToStandard(vec3 linear) {
-    return pow(linear.rgb, vec3(1.0 / 2.2));
+	return pow(linear.rgb, vec3(1.0 / 2.2));
 }`;
 
 const linearToStandardInvoke = (linear: string) =>
-    `rgbLinearToStandard(${linear})`;
+	`rgbLinearToStandard(${linear})`;
 
 const standardToLinearDeclare = `
 vec3 rgbStandardToLinear(vec3 standard) {
-    return pow(standard.rgb, vec3(2.2));
+	return pow(standard.rgb, vec3(2.2));
 }`;
 
 const standardToLinearInvoke = (standard: string) =>
-    `rgbStandardToLinear(${standard})`;
+	`rgbStandardToLinear(${standard})`;
 
 export { linearToStandardDeclare, linearToStandardInvoke, standardToLinearDeclare, standardToLinearInvoke }

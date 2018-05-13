@@ -39,10 +39,10 @@ vec3 decodeNormalSpheremap(in vec2 normalPack) {
 // See: http://glampert.com/2014/01-26/visualizing-the-depth-buffer/
 vec3 linearizeDepth(in float depth)
 {
-    float zNear = float(ZNEAR);
-    float zFar = float(ZFAR);
+	float zNear = float(ZNEAR);
+	float zFar = float(ZFAR);
 
-    return vec3(2.0 * zNear / (zFar + zNear - depth * (zFar - zNear)));
+	return vec3(2.0 * zNear / (zFar + zNear - depth * (zFar - zNear)));
 }
 
 void main(void) {
