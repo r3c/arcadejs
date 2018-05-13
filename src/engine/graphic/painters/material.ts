@@ -21,54 +21,13 @@ interface ShaderBatch<State> {
 	shader: webgl.Shader<State>
 }
 
-interface Variant {
-	hasAlbedoMap: boolean,
-	hasEmissiveMap: boolean,
-	hasGlossMap: boolean,
-	hasHeightMap: boolean,
-	hasMetalnessMap: boolean,
-	hasNormalMap: boolean,
-	hasOcclusionMap: boolean,
-	hasRoughnessMap: boolean
-}
-
-const indexToVariant = (index: number): Variant => ({
-	hasAlbedoMap: (index & 1) !== 0,
-	hasEmissiveMap: (index & 2) !== 0,
-	hasGlossMap: (index & 4) !== 0,
-	hasHeightMap: (index & 8) !== 0,
-	hasMetalnessMap: (index & 16) !== 0,
-	hasNormalMap: (index & 32) !== 0,
-	hasOcclusionMap: (index & 64) !== 0,
-	hasRoughnessMap: (index & 128) !== 0
-});
-
-const materialTovariant = (material: webgl.Material) => ({
-	hasAlbedoMap: material.albedoMap !== undefined,
-	hasEmissiveMap: material.emissiveMap !== undefined,
-	hasGlossMap: material.glossMap !== undefined,
-	hasHeightMap: material.heightMap !== undefined,
-	hasMetalnessMap: material.metalnessMap !== undefined,
-	hasNormalMap: material.normalMap !== undefined,
-	hasOcclusionMap: material.occlusionMap !== undefined,
-	hasRoughnessMap: material.roughnessMap !== undefined
-});
-
-const variantToIndex = (variant: Variant) =>
-	(variant.hasAlbedoMap ? 1 : 0) +
-	(variant.hasEmissiveMap ? 2 : 0) +
-	(variant.hasGlossMap ? 4 : 0) +
-	(variant.hasHeightMap ? 8 : 0) +
-	(variant.hasMetalnessMap ? 16 : 0) +
-	(variant.hasNormalMap ? 32 : 0) +
-	(variant.hasOcclusionMap ? 64 : 0) +
-	(variant.hasRoughnessMap ? 128 : 0);
-
 class Painter<State> implements webgl.Painter<State> {
-	private readonly shaderConstructor: (variant: Variant) => webgl.Shader<State>;
+	private readonly materialClassifier: (material: webgl.Material) => number;
+	private readonly shaderConstructor: (material: webgl.Material) => webgl.Shader<State>;
 	private readonly shaderRepository: webgl.Shader<State>[];
 
-	public constructor(shaderConstructor: (variant: Variant) => webgl.Shader<State>) {
+	public constructor(materialClassifier: (material: webgl.Material) => number, shaderConstructor: (material: webgl.Material) => webgl.Shader<State>) {
+		this.materialClassifier = materialClassifier;
 		this.shaderConstructor = shaderConstructor;
 		this.shaderRepository = new Array<webgl.Shader<State>>(64);
 	}
@@ -84,9 +43,9 @@ class Painter<State> implements webgl.Painter<State> {
 		this.draw(target, batch, view, state);
 	}
 
-	private create(index: number) {
+	private create(index: number, material: webgl.Material) {
 		if (this.shaderRepository[index] === undefined)
-			this.shaderRepository[index] = this.shaderConstructor(indexToVariant(index));
+			this.shaderRepository[index] = this.shaderConstructor(material);
 
 		return this.shaderRepository[index];
 	}
@@ -134,14 +93,14 @@ class Painter<State> implements webgl.Painter<State> {
 
 			for (const primitive of node.primitives) {
 				// Get or create shader batch
-				const shaderIndex = variantToIndex(materialTovariant(primitive.material));
+				const shaderIndex = this.materialClassifier(primitive.material);
 
 				let shaderBatch = batch.shaders[shaderIndex];
 
 				if (shaderBatch === undefined) {
 					shaderBatch = {
 						materials: {},
-						shader: this.create(shaderIndex)
+						shader: this.create(shaderIndex, primitive.material)
 					};
 
 					batch.shaders[shaderIndex] = shaderBatch;
@@ -169,4 +128,4 @@ class Painter<State> implements webgl.Painter<State> {
 	}
 }
 
-export { Painter, Variant }
+export { Painter }
