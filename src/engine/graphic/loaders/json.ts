@@ -1,4 +1,5 @@
 import * as functional from "../../language/functional";
+import * as image from "../image";
 import * as matrix from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
@@ -102,7 +103,7 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
 const toTexture = async (name: string, instance: any, directory: string) =>
 	instance !== undefined
 		? {
-			image: await model.loadImage(toString(name, path.combine(directory, instance))),
+			image: await image.loadFromURL(toString(name, path.combine(directory, instance))),
 			magnifier: model.Interpolation.Linear,
 			minifier: model.Interpolation.Linear,
 			mipmap: true,

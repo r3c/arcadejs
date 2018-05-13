@@ -77,13 +77,6 @@ const enum Wrap {
 	Mirror
 }
 
-const channelIndices: { [name: string]: number } = {
-	r: 0,
-	g: 1,
-	b: 2,
-	a: 3
-};
-
 const defaultColor: vector.Vector4 = {
 	x: 1,
 	y: 1,
@@ -137,68 +130,4 @@ const computeBounds = (mesh: Mesh) => {
 	}));
 };
 
-const loadImage = async (identifier: string) => {
-	const match = /(.*?)(?::([abgr]{1,4}))?$/.exec(identifier);
-
-	if (match === null)
-		return Promise.reject(`could not extract path from image identifier "${identifier}"`);
-
-	const channels = match[2];
-	const url = match[1];
-
-	// Read source channel indices
-	const indices: number[] = [];
-
-	if (channels) {
-		for (const channel of channels) {
-			const index = channelIndices[channel];
-
-			if (index === undefined)
-				return Promise.reject(`unknown channel "${channel}" in image identifier "${identifier}"`);
-
-			indices.push(index);
-		}
-	}
-
-	// Read image from URL
-	return new Promise<ImageData>((resolve, reject) => {
-		const image = new Image();
-
-		image.crossOrigin = "anonymous";
-		image.onabort = () => reject(`image load aborted on URL "${url}"`);
-		image.onerror = () => reject(`image load failed on URL "${url}"`);
-		image.onload = () => {
-			const canvas = document.createElement("canvas");
-
-			canvas.height = image.height;
-			canvas.width = image.width;
-
-			const context = canvas.getContext("2d");
-
-			if (context === null)
-				return reject(`image loaded failed (cannot get canvas 2d context) on URL "${url}"`);
-
-			context.drawImage(image, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
-
-			const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-			if (indices.length > 0) {
-				for (let i = imageData.width * imageData.height; i > 0; --i) {
-					const offset = (i - 1) * 4;
-					const pixel = indices.map(i => imageData.data[offset + i]).concat([0, 0, 0]);
-
-					imageData.data[offset + 0] = pixel[0];
-					imageData.data[offset + 1] = pixel[1];
-					imageData.data[offset + 2] = pixel[2];
-					imageData.data[offset + 3] = pixel[3];
-				}
-			}
-
-			resolve(imageData);
-		};
-
-		image.src = url;
-	});
-};
-
-export { Array, Attribute, Geometry, Interpolation, Material, Mesh, Node, Texture, Wrap, computeBounds, defaultColor, loadImage }
+export { Array, Attribute, Geometry, Interpolation, Material, Mesh, Node, Texture, Wrap, computeBounds, defaultColor }
