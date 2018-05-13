@@ -389,6 +389,16 @@ const loadNode = (gl: WebGLRenderingContext, node: model.Node, materials: { [nam
 	transform: node.transform
 });
 
+const loadTexture = (gl: WebGLRenderingContext, image: ImageData): WebGLTexture => {
+	return configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, {
+		image: image,
+		magnifier: model.Interpolation.Nearest,
+		minifier: model.Interpolation.Nearest,
+		mipmap: false,
+		wrap: model.Wrap.Clamp
+	});
+};
+
 class Shader<State> {
 	private readonly attributePerGeometryBindings: AttributeBinding<Geometry>[];
 	private readonly gl: WebGLRenderingContext;
@@ -629,10 +639,20 @@ class Shader<State> {
 		if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 			const error = gl.getShaderInfoLog(shader);
 			const name = shaderType === gl.FRAGMENT_SHADER ? 'fragment' : (shaderType === gl.VERTEX_SHADER ? 'vertex' : 'unknown');
+			const pattern = /ERROR: [0-9]+:([0-9]+)/;
 
 			gl.deleteShader(shader);
 
-			throw Error(`could not compile ${name} shader: ${error}\n${source}`);
+			const match = error !== null ? pattern.exec(error) : null;
+
+			if (match !== null) {
+				const begin = parseInt(match[1]) - 1 - 2;
+				const end = begin + 5;
+
+				throw Error(`could not compile ${name} shader (${error}) around:\n${source.split("\n").slice(Math.max(begin, 0), end).join("\n")}`);
+			}
+
+			throw Error(`could not compile ${name} shader (${error}) in source:\n${source}`);
 		}
 
 		return shader;
@@ -833,4 +853,4 @@ class Target {
 	}
 }
 
-export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadMesh }
+export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadMesh, loadTexture }
