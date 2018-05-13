@@ -244,11 +244,10 @@ void main(void) {
 	}
 
 	// Apply emissive component
-	color += ${directive.getBooleanOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")}
-		? emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")}
-		: emissiveFactor.rgb;
+	if (${directive.getBooleanOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")})
+		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")};
 
-	// Apply ambient occlusion component
+	// Apply occlusion component
 	if (${directive.getBooleanOrUniform("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")})
 		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
@@ -436,10 +435,10 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 			break;
 	}
 
-	if (materialConfiguration.forceEmissiveMap !== false)
+	if (materialConfiguration.forceEmissiveMap !== false) {
 		shader.setupTexturePerMaterial("emissiveMap", materialConfiguration.forceEmissiveMap !== true ? "emissiveMapEnabled" : undefined, material => material.emissiveMap);
-
-	shader.setupPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
+		shader.setupPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
+	}
 
 	if (materialConfiguration.forceHeightMap !== false) {
 		shader.setupTexturePerMaterial("heightMap", materialConfiguration.forceHeightMap !== true ? "heightMapEnabled" : undefined, material => material.heightMap);
