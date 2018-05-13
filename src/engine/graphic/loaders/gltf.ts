@@ -352,14 +352,14 @@ const loadMaterial = (url: string, textures: Texture[], material: any, index: nu
 		baseColorTexture: toTexture(pbr.baseColorTexture, "baseColorTexture"),
 		emissiveFactor: toFactor(material.emissiveFactor, "emissiveFactor"),
 		emissiveTexture: toTexture(material.emissiveTexture, "emissiveTexture"),
-		metallicFactor: functional.coalesce(pbr.metallicFactor, 0.0),
+		metallicFactor: functional.coalesce(pbr.metallicFactor, 1.0),
 		metallicRoughnessTexture: toTexture(pbr.metallicRoughnessTexture, "metallicRoughnessTexture"),
 		name: material.name || `_${index}`,
 		normalFactor: toFactor(material.normalFactor, "normalFactor"),
 		normalTexture: toTexture(material.normalTexture, "normalTexture"),
 		occlusionFactor: toFactor(material.occlusionFactor, "occlusionFactor"),
 		occlusionTexture: toTexture(material.occlusionTexture, "occlusionTexture"),
-		roughnessFactor: functional.coalesce(pbr.roughnessFactor, 0.0)
+		roughnessFactor: functional.coalesce(pbr.roughnessFactor, 1.0)
 	};
 };
 
