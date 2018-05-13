@@ -144,9 +144,9 @@ const expandAccessor = (url: string, accessor: Accessor, cardinality: number, ty
 };
 
 const expandMaterial = (material: Material): model.Material => {
-	const toMap = (textureOrUndefined: Texture | undefined) =>
+	const toMap = (textureOrUndefined: Texture | undefined, channels?: image.Channel[]) =>
 		functional.map(textureOrUndefined, texture => ({
-			image: texture.image,
+			image: channels !== undefined ? image.mapChannels(texture.image, channels) : texture.image,
 			magnifier: texture.sampler.magnifier,
 			minifier: texture.sampler.minifier,
 			mipmap: texture.sampler.mipmap,
@@ -158,13 +158,13 @@ const expandMaterial = (material: Material): model.Material => {
 		albedoMap: toMap(material.baseColorTexture),
 		emissiveFactor: material.emissiveFactor,
 		emissiveMap: toMap(material.emissiveTexture),
-		metalnessMap: toMap(material.metallicRoughnessTexture), // FIXME: only 1 component
+		metalnessMap: toMap(material.metallicRoughnessTexture, [image.Channel.Blue]),
 		metalnessStrength: material.metallicFactor,
 		//normalFactor: material.normalFactor, // FIXME: normalFactor is not supported yet
 		normalMap: toMap(material.normalTexture),
 		occlusionMap: toMap(material.occlusionTexture),
 		occlusionStrength: functional.map(material.occlusionFactor, factor => Math.max(factor.x, factor.y, factor.z, factor.w)),
-		roughnessMap: toMap(material.metallicRoughnessTexture), // FIXME: only 1 component
+		roughnessMap: toMap(material.metallicRoughnessTexture, [image.Channel.Green]),
 		roughnessStrength: material.roughnessFactor,
 	};
 };
