@@ -1,3 +1,4 @@
+import * as directive from "./snippets/directive";
 import * as functional from "../../language/functional";
 import * as materialPainter from "../painters/material";
 import * as matrix from "../../math/matrix";
@@ -175,13 +176,7 @@ layout(location=0) out vec4 fragColor;
 
 vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
 	#if LIGHT_MODEL == ${LightModel.Phong}
-		#ifdef FORCE_GLOSS_MAP
-			bool glossMapEnabledValue = bool(FORCE_GLOSS_MAP);
-		#else
-			bool glossMapEnabledValue = glossMapEnabled;
-		#endif
-
-		vec4 materialGloss = glossMapEnabledValue
+		vec4 materialGloss = ${directive.getBooleanOrUniform("FORCE_GLOSS_MAP", "glossMapEnabled")}
 			? glossFactor * texture(glossMap, coord)
 			: glossFactor;
 
@@ -189,21 +184,11 @@ vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirectio
 			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * albedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
 			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
 	#elif LIGHT_MODEL == ${LightModel.Physical}
-		#ifdef FORCE_METALNESS_MAP
-			bool metalnessMapEnabledValue = bool(FORCE_METALNESS_MAP);
-		#else
-			bool metalnessMapEnabledValue = metalnessMapEnabled;
-		#endif
+		float metalnessSample = ${directive.getBooleanOrUniform("FORCE_METALNESS_MAP", "metalnessMapEnabled")} ? texture(metalnessMap, coord).r : 1.0;
+		float metalness = clamp(metalnessSample * metalnessStrength, 0.0, 1.0);
 
-		float metalness = clamp((metalnessMapEnabledValue ? texture(metalnessMap, coord).r : 1.0) * metalnessStrength, 0.0, 1.0);
-
-		#ifdef FORCE_ROUGHNESS_MAP
-			bool roughnessMapEnabledValue = bool(FORCE_ROUGHNESS_MAP);
-		#else
-			bool roughnessMapEnabledValue = roughnessMapEnabled;
-		#endif
-
-		float roughness = clamp((roughnessMapEnabledValue ? texture(roughnessMap, coord).r : 1.0) * roughnessStrength, 0.04, 1.0);
+		float roughnessSample = ${directive.getBooleanOrUniform("FORCE_ROUGHNESS_MAP", "roughnessMapEnabled")} ? texture(roughnessMap, coord).r : 1.0;
+		float roughness = clamp(roughnessSample * roughnessStrength, 0.04, 1.0);
 
 		vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "roughness", "metalness")};
 
@@ -220,13 +205,7 @@ void main(void) {
 	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnabled", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 	vec3 modifiedNormal = ${normal.perturbInvoke("FORCE_NORMAL_MAP", "normalMap", "normalMapEnabled", "coordParallax", "t", "b", "n")};
 
-	#ifdef FORCE_ALBEDO_MAP
-		bool albedoMapEnabledValue = bool(FORCE_ALBEDO_MAP);
-	#else
-		bool albedoMapEnabledValue = albedoMapEnabled;
-	#endif
-
-	vec3 albedo = albedoMapEnabledValue
+	vec3 albedo = ${directive.getBooleanOrUniform("FORCE_ALBEDO_MAP", "albedoMapEnabled")}
 		? albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, coordParallax).rgb")}
 		: albedoFactor.rgb;
 
@@ -265,24 +244,12 @@ void main(void) {
 	}
 
 	// Apply emissive component
-	#ifdef FORCE_EMISSIVE_MAP
-		bool emissiveMapEnabledValue = bool(FORCE_EMISSIVE_MAP);
-	#else
-		bool emissiveMapEnabledValue = emissiveMapEnabled;
-	#endif
-
-	color += emissiveMapEnabledValue
+	color += ${directive.getBooleanOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")}
 		? emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")}
 		: emissiveFactor.rgb;
 
 	// Apply ambient occlusion component
-	#ifdef FORCE_OCCLUSION_MAP
-		bool occlusionMapEnabledValue = bool(FORCE_OCCLUSION_MAP);
-	#else
-		bool occlusionMapEnabledValue = occlusionMapEnabled;
-	#endif
-
-	if (occlusionMapEnabledValue)
+	if (${directive.getBooleanOrUniform("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")})
 		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);

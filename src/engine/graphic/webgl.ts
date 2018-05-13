@@ -347,7 +347,7 @@ const loadMaterial = (gl: WebGLRenderingContext, id: string, material: model.Mat
 		heightParallaxScale: functional.coalesce(material.heightParallaxScale, 0),
 		id: id,
 		metalnessMap: functional.map(material.metalnessMap, toColorMap),
-		metalnessStrength: functional.coalesce(material.metalnessStrength, 1),
+		metalnessStrength: functional.coalesce(material.metalnessStrength, 0),
 		normalMap: functional.map(material.normalMap, toColorMap),
 		occlusionMap: functional.map(material.occlusionMap, toColorMap),
 		occlusionStrength: functional.coalesce(material.occlusionStrength, 1),
