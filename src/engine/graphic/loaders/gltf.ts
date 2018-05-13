@@ -469,9 +469,9 @@ const loadRoot = async (url: string, structure: any, embedded: ArrayBuffer | und
 };
 
 const loadSampler = (url: string, sampler: any, index: number): Sampler => {
-	const magFilter = parseInt(sampler.magFilter);
-	const minFilter = parseInt(sampler.minFilter);
-	const wrap = Math.min(parseInt(sampler.wrapS), parseInt(sampler.wrapT));
+	const magFilter = parseInt(sampler.magFilter || 9729);
+	const minFilter = parseInt(sampler.minFilter || 9729);
+	const wrap = Math.min(parseInt(sampler.wrapS || 10497), parseInt(sampler.wrapT || 10497));
 
 	return {
 		magnifier: magFilter === 9729 /* LINEAR */
