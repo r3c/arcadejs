@@ -512,15 +512,25 @@ class Pipeline implements webgl.Pipeline {
 	private readonly shadowTargets: webgl.Target[];
 
 	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
-		const createMaterialConfiguration = (configuration: MaterialConfiguration, variant: materialPainter.Variant) => ({
-			forceAlbedoMap: functional.coalesce(configuration.forceAlbedoMap, variant.hasAlbedoMap),
-			forceEmissiveMap: functional.coalesce(configuration.forceEmissiveMap, variant.hasEmissiveMap),
-			forceGlossMap: functional.coalesce(configuration.forceGlossMap, variant.hasGlossMap),
-			forceHeightMap: functional.coalesce(configuration.forceHeightMap, variant.hasHeightMap),
-			forceMetalnessMap: functional.coalesce(configuration.forceMetalnessMap, variant.hasMetalnessMap),
-			forceNormalMap: functional.coalesce(configuration.forceNormalMap, variant.hasNormalMap),
-			forceOcclusionMap: functional.coalesce(configuration.forceOcclusionMap, variant.hasOcclusionMap),
-			forceRoughnessMap: functional.coalesce(configuration.forceRoughnessMap, variant.hasRoughnessMap)
+		const materialClassifier = (material: webgl.Material) =>
+			(material.albedoMap !== undefined ? 1 : 0) +
+			(material.emissiveMap !== undefined ? 2 : 0) +
+			(material.glossMap !== undefined ? 4 : 0) +
+			(material.heightMap !== undefined ? 8 : 0) +
+			(material.metalnessMap !== undefined ? 16 : 0) +
+			(material.normalMap !== undefined ? 32 : 0) +
+			(material.occlusionMap !== undefined ? 64 : 0) +
+			(material.roughnessMap !== undefined ? 128 : 0);
+
+		const materialConfigurator = (configuration: MaterialConfiguration, material: webgl.Material) => ({
+			forceAlbedoMap: functional.coalesce(configuration.forceAlbedoMap, material.albedoMap !== undefined),
+			forceEmissiveMap: functional.coalesce(configuration.forceEmissiveMap, material.emissiveMap !== undefined),
+			forceGlossMap: functional.coalesce(configuration.forceGlossMap, material.glossMap !== undefined),
+			forceHeightMap: functional.coalesce(configuration.forceHeightMap, material.heightMap !== undefined),
+			forceMetalnessMap: functional.coalesce(configuration.forceMetalnessMap, material.metalnessMap !== undefined),
+			forceNormalMap: functional.coalesce(configuration.forceNormalMap, material.normalMap !== undefined),
+			forceOcclusionMap: functional.coalesce(configuration.forceOcclusionMap, material.occlusionMap !== undefined),
+			forceRoughnessMap: functional.coalesce(configuration.forceRoughnessMap, material.roughnessMap !== undefined)
 		});
 
 		const maxDirectionalLights = configuration.maxDirectionalLights || 0;
@@ -530,7 +540,7 @@ class Pipeline implements webgl.Pipeline {
 		this.gl = gl;
 		this.lightPainter = configuration.noMaterialShader
 			? new singularPainter.Painter(loadLight(gl, configuration, configuration))
-			: new materialPainter.Painter(variant => loadLight(gl, createMaterialConfiguration(configuration, variant), configuration));
+			: new materialPainter.Painter(materialClassifier, material => loadLight(gl, materialConfigurator(configuration, material), configuration));
 		this.maxDirectionalLights = maxDirectionalLights;
 		this.maxPointLights = maxPointLights;
 		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Format.Depth16));
