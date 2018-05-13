@@ -1,5 +1,6 @@
 import * as encoding from "../../text/encoding";
 import * as functional from "../../language/functional";
+import * as image from "../image";
 import * as matrix from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
@@ -317,20 +318,20 @@ const loadBufferView = (url: string, buffers: Buffer[], bufferView: any, index: 
 	};
 };
 
-const loadImage = async (url: string, bufferViews: BufferView[], image: any, index: number): Promise<ImageData> => {
-	if (image.uri !== undefined)
-		return await model.loadImage(path.combine(path.directory(url), image.uri));
+const loadImage = async (url: string, bufferViews: BufferView[], definition: any, index: number): Promise<ImageData> => {
+	if (definition.uri !== undefined)
+		return await image.loadFromURL(path.combine(path.directory(url), definition.uri));
 
 	const source = `image[${index}]`;
 
-	if (image.bufferView !== undefined && image.mimeType !== undefined) {
-		const bufferView = convertReferenceTo(url, source + ".bufferView", image.bufferView, bufferViews);
-		const blob = new Blob([bufferView.buffer], { type: image.mimeType });
+	if (definition.bufferView !== undefined && definition.mimeType !== undefined) {
+		const bufferView = convertReferenceTo(url, source + ".bufferView", definition.bufferView, bufferViews);
+		const blob = new Blob([bufferView.buffer], { type: definition.mimeType });
 		const uri = window.URL.createObjectURL(blob);
 
 		console.log(uri); // FIXME
 
-		return model.loadImage(uri);
+		return image.loadFromURL(uri);
 	}
 
 	throw invalidData(url, source + " specifies no URI nor buffer data");

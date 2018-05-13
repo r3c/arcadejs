@@ -1,3 +1,4 @@
+import * as image from "../image";
 import * as matrix from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
@@ -281,7 +282,7 @@ const loadObject = async (data: string, fileName: string) => {
 };
 
 const loadTexture = async (fileName: string, textureName: string) => ({
-	image: await model.loadImage(path.combine(path.directory(fileName), textureName)),
+	image: await image.loadFromURL(path.combine(path.directory(fileName), textureName)),
 	magnifier: model.Interpolation.Linear,
 	minifier: model.Interpolation.Linear,
 	mipmap: true,

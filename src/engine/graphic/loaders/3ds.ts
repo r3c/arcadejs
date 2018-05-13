@@ -1,4 +1,5 @@
 import * as encoding from "../../text/encoding";
+import * as image from "../image";
 import * as matrix from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
@@ -155,7 +156,7 @@ const readMaterialMap = async (context: Context, end: number, chunk: number, sta
 	switch (chunk) {
 		case 0xa300:
 			return {
-				image: await model.loadImage(path.combine(context.directory, context.codec.decode(context.reader.readBufferZero()))),
+				image: await image.loadFromURL(path.combine(context.directory, context.codec.decode(context.reader.readBufferZero()))),
 				magnifier: model.Interpolation.Linear,
 				minifier: model.Interpolation.Linear,
 				mipmap: true,
