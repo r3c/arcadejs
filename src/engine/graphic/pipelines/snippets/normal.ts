@@ -7,7 +7,7 @@ vec3 normalDecode(in vec2 normalPack) {
 	float g = sqrt(1.0 - f * 0.25);
 
 	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
-}`
+}`;
 
 const decodeInvoke = (normalPack: string) =>
 	`normalDecode(${normalPack})`;
