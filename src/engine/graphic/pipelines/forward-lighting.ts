@@ -1,5 +1,6 @@
 import * as directive from "./snippets/directive";
 import * as functional from "../../language/functional";
+import * as light from "./snippets/light";
 import * as materialPainter from "../painters/material";
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
@@ -18,22 +19,8 @@ const enum LightModel {
 }
 
 const lightHeaderShader = `
-struct DirectionalLight {
-	vec3 color;
-	vec3 direction;
-	float visibility;
-#ifdef HAS_SHADOW
-	bool castShadow;
-	mat4 shadowViewMatrix;
-#endif
-};
-
-struct PointLight {
-	vec3 color;
-	vec3 position;
-	float radius; // FIXME: ignored by this implementation
-	float visibility;
-};
+${light.directionalDeclare("HAS_SHADOW")}
+${light.pointDeclare("HAS_SHADOW")}
 
 const mat4 texUnitConverter = mat4(
 	0.5, 0.0, 0.0, 0.0,
@@ -45,8 +32,8 @@ const mat4 texUnitConverter = mat4(
 uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform DirectionalLight directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
-uniform PointLight pointLights[max(MAX_POINT_LIGHTS, 1)];
+uniform ${light.directionalType} directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+uniform ${light.pointType} pointLights[max(MAX_POINT_LIGHTS, 1)];
 
 // FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
 #ifdef HAS_SHADOW
@@ -190,9 +177,7 @@ vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirectio
 		float roughnessSample = ${directive.getBooleanOrUniform("FORCE_ROUGHNESS_MAP", "roughnessMapEnabled")} ? texture(roughnessMap, coord).r : 1.0;
 		float roughness = clamp(roughnessSample * roughnessStrength, 0.04, 1.0);
 
-		vec3 color = ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "roughness", "metalness")};
-
-		return color;
+		return ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "roughness", "metalness")};
 	#endif
 }
 
@@ -221,7 +206,7 @@ void main(void) {
 				continue;
 		#endif
 
-		color += directionalLights[i].visibility * getLight(
+		color += ${light.directionalInvoke("directionalLights[i]")} * getLight(
 			albedo,
 			coordParallax,
 			modifiedNormal,
@@ -233,7 +218,7 @@ void main(void) {
 
 	// Apply components from point lights
 	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
-		color += pointLights[i].visibility * getLight(
+		color += ${light.pointInvoke("pointLights[i]", "length(pointLightDirections[i])")} * getLight(
 			albedo,
 			coordParallax,
 			modifiedNormal,

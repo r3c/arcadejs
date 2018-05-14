@@ -1,3 +1,4 @@
+import * as light from "./snippets/light";
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
 import * as painter from "../painters/singular";
@@ -85,19 +86,11 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-struct DirectionalLight {
-	vec3 color;
-	vec3 direction;
-};
+${light.directionalDeclare("HAS_SHADOW")}
+${light.pointDeclare("HAS_SHADOW")}
 
-struct PointLight {
-	vec3 color;
-	vec3 position;
-	float radius;
-};
-
-uniform DirectionalLight directionalLight;
-uniform PointLight pointLight;`;
+uniform ${light.directionalType} directionalLight;
+uniform ${light.pointType} pointLight;`;
 
 const lightVertexShader = `
 ${lightHeaderShader}
@@ -175,11 +168,11 @@ void main(void) {
 	#if LIGHT_TYPE == ${LightType.Directional}
 		vec3 lightColor = directionalLight.color;
 		vec3 lightDirection = normalize(lightDirectionCamera);
-		float lightPower = 1.0;
+		float lightPower = ${light.directionalInvoke("directionalLight")};
 	#elif LIGHT_TYPE == ${LightType.Point}
 		vec3 lightColor = pointLight.color;
 		vec3 lightDirection = normalize(lightPositionCamera - point);
-		float lightPower = max(1.0 - length(lightPositionCamera - point) / pointLight.radius, 0.0);
+		float lightPower = ${light.pointInvoke("pointLight", "length(lightPositionCamera - point)")};
 	#endif
 
 	float lightDiffusePower = ${phong.getDiffusePowerInvoke("normal", "lightDirection")};
@@ -366,6 +359,7 @@ const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configur
 
 	shader.setupPropertyPerTarget("directionalLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("directionalLight.direction", state => vector.Vector3.toArray(state.light.direction), gl => gl.uniform3fv);
+	shader.setupPropertyPerTarget("directionalLight.visibility", state => 1, gl => gl.uniform1f);
 
 	return shader;
 };
@@ -376,6 +370,7 @@ const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration)
 	shader.setupPropertyPerTarget("pointLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("pointLight.position", state => vector.Vector3.toArray(state.light.position), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("pointLight.radius", state => state.light.radius, gl => gl.uniform1f);
+	shader.setupPropertyPerTarget("pointLight.visibility", state => 1, gl => gl.uniform1f);
 
 	return shader;
 };

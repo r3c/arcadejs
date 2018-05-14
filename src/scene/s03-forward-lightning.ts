@@ -126,7 +126,7 @@ const render = (state: SceneState) => {
 		pointLights: state.lightPositions.map((position, index) => ({
 			color: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0),
 			position: position,
-			radius: 0
+			radius: 5
 		})),
 		subjects: [{
 			matrix: matrix.Matrix4.createIdentity(),
