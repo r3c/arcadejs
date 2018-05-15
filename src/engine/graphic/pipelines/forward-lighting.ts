@@ -457,7 +457,7 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 
 		shader.setupPropertyPerTarget(`directionalLights[${i}].color`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].color) : defaultColor, gl => gl.uniform3fv);
 		shader.setupPropertyPerTarget(`directionalLights[${i}].direction`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].direction) : defaultDirection, gl => gl.uniform3fv);
-		shader.setupPropertyPerTarget(`directionalLights[${i}].visibility`, state => index < state.directionalLights.length ? 1 : 0, gl => gl.uniform1f);
+		shader.setupPropertyPerTarget(`directionalLights[${i}].strength`, state => index < state.directionalLights.length ? 1 : 0, gl => gl.uniform1f);
 	}
 
 	for (let i = 0; i < maxPointLights; ++i) {
@@ -466,7 +466,7 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 		shader.setupPropertyPerTarget(`pointLights[${i}].color`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].color) : defaultColor, gl => gl.uniform3fv);
 		shader.setupPropertyPerTarget(`pointLights[${i}].position`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].position) : defaultPosition, gl => gl.uniform3fv);
 		shader.setupPropertyPerTarget(`pointLights[${i}].radius`, state => index < state.pointLights.length ? state.pointLights[index].radius : 0, gl => gl.uniform1f);
-		shader.setupPropertyPerTarget(`pointLights[${i}].visibility`, state => index < state.pointLights.length ? 1 : 0, gl => gl.uniform1f);
+		shader.setupPropertyPerTarget(`pointLights[${i}].strength`, state => index < state.pointLights.length ? 1 : 0, gl => gl.uniform1f);
 	}
 
 	return shader;

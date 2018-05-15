@@ -359,7 +359,7 @@ const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configur
 
 	shader.setupPropertyPerTarget("directionalLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("directionalLight.direction", state => vector.Vector3.toArray(state.light.direction), gl => gl.uniform3fv);
-	shader.setupPropertyPerTarget("directionalLight.visibility", state => 1, gl => gl.uniform1f);
+	shader.setupPropertyPerTarget("directionalLight.strength", state => 1, gl => gl.uniform1f);
 
 	return shader;
 };
@@ -370,7 +370,7 @@ const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration)
 	shader.setupPropertyPerTarget("pointLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("pointLight.position", state => vector.Vector3.toArray(state.light.position), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("pointLight.radius", state => state.light.radius, gl => gl.uniform1f);
-	shader.setupPropertyPerTarget("pointLight.visibility", state => 1, gl => gl.uniform1f);
+	shader.setupPropertyPerTarget("pointLight.strength", state => 1, gl => gl.uniform1f);
 
 	return shader;
 };
