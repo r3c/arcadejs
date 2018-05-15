@@ -123,8 +123,8 @@ const render = (state: SceneState) => {
 	const lightPipeline = pipelines.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
 		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-		pointLights: state.lightPositions.map((position, index) => ({
-			color: vector.Vector3.scale({ x: 1, y: 1, z: 1 }, index < state.tweak.nbLights ? 0.6 : 0),
+		pointLights: state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
+			color: { x: 0.6, y: 0.6, z: 0.6 },
 			position: position,
 			radius: 5
 		})),

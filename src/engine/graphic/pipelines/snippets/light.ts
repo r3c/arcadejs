@@ -2,7 +2,7 @@ const directionalDeclare = (shadowMacro: string) => `
 struct DirectionalLight {
 	vec3 color;
 	vec3 direction;
-	float visibility;
+	float strength;
 #ifdef ${shadowMacro}
 	bool castShadow;
 	mat4 shadowViewMatrix;
@@ -10,7 +10,7 @@ struct DirectionalLight {
 };`;
 
 const directionalInvoke = (light: string) =>
-	`${light}.visibility`;
+	`(${light}.strength)`;
 
 const directionalType = "DirectionalLight";
 
@@ -19,11 +19,11 @@ struct PointLight {
 	vec3 color;
 	vec3 position;
 	float radius;
-	float visibility;
+	float strength;
 };`;
 
 const pointInvoke = (light: string, distance: string) =>
-	`max(1.0 - ${distance} / ${light}.radius, 0.0) * ${light}.visibility`;
+	`(max(1.0 - ${distance} / ${light}.radius, 0.0) * ${light}.strength)`;
 
 const pointType = "PointLight";
 
