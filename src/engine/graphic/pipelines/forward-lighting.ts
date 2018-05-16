@@ -228,13 +228,13 @@ void main(void) {
 		);
 	}
 
-	// Apply emissive component
-	if (${directive.getBooleanOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")})
-		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")};
-
 	// Apply occlusion component
 	if (${directive.getBooleanOrUniform("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")})
 		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
+
+	// Apply emissive component
+	if (${directive.getBooleanOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")})
+		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")};
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
 }`;
