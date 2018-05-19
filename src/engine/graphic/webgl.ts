@@ -9,12 +9,12 @@ interface Attachment {
 }
 
 interface AttachmentRenderbuffer {
-	format: Format,
+	format: TextureFormat,
 	handle: WebGLRenderbuffer
 }
 
 interface AttachmentTexture {
-	format: Format,
+	format: TextureFormat,
 	handle: WebGLTexture
 }
 
@@ -36,11 +36,6 @@ interface DirectionalLight {
 interface Directive {
 	name: string,
 	value: number
-}
-
-const enum Format {
-	Depth16,
-	RGBA8
 }
 
 interface Geometry {
@@ -77,6 +72,12 @@ interface Material {
 
 interface Mesh {
 	nodes: Node[]
+}
+
+interface NativeFormat {
+	format: number,
+	internal: number,
+	type: number
 }
 
 interface Node {
@@ -132,6 +133,11 @@ interface Subject {
 
 type TextureBinding<T> = (source: T, textureIndex: number) => number;
 
+const enum TextureFormat {
+	Depth16,
+	RGBA8
+}
+
 const enum TextureType {
 	Quad,
 	Cube
@@ -148,46 +154,7 @@ type UniformValueSetter<T> = (location: WebGLUniformLocation, value: T) => void;
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
-const renderbufferConfigure = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer, width: number, height: number, format: Format, samples: number) => {
-	gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
-
-	let glInternal: number;
-
-	switch (format) {
-		case Format.Depth16:
-			glInternal = gl.DEPTH_COMPONENT16;
-
-			break;
-
-		case Format.RGBA8:
-			glInternal = gl.RGBA;
-
-			break;
-
-		default:
-			throw Error(`invalid renderbuffer format ${format}`);
-	}
-
-	if (samples > 1)
-		(<any>gl).renderbufferStorageMultisample(gl.RENDERBUFFER, samples, glInternal, width, height); // FIXME: incomplete @type for WebGL2
-	else
-		gl.renderbufferStorage(gl.RENDERBUFFER, glInternal, width, height);
-
-	gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-
-	return renderbuffer;
-};
-
-const renderbufferCreate = (gl: WebGLRenderingContext) => {
-	const renderbuffer = gl.createRenderbuffer();
-
-	if (renderbuffer === null)
-		throw Error("could not create renderbuffer");
-
-	return renderbuffer;
-};
-
-const convertBuffer = (gl: WebGLRenderingContext, target: number, values: model.Array) => {
+const bufferConvert = (gl: WebGLRenderingContext, target: number, values: model.Array) => {
 	const buffer = gl.createBuffer();
 
 	if (buffer === null)
@@ -203,7 +170,7 @@ const convertBuffer = (gl: WebGLRenderingContext, target: number, values: model.
 ** Find OpenGL type from associated array type.
 ** See: https://developer.mozilla.org/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
 */
-const convertType = (gl: WebGLRenderingContext, array: model.Array) => {
+const bufferGetType = (gl: WebGLRenderingContext, array: model.Array) => {
 	if (array instanceof Float32Array)
 		return gl.FLOAT;
 	else if (array instanceof Int32Array)
@@ -222,43 +189,68 @@ const convertType = (gl: WebGLRenderingContext, array: model.Array) => {
 	throw Error(`unsupported array type for indices`);
 };
 
-const textureConfigure = (gl: WebGLRenderingContext, texture: WebGLTexture, type: TextureType, width: number, height: number, format: Format, filter: model.Filter, image: ImageData | ImageData[] | undefined) => {
+/*
+** Convert texture format into native WebGL format parameters.
+*/
+const formatGetNative = (gl: WebGLRenderingContext, format: TextureFormat): NativeFormat => {
+	switch (format) {
+		case TextureFormat.Depth16:
+			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
+				throw Error("depth texture WebGL extension is not available");
+
+			return {
+				format: gl.DEPTH_COMPONENT,
+				internal: gl.DEPTH_COMPONENT16,
+				type: gl.UNSIGNED_SHORT
+			};
+
+		case TextureFormat.RGBA8:
+			return {
+				format: gl.RGBA,
+				internal: (<any>gl).RGBA8, // FIXME: incomplete @type for WebGL2
+				type: gl.UNSIGNED_BYTE
+			};
+
+		default:
+			throw Error(`invalid texture format ${format}`);
+	}
+};
+
+const renderbufferConfigure = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer, width: number, height: number, format: TextureFormat, samples: number) => {
+	const nativeFormat = formatGetNative(gl, format);
+
+	gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+
+	if (samples > 1)
+		(<any>gl).renderbufferStorageMultisample(gl.RENDERBUFFER, samples, nativeFormat.internal, width, height); // FIXME: incomplete @type for WebGL2
+	else
+		gl.renderbufferStorage(gl.RENDERBUFFER, nativeFormat.internal, width, height);
+
+	gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+
+	return renderbuffer;
+};
+
+const renderbufferCreate = (gl: WebGLRenderingContext) => {
+	const renderbuffer = gl.createRenderbuffer();
+
+	if (renderbuffer === null)
+		throw Error("could not create renderbuffer");
+
+	return renderbuffer;
+};
+
+const textureConfigure = (gl: WebGLRenderingContext, texture: WebGLTexture, type: TextureType, width: number, height: number, format: TextureFormat, filter: model.Filter, image: ImageData | ImageData[] | undefined) => {
 	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
 	const target = textureGetTarget(gl, type);
 
 	gl.bindTexture(target, texture);
 
-	// Define texture format
-	let glFormat: number;
-	let glInternal: number;
-	let glType: number;
-
-	switch (format) {
-		case Format.Depth16:
-			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
-				throw Error("depth texture WebGL extension is not available");
-
-			glFormat = gl.DEPTH_COMPONENT;
-			glInternal = gl.DEPTH_COMPONENT16;
-			glType = gl.UNSIGNED_SHORT;
-
-			break;
-
-		case Format.RGBA8:
-			glFormat = gl.RGBA;
-			glInternal = (<any>gl).RGBA8; // FIXME: incomplete @type for WebGL2
-			glType = gl.UNSIGNED_BYTE;
-
-			break;
-
-		default:
-			throw Error(`invalid texture format ${format}`);
-	}
-
-	// Define texture filtering & wrapping parameters
+	// Define texture format, filtering & wrapping parameters
 	const magnifierFilter = filter.magnifier === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
 	const minifierFilter = filter.minifier === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
 	const mipmapFilter = filter.minifier === model.Interpolation.Linear ? gl.NEAREST_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_NEAREST;
+	const nativeFormat = formatGetNative(gl, format);
 	const wrap = textureGetWrap(gl, filter.wrap);
 
 	gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
@@ -267,11 +259,11 @@ const textureConfigure = (gl: WebGLRenderingContext, texture: WebGLTexture, type
 	gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
 
 	if (image === undefined) {
-		gl.texImage2D(target, 0, glInternal, width, height, 0, glFormat, glType, null);
+		gl.texImage2D(target, 0, nativeFormat.internal, width, height, 0, nativeFormat.format, nativeFormat.type, null);
 	}
 	else if ((<ImageData>image).data) {
 		// TODO: remove unwanted wrapping of "pixels" array when https://github.com/KhronosGroup/WebGL/issues/1533 is fixed
-		gl.texImage2D(target, 0, glInternal, width, height, 0, glFormat, glType, new Uint8Array((<ImageData>image).data));
+		gl.texImage2D(target, 0, nativeFormat.internal, width, height, 0, nativeFormat.format, nativeFormat.type, new Uint8Array((<ImageData>image).data));
 	}
 	else if ((<ImageData[]>image).length !== undefined) {
 		const images = (<ImageData[]>image);
@@ -285,7 +277,7 @@ const textureConfigure = (gl: WebGLRenderingContext, texture: WebGLTexture, type
 		];
 
 		for (let i = 0; i < targets.length; ++i)
-			gl.texImage2D(targets[i], 0, glInternal, width, height, 0, glFormat, glType, new Uint8Array((<ImageData>images[i]).data));
+			gl.texImage2D(targets[i], 0, nativeFormat.internal, width, height, 0, nativeFormat.format, nativeFormat.type, new Uint8Array((<ImageData>images[i]).data));
 	}
 
 	if (filter.mipmap && isPowerOfTwo)
@@ -342,37 +334,37 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 	return {
 		geometry: {
 			colors: functional.map(geometry.colors, colors => ({
-				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, colors.buffer),
+				buffer: bufferConvert(gl, gl.ARRAY_BUFFER, colors.buffer),
 				size: colors.stride,
 				stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT,
-				type: convertType(gl, colors.buffer)
+				type: bufferGetType(gl, colors.buffer)
 			})),
 			coords: functional.map(geometry.coords, coords => ({
-				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, coords.buffer),
+				buffer: bufferConvert(gl, gl.ARRAY_BUFFER, coords.buffer),
 				size: coords.stride,
 				stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
-				type: convertType(gl, coords.buffer)
+				type: bufferGetType(gl, coords.buffer)
 			})),
 			count: geometry.indices.length,
-			indexBuffer: convertBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
-			indexType: convertType(gl, geometry.indices),
+			indexBuffer: bufferConvert(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
+			indexType: bufferGetType(gl, geometry.indices),
 			normals: functional.map(geometry.normals, normals => ({
-				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, normals.buffer),
+				buffer: bufferConvert(gl, gl.ARRAY_BUFFER, normals.buffer),
 				size: normals.stride,
 				stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT,
-				type: convertType(gl, normals.buffer)
+				type: bufferGetType(gl, normals.buffer)
 			})),
 			points: {
-				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
+				buffer: bufferConvert(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
 				size: geometry.points.stride,
 				stride: geometry.points.stride * geometry.points.buffer.BYTES_PER_ELEMENT,
-				type: convertType(gl, geometry.points.buffer)
+				type: bufferGetType(gl, geometry.points.buffer)
 			},
 			tangents: functional.map(geometry.tangents, tangents => ({
-				buffer: convertBuffer(gl, gl.ARRAY_BUFFER, tangents.buffer),
+				buffer: bufferConvert(gl, gl.ARRAY_BUFFER, tangents.buffer),
 				size: tangents.stride,
 				stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT,
-				type: convertType(gl, tangents.buffer)
+				type: bufferGetType(gl, tangents.buffer)
 			}))
 		},
 		material: geometry.materialName !== undefined
@@ -382,7 +374,7 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 };
 
 const loadMaterial = (gl: WebGLRenderingContext, id: string, material: model.Material) => {
-	const toColorMap = (texture: model.Texture) => textureConfigure(gl, textureCreate(gl), TextureType.Quad, texture.image.width, texture.image.height, Format.RGBA8, texture.filter, texture.image);
+	const toColorMap = (texture: model.Texture) => textureConfigure(gl, textureCreate(gl), TextureType.Quad, texture.image.width, texture.image.height, TextureFormat.RGBA8, texture.filter, texture.image);
 
 	return {
 		albedoFactor: vector.Vector4.toArray(material.albedoFactor || colorWhite),
@@ -442,11 +434,11 @@ const loadTextureCube = (gl: WebGLRenderingContext, images: ImageData[], filter?
 	if (images.length !== 6)
 		throw Error(`cube texture requires 6 images`);
 
-	return textureConfigure(gl, textureCreate(gl), TextureType.Cube, images[0].width, images[0].height, Format.RGBA8, functional.coalesce(filter, model.defaultFilter), images);
+	return textureConfigure(gl, textureCreate(gl), TextureType.Cube, images[0].width, images[0].height, TextureFormat.RGBA8, functional.coalesce(filter, model.defaultFilter), images);
 };
 
 const loadTextureQuad = (gl: WebGLRenderingContext, image: ImageData, filter?: model.Filter): WebGLTexture => {
-	return textureConfigure(gl, textureCreate(gl), TextureType.Quad, image.width, image.height, Format.RGBA8, functional.coalesce(filter, model.defaultFilter), image);
+	return textureConfigure(gl, textureCreate(gl), TextureType.Quad, image.width, image.height, TextureFormat.RGBA8, functional.coalesce(filter, model.defaultFilter), image);
 };
 
 class Shader<State> {
@@ -785,11 +777,11 @@ class Target {
 		this.depthClear = depth;
 	}
 
-	public setupColorRenderbuffer(format: Format) {
+	public setupColorRenderbuffer(format: TextureFormat) {
 		return this.attachRenderbuffer(this.colorAttachment, format, this.gl.COLOR_ATTACHMENT0);
 	}
 
-	public setupColorTexture(format: Format) {
+	public setupColorTexture(format: TextureFormat) {
 		const gl = this.gl;
 		const texture = this.attachTexture(this.colorAttachment, format, gl.COLOR_ATTACHMENT0);
 
@@ -807,11 +799,11 @@ class Target {
 		return texture;
 	}
 
-	public setupDepthRenderbuffer(format: Format) {
+	public setupDepthRenderbuffer(format: TextureFormat) {
 		return this.attachRenderbuffer(this.depthAttachment, format, this.gl.DEPTH_ATTACHMENT);
 	}
 
-	public setupDepthTexture(format: Format) {
+	public setupDepthTexture(format: TextureFormat) {
 		return this.attachTexture(this.depthAttachment, format, this.gl.DEPTH_ATTACHMENT);
 	}
 
@@ -851,7 +843,7 @@ class Target {
 		return framebuffer;
 	}
 
-	private attachRenderbuffer(attachment: Attachment, format: Format, target: number) {
+	private attachRenderbuffer(attachment: Attachment, format: TextureFormat, target: number) {
 		const framebuffer = this.attachFramebuffer();
 		const gl = this.gl;
 
@@ -878,7 +870,7 @@ class Target {
 		return renderbuffer;
 	}
 
-	private attachTexture(attachment: Attachment, format: Format, target: number) {
+	private attachTexture(attachment: Attachment, format: TextureFormat, target: number) {
 		const framebuffer = this.attachFramebuffer();
 		const gl = this.gl;
 
@@ -912,4 +904,4 @@ class Target {
 	}
 }
 
-export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, TextureType, Transform, loadMesh, loadTextureCube, loadTextureQuad }
+export { Attribute, Painter, DirectionalLight, Directive, TextureFormat, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, TextureType, Transform, loadMesh, loadTextureCube, loadTextureQuad }

@@ -547,7 +547,7 @@ class Pipeline implements webgl.Pipeline {
 			: new materialPainter.Painter(materialClassifier, material => loadLight(gl, materialConfigurator(configuration, material), configuration));
 		this.maxDirectionalLights = maxDirectionalLights;
 		this.maxPointLights = maxPointLights;
-		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.Format.Depth16));
+		this.shadowBuffers = targets.map(target => target.setupDepthTexture(webgl.TextureFormat.Depth16));
 		this.shadowPainter = new singularPainter.Painter(loadShadow(gl));
 		this.shadowProjectionMatrix = matrix.Matrix4.createOrthographic(-10, 10, -10, 10, -10, 20);
 		this.shadowTargets = targets;
