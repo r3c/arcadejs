@@ -115,6 +115,11 @@ type PropertyBinding<T> = (source: T) => void;
 interface Scene {
 	ambientLightColor?: vector.Vector3,
 	directionalLights?: DirectionalLight[],
+	environmentLight?: {
+		brdf: WebGLTexture,
+		diffuse: WebGLTexture,
+		specular: WebGLTexture
+	},
 	pointLights?: PointLight[],
 	subjects: Subject[]
 }

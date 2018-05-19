@@ -113,13 +113,14 @@ void main(void) {
 const lightFragmentShader = `
 ${lightHeaderShader}
 
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
-${normal.perturbDeclare("FORCE_NORMAL_MAP")}
-${pbr.lightDeclare}
-${phong.getDiffusePowerDeclare}
-${phong.getSpecularPowerDeclare}
 ${rgb.linearToStandardDeclare}
 ${rgb.standardToLinearDeclare}
+
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
+${normal.perturbDeclare("FORCE_NORMAL_MAP")}
+${phong.getDiffusePowerDeclare}
+${phong.getSpecularPowerDeclare}
+${pbr.lightDeclare("LIGHT_MODEL_PBR_IBL")}
 
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
@@ -146,6 +147,10 @@ uniform sampler2D roughnessMap;
 uniform bool roughnessMapEnabled;
 uniform float roughnessStrength;
 uniform float shininess;
+
+uniform sampler2D environmentBrdfMap;
+uniform samplerCube environmentDiffuseMap;
+uniform samplerCube environmentSpecularMap;
 
 in vec3 bitangent;
 in vec2 coord;
@@ -177,7 +182,7 @@ vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirectio
 		float roughnessSample = ${directive.getBooleanOrUniform("FORCE_ROUGHNESS_MAP", "roughnessMapEnabled")} ? texture(roughnessMap, coord).r : 1.0;
 		float roughness = clamp(roughnessSample * roughnessStrength, 0.04, 1.0);
 
-		return ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "roughness", "metalness")};
+		return ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "metalness", "roughness", "LIGHT_MODEL_PBR_IBL", "environmentBrdfMap", "environmentDiffuseMap", "environmentSpecularMap")};
 	#endif
 }
 
@@ -195,7 +200,7 @@ void main(void) {
 		: albedoFactor.rgb;
 
 	// Apply ambient component
-	vec3 color = albedo * ambientLightColor * float(LIGHT_MODEL_AMBIENT);
+	vec3 color = albedo * ambientLightColor * float(LIGHT_AMBIENT);
 
 	// Apply components from directional lights
 	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
@@ -272,6 +277,7 @@ interface LightConfiguration {
 	lightModelPhongNoDiffuse?: boolean,
 	lightModelPhongNoSpecular?: boolean,
 	lightModelPhysicalNoAmbient?: boolean,
+	lightModelPhysicalNoIBL?: boolean,
 	maxDirectionalLights?: number,
 	maxPointLights?: number,
 	noShadow?: boolean
@@ -280,6 +286,11 @@ interface LightConfiguration {
 interface LightState extends State {
 	ambientLightColor: vector.Vector3,
 	directionalLights: DirectionalLight[],
+	environmentLight?: {
+		brdf: WebGLTexture,
+		diffuse: WebGLTexture,
+		specular: WebGLTexture
+	},
 	pointLights: webgl.PointLight[], // FIXME: extend PointLight with extra properties
 	projectionMatrix: matrix.Matrix4,
 	shadowProjectionMatrix: matrix.Matrix4
@@ -319,14 +330,17 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 
 	switch (lightConfiguration.lightModel) {
 		case LightModel.Phong:
-			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: lightConfiguration.lightModelPhongNoAmbient ? 0 : 1 });
+			directives.push({ name: "LIGHT_AMBIENT", value: lightConfiguration.lightModelPhongNoAmbient ? 0 : 1 });
 			directives.push({ name: "LIGHT_MODEL_PHONG_DIFFUSE", value: lightConfiguration.lightModelPhongNoDiffuse ? 0 : 1 });
 			directives.push({ name: "LIGHT_MODEL_PHONG_SPECULAR", value: lightConfiguration.lightModelPhongNoSpecular ? 0 : 1 });
 
 			break;
 
 		case LightModel.Physical:
-			directives.push({ name: "LIGHT_MODEL_AMBIENT", value: lightConfiguration.lightModelPhysicalNoAmbient ? 0 : 1 });
+			if (!lightConfiguration.lightModelPhysicalNoIBL)
+				directives.push({ name: "LIGHT_MODEL_PBR_IBL", value: 1 });
+
+			directives.push({ name: "LIGHT_AMBIENT", value: lightConfiguration.lightModelPhysicalNoAmbient ? 0 : 1 });
 
 			break;
 	}
@@ -408,6 +422,12 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 			break;
 
 		case LightModel.Physical:
+			if (!lightConfiguration.lightModelPhysicalNoIBL) {
+				shader.setupTexturePerTarget("environmentBrdfMap", undefined, webgl.TextureType.Quad, state => state.environmentLight !== undefined ? state.environmentLight.brdf : undefined);
+				shader.setupTexturePerTarget("environmentDiffuseMap", undefined, webgl.TextureType.Cube, state => state.environmentLight !== undefined ? state.environmentLight.diffuse : undefined);
+				shader.setupTexturePerTarget("environmentSpecularMap", undefined, webgl.TextureType.Cube, state => state.environmentLight !== undefined ? state.environmentLight.specular : undefined);
+			}
+
 			if (materialConfiguration.forceMetalnessMap !== false)
 				shader.setupTexturePerMaterial("metalnessMap", materialConfiguration.forceMetalnessMap !== true ? "metalnessMapEnabled" : undefined, webgl.TextureType.Quad, material => material.metalnessMap);
 
@@ -587,6 +607,7 @@ class Pipeline implements webgl.Pipeline {
 		this.lightPainter.paint(target, scene.subjects, transform.viewMatrix, {
 			ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
 			directionalLights: directionalLightStates,
+			environmentLight: scene.environmentLight,
 			pointLights: pointLights,
 			projectionMatrix: transform.projectionMatrix,
 			shadowProjectionMatrix: this.shadowProjectionMatrix,
