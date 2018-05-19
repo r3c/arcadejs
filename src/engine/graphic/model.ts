@@ -17,6 +17,13 @@ interface Bounds {
 	zMin: number
 }
 
+interface Filter {
+	magnifier: Interpolation,
+	minifier: Interpolation,
+	mipmap: boolean,
+	wrap: Wrap
+}
+
 interface Geometry {
 	colors?: Attribute,
 	coords?: Attribute,
@@ -64,11 +71,8 @@ interface Node {
 }
 
 interface Texture {
-	image: ImageData,
-	magnifier: Interpolation,
-	minifier: Interpolation,
-	mipmap: boolean,
-	wrap: Wrap
+	filter: Filter,
+	image: ImageData
 }
 
 const enum Wrap {
@@ -82,6 +86,13 @@ const defaultColor: vector.Vector4 = {
 	y: 1,
 	z: 1,
 	w: 1
+};
+
+const defaultFilter: Filter = {
+	magnifier: Interpolation.Nearest,
+	minifier: Interpolation.Nearest,
+	mipmap: false,
+	wrap: Wrap.Clamp
 };
 
 const reduceNode = <TState>(nodes: Node[], parent: matrix.Matrix4, state: TState, reduce: (previous: TState, geometry: Geometry, transform: matrix.Matrix4) => TState) => {
@@ -130,4 +141,4 @@ const computeBounds = (mesh: Mesh) => {
 	}));
 };
 
-export { Array, Attribute, Geometry, Interpolation, Material, Mesh, Node, Texture, Wrap, computeBounds, defaultColor }
+export { Array, Attribute, Filter, Geometry, Interpolation, Material, Mesh, Node, Texture, Wrap, computeBounds, defaultColor, defaultFilter }

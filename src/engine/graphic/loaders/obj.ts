@@ -281,12 +281,14 @@ const loadObject = async (data: string, fileName: string) => {
 	};
 };
 
-const loadTexture = async (fileName: string, textureName: string) => ({
-	image: await image.loadFromURL(path.combine(path.directory(fileName), textureName)),
-	magnifier: model.Interpolation.Linear,
-	minifier: model.Interpolation.Linear,
-	mipmap: true,
-	wrap: model.Wrap.Clamp
+const loadTexture = async (fileName: string, textureName: string): Promise<model.Texture> => ({
+	filter: {
+		magnifier: model.Interpolation.Linear,
+		minifier: model.Interpolation.Linear,
+		mipmap: true,
+		wrap: model.Wrap.Repeat
+	},
+	image: await image.loadFromURL(path.combine(path.directory(fileName), textureName))
 });
 
 const parseFace = (face: string) => {

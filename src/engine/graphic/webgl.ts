@@ -148,10 +148,7 @@ type UniformValueSetter<T> = (location: WebGLUniformLocation, value: T) => void;
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
-const configureRenderbuffer = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer | null, width: number, height: number, format: Format, samples: number) => {
-	if (renderbuffer === null)
-		throw Error("could not create render buffer");
-
+const renderbufferConfigure = (gl: WebGLRenderingContext, renderbuffer: WebGLRenderbuffer, width: number, height: number, format: Format, samples: number) => {
 	gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
 
 	let glInternal: number;
@@ -181,83 +178,13 @@ const configureRenderbuffer = (gl: WebGLRenderingContext, renderbuffer: WebGLRen
 	return renderbuffer;
 };
 
-const configureTexture = (gl: WebGLRenderingContext, texture: WebGLTexture | null, width: number, height: number, format: Format, source: model.Texture | undefined) => {
-	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
+const renderbufferCreate = (gl: WebGLRenderingContext) => {
+	const renderbuffer = gl.createRenderbuffer();
 
-	if (texture === null)
-		throw Error("could not create texture");
+	if (renderbuffer === null)
+		throw Error("could not create renderbuffer");
 
-	gl.bindTexture(gl.TEXTURE_2D, texture);
-
-	// Define texture format
-	let glFormat: number;
-	let glInternal: number;
-	let glType: number;
-
-	switch (format) {
-		case Format.Depth16:
-			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
-				throw Error("depth texture WebGL extension is not available");
-
-			glFormat = gl.DEPTH_COMPONENT;
-			glInternal = gl.DEPTH_COMPONENT16;
-			glType = gl.UNSIGNED_SHORT;
-
-			break;
-
-		case Format.RGBA8:
-			glFormat = gl.RGBA;
-			glInternal = (<any>gl).RGBA8; // FIXME: incomplete @type for WebGL2
-			glType = gl.UNSIGNED_BYTE;
-
-			break;
-
-		default:
-			throw Error(`invalid texture format ${format}`);
-	}
-
-	// Define texture filtering
-	const glMagnifierFilter = functional.coalesce(functional.map(source, t => t.magnifier), model.Interpolation.Nearest) === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
-	const glMinifierFilter = functional.coalesce(functional.map(source, t => t.minifier), model.Interpolation.Nearest) === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
-	const glMipmapFilter = functional.coalesce(functional.map(source, t => t.minifier), model.Interpolation.Nearest) === model.Interpolation.Linear ? gl.NEAREST_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_NEAREST;
-
-	// Define texture wrapping
-	let glWrap: number;
-
-	switch (functional.coalesce(functional.map(source, t => t.wrap), model.Wrap.Clamp)) {
-		case model.Wrap.Mirror:
-			glWrap = gl.MIRRORED_REPEAT;
-
-			break;
-
-		case model.Wrap.Repeat:
-			glWrap = gl.REPEAT;
-
-			break;
-
-		default:
-			glWrap = gl.CLAMP_TO_EDGE;
-
-			break;
-	}
-
-	// TODO: remove unwanted wrapping of "pixels" array when https://github.com/KhronosGroup/WebGL/issues/1533 is fixed
-	gl.texImage2D(gl.TEXTURE_2D, 0, glInternal, width, height, 0, glFormat, glType, source !== undefined ? new Uint8Array(source.image.data) : null);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, glMagnifierFilter);
-
-	if (source !== undefined && source.mipmap && isPowerOfTwo) {
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, glMipmapFilter);
-		gl.generateMipmap(gl.TEXTURE_2D);
-	}
-	else {
-		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, glMinifierFilter);
-	}
-
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, glWrap);
-	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, glWrap);
-	gl.bindTexture(gl.TEXTURE_2D, null);
-
-	return texture;
+	return renderbuffer;
 };
 
 const convertBuffer = (gl: WebGLRenderingContext, target: number, values: model.Array) => {
@@ -293,6 +220,118 @@ const convertType = (gl: WebGLRenderingContext, array: model.Array) => {
 		return gl.UNSIGNED_BYTE;
 
 	throw Error(`unsupported array type for indices`);
+};
+
+const textureConfigure = (gl: WebGLRenderingContext, texture: WebGLTexture, type: TextureType, width: number, height: number, format: Format, filter: model.Filter, image: ImageData | ImageData[] | undefined) => {
+	const isPowerOfTwo = ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
+	const target = textureGetTarget(gl, type);
+
+	gl.bindTexture(target, texture);
+
+	// Define texture format
+	let glFormat: number;
+	let glInternal: number;
+	let glType: number;
+
+	switch (format) {
+		case Format.Depth16:
+			if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
+				throw Error("depth texture WebGL extension is not available");
+
+			glFormat = gl.DEPTH_COMPONENT;
+			glInternal = gl.DEPTH_COMPONENT16;
+			glType = gl.UNSIGNED_SHORT;
+
+			break;
+
+		case Format.RGBA8:
+			glFormat = gl.RGBA;
+			glInternal = (<any>gl).RGBA8; // FIXME: incomplete @type for WebGL2
+			glType = gl.UNSIGNED_BYTE;
+
+			break;
+
+		default:
+			throw Error(`invalid texture format ${format}`);
+	}
+
+	// Define texture filtering & wrapping parameters
+	const magnifierFilter = filter.magnifier === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+	const minifierFilter = filter.minifier === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+	const mipmapFilter = filter.minifier === model.Interpolation.Linear ? gl.NEAREST_MIPMAP_LINEAR : gl.NEAREST_MIPMAP_NEAREST;
+	const wrap = textureGetWrap(gl, filter.wrap);
+
+	gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
+	gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, filter !== undefined && filter.mipmap && isPowerOfTwo ? mipmapFilter : minifierFilter);
+	gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
+	gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
+
+	if (image === undefined) {
+		gl.texImage2D(target, 0, glInternal, width, height, 0, glFormat, glType, null);
+	}
+	else if ((<ImageData>image).data) {
+		// TODO: remove unwanted wrapping of "pixels" array when https://github.com/KhronosGroup/WebGL/issues/1533 is fixed
+		gl.texImage2D(target, 0, glInternal, width, height, 0, glFormat, glType, new Uint8Array((<ImageData>image).data));
+	}
+	else if ((<ImageData[]>image).length !== undefined) {
+		const images = (<ImageData[]>image);
+		const targets = [
+			gl.TEXTURE_CUBE_MAP_POSITIVE_X,
+			gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
+			gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
+			gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
+			gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
+			gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
+		];
+
+		for (let i = 0; i < targets.length; ++i)
+			gl.texImage2D(targets[i], 0, glInternal, width, height, 0, glFormat, glType, new Uint8Array((<ImageData>images[i]).data));
+	}
+
+	if (filter.mipmap && isPowerOfTwo)
+		gl.generateMipmap(target);
+
+	gl.bindTexture(target, null);
+
+	return texture;
+};
+
+const textureCreate = (gl: WebGLRenderingContext) => {
+	const texture = gl.createTexture();
+
+	if (texture === null)
+		throw Error("could not create texture");
+
+	return texture;
+};
+
+const textureGetTarget = (gl: WebGLRenderingContext, type: TextureType) => {
+	switch (type) {
+		case TextureType.Cube:
+			return gl.TEXTURE_CUBE_MAP;
+
+		case TextureType.Quad:
+			return gl.TEXTURE_2D;
+
+		default:
+			throw Error(`unknown texture type ${type}`);
+	}
+};
+
+const textureGetWrap = (gl: WebGLRenderingContext, wrap: model.Wrap) => {
+	switch (wrap) {
+		case model.Wrap.Clamp:
+			return gl.CLAMP_TO_EDGE;
+
+		case model.Wrap.Mirror:
+			return gl.MIRRORED_REPEAT;
+
+		case model.Wrap.Repeat:
+			return gl.REPEAT;
+
+		default:
+			throw Error(`unknown texture wrap mode ${wrap}`);
+	}
 };
 
 const invalidAttributeBinding = (name: string) => Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
@@ -343,7 +382,7 @@ const loadGeometry = (gl: WebGLRenderingContext, geometry: model.Geometry, mater
 };
 
 const loadMaterial = (gl: WebGLRenderingContext, id: string, material: model.Material) => {
-	const toColorMap = (texture: model.Texture) => configureTexture(gl, gl.createTexture(), texture.image.width, texture.image.height, Format.RGBA8, texture);
+	const toColorMap = (texture: model.Texture) => textureConfigure(gl, textureCreate(gl), TextureType.Quad, texture.image.width, texture.image.height, Format.RGBA8, texture.filter, texture.image);
 
 	return {
 		albedoFactor: vector.Vector4.toArray(material.albedoFactor || colorWhite),
@@ -399,14 +438,15 @@ const loadNode = (gl: WebGLRenderingContext, node: model.Node, materials: { [nam
 	transform: node.transform
 });
 
-const loadTexture = (gl: WebGLRenderingContext, image: ImageData): WebGLTexture => {
-	return configureTexture(gl, gl.createTexture(), image.width, image.height, Format.RGBA8, {
-		image: image,
-		magnifier: model.Interpolation.Nearest,
-		minifier: model.Interpolation.Nearest,
-		mipmap: false,
-		wrap: model.Wrap.Clamp
-	});
+const loadTextureCube = (gl: WebGLRenderingContext, images: ImageData[], filter?: model.Filter): WebGLTexture => {
+	if (images.length !== 6)
+		throw Error(`cube texture requires 6 images`);
+
+	return textureConfigure(gl, textureCreate(gl), TextureType.Cube, images[0].width, images[0].height, Format.RGBA8, functional.coalesce(filter, model.defaultFilter), images);
+};
+
+const loadTextureQuad = (gl: WebGLRenderingContext, image: ImageData, filter?: model.Filter): WebGLTexture => {
+	return textureConfigure(gl, textureCreate(gl), TextureType.Quad, image.width, image.height, Format.RGBA8, functional.coalesce(filter, model.defaultFilter), image);
 };
 
 class Shader<State> {
@@ -584,7 +624,7 @@ class Shader<State> {
 		const enabledLocation = functional.map(enabledName, name => this.findUniform(name));
 		const gl = this.gl;
 		const samplerLocation = this.findUniform(samplerName);
-		const target = Shader.getTextureTarget(gl, type);
+		const target = textureGetTarget(gl, type);
 
 		if (enabledLocation !== undefined) {
 			return (source: TSource, textureIndex: number) => {
@@ -668,19 +708,6 @@ class Shader<State> {
 
 		return shader;
 	}
-
-	private static getTextureTarget(gl: WebGLRenderingContext, type: TextureType) {
-		switch (type) {
-			case TextureType.Cube:
-				return gl.TEXTURE_CUBE_MAP;
-
-			case TextureType.Quad:
-				return gl.TEXTURE_2D;
-
-			default:
-				throw Error(`unknown texture type ${type}`);
-		}
-	}
 }
 
 class Target {
@@ -739,11 +766,11 @@ class Target {
 		for (const attachment of [this.colorAttachment, this.depthAttachment]) {
 			// Resize existing renderbuffer attachment if any
 			if (attachment.renderbuffer !== undefined)
-				configureRenderbuffer(gl, attachment.renderbuffer.handle, width, height, attachment.renderbuffer.format, 1);
+				renderbufferConfigure(gl, attachment.renderbuffer.handle, width, height, attachment.renderbuffer.format, 1);
 
 			// Resize previously existing texture attachments if any
 			for (const texture of attachment.textures)
-				configureTexture(gl, texture.handle, width, height, texture.format, undefined);
+				textureConfigure(gl, texture.handle, TextureType.Quad, width, height, texture.format, model.defaultFilter, undefined);
 		}
 
 		this.viewHeight = height;
@@ -833,7 +860,7 @@ class Target {
 		Target.clearTextureAttachments(gl, attachment);
 
 		// Create renderbuffer attachment
-		const renderbuffer = configureRenderbuffer(gl, gl.createRenderbuffer(), this.viewWidth, this.viewHeight, format, 1);
+		const renderbuffer = renderbufferConfigure(gl, renderbufferCreate(gl), this.viewWidth, this.viewHeight, format, 1);
 
 		attachment.renderbuffer = {
 			format: format,
@@ -859,7 +886,15 @@ class Target {
 		Target.clearRenderbufferAttachments(gl, attachment);
 
 		// Create and append new texture attachment
-		const texture = configureTexture(gl, gl.createTexture(), this.viewWidth, this.viewHeight, format, undefined);
+		const filter = {
+			magnifier: model.Interpolation.Nearest,
+			minifier: model.Interpolation.Nearest,
+			mipmap: false,
+			wrap: model.Wrap.Clamp
+		};
+
+		const texture = textureConfigure(gl, textureCreate(gl), TextureType.Quad, this.viewWidth, this.viewHeight, format, filter, undefined);
+
 		const offset = attachment.textures.push({
 			format: format,
 			handle: texture
@@ -877,4 +912,4 @@ class Target {
 	}
 }
 
-export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, TextureType, Transform, loadMesh, loadTexture }
+export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, TextureType, Transform, loadMesh, loadTextureCube, loadTextureQuad }
