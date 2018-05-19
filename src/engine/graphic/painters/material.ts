@@ -21,12 +21,15 @@ interface ShaderBatch<State> {
 	shader: webgl.Shader<State>
 }
 
+type MaterialClassifier<State> = (material: webgl.Material, state: State) => number;
+type ShaderConstructor<State> = (material: webgl.Material, state: State) => webgl.Shader<State>;
+
 class Painter<State> implements webgl.Painter<State> {
-	private readonly materialClassifier: (material: webgl.Material) => number;
-	private readonly shaderConstructor: (material: webgl.Material) => webgl.Shader<State>;
+	private readonly materialClassifier: MaterialClassifier<State>;
+	private readonly shaderConstructor: ShaderConstructor<State>;
 	private readonly shaderRepository: webgl.Shader<State>[];
 
-	public constructor(materialClassifier: (material: webgl.Material) => number, shaderConstructor: (material: webgl.Material) => webgl.Shader<State>) {
+	public constructor(materialClassifier: MaterialClassifier<State>, shaderConstructor: ShaderConstructor<State>) {
 		this.materialClassifier = materialClassifier;
 		this.shaderConstructor = shaderConstructor;
 		this.shaderRepository = new Array<webgl.Shader<State>>(64);
@@ -38,14 +41,14 @@ class Painter<State> implements webgl.Painter<State> {
 		};
 
 		for (const subject of subjects)
-			this.sort(batch, subject.mesh.nodes, subject.matrix);
+			this.sort(batch, subject.mesh.nodes, subject.matrix, state);
 
 		this.draw(target, batch, view, state);
 	}
 
-	private create(index: number, material: webgl.Material) {
+	private create(index: number, material: webgl.Material, state: State) {
 		if (this.shaderRepository[index] === undefined)
-			this.shaderRepository[index] = this.shaderConstructor(material);
+			this.shaderRepository[index] = this.shaderConstructor(material, state);
 
 		return this.shaderRepository[index];
 	}
@@ -85,22 +88,22 @@ class Painter<State> implements webgl.Painter<State> {
 		}
 	}
 
-	private sort(batch: RootBatch<State>, nodes: Iterable<webgl.Node>, parent: matrix.Matrix4) {
+	private sort(batch: RootBatch<State>, nodes: Iterable<webgl.Node>, parent: matrix.Matrix4, state: State) {
 		for (const node of nodes) {
 			const transform = parent.compose(node.transform);
 
-			this.sort(batch, node.children, transform);
+			this.sort(batch, node.children, transform, state);
 
 			for (const primitive of node.primitives) {
 				// Get or create shader batch
-				const shaderIndex = this.materialClassifier(primitive.material);
+				const shaderIndex = this.materialClassifier(primitive.material, state);
 
 				let shaderBatch = batch.shaders[shaderIndex];
 
 				if (shaderBatch === undefined) {
 					shaderBatch = {
 						materials: {},
-						shader: this.create(shaderIndex, primitive.material)
+						shader: this.create(shaderIndex, primitive.material, state)
 					};
 
 					batch.shaders[shaderIndex] = shaderBatch;
