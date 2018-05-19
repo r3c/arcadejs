@@ -24,26 +24,20 @@ const encodeInvoke = (decoded: string) =>
 
 const perturbDeclare = (forceFlag: string) => `
 #ifndef ${forceFlag}
-vec3 normalPerturb(in sampler2D normalMap, in bool normalMapEnabled, in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
-	vec3 normalFace = normalMapEnabled
-		? normalize(2.0 * texture(normalMap, coord).rgb - 1.0)
-		: vec3(0.0, 0.0, 1.0);
-
-	return normalize(normalFace.x * t + normalFace.y * b + normalFace.z * n);
-}
+	vec3 normalPerturb(in sampler2D normalMap, in bool normalMapEnabled, in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
+		vec3 normalFace = normalMapEnabled
+			? normalize(2.0 * texture(normalMap, coord).rgb - 1.0)
+			: vec3(0.0, 0.0, 1.0);
 #elif ${forceFlag}
-vec3 normalPerturb(in sampler2D normalMap, in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
-	vec3 normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
-
-	return normalize(normalFace.x * t + normalFace.y * b + normalFace.z * n);
-}
+	vec3 normalPerturb(in sampler2D normalMap, in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
+		vec3 normalFace = normalize(2.0 * texture(normalMap, coord).rgb - 1.0);
 #else
-vec3 normalPerturb(in vec3 t, in vec3 b, in vec3 n) {
-	vec3 normalFace = vec3(0.0, 0.0, 1.0);
+	vec3 normalPerturb(in vec3 t, in vec3 b, in vec3 n) {
+		vec3 normalFace = vec3(0.0, 0.0, 1.0);
+#endif
 
 	return normalize(normalFace.x * t + normalFace.y * b + normalFace.z * n);
 }
-#endif
 `;
 
 const perturbInvoke = (forceFlag: string, normalMap: string, normalMapEnabled: string, coord: string, t: string, b: string, n: string) => `
