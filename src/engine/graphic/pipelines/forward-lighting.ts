@@ -393,14 +393,14 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 
 	// Bind material uniforms
 	if (materialConfiguration.forceAlbedoMap !== false)
-		shader.setupTexturePerMaterial("albedoMap", materialConfiguration.forceAlbedoMap !== true ? "albedoMapEnabled" : undefined, material => material.albedoMap);
+		shader.setupTexturePerMaterial("albedoMap", materialConfiguration.forceAlbedoMap !== true ? "albedoMapEnabled" : undefined, webgl.TextureType.Quad, material => material.albedoMap);
 
 	shader.setupPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
 
 	switch (lightConfiguration.lightModel) {
 		case LightModel.Phong:
 			if (materialConfiguration.forceGlossMap !== false)
-				shader.setupTexturePerMaterial("glossMap", materialConfiguration.forceGlossMap !== true ? "glossMapEnabled" : undefined, material => material.glossMap);
+				shader.setupTexturePerMaterial("glossMap", materialConfiguration.forceGlossMap !== true ? "glossMapEnabled" : undefined, webgl.TextureType.Quad, material => material.glossMap);
 
 			shader.setupPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
 			shader.setupPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
@@ -409,10 +409,10 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 
 		case LightModel.Physical:
 			if (materialConfiguration.forceMetalnessMap !== false)
-				shader.setupTexturePerMaterial("metalnessMap", materialConfiguration.forceMetalnessMap !== true ? "metalnessMapEnabled" : undefined, material => material.metalnessMap);
+				shader.setupTexturePerMaterial("metalnessMap", materialConfiguration.forceMetalnessMap !== true ? "metalnessMapEnabled" : undefined, webgl.TextureType.Quad, material => material.metalnessMap);
 
 			if (materialConfiguration.forceRoughnessMap !== false)
-				shader.setupTexturePerMaterial("roughnessMap", materialConfiguration.forceRoughnessMap !== true ? "roughnessMapEnabled" : undefined, material => material.roughnessMap);
+				shader.setupTexturePerMaterial("roughnessMap", materialConfiguration.forceRoughnessMap !== true ? "roughnessMapEnabled" : undefined, webgl.TextureType.Quad, material => material.roughnessMap);
 
 			shader.setupPropertyPerMaterial("metalnessStrength", material => material.metalnessStrength, gl => gl.uniform1f);
 			shader.setupPropertyPerMaterial("roughnessStrength", material => material.roughnessStrength, gl => gl.uniform1f);
@@ -421,21 +421,21 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 	}
 
 	if (materialConfiguration.forceEmissiveMap !== false) {
-		shader.setupTexturePerMaterial("emissiveMap", materialConfiguration.forceEmissiveMap !== true ? "emissiveMapEnabled" : undefined, material => material.emissiveMap);
+		shader.setupTexturePerMaterial("emissiveMap", materialConfiguration.forceEmissiveMap !== true ? "emissiveMapEnabled" : undefined, webgl.TextureType.Quad, material => material.emissiveMap);
 		shader.setupPropertyPerMaterial("emissiveFactor", material => material.emissiveFactor, gl => gl.uniform4fv);
 	}
 
 	if (materialConfiguration.forceHeightMap !== false) {
-		shader.setupTexturePerMaterial("heightMap", materialConfiguration.forceHeightMap !== true ? "heightMapEnabled" : undefined, material => material.heightMap);
+		shader.setupTexturePerMaterial("heightMap", materialConfiguration.forceHeightMap !== true ? "heightMapEnabled" : undefined, webgl.TextureType.Quad, material => material.heightMap);
 		shader.setupPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.setupPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (materialConfiguration.forceNormalMap !== false)
-		shader.setupTexturePerMaterial("normalMap", materialConfiguration.forceNormalMap !== true ? "normalMapEnabled" : undefined, material => material.normalMap);
+		shader.setupTexturePerMaterial("normalMap", materialConfiguration.forceNormalMap !== true ? "normalMapEnabled" : undefined, webgl.TextureType.Quad, material => material.normalMap);
 
 	if (materialConfiguration.forceOcclusionMap !== false) {
-		shader.setupTexturePerMaterial("occlusionMap", materialConfiguration.forceOcclusionMap !== true ? "occlusionMapEnabled" : undefined, material => material.occlusionMap);
+		shader.setupTexturePerMaterial("occlusionMap", materialConfiguration.forceOcclusionMap !== true ? "occlusionMapEnabled" : undefined, webgl.TextureType.Quad, material => material.occlusionMap);
 		shader.setupPropertyPerMaterial("occlusionStrength", material => material.occlusionStrength, gl => gl.uniform1f);
 	}
 
@@ -450,9 +450,9 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 		const index = i;
 
 		if (!lightConfiguration.noShadow) {
-			shader.setupPropertyPerTarget(`directionalLights[${i}].castShadow`, state => index < state.directionalLights.length && state.directionalLights[index].shadow ? 1 : 0, gl => gl.uniform1i);
-			shader.setupMatrixPerTarget(`directionalLights[${i}].shadowViewMatrix`, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues(), gl => gl.uniformMatrix4fv);
-			shader.setupTexturePerTarget(`directionalLightShadowMaps[${i}]`, undefined, state => state.directionalLights[index].shadowMap);
+			shader.setupPropertyPerTarget(`directionalLights[${index}].castShadow`, state => index < state.directionalLights.length && state.directionalLights[index].shadow ? 1 : 0, gl => gl.uniform1i);
+			shader.setupMatrixPerTarget(`directionalLights[${index}].shadowViewMatrix`, state => index < state.directionalLights.length ? state.directionalLights[index].shadowViewMatrix.getValues() : matrix.Matrix4.createIdentity().getValues(), gl => gl.uniformMatrix4fv);
+			shader.setupTexturePerTarget(`directionalLightShadowMaps[${index}]`, undefined, webgl.TextureType.Quad, state => state.directionalLights[index].shadowMap);
 		}
 
 		shader.setupPropertyPerTarget(`directionalLights[${i}].color`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].color) : defaultColor, gl => gl.uniform3fv);
