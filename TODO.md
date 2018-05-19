@@ -5,7 +5,6 @@ ToDo
 ----
 
 - Fix "operation requires zeroing texture data" error
-- Implement point light radius in forward rendering
 - Implement directional light shadow maps for deferred {shading,lighting}
 - Implement point light shadow maps
 - Implement smooth shadows
@@ -14,6 +13,8 @@ ToDo
 - Detect canvas resizing and stop violating encapsulation [canvas-resize]
 - Use RGB standard to linear conversion in deferred shader
 - Extract model textures out of materials to factorize bitmaps
+- Split scene update and draw to perform batch sorting only on change
+- Support animated models and load animations from glTF files
 
 Done
 ----
@@ -43,3 +44,4 @@ Done
 - Support specular light color in deferred lighing shader
 - Compute shadow view matrix from light direction and not the opposite in forward renderer
 - Use same tangent space transform methods in forward and deferred renderers
+- Implement point light radius in forward rendering
