@@ -267,17 +267,9 @@ const textureConfigure = (gl: WebGLRenderingContext, texture: WebGLTexture, type
 	}
 	else if ((<ImageData[]>image).length !== undefined) {
 		const images = (<ImageData[]>image);
-		const targets = [
-			gl.TEXTURE_CUBE_MAP_POSITIVE_X,
-			gl.TEXTURE_CUBE_MAP_NEGATIVE_X,
-			gl.TEXTURE_CUBE_MAP_POSITIVE_Y,
-			gl.TEXTURE_CUBE_MAP_NEGATIVE_Y,
-			gl.TEXTURE_CUBE_MAP_POSITIVE_Z,
-			gl.TEXTURE_CUBE_MAP_NEGATIVE_Z
-		];
 
-		for (let i = 0; i < targets.length; ++i)
-			gl.texImage2D(targets[i], 0, nativeFormat.internal, width, height, 0, nativeFormat.format, nativeFormat.type, new Uint8Array((<ImageData>images[i]).data));
+		for (let i = 0; i < 6; ++i)
+			gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, nativeFormat.internal, width, height, 0, nativeFormat.format, nativeFormat.type, new Uint8Array((<ImageData>images[i]).data));
 	}
 
 	if (filter.mipmap && isPowerOfTwo)
@@ -430,11 +422,15 @@ const loadNode = (gl: WebGLRenderingContext, node: model.Node, materials: { [nam
 	transform: node.transform
 });
 
-const loadTextureCube = (gl: WebGLRenderingContext, images: ImageData[], filter?: model.Filter): WebGLTexture => {
-	if (images.length !== 6)
-		throw Error(`cube texture requires 6 images`);
-
-	return textureConfigure(gl, textureCreate(gl), TextureType.Cube, images[0].width, images[0].height, TextureFormat.RGBA8, functional.coalesce(filter, model.defaultFilter), images);
+const loadTextureCube = (gl: WebGLRenderingContext, facePositiveX: ImageData, faceNegativeX: ImageData, facePositiveY: ImageData, faceNegativeY: ImageData, facePositiveZ: ImageData, faceNegativeZ: ImageData, filter?: model.Filter): WebGLTexture => {
+	return textureConfigure(gl, textureCreate(gl), TextureType.Cube, facePositiveX.width, facePositiveX.height, TextureFormat.RGBA8, functional.coalesce(filter, model.defaultFilter), [
+		facePositiveX,
+		faceNegativeX,
+		facePositiveY,
+		faceNegativeY,
+		facePositiveZ,
+		faceNegativeZ
+	]);
 };
 
 const loadTextureQuad = (gl: WebGLRenderingContext, image: ImageData, filter?: model.Filter): WebGLTexture => {
