@@ -314,18 +314,18 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	if (configuration.lightModel === LightModel.Phong) {
-		shader.setupTexturePerMaterial("glossMap", undefined, material => material.glossMap);
+		shader.setupTexturePerMaterial("glossMap", undefined, webgl.TextureType.Quad, material => material.glossMap);
 		shader.setupPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.setupTexturePerMaterial("heightMap", undefined, material => material.heightMap);
+		shader.setupTexturePerMaterial("heightMap", undefined, webgl.TextureType.Quad, material => material.heightMap);
 		shader.setupPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.setupPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}
 
 	if (configuration.useNormalMap)
-		shader.setupTexturePerMaterial("normalMap", undefined, material => material.normalMap);
+		shader.setupTexturePerMaterial("normalMap", undefined, webgl.TextureType.Quad, material => material.normalMap);
 
 	return shader;
 };
@@ -348,8 +348,8 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 
 	shader.setupPropertyPerTarget("viewportSize", state => vector.Vector2.toArray(state.viewportSize), gl => gl.uniform2fv);
 
-	shader.setupTexturePerTarget("depthBuffer", undefined, state => state.depthBuffer);
-	shader.setupTexturePerTarget("normalAndGlossBuffer", undefined, state => state.normalAndGlossBuffer);
+	shader.setupTexturePerTarget("depthBuffer", undefined, webgl.TextureType.Quad, state => state.depthBuffer);
+	shader.setupTexturePerTarget("normalAndGlossBuffer", undefined, webgl.TextureType.Quad, state => state.normalAndGlossBuffer);
 
 	return shader;
 };
@@ -404,18 +404,18 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	shader.setupPropertyPerTarget("ambientLightColor", state => vector.Vector3.toArray(state.ambientLightColor), gl => gl.uniform3fv);
-	shader.setupTexturePerTarget("lightBuffer", undefined, state => state.lightBuffer);
+	shader.setupTexturePerTarget("lightBuffer", undefined, webgl.TextureType.Quad, state => state.lightBuffer);
 
 	shader.setupPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
-	shader.setupTexturePerMaterial("albedoMap", undefined, material => material.albedoMap);
+	shader.setupTexturePerMaterial("albedoMap", undefined, webgl.TextureType.Quad, material => material.albedoMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
 		shader.setupPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
-		shader.setupTexturePerMaterial("glossMap", undefined, material => material.glossMap);
+		shader.setupTexturePerMaterial("glossMap", undefined, webgl.TextureType.Quad, material => material.glossMap);
 	}
 
 	if (configuration.useHeightMap) {
-		shader.setupTexturePerMaterial("heightMap", undefined, material => material.heightMap);
+		shader.setupTexturePerMaterial("heightMap", undefined, webgl.TextureType.Quad, material => material.heightMap);
 		shader.setupPropertyPerMaterial("heightParallaxBias", material => material.heightParallaxBias, gl => gl.uniform1f);
 		shader.setupPropertyPerMaterial("heightParallaxScale", material => material.heightParallaxScale, gl => gl.uniform1f);
 	}

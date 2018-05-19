@@ -127,6 +127,11 @@ interface Subject {
 
 type TextureBinding<T> = (source: T, textureIndex: number) => number;
 
+const enum TextureType {
+	Quad,
+	Cube
+}
+
 interface Transform {
 	projectionMatrix: matrix.Matrix4,
 	viewMatrix: matrix.Matrix4
@@ -541,8 +546,8 @@ class Shader<State> {
 	** not. If second uniform is undefined, texture is assumed to be always
 	** defined.
 	*/
-	public setupTexturePerMaterial(samplerName: string, enabledName: string | undefined, getter: (state: Material) => WebGLTexture | undefined) {
-		this.texturePerMaterialBindings.push(this.declareTexture(samplerName, enabledName, getter));
+	public setupTexturePerMaterial(samplerName: string, enabledName: string | undefined, type: TextureType, getter: (state: Material) => WebGLTexture | undefined) {
+		this.texturePerMaterialBindings.push(this.declareTexture(samplerName, enabledName, type, getter));
 	}
 
 	/*
@@ -550,8 +555,8 @@ class Shader<State> {
 	** method "bindTexturePerMaterial" for details about the optional second
 	** uniform.
 	*/
-	public setupTexturePerTarget(samplerName: string, enabledName: string | undefined, getter: (state: State) => WebGLTexture | undefined) {
-		this.texturePerTargetBindings.push(this.declareTexture(samplerName, enabledName, getter));
+	public setupTexturePerTarget(samplerName: string, enabledName: string | undefined, type: TextureType, getter: (state: State) => WebGLTexture | undefined) {
+		this.texturePerTargetBindings.push(this.declareTexture(samplerName, enabledName, type, getter));
 	}
 
 	private declareMatrix<TSource>(name: string, getter: (state: TSource) => Iterable<number>, assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>) {
@@ -570,10 +575,11 @@ class Shader<State> {
 		return (source: TSource) => method.call(gl, location, getter(source));
 	}
 
-	private declareTexture<TSource>(samplerName: string, enabledName: string | undefined, getter: (source: TSource) => WebGLTexture | undefined) {
+	private declareTexture<TSource>(samplerName: string, enabledName: string | undefined, type: TextureType, getter: (source: TSource) => WebGLTexture | undefined) {
 		const enabledLocation = functional.map(enabledName, name => this.findUniform(name));
 		const gl = this.gl;
 		const samplerLocation = this.findUniform(samplerName);
+		const target = Shader.getTextureTarget(gl, type);
 
 		if (enabledLocation !== undefined) {
 			return (source: TSource, textureIndex: number) => {
@@ -586,7 +592,7 @@ class Shader<State> {
 				}
 
 				gl.activeTexture(gl.TEXTURE0 + textureIndex);
-				gl.bindTexture(gl.TEXTURE_2D, texture);
+				gl.bindTexture(target, texture);
 				gl.uniform1i(enabledLocation, 1);
 				gl.uniform1i(samplerLocation, textureIndex);
 
@@ -601,7 +607,7 @@ class Shader<State> {
 					throw Error(`missing mandatory texture uniform "${samplerName}"`);
 
 				gl.activeTexture(gl.TEXTURE0 + textureIndex);
-				gl.bindTexture(gl.TEXTURE_2D, texture);
+				gl.bindTexture(target, texture);
 				gl.uniform1i(samplerLocation, textureIndex);
 
 				return 1;
@@ -656,6 +662,19 @@ class Shader<State> {
 		}
 
 		return shader;
+	}
+
+	private static getTextureTarget(gl: WebGLRenderingContext, type: TextureType) {
+		switch (type) {
+			case TextureType.Cube:
+				return gl.TEXTURE_CUBE_MAP;
+
+			case TextureType.Quad:
+				return gl.TEXTURE_2D;
+
+			default:
+				throw Error(`unknown texture type ${type}`);
+		}
 	}
 }
 
@@ -853,4 +872,4 @@ class Target {
 	}
 }
 
-export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, Transform, loadMesh, loadTexture }
+export { Attribute, Painter, DirectionalLight, Directive, Format, Geometry, Material, Mesh, Node, PointLight, Pipeline, Scene, Shader, Subject, Target, TextureType, Transform, loadMesh, loadTexture }

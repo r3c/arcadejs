@@ -141,7 +141,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 	shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
 	shader.setupAttributePerGeometry("points", geometry => geometry.points);
 
-	shader.setupTexturePerTarget("source", undefined, state => state.source);
+	shader.setupTexturePerTarget("source", undefined, webgl.TextureType.Quad, state => state.source);
 
 	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
 
