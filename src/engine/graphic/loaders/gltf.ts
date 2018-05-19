@@ -146,11 +146,13 @@ const expandAccessor = (url: string, accessor: Accessor, cardinality: number, ty
 const expandMaterial = (material: Material): model.Material => {
 	const toMap = (textureOrUndefined: Texture | undefined, channels?: image.Channel[]) =>
 		functional.map(textureOrUndefined, texture => ({
-			image: channels !== undefined ? image.mapChannels(texture.image, channels) : texture.image,
-			magnifier: texture.sampler.magnifier,
-			minifier: texture.sampler.minifier,
-			mipmap: texture.sampler.mipmap,
-			wrap: texture.sampler.wrap
+			filter: {
+				magnifier: texture.sampler.magnifier,
+				minifier: texture.sampler.minifier,
+				mipmap: texture.sampler.mipmap,
+				wrap: texture.sampler.wrap
+			},
+			image: channels !== undefined ? image.mapChannels(texture.image, channels) : texture.image
 		}));
 
 	return {

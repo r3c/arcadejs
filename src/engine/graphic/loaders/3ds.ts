@@ -156,11 +156,13 @@ const readMaterialMap = async (context: Context, end: number, chunk: number, sta
 	switch (chunk) {
 		case 0xa300:
 			return {
-				image: await image.loadFromURL(path.combine(context.directory, context.codec.decode(context.reader.readBufferZero()))),
-				magnifier: model.Interpolation.Linear,
-				minifier: model.Interpolation.Linear,
-				mipmap: true,
-				wrap: model.Wrap.Clamp
+				filter: {
+					magnifier: model.Interpolation.Linear,
+					minifier: model.Interpolation.Linear,
+					mipmap: true,
+					wrap: model.Wrap.Repeat
+				},
+				image: await image.loadFromURL(path.combine(context.directory, context.codec.decode(context.reader.readBufferZero())))
 			};
 	}
 
