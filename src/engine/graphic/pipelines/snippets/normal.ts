@@ -26,7 +26,7 @@ const encodeInvoke = (decoded: string) =>
 
 const perturbDeclare = (samplerEnableDirective: string, samplerEnableUniform: string, sampler: string) => `
 vec3 normalPerturb(in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
-	vec3 normalFace = ${compiler.getBooleanDirectiveOrUniform(samplerEnableDirective, samplerEnableUniform)}
+	vec3 normalFace = bool(${compiler.getDirectiveOrValue(samplerEnableDirective, samplerEnableUniform)})
 		? normalize(2.0 * texture(${sampler}, coord).rgb - 1.0)
 		: vec3(0.0, 0.0, 1.0);
 

@@ -1,30 +1,49 @@
-const directionalType = "DirectionalLight";
+const sourceTypeDirectional = "DirectionalLight";
+const sourceTypePoint = "PointLight";
+const sourceTypeResult = "ResultLight";
 
-const directionalDeclare = (shadowMacro: string) => `
-struct ${directionalType} {
+const sourceDeclare = (shadowMacro: string) => `
+struct ${sourceTypeDirectional} {
 	vec3 color;
 	vec3 direction;
-	float strength;
 #ifdef ${shadowMacro}
 	bool castShadow;
 	mat4 shadowViewMatrix;
 #endif
-};`;
+};
 
-const directionalInvoke = (light: string) =>
-	`(${light}.strength)`;
-
-const pointType = "PointLight";
-
-const pointDeclare = (shadowMacro: string) => `
-struct ${pointType} {
+struct ${sourceTypePoint} {
 	vec3 color;
 	vec3 position;
 	float radius;
-	float strength;
-};`;
+};
 
-const pointInvoke = (light: string, distance: string) =>
-	`(max(1.0 - ${distance} / ${light}.radius, 0.0) * ${light}.strength)`;
+struct ${sourceTypeResult} {
+	vec3 color;
+	vec3 direction;
+	float power;
+};
 
-export { directionalDeclare, directionalInvoke, directionalType, pointDeclare, pointInvoke, pointType }
+${sourceTypeResult} lightSourceDirectional(in ${sourceTypeDirectional} light, in vec3 distanceCamera) {
+	return ${sourceTypeResult}(
+		light.color,
+		normalize(distanceCamera),
+		1.0
+	);
+}
+
+${sourceTypeResult} lightSourcePoint(in ${sourceTypePoint} light, in vec3 distanceCamera) {
+	return ${sourceTypeResult}(
+		light.color,
+		normalize(distanceCamera),
+		max(1.0 - length(distanceCamera) / light.radius, 0.0)
+	);
+}`;
+
+const sourceInvokeDirectional = (light: string, distanceCamera: string) =>
+	`lightSourceDirectional(${light}, ${distanceCamera})`;
+
+const sourceInvokePoint = (light: string, distanceCamera: string) =>
+	`lightSourcePoint(${light}, ${distanceCamera})`;
+
+export { sourceDeclare, sourceInvokeDirectional, sourceInvokePoint, sourceTypeDirectional, sourceTypePoint, sourceTypeResult }

@@ -1,3 +1,4 @@
+import * as light from "./light";
 import * as material from "./material";
 import * as rgb from "./rgb";
 
@@ -60,7 +61,7 @@ vec3 pbrEnvironment(in ${material.sampleType} material, in vec3 normal, in vec3 
 	#endif
 }
 
-vec3 pbrLight(in ${material.sampleType} material, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
+vec3 pbrLight(in ${light.sourceTypeResult} light, in ${material.sampleType} material, in vec3 normal, in vec3 eyeDirection) {
 	vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
 	vec3 specularColor = mix(PBR_F0, material.albedo, material.metalness);
 
@@ -70,11 +71,11 @@ vec3 pbrLight(in ${material.sampleType} material, in vec3 normal, in vec3 eyeDir
 
 	vec3 specularEnvironmentR0 = specularColor.rgb;
 	vec3 specularEnvironmentR90 = vec3(1.0, 1.0, 1.0) * reflectance90;
-	vec3 halfwayDirection = normalize(lightDirection + eyeDirection);
+	vec3 halfwayDirection = normalize(light.direction + eyeDirection);
 
 	float alphaRoughness = material.roughness * material.roughness;
 
-	float NdotL = clamp(dot(normal, lightDirection), 0.001, 1.0);
+	float NdotL = clamp(dot(normal, light.direction), 0.001, 1.0);
 	float NdotV = abs(dot(normal, eyeDirection)) + 0.001;
 	float NdotH = clamp(dot(normal, halfwayDirection), 0.0, 1.0);
 	float VdotH = clamp(dot(eyeDirection, halfwayDirection), 0.0, 1.0);
@@ -89,13 +90,13 @@ vec3 pbrLight(in ${material.sampleType} material, in vec3 normal, in vec3 eyeDir
 	vec3 specularContrib = F * G * D / (4.0 * NdotL * NdotV);
 
 	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
-	return NdotL * lightColor * (diffuseContrib + specularContrib);
+	return light.color * light.power * NdotL * (diffuseContrib + specularContrib);
 }`;
 
 const environmentInvoke = (material: string, normal: string, eyeDirection: string) =>
 	`pbrEnvironment(${material}, ${normal}, ${eyeDirection})`;
 
-const lightInvoke = (material: string, normal: string, eyeDirection: string, lightDirection: string, lightColor: string) =>
-	`pbrLight(${material}, ${normal}, ${eyeDirection}, ${lightDirection}, ${lightColor})`;
+const lightInvoke = (light: string, material: string, normal: string, eyeDirection: string) =>
+	`pbrLight(${light}, ${material}, ${normal}, ${eyeDirection})`;
 
 export { declare, environmentInvoke, lightInvoke }

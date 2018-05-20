@@ -173,9 +173,9 @@ const render = (state: SceneState) => {
 		const debugPipeline = pipelines.debug[tweak.debugMode - 1];
 		const debugScene = debugTexture.Pipeline.createScene([
 			deferredPipeline.depthBuffer,
-			deferredPipeline.normalAndGlossBuffer,
-			deferredPipeline.normalAndGlossBuffer,
-			deferredPipeline.normalAndGlossBuffer,
+			deferredPipeline.normalAndGlossinessBuffer,
+			deferredPipeline.normalAndGlossinessBuffer,
+			deferredPipeline.normalAndGlossinessBuffer,
 			deferredPipeline.lightBuffer,
 			deferredPipeline.lightBuffer,
 		][tweak.debugMode - 1]);

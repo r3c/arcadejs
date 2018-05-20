@@ -47,7 +47,7 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
-uniform sampler2D glossMap;
+uniform sampler2D glossinessMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -65,7 +65,7 @@ in vec3 normal;
 in vec3 point;
 in vec3 tangent;
 
-layout(location=0) out vec4 normalAndGloss;
+layout(location=0) out vec4 normalAndGlossiness;
 
 void main(void) {
 	vec3 t = normalize(tangent);
@@ -75,22 +75,21 @@ void main(void) {
 	vec3 eyeDirection = normalize(-point);
 	vec2 coordParallax = ${parallax.perturbInvoke("coord", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
-	// Color target: [normal, normal, shininess, gloss]
+	// Color target: [normal, normal, shininess, glossiness]
 	vec3 normalModified = ${normal.perturbInvoke("coordParallax", "t", "b", "n")};
 	vec2 normalPack = ${normal.encodeInvoke("normalModified")};
 
-	float gloss = texture(glossMap, coordParallax).r;
+	float glossiness = texture(glossinessMap, coordParallax).r;
 	float shininessPack = ${shininess.encodeInvoke("shininess")};
 
-	normalAndGloss = vec4(normalPack, shininessPack, gloss);
+	normalAndGlossiness = vec4(normalPack, shininessPack, glossiness);
 }`;
 
 const lightHeaderShader = `
-${light.directionalDeclare("HAS_SHADOW")}
-${light.pointDeclare("HAS_SHADOW")}
+${light.sourceDeclare("HAS_SHADOW")}
 
-uniform ${light.directionalType} directionalLight;
-uniform ${light.pointType} pointLight;`;
+uniform ${light.sourceTypeDirectional} directionalLight;
+uniform ${light.sourceTypePoint} pointLight;`;
 
 const lightVertexShader = `
 ${lightHeaderShader}
@@ -101,7 +100,7 @@ uniform mat4 viewMatrix;
 
 in vec4 points;
 
-out vec3 lightDirectionCamera;
+out vec3 lightDistanceCamera;
 out vec3 lightPositionCamera;
 
 vec3 toCameraDirection(in vec3 worldDirection) {
@@ -114,7 +113,7 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 
 void main(void) {
 	#if LIGHT_TYPE == ${LightType.Directional}
-		lightDirectionCamera = toCameraDirection(directionalLight.direction);
+		lightDistanceCamera = toCameraDirection(directionalLight.direction);
 	#elif LIGHT_TYPE == ${LightType.Point}
 		lightPositionCamera = toCameraPosition(pointLight.position);
 	#endif
@@ -125,18 +124,19 @@ void main(void) {
 const lightFragmentShader = `
 ${lightHeaderShader}
 
+#define ZERO 0
+
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
 uniform sampler2D depthBuffer;
-uniform sampler2D normalAndGlossBuffer;
+uniform sampler2D normalAndGlossinessBuffer;
 
 ${normal.decodeDeclare()}
-${phong.getDiffusePowerDeclare()}
-${phong.getSpecularPowerDeclare()}
+${phong.lightDeclare("ZERO", "ZERO")}
 ${shininess.decodeDeclare()}
 
-in vec3 lightDirectionCamera;
+in vec3 lightDistanceCamera;
 in vec3 lightPositionCamera;
 
 layout(location=0) out vec4 fragColor;
@@ -152,13 +152,15 @@ void main(void) {
 	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
 	// Read samples from texture buffers
-	vec4 normalAndGlossSample = texelFetch(normalAndGlossBuffer, bufferCoord, 0);
+	vec4 normalAndGlossinessSample = texelFetch(normalAndGlossinessBuffer, bufferCoord, 0);
 	vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
-	// Decode geometry and material properties from samples
-	vec3 normal = ${normal.decodeInvoke("normalAndGlossSample.rg")};
-	float gloss = normalAndGlossSample.a;
-	float shininess = ${shininess.decodeInvoke("normalAndGlossSample.b")};
+	// Decode geometry
+	vec3 normal = ${normal.decodeInvoke("normalAndGlossinessSample.rg")};
+
+	// Decode material properties
+	float glossiness = normalAndGlossinessSample.a;
+	float shininess = ${shininess.decodeInvoke("normalAndGlossinessSample.b")};
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
@@ -166,20 +168,17 @@ void main(void) {
 
 	// Compute lightning parameters
 	#if LIGHT_TYPE == ${LightType.Directional}
-		vec3 lightColor = directionalLight.color;
-		vec3 lightDirection = normalize(lightDirectionCamera);
-		float lightPower = ${light.directionalInvoke("directionalLight")};
+		${light.sourceTypeResult} light = ${light.sourceInvokeDirectional("directionalLight", "lightDistanceCamera")};
 	#elif LIGHT_TYPE == ${LightType.Point}
-		vec3 lightColor = pointLight.color;
-		vec3 lightDirection = normalize(lightPositionCamera - point);
-		float lightPower = ${light.pointInvoke("pointLight", "length(lightPositionCamera - point)")};
+		${light.sourceTypeResult} light = ${light.sourceInvokePoint("pointLight", "lightPositionCamera - point")};
 	#endif
 
-	float lightDiffusePower = ${phong.getDiffusePowerInvoke("normal", "lightDirection")};
-	float lightSpecularPower = ${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")};
+	float lightDiffusePower = ${phong.lightInvokeDiffusePower("light", "normal")};
+	float lightSpecularPower = ${phong.lightInvokeSpecularPower("light", "glossiness", "shininess", "normal", "eyeDirection")};
 
 	// Emit lighting parameters
-	fragColor = exp2(-vec4(lightDiffusePower * lightColor, lightSpecularPower * gloss) * lightPower);
+	// FIXME: duplicate of "phong.lightInvoke" code
+	fragColor = exp2(-vec4(lightDiffusePower * light.color, lightSpecularPower) * light.power);
 }`;
 
 const materialVertexShader = `
@@ -218,8 +217,8 @@ uniform sampler2D lightBuffer;
 
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
-uniform vec4 glossFactor;
-uniform sampler2D glossMap;
+uniform float glossinessFactor;
+uniform sampler2D glossinessMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -254,10 +253,11 @@ void main(void) {
 	vec2 coordParallax = ${parallax.perturbInvoke("coord", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, coordParallax).rgb")};
-	vec3 gloss = glossFactor.rgb * texture(glossMap, coordParallax).rgb;
+	float glossiness = glossinessFactor * texture(glossinessMap, coordParallax).r;
 
 	// Emit final fragment color
-	vec3 color = albedo * (ambientLight + diffuseLight) + gloss * specularLight;
+	// FIXME: duplicate of "phong.lightInvoke" code
+	vec3 color = albedo * (ambientLight + diffuseLight) + glossiness * specularLight;
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
 }`;
@@ -274,7 +274,7 @@ interface Configuration {
 interface LightState<TLight> extends State {
 	depthBuffer: WebGLTexture,
 	light: TLight,
-	normalAndGlossBuffer: WebGLTexture,
+	normalAndGlossinessBuffer: WebGLTexture,
 	viewportSize: vector.Vector2
 }
 
@@ -314,7 +314,7 @@ const loadGeometry = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
 
 	if (configuration.lightModel === LightModel.Phong) {
-		shader.setupTexturePerMaterial("glossMap", undefined, webgl.TextureType.Quad, material => material.glossMap);
+		shader.setupTexturePerMaterial("glossinessMap", undefined, webgl.TextureType.Quad, material => material.glossMap);
 		shader.setupPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 	}
 
@@ -349,7 +349,7 @@ const loadLight = <T>(gl: WebGLRenderingContext, configuration: Configuration, t
 	shader.setupPropertyPerTarget("viewportSize", state => vector.Vector2.toArray(state.viewportSize), gl => gl.uniform2fv);
 
 	shader.setupTexturePerTarget("depthBuffer", undefined, webgl.TextureType.Quad, state => state.depthBuffer);
-	shader.setupTexturePerTarget("normalAndGlossBuffer", undefined, webgl.TextureType.Quad, state => state.normalAndGlossBuffer);
+	shader.setupTexturePerTarget("normalAndGlossinessBuffer", undefined, webgl.TextureType.Quad, state => state.normalAndGlossinessBuffer);
 
 	return shader;
 };
@@ -359,7 +359,6 @@ const loadLightDirectional = (gl: WebGLRenderingContext, configuration: Configur
 
 	shader.setupPropertyPerTarget("directionalLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("directionalLight.direction", state => vector.Vector3.toArray(state.light.direction), gl => gl.uniform3fv);
-	shader.setupPropertyPerTarget("directionalLight.strength", state => 1, gl => gl.uniform1f);
 
 	return shader;
 };
@@ -370,7 +369,6 @@ const loadLightPoint = (gl: WebGLRenderingContext, configuration: Configuration)
 	shader.setupPropertyPerTarget("pointLight.color", state => vector.Vector3.toArray(state.light.color), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("pointLight.position", state => vector.Vector3.toArray(state.light.position), gl => gl.uniform3fv);
 	shader.setupPropertyPerTarget("pointLight.radius", state => state.light.radius, gl => gl.uniform1f);
-	shader.setupPropertyPerTarget("pointLight.strength", state => 1, gl => gl.uniform1f);
 
 	return shader;
 };
@@ -410,8 +408,8 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 	shader.setupTexturePerMaterial("albedoMap", undefined, webgl.TextureType.Quad, material => material.albedoMap);
 
 	if (configuration.lightModel >= LightModel.Phong) {
-		shader.setupPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
-		shader.setupTexturePerMaterial("glossMap", undefined, webgl.TextureType.Quad, material => material.glossMap);
+		shader.setupPropertyPerMaterial("glossinessFactor", material => material.glossFactor[0], gl => gl.uniform1f);
+		shader.setupTexturePerMaterial("glossinessMap", undefined, webgl.TextureType.Quad, material => material.glossMap);
 	}
 
 	if (configuration.useHeightMap) {
@@ -426,7 +424,7 @@ const loadMaterial = (gl: WebGLRenderingContext, configuration: Configuration) =
 class Pipeline implements webgl.Pipeline {
 	public readonly depthBuffer: WebGLTexture;
 	public readonly lightBuffer: WebGLTexture;
-	public readonly normalAndGlossBuffer: WebGLTexture;
+	public readonly normalAndGlossinessBuffer: WebGLTexture;
 
 	private readonly directionalLightPainter: webgl.Painter<LightState<webgl.DirectionalLight>>;
 	private readonly fullscreenMesh: webgl.Mesh;
@@ -454,7 +452,7 @@ class Pipeline implements webgl.Pipeline {
 		this.lightTarget = light;
 		this.materialPainter = new painter.Painter(loadMaterial(gl, configuration));
 		this.pointLightPainter = new painter.Painter(loadLightPoint(gl, configuration));
-		this.normalAndGlossBuffer = geometry.setupColorTexture(webgl.TextureFormat.RGBA8);
+		this.normalAndGlossinessBuffer = geometry.setupColorTexture(webgl.TextureFormat.RGBA8);
 		this.sphereMesh = webgl.loadMesh(gl, sphere.mesh);
 	}
 
@@ -497,7 +495,7 @@ class Pipeline implements webgl.Pipeline {
 			for (const directionalLight of scene.directionalLights) {
 				this.directionalLightPainter.paint(this.lightTarget, subjects, transform.viewMatrix, {
 					depthBuffer: this.depthBuffer,
-					normalAndGlossBuffer: this.normalAndGlossBuffer,
+					normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
 					light: directionalLight,
 					projectionMatrix: this.fullscreenProjection,
 					viewMatrix: transform.viewMatrix,
@@ -521,7 +519,7 @@ class Pipeline implements webgl.Pipeline {
 
 				this.pointLightPainter.paint(this.lightTarget, subjects, transform.viewMatrix, {
 					depthBuffer: this.depthBuffer,
-					normalAndGlossBuffer: this.normalAndGlossBuffer,
+					normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
 					light: pointLight,
 					projectionMatrix: transform.projectionMatrix,
 					viewMatrix: transform.viewMatrix,

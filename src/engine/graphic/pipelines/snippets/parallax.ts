@@ -4,7 +4,7 @@ const perturbDeclare = (samplerEnableDirective: string, samplerEnableUniform: st
 vec2 heightParallax(in vec2 coord, in vec3 eyeDirection, in float parallaxScale, in float parallaxBias, in vec3 t, in vec3 b, in vec3 n) {
 	vec3 eyeDirectionFace = normalize(vec3(dot(eyeDirection, t), dot(eyeDirection, b), dot(eyeDirection, n)));
 
-	return ${compiler.getBooleanDirectiveOrUniform(samplerEnableDirective, samplerEnableUniform)}
+	return bool(${compiler.getDirectiveOrValue(samplerEnableDirective, samplerEnableUniform)})
 		? coord + (texture(heightMap, coord).r * parallaxScale - parallaxBias) * eyeDirectionFace.xy / eyeDirectionFace.z
 		: coord;
 }`;

@@ -1,9 +1,9 @@
-const getBooleanDirectiveOrUniform = (directive: string, uniform: string) => `
+const getDirectiveOrValue = (directive: string, value: string) => `
 #ifdef ${directive}
-	bool(${directive})
+	${directive}
 #else
-	${uniform}
+	${value}
 #endif
 `;
 
-export { getBooleanDirectiveOrUniform }
+export { getDirectiveOrValue }
