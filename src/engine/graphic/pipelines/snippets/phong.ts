@@ -1,15 +1,15 @@
-const getDiffusePowerDeclare = `
-float phongGetLightDiffuse(in vec3 normal, in vec3 lightDirection) {
+const getDiffusePowerDeclare = () => `
+float phongLightDiffuse(in vec3 normal, in vec3 lightDirection) {
 	float lightNormalCosine = dot(normal, lightDirection);
 
 	return clamp(lightNormalCosine, 0.0, 1.0);
 }`;
 
 const getDiffusePowerInvoke = (normal: string, lightDirection: string) =>
-	`phongGetLightDiffuse(${normal}, ${lightDirection})`;
+	`phongLightDiffuse(${normal}, ${lightDirection})`;
 
-const getSpecularPowerDeclare = `
-float phongGetLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
+const getSpecularPowerDeclare = () => `
+float phongLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
 	float lightNormalCosine = dot(normal, lightDirection);
 	float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
@@ -29,6 +29,6 @@ float phongGetLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeD
 }`;
 
 const getSpecularPowerInvoke = (normal: string, lightDirection: string, eyeDirection: string, shininess: string) =>
-	`phongGetLightSpecular(${normal}, ${lightDirection}, ${eyeDirection}, ${shininess})`;
+	`phongLightSpecular(${normal}, ${lightDirection}, ${eyeDirection}, ${shininess})`;
 
 export { getDiffusePowerDeclare, getDiffusePowerInvoke, getSpecularPowerDeclare, getSpecularPowerInvoke }

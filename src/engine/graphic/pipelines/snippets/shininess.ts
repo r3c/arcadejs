@@ -1,4 +1,4 @@
-const decodeDeclare = `
+const decodeDeclare = () => `
 float shininessDecode(in float encoded) {
 	return 1.0 / encoded;
 }`;
@@ -6,7 +6,7 @@ float shininessDecode(in float encoded) {
 const decodeInvoke = (encoded: string) =>
 	`shininessDecode(${encoded})`;
 
-const encodeDeclare = `
+const encodeDeclare = () => `
 float shininessEncode(in float decoded) {
 	return 1.0 / max(decoded, 1.0);
 }`;

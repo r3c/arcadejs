@@ -47,17 +47,17 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
-${normal.encodeDeclare}
-${normal.perturbDeclare("FORCE_NORMAL_MAP")}
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
-${shininess.encodeDeclare}
-
 uniform sampler2D glossMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 uniform sampler2D normalMap;
 uniform float shininess;
+
+${normal.encodeDeclare()}
+${normal.perturbDeclare("FORCE_NORMAL_MAP", "normalMapEnabled", "normalMap")}
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
+${shininess.encodeDeclare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -73,10 +73,10 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnabled", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec2 coordParallax = ${parallax.perturbInvoke("coord", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	// Color target: [normal, normal, shininess, gloss]
-	vec3 normalModified = ${normal.perturbInvoke("FORCE_NORMAL_MAP", "normalMap", "normalMapEnabled", "coordParallax", "t", "b", "n")};
+	vec3 normalModified = ${normal.perturbInvoke("coordParallax", "t", "b", "n")};
 	vec2 normalPack = ${normal.encodeInvoke("normalModified")};
 
 	float gloss = texture(glossMap, coordParallax).r;
@@ -125,16 +125,16 @@ void main(void) {
 const lightFragmentShader = `
 ${lightHeaderShader}
 
-${normal.decodeDeclare}
-${phong.getDiffusePowerDeclare}
-${phong.getSpecularPowerDeclare}
-${shininess.decodeDeclare}
-
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
 uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossBuffer;
+
+${normal.decodeDeclare()}
+${phong.getDiffusePowerDeclare()}
+${phong.getSpecularPowerDeclare()}
+${shininess.decodeDeclare()}
 
 in vec3 lightDirectionCamera;
 in vec3 lightPositionCamera;
@@ -213,10 +213,6 @@ void main(void) {
 }`;
 
 const materialFragmentShader = `
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
-${rgb.linearToStandardDeclare}
-${rgb.standardToLinearDeclare}
-
 uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
 
@@ -227,6 +223,10 @@ uniform sampler2D glossMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
+
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
+${rgb.linearToStandardDeclare()}
+${rgb.standardToLinearDeclare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -251,7 +251,7 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnable", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec2 coordParallax = ${parallax.perturbInvoke("coord", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, coordParallax).rgb")};
 	vec3 gloss = glossFactor.rgb * texture(glossMap, coordParallax).rgb;
