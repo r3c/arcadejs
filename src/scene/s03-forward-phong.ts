@@ -21,9 +21,9 @@ import * as webgl from "../engine/graphic/webgl";
 interface Configuration {
 	nbLights: string[],
 	animate: boolean,
-	enableAmbient: boolean,
-	enableDiffuse: boolean,
-	enableSpecular: boolean,
+	useAmbient: boolean,
+	useDiffuse: boolean,
+	useSpecular: boolean,
 	useNormalMap: boolean,
 	useHeightMap: boolean
 }
@@ -49,17 +49,17 @@ interface SceneState {
 const configuration = {
 	nbLights: ["0", ".1", "2", "3"],
 	animate: true,
-	enableAmbient: true,
-	enableDiffuse: true,
-	enableSpecular: true,
+	useAmbient: true,
+	useDiffuse: true,
+	useSpecular: true,
 	useNormalMap: true,
 	useHeightMap: true
 };
 
 const getOptions = (tweak: application.Tweak<Configuration>) => [
-	tweak.enableAmbient !== 0,
-	tweak.enableDiffuse !== 0,
-	tweak.enableSpecular !== 0,
+	tweak.useAmbient !== 0,
+	tweak.useDiffuse !== 0,
+	tweak.useSpecular !== 0,
 	tweak.useHeightMap !== 0,
 	tweak.useNormalMap !== 0
 ];
@@ -122,9 +122,9 @@ const render = (state: SceneState) => {
 	// Forward pass
 	const lightPipeline = pipelines.lights[bitfield.index(getOptions(state.tweak))];
 	const lightScene = {
-		ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
+		ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
 		pointLights: state.lightPositions.slice(0, state.tweak.nbLights).map(position => ({
-			color: { x: 0.6, y: 0.6, z: 0.6 },
+			color: { x: 0.8, y: 0.8, z: 0.8 },
 			position: position,
 			radius: 5
 		})),
