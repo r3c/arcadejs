@@ -8,10 +8,10 @@ const sampleDeclare = (
 	albedoEnableUniform: string,
 	albedoSampler: string,
 	albedoFactor: string,
-	glossEnableDirective: string,
-	glossEnableUniform: string,
-	glossSampler: string,
-	glossFactor: string,
+	glossinessEnableDirective: string,
+	glossinessEnableUniform: string,
+	glossinessSampler: string,
+	glossinessFactor: string,
 	metalnessEnableDirective: string,
 	metalnessEnableUniform: string,
 	metalnessSampler: string,
@@ -23,32 +23,32 @@ const sampleDeclare = (
 	shininessValue: string) => `
 struct ${sampleType} {
 	vec3 albedo;
-	vec3 gloss;
+	float glossiness;
 	float metalness;
 	float roughness;
 	float shininess;
 };
 
 ${sampleType} materialSample(vec2 coord) {
-	vec3 albedo = ${albedoFactor}.rgb * (${compiler.getBooleanDirectiveOrUniform(albedoEnableDirective, albedoEnableUniform)}
+	vec3 albedo = ${albedoFactor}.rgb * (bool(${compiler.getDirectiveOrValue(albedoEnableDirective, albedoEnableUniform)})
 		? ${rgb.standardToLinearInvoke(`texture(${albedoSampler}, coord).rgb`)}
 		: vec3(1.0));
 
-	vec3 gloss = ${glossFactor}.rgb * (${compiler.getBooleanDirectiveOrUniform(glossEnableDirective, glossEnableUniform)}
-		? ${rgb.standardToLinearInvoke(`texture(${glossSampler}, coord).rgb`)}
-		: vec3(1.0));
+	float glossiness = ${glossinessFactor} * (bool(${compiler.getDirectiveOrValue(glossinessEnableDirective, glossinessEnableUniform)})
+		? texture(${glossinessSampler}, coord).r
+		: 1.0);
 
-	float metalness = ${metalnessFactor} * (${compiler.getBooleanDirectiveOrUniform(metalnessEnableDirective, metalnessEnableUniform)}
+	float metalness = ${metalnessFactor} * (bool(${compiler.getDirectiveOrValue(metalnessEnableDirective, metalnessEnableUniform)})
 		? texture(${metalnessSampler}, coord).r
 		: 1.0);
 
-	float roughness = ${roughnessFactor} * (${compiler.getBooleanDirectiveOrUniform(roughnessEnableDirective, roughnessEnableUniform)}
+	float roughness = ${roughnessFactor} * (bool(${compiler.getDirectiveOrValue(roughnessEnableDirective, roughnessEnableUniform)})
 		? texture(${roughnessSampler}, coord).r
 		: 1.0);
 
 	return ${sampleType}(
 		albedo,
-		gloss,
+		glossiness,
 		clamp(metalness, 0.0, 1.0),
 		clamp(roughness, 0.04, 1.0),
 		shininess

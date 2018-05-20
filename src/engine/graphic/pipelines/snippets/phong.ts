@@ -1,34 +1,46 @@
-const getDiffusePowerDeclare = () => `
-float phongLightDiffuse(in vec3 normal, in vec3 lightDirection) {
-	float lightNormalCosine = dot(normal, lightDirection);
+import * as compiler from "./compiler";
+import * as light from "./light";
+
+const lightDeclare = (diffuseDirective: string, specularDirective: string) => `
+float phongLightDiffusePower(in ${light.sourceTypeResult} light, in vec3 normal) {
+	float lightNormalCosine = dot(normal, light.direction);
 
 	return clamp(lightNormalCosine, 0.0, 1.0);
-}`;
+}
 
-const getDiffusePowerInvoke = (normal: string, lightDirection: string) =>
-	`phongLightDiffuse(${normal}, ${lightDirection})`;
-
-const getSpecularPowerDeclare = () => `
-float phongLightSpecular(in vec3 normal, in vec3 lightDirection, in vec3 eyeDirection, in float shininess) {
-	float lightNormalCosine = dot(normal, lightDirection);
+float phongLightSpecularPower(in ${light.sourceTypeResult} light, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
+	float lightNormalCosine = dot(normal, light.direction);
 	float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
 	#ifdef LIGHT_MODEL_PHONG_STANDARD
 		// Phong model
-		vec3 specularReflection = normalize(normal * clamp(lightNormalCosine, 0.0, 1.0) * 2.0 - lightDirection);
+		vec3 specularReflection = normalize(normal * clamp(lightNormalCosine, 0.0, 1.0) * 2.0 - light.direction);
 
 		float lightCosine = max(dot(specularReflection, eyeDirection), 0.0);
 	#else
 		// Blinn-Phong model
-		vec3 cameraLightMidway = normalize(eyeDirection + lightDirection);
+		vec3 cameraLightMidway = normalize(eyeDirection + light.direction);
 
 		float lightCosine = max(dot(normal, cameraLightMidway), 0.0);
 	#endif
 
-	return pow(lightCosine, shininess) * lightVisible;
+	return materialGlossiness * pow(lightCosine, materialShininess) * lightVisible;
+}
+
+vec3 phongLight(in ${light.sourceTypeResult} light, in vec3 materialAlbedo, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
+	return light.power * (
+		phongLightDiffusePower(light, normal) * light.color * materialAlbedo * float(${compiler.getDirectiveOrValue(diffuseDirective, "1.0")}) +
+		phongLightSpecularPower(light, materialGlossiness, materialShininess, normal, eyeDirection) * light.color * float(${compiler.getDirectiveOrValue(specularDirective, "1.0")})
+	);
 }`;
 
-const getSpecularPowerInvoke = (normal: string, lightDirection: string, eyeDirection: string, shininess: string) =>
-	`phongLightSpecular(${normal}, ${lightDirection}, ${eyeDirection}, ${shininess})`;
+const lightInvoke = (light: string, materialAlbedo: string, materialGloss: string, materialShininess: string, normal: string, eyeDirection: string) =>
+	`phongLight(${light}, ${materialAlbedo}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
 
-export { getDiffusePowerDeclare, getDiffusePowerInvoke, getSpecularPowerDeclare, getSpecularPowerInvoke }
+const lightInvokeDiffusePower = (light: string, normal: string) =>
+	`phongLightDiffusePower(${light}, ${normal})`;
+
+const lightInvokeSpecularPower = (light: string, materialGloss: string, materialShininess: string, normal: string, eyeDirection: string) =>
+	`phongLightSpecularPower(${light}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
+
+export { lightDeclare, lightInvoke, lightInvokeDiffusePower, lightInvokeSpecularPower }

@@ -20,8 +20,7 @@ const enum LightModel {
 }
 
 const lightHeaderShader = `
-${light.directionalDeclare("HAS_SHADOW")}
-${light.pointDeclare("HAS_SHADOW")}
+${light.sourceDeclare("HAS_SHADOW")}
 
 const mat4 texUnitConverter = mat4(
 	0.5, 0.0, 0.0, 0.0,
@@ -33,8 +32,8 @@ const mat4 texUnitConverter = mat4(
 uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform ${light.directionalType} directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
-uniform ${light.pointType} pointLights[max(MAX_POINT_LIGHTS, 1)];
+uniform ${light.sourceTypeDirectional} directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+uniform ${light.sourceTypePoint} pointLights[max(MAX_POINT_LIGHTS, 1)];
 
 // FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
 #ifdef HAS_SHADOW
@@ -62,10 +61,10 @@ out vec3 eye; // Direction from point to eye in camera space
 out vec3 normal; // Normal at point in camera space
 out vec3 tangent; // Tangent at point in camera space
 
-out vec3 directionalLightDirections[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+out vec3 directionalLightDistances[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 out vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 
-out vec3 pointLightDirections[max(MAX_POINT_LIGHTS, 1)];
+out vec3 pointLightDistances[max(MAX_POINT_LIGHTS, 1)];
 out vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 vec3 toCameraDirection(in vec3 worldDirection) {
@@ -90,7 +89,7 @@ void main(void) {
 			}
 		#endif
 
-		directionalLightDirections[i] = toCameraDirection(directionalLights[i].direction);
+		directionalLightDistances[i] = toCameraDirection(directionalLights[i].direction);
 	}
 
 	// Process point lights
@@ -99,7 +98,7 @@ void main(void) {
 			// FIXME: shadow map code
 		#endif
 
-		pointLightDirections[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
+		pointLightDistances[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
 	}
 
 	coord = coords;
@@ -120,9 +119,9 @@ uniform bool albedoMapEnabled;
 uniform vec4 emissiveFactor;
 uniform sampler2D emissiveMap;
 uniform bool emissiveMapEnabled;
-uniform vec4 glossFactor;
-uniform sampler2D glossMap;
-uniform bool glossMapEnabled;
+uniform float glossinessStrength;
+uniform sampler2D glossinessMap;
+uniform bool glossinessMapEnabled;
 uniform sampler2D heightMap;
 uniform bool heightMapEnabled;
 uniform float heightParallaxBias;
@@ -149,7 +148,7 @@ ${rgb.standardToLinearDeclare()}
 
 ${material.sampleDeclare(
 		"FORCE_ALBEDO_MAP", "albedoMapEnabled", "albedoMap", "albedoFactor",
-		"FORCE_GLOSS_MAP", "glossMapEnabled", "glossMap", "glossFactor",
+		"FORCE_GLOSSINESS_MAP", "glossinessMapEnabled", "glossinessMap", "glossinessStrength",
 		"FORCE_METALNESS_MAP", "metalnessMapEnabled", "metalnessMap", "metalnessStrength",
 		"FORCE_ROUGHNESS_MAP", "roughnessMapEnabled", "roughnessMap", "roughnessStrength",
 		"shininess"
@@ -157,8 +156,7 @@ ${material.sampleDeclare(
 
 ${normal.perturbDeclare("FORCE_NORMAL_MAP", "normalMapEnabled", "normalMap")}
 ${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
-${phong.getDiffusePowerDeclare()}
-${phong.getSpecularPowerDeclare()}
+${phong.lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 ${pbr.declare("LIGHT_MODEL_PBR_IBL", "environmentBrdfMap", "environmentDiffuseMap", "environmentSpecularMap")}
 
 in vec3 bitangent;
@@ -167,21 +165,19 @@ in vec3 eye;
 in vec3 normal;
 in vec3 tangent;
 
-in vec3 directionalLightDirections[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+in vec3 directionalLightDistances[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 in vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
 
-in vec3 pointLightDirections[max(MAX_POINT_LIGHTS, 1)];
+in vec3 pointLightDistances[max(MAX_POINT_LIGHTS, 1)];
 in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in ${material.sampleType} material, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
+vec3 getLight(in ${light.sourceTypeResult} light, in ${material.sampleType} material, in vec3 normal, in vec3 eyeDirection) {
 	#if LIGHT_MODEL == ${LightModel.Phong}
-		return
-			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * material.albedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
-			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "material.shininess")} * lightColor * material.gloss * float(LIGHT_MODEL_PHONG_SPECULAR);
+		return ${phong.lightInvoke("light", "material.albedo.rgb", "material.glossiness", "material.shininess", "normal", "eyeDirection")};
 	#elif LIGHT_MODEL == ${LightModel.Physical}
-		return ${pbr.lightInvoke("material", "normal", "eyeDirection", "lightDirection", "lightColor")};
+		return ${pbr.lightInvoke("light", "material", "normal", "eyeDirection")};
 	#endif
 }
 
@@ -208,32 +204,24 @@ void main(void) {
 				continue;
 		#endif
 
-		color += ${light.directionalInvoke("directionalLights[i]")} * getLight(
-			material,
-			modifiedNormal,
-			eyeDirection,
-			normalize(directionalLightDirections[i]),
-			directionalLights[i].color
-		);
+		${light.sourceTypeResult} light = ${light.sourceInvokeDirectional("directionalLights[i]",  "directionalLightDistances[i]")};
+
+		color += getLight(light, material, modifiedNormal, eyeDirection);
 	}
 
 	// Apply components from point lights
 	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
-		color += ${light.pointInvoke("pointLights[i]", "length(pointLightDirections[i])")} * getLight(
-			material,
-			modifiedNormal,
-			eyeDirection,
-			normalize(pointLightDirections[i]),
-			pointLights[i].color
-		);
+		${light.sourceTypeResult} light = ${light.sourceInvokePoint("pointLights[i]", "pointLightDistances[i]")};
+
+		color += getLight(light, material, modifiedNormal, eyeDirection);
 	}
 
 	// Apply occlusion component
-	if (${compiler.getBooleanDirectiveOrUniform("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")})
+	if (bool(${compiler.getDirectiveOrValue("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")}))
 		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
 	// Apply emissive component
-	if (${compiler.getBooleanDirectiveOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")})
+	if (bool(${compiler.getDirectiveOrValue("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")}))
 		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")};
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
@@ -347,7 +335,7 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 		directives.push({ name: "FORCE_EMISSIVE_MAP", value: materialConfiguration.forceEmissiveMap ? 1 : 0 });
 
 	if (materialConfiguration.forceGlossMap !== undefined)
-		directives.push({ name: "FORCE_GLOSS_MAP", value: materialConfiguration.forceGlossMap ? 1 : 0 });
+		directives.push({ name: "FORCE_GLOSSINESS_MAP", value: materialConfiguration.forceGlossMap ? 1 : 0 });
 
 	if (materialConfiguration.forceHeightMap !== undefined)
 		directives.push({ name: "FORCE_HEIGHT_MAP", value: materialConfiguration.forceHeightMap ? 1 : 0 });
@@ -409,9 +397,9 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 	switch (lightConfiguration.lightModel) {
 		case LightModel.Phong:
 			if (materialConfiguration.forceGlossMap !== false)
-				shader.setupTexturePerMaterial("glossMap", materialConfiguration.forceGlossMap !== true ? "glossMapEnabled" : undefined, webgl.TextureType.Quad, material => material.glossMap);
+				shader.setupTexturePerMaterial("glossinessMap", materialConfiguration.forceGlossMap !== true ? "glossinessMapEnabled" : undefined, webgl.TextureType.Quad, material => material.glossMap);
 
-			shader.setupPropertyPerMaterial("glossFactor", material => material.glossFactor, gl => gl.uniform4fv);
+			shader.setupPropertyPerMaterial("glossinessStrength", material => material.glossFactor[0], gl => gl.uniform1f);
 			shader.setupPropertyPerMaterial("shininess", material => material.shininess, gl => gl.uniform1f);
 
 			break;
@@ -472,7 +460,6 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 
 		shader.setupPropertyPerTarget(`directionalLights[${i}].color`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].color) : defaultColor, gl => gl.uniform3fv);
 		shader.setupPropertyPerTarget(`directionalLights[${i}].direction`, state => index < state.directionalLights.length ? vector.Vector3.toArray(state.directionalLights[index].direction) : defaultDirection, gl => gl.uniform3fv);
-		shader.setupPropertyPerTarget(`directionalLights[${i}].strength`, state => index < state.directionalLights.length ? 1 : 0, gl => gl.uniform1f);
 	}
 
 	for (let i = 0; i < maxPointLights; ++i) {
@@ -481,7 +468,6 @@ const loadLight = (gl: WebGLRenderingContext, materialConfiguration: MaterialCon
 		shader.setupPropertyPerTarget(`pointLights[${i}].color`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].color) : defaultColor, gl => gl.uniform3fv);
 		shader.setupPropertyPerTarget(`pointLights[${i}].position`, state => index < state.pointLights.length ? vector.Vector3.toArray(state.pointLights[index].position) : defaultPosition, gl => gl.uniform3fv);
 		shader.setupPropertyPerTarget(`pointLights[${i}].radius`, state => index < state.pointLights.length ? state.pointLights[index].radius : 0, gl => gl.uniform1f);
-		shader.setupPropertyPerTarget(`pointLights[${i}].strength`, state => index < state.pointLights.length ? 1 : 0, gl => gl.uniform1f);
 	}
 
 	return shader;
