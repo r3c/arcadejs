@@ -46,11 +46,6 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
-${normal.encodeDeclare}
-${normal.perturbDeclare("FORCE_NORMAL_MAP")}
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
-${shininess.encodeDeclare}
-
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
 uniform sampler2D heightMap;
@@ -59,6 +54,11 @@ uniform float heightParallaxScale;
 uniform sampler2D glossMap;
 uniform sampler2D normalMap;
 uniform float shininess;
+
+${normal.encodeDeclare()}
+${normal.perturbDeclare("FORCE_NORMAL_MAP", "normalMapEnabled", "normalMap")}
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
+${shininess.encodeDeclare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -75,7 +75,7 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnabled", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec2 coordParallax = ${parallax.perturbInvoke("coord", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
 
 	// Color target 1: [albedo.rgb, shininess]
 	vec3 albedo = albedoFactor.rgb * texture(albedoMap, coordParallax).rgb;
@@ -84,7 +84,7 @@ void main(void) {
 	albedoAndShininess = vec4(albedo, shininessPack);
 
 	// Color target 2: [normal.pp, zero, gloss]
-	vec3 normalModified = ${normal.perturbInvoke("FORCE_NORMAL_MAP", "normalMap", "normalMapEnabled", "coordParallax", "t", "b", "n")};
+	vec3 normalModified = ${normal.perturbInvoke("coordParallax", "t", "b", "n")};
 	vec2 normalPack = ${normal.encodeInvoke("normalModified")};
 
 	float gloss = texture(glossMap, coordParallax).r;
@@ -168,17 +168,17 @@ void main(void) {
 const lightFragmentShader = `
 ${lightHeaderShader}
 
-${normal.decodeDeclare}
-${phong.getDiffusePowerDeclare}
-${phong.getSpecularPowerDeclare}
-${shininess.decodeDeclare}
-
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
 uniform sampler2D albedoAndShininess;
 uniform sampler2D depth;
 uniform sampler2D normalAndGloss;
+
+${normal.decodeDeclare()}
+${phong.getDiffusePowerDeclare()}
+${phong.getSpecularPowerDeclare()}
+${shininess.decodeDeclare()}
 
 in vec3 lightDirectionCamera;
 in vec3 lightPositionCamera;

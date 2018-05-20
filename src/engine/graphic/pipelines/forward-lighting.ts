@@ -1,6 +1,7 @@
-import * as directive from "./snippets/directive";
+import * as compiler from "./snippets/compiler";
 import * as functional from "../../language/functional";
 import * as light from "./snippets/light";
+import * as material from "./snippets/material";
 import * as materialPainter from "../painters/material";
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
@@ -113,15 +114,6 @@ void main(void) {
 const lightFragmentShader = `
 ${lightHeaderShader}
 
-${rgb.linearToStandardDeclare}
-${rgb.standardToLinearDeclare}
-
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP")}
-${normal.perturbDeclare("FORCE_NORMAL_MAP")}
-${phong.getDiffusePowerDeclare}
-${phong.getSpecularPowerDeclare}
-${pbr.lightDeclare("LIGHT_MODEL_PBR_IBL")}
-
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
 uniform bool albedoMapEnabled;
@@ -152,6 +144,23 @@ uniform sampler2D environmentBrdfMap;
 uniform samplerCube environmentDiffuseMap;
 uniform samplerCube environmentSpecularMap;
 
+${rgb.linearToStandardDeclare()}
+${rgb.standardToLinearDeclare()}
+
+${material.sampleDeclare(
+		"FORCE_ALBEDO_MAP", "albedoMapEnabled", "albedoMap", "albedoFactor",
+		"FORCE_GLOSS_MAP", "glossMapEnabled", "glossMap", "glossFactor",
+		"FORCE_METALNESS_MAP", "metalnessMapEnabled", "metalnessMap", "metalnessStrength",
+		"FORCE_ROUGHNESS_MAP", "roughnessMapEnabled", "roughnessMap", "roughnessStrength",
+		"shininess"
+	)}
+
+${normal.perturbDeclare("FORCE_NORMAL_MAP", "normalMapEnabled", "normalMap")}
+${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
+${phong.getDiffusePowerDeclare()}
+${phong.getSpecularPowerDeclare()}
+${pbr.declare("LIGHT_MODEL_PBR_IBL", "environmentBrdfMap", "environmentDiffuseMap", "environmentSpecularMap")}
+
 in vec3 bitangent;
 in vec2 coord;
 in vec3 eye;
@@ -166,23 +175,13 @@ in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in vec3 albedo, in vec2 coord, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
+vec3 getLight(in ${material.sampleType} material, in vec3 normal, in vec3 eyeDirection, in vec3 lightDirection, in vec3 lightColor) {
 	#if LIGHT_MODEL == ${LightModel.Phong}
-		vec4 materialGloss = ${directive.getBooleanOrUniform("FORCE_GLOSS_MAP", "glossMapEnabled")}
-			? glossFactor * texture(glossMap, coord)
-			: glossFactor;
-
 		return
-			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * albedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
-			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "shininess")} * lightColor * materialGloss.rgb * float(LIGHT_MODEL_PHONG_SPECULAR);
+			${phong.getDiffusePowerInvoke("normal", "lightDirection")} * lightColor * material.albedo * float(LIGHT_MODEL_PHONG_DIFFUSE) +
+			${phong.getSpecularPowerInvoke("normal", "lightDirection", "eyeDirection", "material.shininess")} * lightColor * material.gloss * float(LIGHT_MODEL_PHONG_SPECULAR);
 	#elif LIGHT_MODEL == ${LightModel.Physical}
-		float metalnessSample = ${directive.getBooleanOrUniform("FORCE_METALNESS_MAP", "metalnessMapEnabled")} ? texture(metalnessMap, coord).r : 1.0;
-		float metalness = clamp(metalnessSample * metalnessStrength, 0.0, 1.0);
-
-		float roughnessSample = ${directive.getBooleanOrUniform("FORCE_ROUGHNESS_MAP", "roughnessMapEnabled")} ? texture(roughnessMap, coord).r : 1.0;
-		float roughness = clamp(roughnessSample * roughnessStrength, 0.04, 1.0);
-
-		return ${pbr.lightInvoke("normal", "eyeDirection", "lightDirection", "lightColor", "albedo", "metalness", "roughness", "LIGHT_MODEL_PBR_IBL", "environmentBrdfMap", "environmentDiffuseMap", "environmentSpecularMap")};
+		return ${pbr.lightInvoke("material", "normal", "eyeDirection", "lightDirection", "lightColor")};
 	#endif
 }
 
@@ -192,15 +191,13 @@ void main(void) {
 	vec3 t = normalize(tangent);
 
 	vec3 eyeDirection = normalize(eye);
-	vec2 coordParallax = ${parallax.perturbInvoke("FORCE_HEIGHT_MAP", "coord", "heightMap", "heightMapEnabled", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
-	vec3 modifiedNormal = ${normal.perturbInvoke("FORCE_NORMAL_MAP", "normalMap", "normalMapEnabled", "coordParallax", "t", "b", "n")};
+	vec2 coordParallax = ${parallax.perturbInvoke("coord", "eyeDirection", "heightParallaxScale", "heightParallaxBias", "t", "b", "n")};
+	vec3 modifiedNormal = ${normal.perturbInvoke("coordParallax", "t", "b", "n")};
 
-	vec3 albedo = ${directive.getBooleanOrUniform("FORCE_ALBEDO_MAP", "albedoMapEnabled")}
-		? albedoFactor.rgb * ${rgb.standardToLinearInvoke("texture(albedoMap, coordParallax).rgb")}
-		: albedoFactor.rgb;
+	${material.sampleType} material = ${material.sampleInvoke("coordParallax")};
 
-	// Apply ambient component
-	vec3 color = albedo * ambientLightColor * float(LIGHT_AMBIENT);
+	// Apply environment (ambient or influence-based) lighting
+	vec3 color = ${pbr.environmentInvoke("material", "normal", "eyeDirection")} * ambientLightColor * float(LIGHT_AMBIENT);
 
 	// Apply components from directional lights
 	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
@@ -212,8 +209,7 @@ void main(void) {
 		#endif
 
 		color += ${light.directionalInvoke("directionalLights[i]")} * getLight(
-			albedo,
-			coordParallax,
+			material,
 			modifiedNormal,
 			eyeDirection,
 			normalize(directionalLightDirections[i]),
@@ -224,8 +220,7 @@ void main(void) {
 	// Apply components from point lights
 	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
 		color += ${light.pointInvoke("pointLights[i]", "length(pointLightDirections[i])")} * getLight(
-			albedo,
-			coordParallax,
+			material,
 			modifiedNormal,
 			eyeDirection,
 			normalize(pointLightDirections[i]),
@@ -234,11 +229,11 @@ void main(void) {
 	}
 
 	// Apply occlusion component
-	if (${directive.getBooleanOrUniform("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")})
+	if (${compiler.getBooleanDirectiveOrUniform("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")})
 		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
 	// Apply emissive component
-	if (${directive.getBooleanOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")})
+	if (${compiler.getBooleanDirectiveOrUniform("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")})
 		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke("texture(emissiveMap, coordParallax).rgb")};
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
