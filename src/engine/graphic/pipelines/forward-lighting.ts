@@ -805,15 +805,15 @@ const loadShadow = (gl: WebGLRenderingContext) => {
 };
 
 class Pipeline implements webgl.Pipeline {
-  public readonly shadowBuffers: WebGLTexture[];
+  public readonly directionalShadowBuffers: WebGLTexture[];
 
+  private readonly directionalShadowPainter: webgl.Painter<ShadowState>;
+  private readonly directionalShadowProjectionMatrix: matrix.Matrix4;
+  private readonly directionalShadowTargets: webgl.Target[];
   private readonly gl: WebGLRenderingContext;
   private readonly lightPainter: webgl.Painter<LightState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
-  private readonly shadowPainter: webgl.Painter<ShadowState>;
-  private readonly shadowProjectionMatrix: matrix.Matrix4;
-  private readonly shadowTargets: webgl.Target[];
 
   public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
     const materialClassifier = (material: webgl.Material) =>
@@ -866,11 +866,27 @@ class Pipeline implements webgl.Pipeline {
 
     const maxDirectionalLights = configuration.maxDirectionalLights || 0;
     const maxPointLights = configuration.maxPointLights || 0;
-    const targets = functional.range(
-      maxDirectionalLights + maxPointLights,
+    const directionalShadowTargets = functional.range(
+      maxDirectionalLights,
       (i) => new webgl.Target(gl, 1024, 1024)
     );
 
+    this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
+      target.setupDepthTexture(
+        webgl.TextureFormat.Depth16,
+        webgl.TextureType.Quad
+      )
+    );
+    this.directionalShadowPainter = new singularPainter.Painter(loadShadow(gl));
+    this.directionalShadowProjectionMatrix = matrix.Matrix4.createOrthographic(
+      -10,
+      10,
+      -10,
+      10,
+      -10,
+      20
+    );
+    this.directionalShadowTargets = directionalShadowTargets;
     this.gl = gl;
     this.lightPainter = configuration.noMaterialShader
       ? new singularPainter.Painter(loadLight(gl, configuration, configuration))
@@ -883,19 +899,6 @@ class Pipeline implements webgl.Pipeline {
         );
     this.maxDirectionalLights = maxDirectionalLights;
     this.maxPointLights = maxPointLights;
-    this.shadowBuffers = targets.map((target) =>
-      target.setupDepthTexture(webgl.TextureFormat.Depth16)
-    );
-    this.shadowPainter = new singularPainter.Painter(loadShadow(gl));
-    this.shadowProjectionMatrix = matrix.Matrix4.createOrthographic(
-      -10,
-      10,
-      -10,
-      10,
-      -10,
-      20
-    );
-    this.shadowTargets = targets;
   }
 
   public process(
@@ -939,13 +942,13 @@ class Pipeline implements webgl.Pipeline {
       gl.colorMask(false, false, false, false);
       gl.cullFace(gl.FRONT);
 
-      this.shadowTargets[bufferIndex].clear();
-      this.shadowPainter.paint(
-        this.shadowTargets[bufferIndex],
+      this.directionalShadowTargets[bufferIndex].clear();
+      this.directionalShadowPainter.paint(
+        this.directionalShadowTargets[bufferIndex],
         obstacles,
         viewMatrix,
         {
-          projectionMatrix: this.shadowProjectionMatrix,
+          projectionMatrix: this.directionalShadowProjectionMatrix,
           viewMatrix: viewMatrix,
         }
       );
@@ -954,7 +957,7 @@ class Pipeline implements webgl.Pipeline {
         color: light.color,
         direction: light.direction,
         shadow: light.shadow,
-        shadowMap: this.shadowBuffers[bufferIndex],
+        shadowMap: this.directionalShadowBuffers[bufferIndex],
         shadowViewMatrix: viewMatrix,
       });
 
@@ -973,7 +976,7 @@ class Pipeline implements webgl.Pipeline {
       environmentLight: scene.environmentLight,
       pointLights: pointLights,
       projectionMatrix: transform.projectionMatrix,
-      shadowProjectionMatrix: this.shadowProjectionMatrix,
+      shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
       viewMatrix: transform.viewMatrix,
     });
   }

@@ -594,12 +594,16 @@ class Pipeline implements webgl.Pipeline {
     );
 
     this.albedoAndShininessBuffer = geometry.setupColorTexture(
-      webgl.TextureFormat.RGBA8
+      webgl.TextureFormat.RGBA8,
+      webgl.TextureType.Quad
     );
     this.ambientLightPainter = new painter.Painter(
       loadAmbient(gl, configuration)
     );
-    this.depthBuffer = geometry.setupDepthTexture(webgl.TextureFormat.Depth16);
+    this.depthBuffer = geometry.setupDepthTexture(
+      webgl.TextureFormat.Depth16,
+      webgl.TextureType.Quad
+    );
     this.directionalLightPainter = new painter.Painter(
       loadLightDirectional(gl, configuration)
     );
@@ -616,7 +620,8 @@ class Pipeline implements webgl.Pipeline {
     this.geometryTarget = geometry;
     this.gl = gl;
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
-      webgl.TextureFormat.RGBA8
+      webgl.TextureFormat.RGBA8,
+      webgl.TextureType.Quad
     );
     this.pointLightPainter = new painter.Painter(
       loadLightPoint(gl, configuration)

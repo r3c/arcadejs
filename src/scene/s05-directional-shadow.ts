@@ -164,7 +164,7 @@ const render = (state: SceneState) => {
   if (state.tweak.showDebug) {
     const debugPipeline = pipelines.debug;
     const debugScene = debugTexture.Pipeline.createScene(
-      lightPipeline.shadowBuffers[0]
+      lightPipeline.directionalShadowBuffers[0]
     );
 
     debugPipeline.process(target, transform, debugScene);
