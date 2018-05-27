@@ -1028,11 +1028,12 @@ class Target {
     );
   }
 
-  public setupColorTexture(format: TextureFormat) {
+  public setupColorTexture(format: TextureFormat, type: TextureType) {
     const gl = this.gl;
     const texture = this.attachTexture(
       this.colorAttachment,
       format,
+      type,
       gl.COLOR_ATTACHMENT0
     );
 
@@ -1062,10 +1063,11 @@ class Target {
     );
   }
 
-  public setupDepthTexture(format: TextureFormat) {
+  public setupDepthTexture(format: TextureFormat, type: TextureType) {
     return this.attachTexture(
       this.depthAttachment,
       format,
+      type,
       this.gl.DEPTH_ATTACHMENT
     );
   }
@@ -1156,6 +1158,7 @@ class Target {
   private attachTexture(
     attachment: Attachment,
     format: TextureFormat,
+    type: TextureType,
     target: number
   ) {
     const framebuffer = this.attachFramebuffer();
@@ -1175,7 +1178,7 @@ class Target {
     const texture = textureConfigure(
       gl,
       textureCreate(gl),
-      TextureType.Quad,
+      type,
       this.viewWidth,
       this.viewHeight,
       format,
@@ -1193,7 +1196,7 @@ class Target {
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
       target + offset - 1,
-      gl.TEXTURE_2D,
+      textureGetTarget(gl, type),
       texture,
       0
     );
