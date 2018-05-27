@@ -281,7 +281,7 @@ void main(void) {
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
 }`;
 
-const shadowVertexShader = `
+const shadowDirectionalVertexShader = `
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -292,7 +292,7 @@ void main(void) {
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
 }`;
 
-const shadowFragmentShader = `
+const shadowDirectionalFragmentShader = `
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
@@ -776,11 +776,11 @@ const loadLight = (
   return shader;
 };
 
-const loadShadow = (gl: WebGLRenderingContext) => {
+const loadShadowDirectional = (gl: WebGLRenderingContext) => {
   const shader = new webgl.Shader<ShadowState>(
     gl,
-    shadowVertexShader,
-    shadowFragmentShader
+    shadowDirectionalVertexShader,
+    shadowDirectionalFragmentShader
   );
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
@@ -804,8 +804,18 @@ const loadShadow = (gl: WebGLRenderingContext) => {
   return shader;
 };
 
+const loadShadowPoint = (gl: WebGLRenderingContext) => {
+  // Not implemented
+  return new webgl.Shader<ShadowState>(
+    gl,
+    shadowDirectionalVertexShader,
+    shadowDirectionalFragmentShader
+  );
+};
+
 class Pipeline implements webgl.Pipeline {
   public readonly directionalShadowBuffers: WebGLTexture[];
+  public readonly pointShadowBuffers: WebGLTexture[];
 
   private readonly directionalShadowPainter: webgl.Painter<ShadowState>;
   private readonly directionalShadowProjectionMatrix: matrix.Matrix4;
@@ -814,6 +824,9 @@ class Pipeline implements webgl.Pipeline {
   private readonly lightPainter: webgl.Painter<LightState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
+  private readonly pointShadowPainter: webgl.Painter<ShadowState>;
+  private readonly pointShadowProjectionMatrix: matrix.Matrix4;
+  private readonly pointShadowTargets: webgl.Target[];
 
   public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
     const materialClassifier = (material: webgl.Material) =>
@@ -866,9 +879,16 @@ class Pipeline implements webgl.Pipeline {
 
     const maxDirectionalLights = configuration.maxDirectionalLights || 0;
     const maxPointLights = configuration.maxPointLights || 0;
+    const targetHeight = 1024;
+    const targetWidth = 1024;
+
     const directionalShadowTargets = functional.range(
       maxDirectionalLights,
-      (i) => new webgl.Target(gl, 1024, 1024)
+      (i) => new webgl.Target(gl, targetWidth, targetHeight)
+    );
+    const pointShadowTargets = functional.range(
+      maxPointLights,
+      (i) => new webgl.Target(gl, targetWidth, targetHeight)
     );
 
     this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
@@ -877,7 +897,9 @@ class Pipeline implements webgl.Pipeline {
         webgl.TextureType.Quad
       )
     );
-    this.directionalShadowPainter = new singularPainter.Painter(loadShadow(gl));
+    this.directionalShadowPainter = new singularPainter.Painter(
+      loadShadowDirectional(gl)
+    );
     this.directionalShadowProjectionMatrix = matrix.Matrix4.createOrthographic(
       -10,
       10,
@@ -899,6 +921,20 @@ class Pipeline implements webgl.Pipeline {
         );
     this.maxDirectionalLights = maxDirectionalLights;
     this.maxPointLights = maxPointLights;
+    this.pointShadowBuffers = pointShadowTargets.map((target) =>
+      target.setupDepthTexture(
+        webgl.TextureFormat.Depth16,
+        webgl.TextureType.Cube
+      )
+    );
+    this.pointShadowPainter = new singularPainter.Painter(loadShadowPoint(gl));
+    this.pointShadowProjectionMatrix = matrix.Matrix4.createPerspective(
+      Math.PI * 0.5,
+      targetWidth / targetHeight,
+      0.1,
+      100
+    );
+    this.pointShadowTargets = pointShadowTargets;
   }
 
   public process(
@@ -942,7 +978,7 @@ class Pipeline implements webgl.Pipeline {
       gl.colorMask(false, false, false, false);
       gl.cullFace(gl.FRONT);
 
-      this.directionalShadowTargets[bufferIndex].clear();
+      this.directionalShadowTargets[bufferIndex].clear(0);
       this.directionalShadowPainter.paint(
         this.directionalShadowTargets[bufferIndex],
         obstacles,

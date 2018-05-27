@@ -222,7 +222,7 @@ const render = (state: SceneState) => {
     .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
   // Draw scene
-  target.clear();
+  target.clear(0);
 
   // PBR render
   const cube = {
