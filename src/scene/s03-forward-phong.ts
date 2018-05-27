@@ -130,7 +130,7 @@ const render = (state: SceneState) => {
   };
 
   // Clear screen
-  target.clear();
+  target.clear(0);
 
   // Forward pass
   const lightPipeline =

@@ -736,7 +736,7 @@ class Pipeline implements webgl.Pipeline {
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
 
-    this.geometryTarget.clear();
+    this.geometryTarget.clear(0);
     this.geometryPainter.paint(
       this.geometryTarget,
       scene.subjects,
@@ -752,7 +752,7 @@ class Pipeline implements webgl.Pipeline {
     gl.blendFunc(gl.DST_COLOR, gl.ZERO);
 
     this.lightTarget.setClearColor(1, 1, 1, 1);
-    this.lightTarget.clear();
+    this.lightTarget.clear(0);
 
     if (scene.directionalLights !== undefined) {
       // FIXME: a simple identity matrix could be use here at the cost of

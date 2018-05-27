@@ -134,7 +134,7 @@ const render = (state: SceneState) => {
 
   gl.cullFace(gl.BACK);
 
-  target.clear();
+  target.clear(0);
 
   state.painter.paint(target, [cube], viewMatrix, {
     projectionMatrix: state.projectionMatrix,

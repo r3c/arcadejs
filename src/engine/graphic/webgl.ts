@@ -931,7 +931,7 @@ class Target {
   private colorClear: vector.Vector4;
   private depthAttachment: Attachment;
   private depthClear: number;
-  private framebuffer: WebGLFramebuffer | null;
+  private framebuffers: WebGLFramebuffer[];
   private viewHeight: number;
   private viewWidth: number;
 
@@ -940,16 +940,16 @@ class Target {
     this.colorClear = colorBlack;
     this.depthAttachment = { renderbuffer: undefined, textures: [] };
     this.depthClear = 1;
-    this.framebuffer = null;
+    this.framebuffers = [];
     this.gl = gl;
     this.viewHeight = height;
     this.viewWidth = width;
   }
 
-  public clear() {
+  public clear(framebufferIndex: number) {
     const gl = this.gl;
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[framebufferIndex]);
     gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
     gl.clearColor(
@@ -969,10 +969,15 @@ class Target {
     Target.clearTextureAttachments(gl, this.depthAttachment);
   }
 
-  public draw(indices: WebGLBuffer, count: number, type: number) {
+  public draw(
+    framebufferIndex: number,
+    indices: WebGLBuffer,
+    count: number,
+    type: number
+  ) {
     const gl = this.gl;
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[framebufferIndex]);
     gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
@@ -1039,17 +1044,21 @@ class Target {
 
     // Configure draw buffers
     if (this.colorAttachment.textures !== undefined) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+      for (const framebuffer of this.framebuffers) {
+        if (framebuffer === undefined) continue;
 
-      // FIXME: incomplete @type for WebGL2
-      (<any>gl).drawBuffers(
-        functional.range(
-          this.colorAttachment.textures.length,
-          (i) => gl.COLOR_ATTACHMENT0 + i
-        )
-      );
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // FIXME: incomplete @type for WebGL2
+        (<any>gl).drawBuffers(
+          functional.range(
+            this.colorAttachment.textures.length,
+            (i) => gl.COLOR_ATTACHMENT0 + i
+          )
+        );
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      }
     }
 
     return texture;
@@ -1100,14 +1109,23 @@ class Target {
       throw Error("invalid framebuffer operation");
   }
 
-  private attachFramebuffer() {
-    if (this.framebuffer !== null) return this.framebuffer;
+  private configureFramebuffer(framebufferIndex: number) {
+    if (
+      this.framebuffers.length > framebufferIndex &&
+      this.framebuffers[framebufferIndex] !== undefined
+    )
+      return this.framebuffers[framebufferIndex];
+
+    this.framebuffers.length = Math.max(
+      this.framebuffers.length,
+      framebufferIndex + 1
+    );
 
     const framebuffer = this.gl.createFramebuffer();
 
     if (framebuffer === null) throw Error("could not create framebuffer");
 
-    this.framebuffer = framebuffer;
+    this.framebuffers[framebufferIndex] = framebuffer;
 
     return framebuffer;
   }
@@ -1117,7 +1135,7 @@ class Target {
     format: TextureFormat,
     target: number
   ) {
-    const framebuffer = this.attachFramebuffer();
+    const framebuffer = this.configureFramebuffer(0);
     const gl = this.gl;
 
     // Clear renderbuffer and texture attachments if any
@@ -1159,15 +1177,32 @@ class Target {
     attachment: Attachment,
     format: TextureFormat,
     type: TextureType,
-    target: number
+    framebufferTarget: number
   ) {
-    const framebuffer = this.attachFramebuffer();
     const gl = this.gl;
 
-    // Reset renderbuffer attachment if any
-    Target.clearRenderbufferAttachments(gl, attachment);
+    // Generate texture targets
+    let textureTargets: number[];
 
-    // Create and append new texture attachment
+    switch (type) {
+      case TextureType.Cube:
+        textureTargets = functional.range(
+          6,
+          (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i
+        );
+
+        break;
+
+      case TextureType.Quad:
+        textureTargets = [gl.TEXTURE_2D];
+
+        break;
+
+      default:
+        throw Error(`invalid texture type ${type}`);
+    }
+
+    // Create new texture attachment
     const filter = {
       magnifier: model.Interpolation.Nearest,
       minifier: model.Interpolation.Nearest,
@@ -1186,24 +1221,33 @@ class Target {
       undefined
     );
 
-    const offset = attachment.textures.push({
-      format: format,
-      handle: texture,
-    });
+    // Bind frame buffers
+    for (let i = 0; i < textureTargets.length; ++i) {
+      const framebuffer = this.configureFramebuffer(i);
+      const textureTarget = textureTargets[i];
 
-    // Bind attachment to framebuffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(
-      gl.FRAMEBUFFER,
-      target + offset - 1,
-      textureGetTarget(gl, type),
-      texture,
-      0
-    );
+      // Clear renderbuffer attachment if any
+      Target.clearRenderbufferAttachments(gl, attachment);
 
-    Target.checkFramebuffer(gl);
+      const offset = attachment.textures.push({
+        format: format,
+        handle: texture,
+      });
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      // Bind attachment to framebuffer
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        framebufferTarget + offset - 1,
+        textureTarget,
+        texture,
+        0
+      );
+
+      Target.checkFramebuffer(gl);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
 
     return texture;
   }
