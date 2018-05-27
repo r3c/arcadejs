@@ -140,7 +140,7 @@ const render = (state: SceneState) => {
 	// Draw texture debug
 	if (state.tweak.showDebug) {
 		const debugPipeline = pipelines.debug;
-		const debugScene = debugTexture.Pipeline.createScene(lightPipeline.shadowBuffers[0]);
+		const debugScene = debugTexture.Pipeline.createScene(lightPipeline.directionalShadowBuffers[0]);
 
 		debugPipeline.process(target, transform, debugScene);
 	}

@@ -777,9 +777,9 @@ class Target {
 		return this.attachRenderbuffer(this.colorAttachment, format, this.gl.COLOR_ATTACHMENT0);
 	}
 
-	public setupColorTexture(format: TextureFormat) {
+	public setupColorTexture(format: TextureFormat, type: TextureType) {
 		const gl = this.gl;
-		const texture = this.attachTexture(this.colorAttachment, format, gl.COLOR_ATTACHMENT0);
+		const texture = this.attachTexture(this.colorAttachment, format, type, gl.COLOR_ATTACHMENT0);
 
 		// Configure draw buffers
 		if (this.colorAttachment.textures !== undefined) {
@@ -798,8 +798,8 @@ class Target {
 		return this.attachRenderbuffer(this.depthAttachment, format, this.gl.DEPTH_ATTACHMENT);
 	}
 
-	public setupDepthTexture(format: TextureFormat) {
-		return this.attachTexture(this.depthAttachment, format, this.gl.DEPTH_ATTACHMENT);
+	public setupDepthTexture(format: TextureFormat, type: TextureType) {
+		return this.attachTexture(this.depthAttachment, format, type, this.gl.DEPTH_ATTACHMENT);
 	}
 
 	private static clearRenderbufferAttachments(gl: WebGLRenderingContext, attachment: Attachment) {
@@ -865,7 +865,7 @@ class Target {
 		return renderbuffer;
 	}
 
-	private attachTexture(attachment: Attachment, format: TextureFormat, target: number) {
+	private attachTexture(attachment: Attachment, format: TextureFormat, type: TextureType, target: number) {
 		const framebuffer = this.attachFramebuffer();
 		const gl = this.gl;
 
@@ -880,7 +880,7 @@ class Target {
 			wrap: model.Wrap.Clamp
 		};
 
-		const texture = textureConfigure(gl, textureCreate(gl), TextureType.Quad, this.viewWidth, this.viewHeight, format, filter, undefined);
+		const texture = textureConfigure(gl, textureCreate(gl), type, this.viewWidth, this.viewHeight, format, filter, undefined);
 
 		const offset = attachment.textures.push({
 			format: format,
@@ -889,7 +889,7 @@ class Target {
 
 		// Bind attachment to framebuffer
 		gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, target + offset - 1, gl.TEXTURE_2D, texture, 0);
+		gl.framebufferTexture2D(gl.FRAMEBUFFER, target + offset - 1, textureGetTarget(gl, type), texture, 0);
 
 		Target.checkFramebuffer(gl);
 

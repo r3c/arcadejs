@@ -441,18 +441,18 @@ class Pipeline implements webgl.Pipeline {
 		const geometry = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 		const light = new webgl.Target(gl, gl.canvas.clientWidth, gl.canvas.clientHeight);
 
-		this.depthBuffer = geometry.setupDepthTexture(webgl.TextureFormat.Depth16);
+		this.depthBuffer = geometry.setupDepthTexture(webgl.TextureFormat.Depth16, webgl.TextureType.Quad);
 		this.directionalLightPainter = new painter.Painter(loadLightDirectional(gl, configuration));
 		this.fullscreenMesh = webgl.loadMesh(gl, quad.mesh);
 		this.fullscreenProjection = matrix.Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
 		this.geometryPainter = new painter.Painter(loadGeometry(gl, configuration));
 		this.geometryTarget = geometry;
 		this.gl = gl;
-		this.lightBuffer = light.setupColorTexture(webgl.TextureFormat.RGBA8);
+		this.lightBuffer = light.setupColorTexture(webgl.TextureFormat.RGBA8, webgl.TextureType.Quad);
 		this.lightTarget = light;
 		this.materialPainter = new painter.Painter(loadMaterial(gl, configuration));
 		this.pointLightPainter = new painter.Painter(loadLightPoint(gl, configuration));
-		this.normalAndGlossinessBuffer = geometry.setupColorTexture(webgl.TextureFormat.RGBA8);
+		this.normalAndGlossinessBuffer = geometry.setupColorTexture(webgl.TextureFormat.RGBA8, webgl.TextureType.Quad);
 		this.sphereMesh = webgl.loadMesh(gl, sphere.mesh);
 	}
 
