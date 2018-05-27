@@ -163,7 +163,7 @@ const render = (state: SceneState) => {
 		})))
 	};
 
-	target.clear();
+	target.clear(0);
 
 	deferredPipeline.process(target, transform, deferredScene);
 

@@ -39,7 +39,7 @@ class Painter<State> implements webgl.Painter<State> {
 					transform: transform
 				});
 
-				target.draw(geometry.indexBuffer, geometry.count, geometry.indexType);
+				target.draw(0, geometry.indexBuffer, geometry.count, geometry.indexType);
 			}
 		}
 	}

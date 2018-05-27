@@ -133,7 +133,7 @@ const render = (state: SceneState) => {
 		}]
 	}
 
-	target.clear();
+	target.clear(0);
 
 	lightPipeline.process(target, transform, lightScene);
 

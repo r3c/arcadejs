@@ -417,7 +417,7 @@ class Pipeline implements webgl.Pipeline {
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthMask(true);
 
-		this.geometryTarget.clear();
+		this.geometryTarget.clear(0);
 		this.geometryPainter.paint(this.geometryTarget, scene.subjects, transform.viewMatrix, transform);
 
 		// Draw scene lights
