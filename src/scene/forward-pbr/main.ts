@@ -42,13 +42,13 @@ import { GlTexture } from "../../engine/graphic/webgl/texture";
 
 const configuration = {
   nbLights: createSelect("nbLights", ["0", "1", "2", "3"], 1),
-  move: createCheckbox("move", true),
+  move: createCheckbox("move", false),
   lightAmbient: createCheckbox("ambient", true),
-  lightEmissive: createCheckbox("emissive", true),
-  useOcclusion: createCheckbox("occlusion", true),
-  useIBL: createCheckbox("IBL", true),
-  useHeightMap: createCheckbox("hMap", true),
-  useNormalMap: createCheckbox("nMap", true),
+  lightEmissive: createCheckbox("emissive", false),
+  useOcclusion: createCheckbox("occlusion", false),
+  useIBL: createCheckbox("IBL", false),
+  useHeightMap: createCheckbox("hMap", false),
+  useNormalMap: createCheckbox("nMap", false),
 };
 
 type Light = {

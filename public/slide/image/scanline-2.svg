@@ -1,0 +1,17 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 428 416" width="428" height="416" filter="invert(93%) hue-rotate(180deg)">
+  <!-- svg-source:excalidraw -->
+  
+  <defs>
+    <style class="style-fonts">
+      @font-face {
+        font-family: "Virgil";
+        src: url("https://excalidraw.com/Virgil.woff2");
+      }
+      @font-face {
+        font-family: "Cascadia";
+        src: url("https://excalidraw.com/Cascadia.woff2");
+      }
+    </style>
+    
+  </defs>
+  <g stroke-linecap="round"><g transform="translate(248 42) rotate(0 -83.5 77)"><path d="M0 0 C-27.83 25.67, -139.17 128.33, -167 154 M0 0 C-27.83 25.67, -139.17 128.33, -167 154" stroke="#1e1e1e" stroke-width="2" fill="none"></path></g></g><mask></mask><g stroke-linecap="round"><g transform="translate(248 43) rotate(0 77.5 168.5)"><path d="M0 0 C25.83 56.17, 129.17 280.83, 155 337 M0 0 C25.83 56.17, 129.17 280.83, 155 337" stroke="#1e1e1e" stroke-width="2" fill="none"></path></g></g><mask></mask><g stroke-linecap="round"><g transform="translate(82 196) rotate(0 160 91.5)"><path d="M0 0 C53.33 30.5, 266.67 152.5, 320 183 M0 0 C53.33 30.5, 266.67 152.5, 320 183" stroke="#1e1e1e" stroke-width="2" fill="none"></path></g></g><mask></mask><g stroke-linecap="round"><g transform="translate(10 195) rotate(0 197 0)"><path d="M0 0 C65.67 0, 328.33 0, 394 0" stroke="#1971c2" stroke-width="2.5" fill="none" stroke-dasharray="1.5 8"></path></g></g><mask></mask><g transform="translate(241 10) rotate(0 5.558333396911621 11.5)"><text x="0" y="0" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#1971c2" text-anchor="start" style="white-space: pre;" direction="ltr" dominant-baseline="text-before-edge">a</text></g><g transform="translate(408 383) rotate(0 5 11.5)"><text x="0" y="0" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#1971c2" text-anchor="start" style="white-space: pre;" direction="ltr" dominant-baseline="text-before-edge">c</text></g><g transform="translate(51 163) rotate(0 11.116666793823242 11.5)"><text x="0" y="0" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#1971c2" text-anchor="start" style="white-space: pre;" direction="ltr" dominant-baseline="text-before-edge">b1</text></g><g transform="translate(325 160) rotate(0 11.116666793823242 11.5)"><text x="0" y="0" font-family="Helvetica, Segoe UI Emoji" font-size="20px" fill="#1971c2" text-anchor="start" style="white-space: pre;" direction="ltr" dominant-baseline="text-before-edge">b2</text></g></svg>
