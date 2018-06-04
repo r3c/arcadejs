@@ -86,12 +86,12 @@ const debugModes: {
 const configurator = {
   nbDirectionalLights: createSelect("dLights", ["0", "1", "2", "3"], 0),
   nbPointLights: createSelect("pLights", ["0", "1", "2", "3"], 1),
-  move: createCheckbox("move", true),
+  move: createCheckbox("move", false),
   lightAmbient: createCheckbox("ambient", true),
-  lightDiffuse: createCheckbox("diffuse", true),
-  lightSpecular: createCheckbox("specular", true),
-  useNormalMap: createCheckbox("nMap", true),
-  useHeightMap: createCheckbox("hMap", true),
+  lightDiffuse: createCheckbox("diffuse", false),
+  lightSpecular: createCheckbox("specular", false),
+  useNormalMap: createCheckbox("nMap", false),
+  useHeightMap: createCheckbox("hMap", false),
   debugMode: createSelect(
     "debug",
     ["None", ...debugModes.map(({ name }) => name)],

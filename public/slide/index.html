@@ -1,0 +1,570 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Let there be (gl)Light!</title>
+
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/dracula.css">
+		<link rel="stylesheet" href="plugin/highlight/zenburn.css">
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<h2>Let there be (gl)Light!</h2>
+					<h4>A glimpse in real-time 3D graphics world</h4>
+				</section>
+
+				<section>
+					<h4>Real-time 3D graphics what?</h4>
+					<div class="r-stack">
+						<img height="500" src="image/focus-1.svg" />
+						<img height="500" src="image/focus-2.svg" class="fragment fade-in" data-fragment-index="1" />
+						<img height="500" src="image/focus-3.svg" class="fragment fade-in" data-fragment-index="2" />
+						<img height="500" src="image/focus-4.svg" class="fragment fade-in" data-fragment-index="3" />
+					</div>
+				</section>
+
+				<section>
+					<h4>Rasterization engine</h4>
+					<img height="400" src="image/wireframe.svg" />
+					<p>Rasterize &raquo; render to pixels &raquo; render 3D triangles</p>
+				</section>
+
+				<section>
+					<h4>Render 3D triangle</h4>
+					<img height="350" src="image/projection.svg" />
+					<p>Project 3D world points &raquo; 2D screen space</p>
+				</section>
+
+				<section>
+					<section>
+						<h4>Perspective projection</h4>
+						<p>
+							\[
+							\begin{bmatrix}
+							P_x \\ P_y
+							\end{bmatrix}
+							=
+							\begin{bmatrix}
+							O_x
+							\\
+							O_y
+							\end{bmatrix}
+							/ tan(fov) / O_z
+							\]
+						</p>
+						<ul class="fragment fade-in">
+							<li><em>P<sub>z</sub></em> also computed and used for depth test</li>
+							<li>
+								Display projected points such as:
+								\[(P_x, P_y, P_z) &isin; ([-1, 1], [-1, 1], [-1, 1])\]
+							</li>
+						</ul>
+					</section>
+
+					<section>
+						<h4>Let's draw a cube</h4>
+						<div class="r-stack">
+							<img height="500" src="image/cube-1.png" class="fragment fade-out"
+								data-fragment-index="1" />
+							<img height="500" src="image/cube-2.png" class="fragment fade-in" data-fragment-index="1" />
+						</div>
+					</section>
+
+					<section>
+						<h4>44 lines software renderer</h4>
+						<pre>
+							<code class="language-js" data-line-numbers="1-44|1-14|16-26|28-37|39-44" data-trim>
+								renderTriangles(
+									document.getElementById('canvas').getContext('2d'),
+									[ // 8 vertices to define a cube
+										{ x: -1, y: 1, z: -1 }, { x: 1, y: 1, z: -1 },
+										{ x: 1, y: -1, z: -1 }, { x: -1, y: -1, z: -1 },
+										{ x: -1, y: 1, z: 1 }, { x: 1, y: 1, z: 1 },
+										{ x: 1, y: -1, z: 1 }, { x: -1, y: -1, z: 1 }
+									],
+									[ // 6 faces, 2 triangles per face
+										[0, 1, 2], [2, 3, 0], [4, 5, 6], [6, 7, 4],
+										[0, 3, 7], [7, 4, 0], [1, 2, 6], [6, 5, 1],
+										[0, 1, 5], [5, 4, 0], [2, 3, 7], [7, 6, 2]
+									]
+								);
+
+								function renderTriangles(context, vertices, indices) {
+									for (const [i, j, k] of indices) {
+										const point0 = vertexToScreen(context, vertices[i]);
+										const point1 = vertexToScreen(context, vertices[j]);
+										const point2 = vertexToScreen(context, vertices[k]);
+
+										drawLine(context, point0, point1);
+										drawLine(context, point0, point2);
+										drawLine(context, point1, point2);
+									}
+								}
+
+								function vertexToScreen(context, vertex) {
+									const halfWidth = context.canvas.width * 0.5;
+									const halfHeight = context.canvas.height * 0.5;
+									const w = Math.tan(Math.PI / 8) * (-vertex.z - 5);
+
+									return {
+										x: (vertex.x / w) * halfWidth + halfWidth,
+										y: (vertex.y / w) * halfHeight + halfHeight
+									};
+								}
+
+								function drawLine(context, from, to) {
+									context.beginPath();
+									context.moveTo(from.x, from.y);
+									context.lineTo(to.x, to.y);
+									context.stroke();
+								}
+							</code>
+						</pre>
+					</section>
+
+					<section>
+						<h4>Projection to screen</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#projection-to-screen" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+
+					<section>
+						<h4>Rotating mesh</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#rotating-mesh" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+
+					<section>
+						<h4>Make it move!</h4>
+						<pre>
+							<code class="language-js" data-line-numbers="1-15" data-trim>
+								const getX = (i) => Math.cos(t + Math.PI * i) + Math.cos(t);
+								const getZ = (i) => Math.sin(t + Math.PI * i) - 5;
+								const y0 = Math.sin(t) - Math.sqrt(2) / 2;
+								const y1 = Math.sin(t) + Math.sqrt(2) / 2;
+
+								const vertices = [
+								  { x: getX(0), y: y0, z: getZ(0) },
+								  { x: getX(0.5), y: y0, z: getZ(0.5) },
+								  { x: getX(1), y: y0, z: getZ(1) },
+								  { x: getX(1.5), y: y0, z: getZ(1.5) },
+								  { x: getX(0), y: y1, z: getZ(0) },
+								  { x: getX(0.5), y: y1, z: getZ(0.5) },
+								  { x: getX(1), y: y1, z: getZ(1) },
+								  { x: getX(1.5), y: y1, z: getZ(1.5) },
+								];
+							</code>
+						</pre>
+					</section>
+				</section>
+
+				<section>
+					<h4>Projections made easy</h4>
+					<ul>
+						<li>Move &amp; rotate model?</li>
+						<li>Relocate camera?</li>
+					</ul>
+					<div>
+						<img height="300" src="image/world-to-view.png" />
+					</div>
+					<p class="fragment fade-in">Transformation matrices 🙌</p>
+				</section>
+
+				<section>
+					<h4>Changing coordinate system</h4>
+					<ul>
+						<li>
+							Translate point by vector <em>t</em>:
+							\[
+							\begin{bmatrix}
+							p'_x \\ p'_y \\ p'_z
+							\end{bmatrix}
+							=
+							\begin{bmatrix}
+							p_x \\ p_y \\ p_z
+							\end{bmatrix}
+							+
+							\begin{bmatrix}
+							t_x \\ t_y \\ t_z
+							\end{bmatrix}
+							\]
+						</li>
+						<li class="fragment fade-in">
+							Rotate point of angle <em>θ</em> around <em>x</em> axis:
+							\[
+							\begin{bmatrix}
+							p'_x \\ p'_y \\ p'_z
+							\end{bmatrix}
+							=
+							\begin{bmatrix}
+							1 & 0 & 0 \\
+							0 & cos(θ) & sin(θ) \\
+							0 & -sin(θ) & cos(θ)
+							\end{bmatrix}
+							*
+							\begin{bmatrix}
+							p_x \\ p_y \\ p_z
+							\end{bmatrix}
+							\]
+						</li>
+					</ul>
+				</section>
+
+				<section>
+					<section>
+						<h4>Compose transforms</h4>
+						<p>
+							\[
+							\begin{bmatrix}
+							p'_x \\ p'_y \\ p'_z \\ w'
+							\end{bmatrix}
+							=
+							\begin{bmatrix}
+							rot_{11} & rot_{12} & rot_{13} & tr_1 \\
+							rot_{21} & rot_{22} & rot_{23} & tr_2 \\
+							rot_{31} & rot_{32} & rot_{33} & tr_3 \\
+							0 & 0 & 0 & 1
+							\end{bmatrix}
+							*
+							\begin{bmatrix}
+							p_x \\ p_y \\ p_z \\ 1
+							\end{bmatrix}
+							\]
+						</p>
+						<p class="fragment fade-in">
+							Rotate by A then translate by B then rotate by C:
+							\[P' = A * B * C * P\]
+						</p>
+					</section>
+
+					<section>
+						<h4>Render with matrices</h4>
+						<pre>
+							<code class="language-js" data-line-numbers="1-11|1|3-5" data-trim>
+								function renderTriangles(context, vertices, indices, matrix) {
+									for (const [i, j, k] of indices) {
+										const p0 = toScreen(context, matrix.multiply(vertices[i]));
+										const p1 = toScreen(context, matrix.multiply(vertices[j]));
+										const p2 = toScreen(context, matrix.multiply(vertices[k]));
+
+										drawLine(context, p0, p1);
+										drawLine(context, p0, p2);
+										drawLine(context, p1, p2);
+									}
+								}
+							</code>
+						</pre>
+					</section>
+
+					<section>
+						<h4>Matrix composition</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#matrix-composition" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h4>Rasterizing triangles</h4>
+						<div class="r-stack">
+							<img height="400" src="image/scanline-1.svg" />
+							<img height="400" src="image/scanline-2.svg" class="fragment fade-in"
+								data-fragment-index="1" />
+							<img height="400" src="image/scanline-3.svg" class="fragment fade-in"
+								data-fragment-index="2" />
+							<img height="400" src="image/scanline-4.svg" class="fragment fade-in"
+								data-fragment-index="3" />
+						</div>
+						<p class="fragment fade-in" data-fragment-index="3">
+							\[
+							s1
+							=
+							\begin{bmatrix}
+							b1_x + (a_x - b1_x) * h / (b1_y - a_y)
+							\\
+							a_y + h
+							\end{bmatrix}
+							\]
+						</p>
+					</section>
+
+					<section>
+						<h4>Software rendering</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#software-rendering" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+				</section>
+
+				<section>
+					<h4>High CPU cost</h4>
+					<ul>
+						<li>Matrix & vector instructions</li>
+						<li>Interpolate pixels</li>
+					</ul>
+					<p class="fragment" data-fragment-index="1">Parallelize on GPU!</p>
+				</section>
+
+				<section>
+					<h4>Meet <s>Open</s> WebGL</h4>
+					<p>Rendering-oriented &amp; GPU-designed API</p>
+					<aside class="notes">
+						<ul>
+							<li>Jan 1992: released by Silicon Graphics</li>
+							<li>2006: managed by Khronos Group</li>
+							<li>Cross-platform &amp; language independant API</li>
+							<li>Wildly used, supported, documented</li>
+							<li>Superseeded by Vulkan since 2016</li>
+						</ul>
+					</aside>
+				</section>
+
+				<section>
+					<section>
+						<h4>The WebGL pipeline</h4>
+						<div style="background: white;">
+							<img height="200" src="image/gl-pipeline.png" />
+						</div>
+						<p>Customize with <em>shader</em> programs</p>
+					</section>
+
+					<section>
+						<h4>Vertex shader hello world</h4>
+						<pre>
+							<code data-line-numbers="1-13|1-5|7|9-13" data-trim>
+								in vec4 coordinate;
+								in vec4 position;
+								
+								uniform mat4 modelViewMatrix;
+								uniform mat4 projectionMatrix;
+								
+								out vec4 fragCoordinate;
+								
+								void main(void) {
+									fragCoordinate = coordinate;
+								
+									gl_Position = projectionMatrix * modelViewMatrix * position;
+								}
+							</code>
+						</pre>
+					</section>
+
+					<section>
+						<h4>Fragment shader hello world</h4>
+						<pre>
+							<code data-line-numbers="1-9|1-3|5|7-9" data-trim>
+								in vec4 fragCoordinate;
+								
+								uniform sampler2D albedoMap;
+								
+								layout(location=0) out vec4 fragColor;
+								
+								void main(void) {
+									fragColor = texture(albedoMap, fragCoordinate);
+								}
+							</code>
+						</pre>
+					</section>
+
+					<section>
+						<h4>Hardware rendering</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#basic-hardware-rendering" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+				</section>
+
+				<section>
+					<h4>Lack realism 😢</h4>
+					<div>
+						<img height="300" src="image/lighting-off.jpg" />
+						<img height="300" src="image/lighting-on.jpg" />
+					</div>
+					<ul>
+						<li>Simulate material properties</li>
+						<li>Require lighting computation</li>
+					</ul>
+				</section>
+
+				<section>
+					<section>
+						<h4>Phong model</h4>
+						<div>
+							<img height="400" src="image/shad2-roughsurface.png" />
+						</div>
+						<ul>
+							<li>Empirical BRDF approximation</li>
+							<li>Diffuse + specular components</li>
+						</ul>
+						<aside class="notes">
+							<ul>
+								<li>BRDR = Bidirectional Reflectance Distribution Function</li>
+								<li>4 variables: radiance, irradiance, light angle, normal</li>
+								<li>Bui Tuong Phong, 1975</li>
+								<li>Blinn-Phong variant (Jim Blinn, 1977) used to be OpenGL & DirectX default</li>
+							</ul>
+						</aside>
+					</section>
+
+					<section>
+						<h4>Physically-based rendering models</h4>
+						<div>
+							<img height="150" src="image/ndf.png" />
+						</div>
+						<ul>
+							<li>Based on the theory of microfacets</li>
+							<li>Cook-Torrance BRDF mostly used</li>
+						</ul>
+						<aside class="notes">
+							<ul>
+								<li>Explored by Disney</li>
+								<li>Approximate real world physical properties (conservation of energy, fresnel
+									reflectivity, etc.)</li>
+								<li>Introduced for real-time display by Epic Games in UE4+</li>
+							</ul>
+						</aside>
+					</section>
+				</section>
+
+				<section>
+					<section>
+						<h4>Forward Phong rendering</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#forward-phong-lighting" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+
+					<section>
+						<h4>Tricks to improve final result</h4>
+						<div>
+							<img height="500" src="image/mapping-1.png" />
+						</div>
+						<aside class="notes">
+							<ul>
+								<li>Normal mapping: perturb normals using 2D texture</li>
+								<li>Height mapping: simulate height on flat surfaces</li>
+							</ul>
+						</aside>
+					</section>
+
+					<section>
+						<h4>Normal maps & height maps</h4>
+						<div>
+							<img height="350" src="image/mapping-2.jpg" />
+						</div>
+						<aside class="notes">
+							<ul>
+								<li>Normal mapping: perturb normals using 2D texture</li>
+								<li>Height mapping: simulate height on flat surfaces</li>
+							</ul>
+						</aside>
+					</section>
+
+					<section>
+						<h4>Forward PBR rendering</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#forward-pbr-lighting" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+				</section>
+
+				<section>
+					<h4>Scaling issues</h4>
+					<p>\[O(nbLights * nbModels) 😥\]</p>
+					<img height="350" src="image/deferred_example.png" />
+					<p>Want hundreds of lights?</p>
+				</section>
+
+				<section>
+					<section>
+						<h4>Deferred shading</h4>
+						<ul>
+							<li>StarCraft II, GTA IV, CryENGINE3...</li>
+							<li>Multi-step rendering pipeline:
+								<ol>
+									<li>Draw models, store depth, normal &amp; material</li>
+									<li>Process lights for the whole geometry at once</li>
+								</ol>
+							</li>
+						</ul>
+						<p>\[O(nbLights + nbModels) 😁\]</p>
+						<aside class="notes">
+							<ul>Reconstruct point from depth + buffer coordinates</ul>
+							<ul>Apply lighting from point + stored material properties</ul>
+							<ul>Limitation: no transparency, rigid material support</ul>
+						</aside>
+					</section>
+
+					<section>
+						<h4>Deferred lighting</h4>
+						<ul>
+							<li>BioShock Infinite, Assassin's Creed 3, MGS V...</li>
+							<li>Multi-step rendering pipeline:
+								<ol>
+									<li>Draw models, store depth &amp; normal</li>
+									<li>Draw lights &amp; store radiance data</li>
+									<li>Draw models again and apply lights to surfaces</li>
+								</ol>
+							</li>
+						</ul>
+						<p>\[O(nbLights + nbModels) 😁\]</p>
+						<aside class="notes">
+							<ul>Better material flexibility than deferred shading</ul>
+							<ul>2 passes per model instead of 1</ul>
+						</aside>
+					</section>
+
+					<section>
+						<h4>Deferred rendering</h4>
+						<iframe src="https://r3c.github.io/arcadejs/#deferred-rendering" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+				</section>
+
+				<section>
+					<p>That's all folks!</p>
+				</section>
+
+				<section>
+					<h4>Resources</h4>
+					<ul>
+						<li><a href="https://glumpy.github.io/modern-gl.html">Model OpenGL</a></li>
+						<li><a
+								href="https://blenderartists.org/forum/showthread.php?401209-Cycles-Parallax-(step)-mapping-shader-with-Silhouette-Occlusion-Download">Blender
+								Artists</a></li>
+						<li><a href="https://learnopengl.com/Advanced-Lighting/Deferred-Shading">LearnOpenGL - Deferred
+								Shading</a></li>
+						<li><a href="https://en.wikipedia.org/wiki/Phong_reflection_model">Phong reflection model</a>
+						</li>
+						<li><a href="https://www.scratchapixel.com/lessons/3d-basic-rendering/phong-shader-BRDF">The
+								Phong Model and the concepts of Illumination Models and BRDF</a></li>
+						<li><a href="http://webreference.com/3d/lesson18/part2.html">3D Animation Workshop</a></li>
+						<li><a href="http://www.songho.ca/opengl/gl_projectionmatrix.html">OpenGL Projection Matrix</a>
+						</li>
+					</ul>
+				</section>
+			</div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/math/math.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
+
+		<script>
+			Reveal.initialize({
+				history: true,
+				plugins: [
+					RevealMarkdown,
+					RevealHighlight,
+					RevealMath.KaTeX,
+					RevealNotes
+				],
+				transition: 'convex'
+			});
+		</script>
+	</body>
+</html>
