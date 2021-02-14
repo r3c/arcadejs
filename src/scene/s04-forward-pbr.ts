@@ -91,7 +91,7 @@ const prepare = async () => application.runtime(display.WebGLScreen, configurati
 
 	// Load meshes
 	const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
-	const helmetMesh = await load.fromGLTF("https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/models/DamagedHelmet/glTF/DamagedHelmet.gltf", { transform: matrix.Matrix4.createIdentity().rotate({ x: 0, y: 1, z: 0 }, Math.PI).rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5) });
+	const helmetMesh = await load.fromGLTF("https://github.com/KhronosGroup/glTF-Sample-Models/raw/fb85803eaeb9208d1b6f04e3f3769ebc8aa706f6/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf", { transform: matrix.Matrix4.createIdentity().rotate({ x: 0, y: 1, z: 0 }, Math.PI).rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5) });
 	const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", { transform: matrix.Matrix4.createIdentity().scale({ x: 0.2, y: 0.2, z: 0.2 }) });
 
 	// Load textures
