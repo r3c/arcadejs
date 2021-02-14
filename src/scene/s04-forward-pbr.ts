@@ -96,7 +96,7 @@ const prepare = async () =>
       // Load meshes
       const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
       const helmetMesh = await load.fromGLTF(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/models/DamagedHelmet/glTF/DamagedHelmet.gltf",
+        "https://github.com/KhronosGroup/glTF-Sample-Models/raw/fb85803eaeb9208d1b6f04e3f3769ebc8aa706f6/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf",
         {
           transform: matrix.Matrix4.createIdentity()
             .rotate({ x: 0, y: 1, z: 0 }, Math.PI)
