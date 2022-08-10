@@ -11,8 +11,7 @@ vec3 normalDecode(in vec2 normalPack) {
 	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
 }`;
 
-const decodeInvoke = (normalPack: string) =>
-	`normalDecode(${normalPack})`;
+const decodeInvoke = (normalPack: string) => `normalDecode(${normalPack})`;
 
 const encodeDeclare = () => `
 vec2 normalEncode(in vec3 decoded) {
@@ -21,12 +20,18 @@ vec2 normalEncode(in vec3 decoded) {
 	return normalize(decoded.xy) * sqrt(-decoded.z * 0.5 + 0.5) * 0.5 + 0.5;
 }`;
 
-const encodeInvoke = (decoded: string) =>
-	`normalEncode(${decoded})`;
+const encodeInvoke = (decoded: string) => `normalEncode(${decoded})`;
 
-const perturbDeclare = (samplerEnableDirective: string, samplerEnableUniform: string, sampler: string) => `
+const perturbDeclare = (
+  samplerEnableDirective: string,
+  samplerEnableUniform: string,
+  sampler: string
+) => `
 vec3 normalPerturb(in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
-	vec3 normalFace = bool(${compiler.getDirectiveOrValue(samplerEnableDirective, samplerEnableUniform)})
+	vec3 normalFace = bool(${compiler.getDirectiveOrValue(
+    samplerEnableDirective,
+    samplerEnableUniform
+  )})
 		? normalize(2.0 * texture(${sampler}, coord).rgb - 1.0)
 		: vec3(0.0, 0.0, 1.0);
 
@@ -35,6 +40,13 @@ vec3 normalPerturb(in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
 `;
 
 const perturbInvoke = (coord: string, t: string, b: string, n: string) =>
-	`normalPerturb(${coord}, ${t}, ${b}, ${n})`;
+  `normalPerturb(${coord}, ${t}, ${b}, ${n})`;
 
-export { decodeDeclare, decodeInvoke, encodeDeclare, encodeInvoke, perturbDeclare, perturbInvoke }
+export {
+  decodeDeclare,
+  decodeInvoke,
+  encodeDeclare,
+  encodeInvoke,
+  perturbDeclare,
+  perturbInvoke,
+};

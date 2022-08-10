@@ -41,9 +41,16 @@ ${sourceTypeResult} lightSourcePoint(in ${sourceTypePoint} light, in vec3 distan
 }`;
 
 const sourceInvokeDirectional = (light: string, distanceCamera: string) =>
-	`lightSourceDirectional(${light}, ${distanceCamera})`;
+  `lightSourceDirectional(${light}, ${distanceCamera})`;
 
 const sourceInvokePoint = (light: string, distanceCamera: string) =>
-	`lightSourcePoint(${light}, ${distanceCamera})`;
+  `lightSourcePoint(${light}, ${distanceCamera})`;
 
-export { sourceDeclare, sourceInvokeDirectional, sourceInvokePoint, sourceTypeDirectional, sourceTypePoint, sourceTypeResult }
+export {
+  sourceDeclare,
+  sourceInvokeDirectional,
+  sourceInvokePoint,
+  sourceTypeDirectional,
+  sourceTypePoint,
+  sourceTypeResult,
+};

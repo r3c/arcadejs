@@ -4,23 +4,24 @@ import * as rgb from "./rgb";
 const sampleType = "MaterialSample";
 
 const sampleDeclare = (
-	albedoEnableDirective: string,
-	albedoEnableUniform: string,
-	albedoSampler: string,
-	albedoFactor: string,
-	glossinessEnableDirective: string,
-	glossinessEnableUniform: string,
-	glossinessSampler: string,
-	glossinessFactor: string,
-	metalnessEnableDirective: string,
-	metalnessEnableUniform: string,
-	metalnessSampler: string,
-	metalnessFactor: string,
-	roughnessEnableDirective: string,
-	roughnessEnableUniform: string,
-	roughnessSampler: string,
-	roughnessFactor: string,
-	shininessValue: string) => `
+  albedoEnableDirective: string,
+  albedoEnableUniform: string,
+  albedoSampler: string,
+  albedoFactor: string,
+  glossinessEnableDirective: string,
+  glossinessEnableUniform: string,
+  glossinessSampler: string,
+  glossinessFactor: string,
+  metalnessEnableDirective: string,
+  metalnessEnableUniform: string,
+  metalnessSampler: string,
+  metalnessFactor: string,
+  roughnessEnableDirective: string,
+  roughnessEnableUniform: string,
+  roughnessSampler: string,
+  roughnessFactor: string,
+  shininessValue: string
+) => `
 struct ${sampleType} {
 	vec3 albedo;
 	float glossiness;
@@ -30,19 +31,31 @@ struct ${sampleType} {
 };
 
 ${sampleType} materialSample(vec2 coord) {
-	vec3 albedo = ${albedoFactor}.rgb * (bool(${compiler.getDirectiveOrValue(albedoEnableDirective, albedoEnableUniform)})
+	vec3 albedo = ${albedoFactor}.rgb * (bool(${compiler.getDirectiveOrValue(
+  albedoEnableDirective,
+  albedoEnableUniform
+)})
 		? ${rgb.standardToLinearInvoke(`texture(${albedoSampler}, coord).rgb`)}
 		: vec3(1.0));
 
-	float glossiness = ${glossinessFactor} * (bool(${compiler.getDirectiveOrValue(glossinessEnableDirective, glossinessEnableUniform)})
+	float glossiness = ${glossinessFactor} * (bool(${compiler.getDirectiveOrValue(
+  glossinessEnableDirective,
+  glossinessEnableUniform
+)})
 		? texture(${glossinessSampler}, coord).r
 		: 1.0);
 
-	float metalness = ${metalnessFactor} * (bool(${compiler.getDirectiveOrValue(metalnessEnableDirective, metalnessEnableUniform)})
+	float metalness = ${metalnessFactor} * (bool(${compiler.getDirectiveOrValue(
+  metalnessEnableDirective,
+  metalnessEnableUniform
+)})
 		? texture(${metalnessSampler}, coord).r
 		: 1.0);
 
-	float roughness = ${roughnessFactor} * (bool(${compiler.getDirectiveOrValue(roughnessEnableDirective, roughnessEnableUniform)})
+	float roughness = ${roughnessFactor} * (bool(${compiler.getDirectiveOrValue(
+  roughnessEnableDirective,
+  roughnessEnableUniform
+)})
 		? texture(${roughnessSampler}, coord).r
 		: 1.0);
 
@@ -55,7 +68,6 @@ ${sampleType} materialSample(vec2 coord) {
 	);
 }`;
 
-const sampleInvoke = (coord: string) =>
-	`materialSample(${coord})`;
+const sampleInvoke = (coord: string) => `materialSample(${coord})`;
 
-export { sampleDeclare, sampleInvoke, sampleType }
+export { sampleDeclare, sampleInvoke, sampleType };

@@ -2,13 +2,17 @@ import * as compiler from "./compiler";
 import * as light from "./light";
 
 const lightDeclare = (diffuseDirective: string, specularDirective: string) => `
-float phongLightDiffusePower(in ${light.sourceTypeResult} light, in vec3 normal) {
+float phongLightDiffusePower(in ${
+  light.sourceTypeResult
+} light, in vec3 normal) {
 	float lightNormalCosine = dot(normal, light.direction);
 
 	return clamp(lightNormalCosine, 0.0, 1.0);
 }
 
-float phongLightSpecularPower(in ${light.sourceTypeResult} light, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
+float phongLightSpecularPower(in ${
+  light.sourceTypeResult
+} light, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
 	float lightNormalCosine = dot(normal, light.direction);
 	float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
@@ -27,20 +31,46 @@ float phongLightSpecularPower(in ${light.sourceTypeResult} light, in float mater
 	return materialGlossiness * pow(lightCosine, materialShininess) * lightVisible;
 }
 
-vec3 phongLight(in ${light.sourceTypeResult} light, in vec3 materialAlbedo, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
+vec3 phongLight(in ${
+  light.sourceTypeResult
+} light, in vec3 materialAlbedo, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
 	return light.power * (
-		phongLightDiffusePower(light, normal) * light.color * materialAlbedo * float(${compiler.getDirectiveOrValue(diffuseDirective, "1.0")}) +
-		phongLightSpecularPower(light, materialGlossiness, materialShininess, normal, eyeDirection) * light.color * float(${compiler.getDirectiveOrValue(specularDirective, "1.0")})
+		phongLightDiffusePower(light, normal) * light.color * materialAlbedo * float(${compiler.getDirectiveOrValue(
+      diffuseDirective,
+      "1.0"
+    )}) +
+		phongLightSpecularPower(light, materialGlossiness, materialShininess, normal, eyeDirection) * light.color * float(${compiler.getDirectiveOrValue(
+      specularDirective,
+      "1.0"
+    )})
 	);
 }`;
 
-const lightInvoke = (light: string, materialAlbedo: string, materialGloss: string, materialShininess: string, normal: string, eyeDirection: string) =>
-	`phongLight(${light}, ${materialAlbedo}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
+const lightInvoke = (
+  light: string,
+  materialAlbedo: string,
+  materialGloss: string,
+  materialShininess: string,
+  normal: string,
+  eyeDirection: string
+) =>
+  `phongLight(${light}, ${materialAlbedo}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
 
 const lightInvokeDiffusePower = (light: string, normal: string) =>
-	`phongLightDiffusePower(${light}, ${normal})`;
+  `phongLightDiffusePower(${light}, ${normal})`;
 
-const lightInvokeSpecularPower = (light: string, materialGloss: string, materialShininess: string, normal: string, eyeDirection: string) =>
-	`phongLightSpecularPower(${light}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
+const lightInvokeSpecularPower = (
+  light: string,
+  materialGloss: string,
+  materialShininess: string,
+  normal: string,
+  eyeDirection: string
+) =>
+  `phongLightSpecularPower(${light}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
 
-export { lightDeclare, lightInvoke, lightInvokeDiffusePower, lightInvokeSpecularPower }
+export {
+  lightDeclare,
+  lightInvoke,
+  lightInvokeDiffusePower,
+  lightInvokeSpecularPower,
+};

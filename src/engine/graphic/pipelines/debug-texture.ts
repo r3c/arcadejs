@@ -95,134 +95,163 @@ void main(void) {
 }`;
 
 interface Configuration {
-	format: Format,
-	scale?: number,
-	select: Select,
-	zFar: number,
-	zNear: number
+  format: Format;
+  scale?: number;
+  select: Select;
+  zFar: number;
+  zNear: number;
 }
 
 const enum Format {
-	Identity,
-	Colorful,
-	Monochrome,
-	Depth,
-	Spheremap,
-	Logarithm
+  Identity,
+  Colorful,
+  Monochrome,
+  Depth,
+  Spheremap,
+  Logarithm,
 }
 
 const enum Select {
-	Identity,
-	RedGreenBlue,
-	GreenBlueAlpha,
-	RedGreen,
-	GreenBlue,
-	BlueAlpha,
-	Red,
-	Green,
-	Blue,
-	Alpha
+  Identity,
+  RedGreenBlue,
+  GreenBlueAlpha,
+  RedGreen,
+  GreenBlue,
+  BlueAlpha,
+  Red,
+  Green,
+  Blue,
+  Alpha,
 }
 
 interface State {
-	source: WebGLTexture
+  source: WebGLTexture;
 }
 
 const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
-	const directives = [
-		{ name: "FORMAT", value: configuration.format },
-		{ name: "SELECT", value: configuration.select },
-		{ name: "ZFAR", value: configuration.zFar },
-		{ name: "ZNEAR", value: configuration.zNear }
-	];
+  const directives = [
+    { name: "FORMAT", value: configuration.format },
+    { name: "SELECT", value: configuration.select },
+    { name: "ZFAR", value: configuration.zFar },
+    { name: "ZNEAR", value: configuration.zNear },
+  ];
 
-	const shader = new webgl.Shader<State>(gl, vertexSource, fragmentSource, directives);
+  const shader = new webgl.Shader<State>(
+    gl,
+    vertexSource,
+    fragmentSource,
+    directives
+  );
 
-	shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
-	shader.setupAttributePerGeometry("points", geometry => geometry.points);
+  shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
+  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-	shader.setupTexturePerTarget("source", undefined, webgl.TextureType.Quad, state => state.source);
+  shader.setupTexturePerTarget(
+    "source",
+    undefined,
+    webgl.TextureType.Quad,
+    (state) => state.source
+  );
 
-	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
+  shader.setupMatrixPerNode(
+    "modelMatrix",
+    (state) => state.transform.getValues(),
+    (gl) => gl.uniformMatrix4fv
+  );
 
-	return shader;
+  return shader;
 };
 
 class Pipeline implements webgl.Pipeline {
-	private readonly gl: WebGLRenderingContext;
-	private readonly painter: webgl.Painter<State>;
-	private readonly quad: webgl.Mesh;
-	private readonly scale: number;
+  private readonly gl: WebGLRenderingContext;
+  private readonly painter: webgl.Painter<State>;
+  private readonly quad: webgl.Mesh;
+  private readonly scale: number;
 
-	/*
-	** Helper function used to build fake scene with a single subject using
-	** given texture. It allows easy construction of "scene" parameter expected
-	** by "process" method easily.
-	*/
-	public static createScene(source: WebGLTexture): webgl.Scene {
-		const defaultColor = [0, 0, 0, 0];
+  /*
+   ** Helper function used to build fake scene with a single subject using
+   ** given texture. It allows easy construction of "scene" parameter expected
+   ** by "process" method easily.
+   */
+  public static createScene(source: WebGLTexture): webgl.Scene {
+    const defaultColor = [0, 0, 0, 0];
 
-		return {
-			subjects: [{
-				matrix: matrix.Matrix4.createIdentity(),
-				mesh: {
-					nodes: [{
-						children: [],
-						primitives: [{
-							geometry: <any>undefined,
-							material: <any>{
-								albedoMap: source
-							}
-						}],
-						transform: matrix.Matrix4.createIdentity()
-					}]
-				}
-			}]
-		};
-	}
+    return {
+      subjects: [
+        {
+          matrix: matrix.Matrix4.createIdentity(),
+          mesh: {
+            nodes: [
+              {
+                children: [],
+                primitives: [
+                  {
+                    geometry: <any>undefined,
+                    material: <any>{
+                      albedoMap: source,
+                    },
+                  },
+                ],
+                transform: matrix.Matrix4.createIdentity(),
+              },
+            ],
+          },
+        },
+      ],
+    };
+  }
 
-	public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
-		this.gl = gl;
-		this.painter = new painter.Painter(load(gl, configuration));
-		this.quad = webgl.loadMesh(gl, quad.mesh);
-		this.scale = functional.coalesce(configuration.scale, 0.4);
-	}
+  public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+    this.gl = gl;
+    this.painter = new painter.Painter(load(gl, configuration));
+    this.quad = webgl.loadMesh(gl, quad.mesh);
+    this.scale = functional.coalesce(configuration.scale, 0.4);
+  }
 
-	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
-		const gl = this.gl;
+  public process(
+    target: webgl.Target,
+    transform: webgl.Transform,
+    scene: webgl.Scene
+  ) {
+    const gl = this.gl;
 
-		gl.disable(gl.BLEND);
-		gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.DEPTH_TEST);
 
-		gl.enable(gl.CULL_FACE);
-		gl.cullFace(gl.BACK);
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK);
 
-		const subjects = [{
-			matrix: matrix.Matrix4
-				.createIdentity()
-				.translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 })
-				.scale({ x: this.scale, y: this.scale, z: 0 }),
-			mesh: this.quad
-		}];
+    const subjects = [
+      {
+        matrix: matrix.Matrix4.createIdentity()
+          .translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 })
+          .scale({ x: this.scale, y: this.scale, z: 0 }),
+        mesh: this.quad,
+      },
+    ];
 
-		// Hack: find first defined albedo map from subject models and use it as debug source
-		for (const subject of scene.subjects) {
-			for (const node of subject.mesh.nodes) {
-				for (const primitive of node.primitives) {
-					if (primitive.material.albedoMap !== undefined) {
-						this.painter.paint(target, subjects, matrix.Matrix4.createIdentity(), {
-							source: primitive.material.albedoMap
-						});
+    // Hack: find first defined albedo map from subject models and use it as debug source
+    for (const subject of scene.subjects) {
+      for (const node of subject.mesh.nodes) {
+        for (const primitive of node.primitives) {
+          if (primitive.material.albedoMap !== undefined) {
+            this.painter.paint(
+              target,
+              subjects,
+              matrix.Matrix4.createIdentity(),
+              {
+                source: primitive.material.albedoMap,
+              }
+            );
 
-						return;
-					}
-				}
-			}
-		}
-	}
+            return;
+          }
+        }
+      }
+    }
+  }
 
-	public resize(width: number, height: number) {
-	}
+  public resize(width: number, height: number) {}
 }
 
-export { Format, Pipeline, Select }
+export { Format, Pipeline, Select };

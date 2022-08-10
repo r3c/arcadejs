@@ -6,4 +6,4 @@ const getDirectiveOrValue = (directive: string, value: string) => `
 #endif
 `;
 
-export { getDirectiveOrValue }
+export { getDirectiveOrValue };

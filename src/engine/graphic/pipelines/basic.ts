@@ -21,47 +21,62 @@ void main(void) {
 }`;
 
 interface State {
-	projectionMatrix: matrix.Matrix4,
-	viewMatrix: matrix.Matrix4
+  projectionMatrix: matrix.Matrix4;
+  viewMatrix: matrix.Matrix4;
 }
 
 const load = (gl: WebGLRenderingContext) => {
-	const shader = new webgl.Shader<State>(gl, vertexShader, fragmentShader);
+  const shader = new webgl.Shader<State>(gl, vertexShader, fragmentShader);
 
-	shader.setupAttributePerGeometry("points", geometry => geometry.points);
+  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
-	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+  shader.setupMatrixPerNode(
+    "modelMatrix",
+    (state) => state.transform.getValues(),
+    (gl) => gl.uniformMatrix4fv
+  );
+  shader.setupMatrixPerTarget(
+    "projectionMatrix",
+    (state) => state.projectionMatrix.getValues(),
+    (gl) => gl.uniformMatrix4fv
+  );
+  shader.setupMatrixPerTarget(
+    "viewMatrix",
+    (state) => state.viewMatrix.getValues(),
+    (gl) => gl.uniformMatrix4fv
+  );
 
-	return shader;
+  return shader;
 };
 
 class Pipeline implements webgl.Pipeline {
-	private readonly gl: WebGLRenderingContext;
-	private readonly painter: webgl.Painter<State>;
+  private readonly gl: WebGLRenderingContext;
+  private readonly painter: webgl.Painter<State>;
 
-	public constructor(gl: WebGLRenderingContext) {
-		this.gl = gl;
-		this.painter = new painter.Painter(load(gl));
-	}
+  public constructor(gl: WebGLRenderingContext) {
+    this.gl = gl;
+    this.painter = new painter.Painter(load(gl));
+  }
 
-	public process(target: webgl.Target, transform: webgl.Transform, scene: webgl.Scene) {
-		const gl = this.gl;
+  public process(
+    target: webgl.Target,
+    transform: webgl.Transform,
+    scene: webgl.Scene
+  ) {
+    const gl = this.gl;
 
-		gl.enable(gl.CULL_FACE);
-		gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+    gl.enable(gl.DEPTH_TEST);
 
-		gl.cullFace(gl.BACK);
+    gl.cullFace(gl.BACK);
 
-		this.painter.paint(target, scene.subjects, transform.viewMatrix, {
-			projectionMatrix: transform.projectionMatrix,
-			viewMatrix: transform.viewMatrix
-		});
-	}
+    this.painter.paint(target, scene.subjects, transform.viewMatrix, {
+      projectionMatrix: transform.projectionMatrix,
+      viewMatrix: transform.viewMatrix,
+    });
+  }
 
-	public resize(width: number, height: number) {
-	}
+  public resize(width: number, height: number) {}
 }
 
-export { Pipeline }
+export { Pipeline };
