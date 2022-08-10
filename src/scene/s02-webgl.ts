@@ -9,10 +9,10 @@ import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
 
 /*
-** What changed?
-** - Rendering target is now a WebGL context instead of a 2D one
-** - Shaders are defined to replace software projection and rasterization steps
-*/
+ ** What changed?
+ ** - Rendering target is now a WebGL context instead of a 2D one
+ ** - Shaders are defined to replace software projection and rasterization steps
+ */
 
 const vsSource = `
 in vec4 colors;
@@ -47,91 +47,121 @@ void main(void) {
 }`;
 
 interface SceneState {
-	camera: view.Camera,
-	gl: WebGLRenderingContext,
-	input: controller.Input,
-	mesh: webgl.Mesh,
-	painter: webgl.Painter<ShaderState>,
-	projectionMatrix: matrix.Matrix4,
-	target: webgl.Target
+  camera: view.Camera;
+  gl: WebGLRenderingContext;
+  input: controller.Input;
+  mesh: webgl.Mesh;
+  painter: webgl.Painter<ShaderState>;
+  projectionMatrix: matrix.Matrix4;
+  target: webgl.Target;
 }
 
 interface ShaderState {
-	projectionMatrix: matrix.Matrix4,
-	viewMatrix: matrix.Matrix4
+  projectionMatrix: matrix.Matrix4;
+  viewMatrix: matrix.Matrix4;
 }
 
-const prepare = () => application.runtime(display.WebGLScreen, undefined, async (screen, input) => {
-	const gl = screen.context;
-	const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
+const prepare = () =>
+  application.runtime(display.WebGLScreen, undefined, async (screen, input) => {
+    const gl = screen.context;
+    const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
-	shader.setupAttributePerGeometry("colors", geometry => geometry.colors);
-	shader.setupAttributePerGeometry("coords", geometry => geometry.coords);
-	shader.setupAttributePerGeometry("points", geometry => geometry.points);
+    shader.setupAttributePerGeometry("colors", (geometry) => geometry.colors);
+    shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
+    shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-	shader.setupPropertyPerMaterial("albedoFactor", material => material.albedoFactor, gl => gl.uniform4fv);
-	shader.setupTexturePerMaterial("albedoMap", undefined, webgl.TextureType.Quad, material => material.albedoMap);
+    shader.setupPropertyPerMaterial(
+      "albedoFactor",
+      (material) => material.albedoFactor,
+      (gl) => gl.uniform4fv
+    );
+    shader.setupTexturePerMaterial(
+      "albedoMap",
+      undefined,
+      webgl.TextureType.Quad,
+      (material) => material.albedoMap
+    );
 
-	shader.setupMatrixPerNode("modelMatrix", state => state.transform.getValues(), gl => gl.uniformMatrix4fv);
-	shader.setupMatrixPerTarget("projectionMatrix", state => state.projectionMatrix.getValues(), gl => gl.uniformMatrix4fv);
-	shader.setupMatrixPerTarget("viewMatrix", state => state.viewMatrix.getValues(), gl => gl.uniformMatrix4fv);
+    shader.setupMatrixPerNode(
+      "modelMatrix",
+      (state) => state.transform.getValues(),
+      (gl) => gl.uniformMatrix4fv
+    );
+    shader.setupMatrixPerTarget(
+      "projectionMatrix",
+      (state) => state.projectionMatrix.getValues(),
+      (gl) => gl.uniformMatrix4fv
+    );
+    shader.setupMatrixPerTarget(
+      "viewMatrix",
+      (state) => state.viewMatrix.getValues(),
+      (gl) => gl.uniformMatrix4fv
+    );
 
-	return {
-		camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
-		gl: gl,
-		input: input,
-		mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
-		painter: new painter.Painter(shader),
-		projectionMatrix: matrix.Matrix4.createIdentity(),
-		screen: screen,
-		target: new webgl.Target(screen.context, screen.getWidth(), screen.getHeight())
-	};
-});
+    return {
+      camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
+      gl: gl,
+      input: input,
+      mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
+      painter: new painter.Painter(shader),
+      projectionMatrix: matrix.Matrix4.createIdentity(),
+      screen: screen,
+      target: new webgl.Target(
+        screen.context,
+        screen.getWidth(),
+        screen.getHeight()
+      ),
+    };
+  });
 
 const render = (state: SceneState) => {
-	const camera = state.camera;
-	const gl = state.gl;
-	const target = state.target;
+  const camera = state.camera;
+  const gl = state.gl;
+  const target = state.target;
 
-	const viewMatrix = matrix.Matrix4
-		.createIdentity()
-		.translate(camera.position)
-		.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-		.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+  const viewMatrix = matrix.Matrix4.createIdentity()
+    .translate(camera.position)
+    .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+    .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-	const cube = {
-		matrix: matrix.Matrix4.createIdentity(),
-		mesh: state.mesh
-	};
+  const cube = {
+    matrix: matrix.Matrix4.createIdentity(),
+    mesh: state.mesh,
+  };
 
-	gl.enable(gl.CULL_FACE);
-	gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.CULL_FACE);
+  gl.enable(gl.DEPTH_TEST);
 
-	gl.cullFace(gl.BACK);
+  gl.cullFace(gl.BACK);
 
-	target.clear();
+  target.clear();
 
-	state.painter.paint(target, [cube], viewMatrix, {
-		projectionMatrix: state.projectionMatrix,
-		viewMatrix: viewMatrix
-	});
+  state.painter.paint(target, [cube], viewMatrix, {
+    projectionMatrix: state.projectionMatrix,
+    viewMatrix: viewMatrix,
+  });
 };
 
 const resize = (state: SceneState, screen: display.WebGLScreen) => {
-	state.projectionMatrix = matrix.Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
+  state.projectionMatrix = matrix.Matrix4.createPerspective(
+    45,
+    screen.getRatio(),
+    0.1,
+    100
+  );
 
-	state.target.resize(screen.getWidth(), screen.getHeight());
+  state.target.resize(screen.getWidth(), screen.getHeight());
 };
 
 const update = (state: SceneState, dt: number) => {
-	state.camera.move(state.input);
+  state.camera.move(state.input);
 };
 
 const process = application.declare({
-	prepare: prepare,
-	render: render,
-	resize: resize,
-	update: update
+  prepare: prepare,
+  render: render,
+  resize: resize,
+  update: update,
 });
 
 export { process };

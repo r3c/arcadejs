@@ -9,12 +9,12 @@ import * as s06 from "./scene/s06-deferred-shading";
 import * as s07 from "./scene/s07-deferred-lighting";
 
 application.initialize({
-	"Blank screen": s00.process,
-	//"Software rendering": s01.process,
-	"Basic WebGL rendering": s02.process,
-	"Forward Phong lighting": s03.process,
-	"Forward PBR lighting": s04.process,
-	"Directional shadow": s05.process,
-	"Deferred shading": s06.process,
-	"Deferred lighting": s07.process
+  "Blank screen": s00.process,
+  //"Software rendering": s01.process,
+  "Basic WebGL rendering": s02.process,
+  "Forward Phong lighting": s03.process,
+  "Forward PBR lighting": s04.process,
+  "Directional shadow": s05.process,
+  "Deferred shading": s06.process,
+  "Deferred lighting": s07.process,
 });

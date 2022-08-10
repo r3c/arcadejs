@@ -5,7 +5,12 @@ import * as rgb from "./rgb";
 // Heavily based on Khronos PBR in glTF 2.0 using WebGL:
 // https://github.com/KhronosGroup/glTF-WebGL-PBR
 
-const declare = (environmentEnableDirective: string, environmentBrdfMap: string, environmentDiffuseMap: string, environmentSpecularMap: string) => `
+const declare = (
+  environmentEnableDirective: string,
+  environmentBrdfMap: string,
+  environmentDiffuseMap: string,
+  environmentSpecularMap: string
+) => `
 const vec3 PBR_F0 = vec3(0.04);
 const float PBR_PI = 3.141592653589793;
 
@@ -40,19 +45,27 @@ vec3 pbrSpecularReflection(vec3 reflectance0, vec3 reflectance90, float VdotH) {
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
 // See our README.md on Environment Maps [3] for additional discussion.
-vec3 pbrEnvironment(in ${material.sampleType} material, in vec3 normal, in vec3 eyeDirection) {
+vec3 pbrEnvironment(in ${
+  material.sampleType
+} material, in vec3 normal, in vec3 eyeDirection) {
 	#ifdef ${environmentEnableDirective}
 		vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
 		vec3 specularColor = mix(PBR_F0, material.albedo, material.metalness);
 
-		vec3 diffuseLight = ${rgb.standardToLinearInvoke(`texture(${environmentDiffuseMap}, normal).rgb`)};
+		vec3 diffuseLight = ${rgb.standardToLinearInvoke(
+      `texture(${environmentDiffuseMap}, normal).rgb`
+    )};
 		vec3 diffuse = diffuseLight * diffuseColor;
 
 		float NdotV = abs(dot(normal, eyeDirection)) + 0.001;
-		vec3 brdf = ${rgb.standardToLinearInvoke(`texture(${environmentBrdfMap}, vec2(NdotV, 1.0 - material.roughness)).rgb`)};
+		vec3 brdf = ${rgb.standardToLinearInvoke(
+      `texture(${environmentBrdfMap}, vec2(NdotV, 1.0 - material.roughness)).rgb`
+    )};
 		vec3 reflection = -normalize(reflect(eyeDirection, normal));
 
-		vec3 specularLight = ${rgb.standardToLinearInvoke(`texture(${environmentSpecularMap}, reflection).rgb`)};
+		vec3 specularLight = ${rgb.standardToLinearInvoke(
+      `texture(${environmentSpecularMap}, reflection).rgb`
+    )};
 		vec3 specular = specularLight * (specularColor * brdf.x + brdf.y);
 
 		return diffuse + specular;
@@ -61,7 +74,9 @@ vec3 pbrEnvironment(in ${material.sampleType} material, in vec3 normal, in vec3 
 	#endif
 }
 
-vec3 pbrLight(in ${light.sourceTypeResult} light, in ${material.sampleType} material, in vec3 normal, in vec3 eyeDirection) {
+vec3 pbrLight(in ${light.sourceTypeResult} light, in ${
+  material.sampleType
+} material, in vec3 normal, in vec3 eyeDirection) {
 	vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
 	vec3 specularColor = mix(PBR_F0, material.albedo, material.metalness);
 
@@ -93,10 +108,17 @@ vec3 pbrLight(in ${light.sourceTypeResult} light, in ${material.sampleType} mate
 	return light.color * light.power * NdotL * (diffuseContrib + specularContrib);
 }`;
 
-const environmentInvoke = (material: string, normal: string, eyeDirection: string) =>
-	`pbrEnvironment(${material}, ${normal}, ${eyeDirection})`;
+const environmentInvoke = (
+  material: string,
+  normal: string,
+  eyeDirection: string
+) => `pbrEnvironment(${material}, ${normal}, ${eyeDirection})`;
 
-const lightInvoke = (light: string, material: string, normal: string, eyeDirection: string) =>
-	`pbrLight(${light}, ${material}, ${normal}, ${eyeDirection})`;
+const lightInvoke = (
+  light: string,
+  material: string,
+  normal: string,
+  eyeDirection: string
+) => `pbrLight(${light}, ${material}, ${normal}, ${eyeDirection})`;
 
-export { declare, environmentInvoke, lightInvoke }
+export { declare, environmentInvoke, lightInvoke };

@@ -7,7 +7,7 @@ vec3 rgbLinearToStandard(vec3 linear) {
 }`;
 
 const linearToStandardInvoke = (linear: string) =>
-	`rgbLinearToStandard(${linear})`;
+  `rgbLinearToStandard(${linear})`;
 
 const standardToLinearDeclare = () => `
 vec3 rgbStandardToLinear(vec3 standard) {
@@ -15,6 +15,11 @@ vec3 rgbStandardToLinear(vec3 standard) {
 }`;
 
 const standardToLinearInvoke = (standard: string) =>
-	`rgbStandardToLinear(${standard})`;
+  `rgbStandardToLinear(${standard})`;
 
-export { linearToStandardDeclare, linearToStandardInvoke, standardToLinearDeclare, standardToLinearInvoke }
+export {
+  linearToStandardDeclare,
+  linearToStandardInvoke,
+  standardToLinearDeclare,
+  standardToLinearInvoke,
+};
