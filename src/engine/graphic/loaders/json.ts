@@ -21,7 +21,7 @@ const load = async (urlOrData: any) => {
 		root = urlOrData;
 	}
 	else
-		throw invalid(name, root, "model");
+		throw invalid(urlOrData, root, "model");
 
 	return {
 		materials: root.materials !== undefined

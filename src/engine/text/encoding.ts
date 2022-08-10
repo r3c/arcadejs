@@ -5,7 +5,7 @@ interface Codec {
 
 class ASCIICodec implements Codec {
 	public decode(buffer: ArrayBuffer): string {
-		return String.fromCharCode.apply(null, new Uint8Array(buffer));
+		return String.fromCharCode.apply(null, Array.from(new Uint8Array(buffer)));
 	}
 
 	public encode(plain: string): ArrayBuffer {

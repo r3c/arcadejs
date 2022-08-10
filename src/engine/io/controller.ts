@@ -52,8 +52,8 @@ class Input {
 			['mousedown', <(Event: Event) => void>((event: MouseEvent) => this.processKeyPress(event.button, true)), false],
 			['mousemove', <(Event: Event) => void>((event: MouseEvent) => this.processMouseMove(event)), false],
 			['mouseup', <(Event: Event) => void>((event: MouseEvent) => this.processKeyPress(event.button, false)), false],
-			['mousewheel', <(Event: Event) => void>((event: MouseWheelEvent) => this.processMouseWheel(event.wheelDelta / 120)), true],
-			['DOMMouseScroll', <(Event: Event) => void>((event: MouseWheelEvent) => this.processMouseWheel(-event.detail / 3)), true]
+			['mousewheel', <(Event: Event) => void>((event: WheelEvent) => this.processMouseWheel(event.deltaX / 120)), true],
+			['DOMMouseScroll', <(Event: Event) => void>((event: WheelEvent) => this.processMouseWheel(-event.detail / 3)), true]
 		];
 
 		for (const [name, callback, cancel] of handlers) {
