@@ -4,7 +4,6 @@ Arcade.js TODO
 ToDo
 ----
 
-- Fix "operation requires zeroing texture data" error
 - Implement directional light shadow maps for deferred {shading,lighting}
 - Implement point light shadow maps
 - Implement smooth shadows
@@ -45,3 +44,4 @@ Done
 - Compute shadow view matrix from light direction and not the opposite in forward renderer
 - Use same tangent space transform methods in forward and deferred renderers
 - Implement point light radius in forward rendering
+- Fix "operation requires zeroing texture data" error (was a Firefox bug)
