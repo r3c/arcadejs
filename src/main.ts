@@ -8,6 +8,7 @@ import { process as forwardPbr } from "./scene/forward-pbr/main";
 import { process as directionalShadow } from "./scene/directional-shadow/main";
 import { process as deferredLighting } from "./scene/deferred-lighting/main";
 import { process as deferredShading } from "./scene/deferred-shading/main";
+import { process as mpm } from "./scene/mpm/main";
 
 run([
   blank,
@@ -18,4 +19,5 @@ run([
   directionalShadow,
   deferredLighting,
   deferredShading,
+  mpm,
 ]);

@@ -42,6 +42,14 @@ class Vector3 {
     };
   }
 
+  public static apply(vector: Vector3, fn: (input: number) => number): Vector3 {
+    return {
+      x: fn(vector.x),
+      y: fn(vector.y),
+      z: fn(vector.z),
+    };
+  }
+
   public static cross(lhs: Vector3, rhs: Vector3): Vector3 {
     const { x: lx, y: ly, z: lz } = lhs;
     const { x: rx, y: ry, z: rz } = rhs;
