@@ -1040,7 +1040,6 @@ class Target {
     if (this.colorAttachment.textures !== undefined) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
 
-      // FIXME: this seems to cause a "operation requires zeroing texture data" in Firefox
       // FIXME: incomplete @type for WebGL2
       (<any>gl).drawBuffers(
         functional.range(

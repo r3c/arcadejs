@@ -199,11 +199,15 @@ const declare = <TScreen extends display.Screen, TState>(
 const initialize = (processes: { [name: string]: Process }) => {
   const frameContainer = document.getElementById("frames");
 
-  if (frameContainer === null) throw Error("missing frame container");
+  if (frameContainer === null) {
+    throw Error("missing frame container");
+  }
 
   const sceneContainer = document.getElementById("scenes");
 
-  if (sceneContainer === null) throw Error("missing scene container");
+  if (sceneContainer === null) {
+    throw Error("missing scene container");
+  }
 
   let current: Process | undefined;
   let elapsed = 0;
@@ -211,20 +215,30 @@ const initialize = (processes: { [name: string]: Process }) => {
   let time = new Date().getTime();
 
   const fullscreen = () => {
-    if (current === undefined) return;
+    if (current === undefined) {
+      return;
+    }
 
     current.change((screen) => screen.goFullscreen());
   };
 
-  const select = (value: number) => {
+  const select = async (value: number) => {
     const name = Object.keys(processes)[value];
     const process = processes[name];
 
     current = undefined;
 
-    if (process === undefined) return;
+    if (process === undefined) {
+      location.hash = "";
 
-    process.start().then(() => (current = process));
+      return;
+    }
+
+    location.hash = `#${encodeURIComponent(name)}`;
+
+    await process.start();
+
+    current = process;
   };
 
   const tick = () => {
@@ -234,7 +248,9 @@ const initialize = (processes: { [name: string]: Process }) => {
     elapsed += dt;
     time = now;
 
-    if (current !== undefined) current.step(Math.min(dt, 1000));
+    if (current !== undefined) {
+      current.step(Math.min(dt, 1000));
+    }
 
     if (elapsed > 1000) {
       frameContainer.innerText = Math.round((frames * 1000) / elapsed) + " fps";
@@ -248,10 +264,15 @@ const initialize = (processes: { [name: string]: Process }) => {
     window.requestAnimationFrame(tick);
   };
 
-  sceneContainer.appendChild(createButton("Fullscreen", fullscreen));
-  sceneContainer.appendChild(
-    createSelect("", Object.keys(processes), 0, select)
+  const names = Object.keys(processes);
+  const hashName = decodeURIComponent(location.hash.substring(1));
+  const hashValue = Math.max(
+    names.findIndex((name) => name === hashName),
+    0
   );
+
+  sceneContainer.appendChild(createButton("Fullscreen", fullscreen));
+  sceneContainer.appendChild(createSelect("", names, hashValue, select));
 
   tick();
 };

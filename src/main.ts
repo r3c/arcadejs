@@ -10,7 +10,7 @@ import * as s07 from "./scene/s07-deferred-lighting";
 
 application.initialize({
   "Blank screen": s00.process,
-  //"Software rendering": s01.process,
+  "Software rendering": s01.process,
   "Basic WebGL rendering": s02.process,
   "Forward Phong lighting": s03.process,
   "Forward PBR lighting": s04.process,
