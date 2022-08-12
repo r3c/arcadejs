@@ -1,3 +1,4 @@
+import "./style/style.css";
 import * as application from "./engine/application";
 import * as s00 from "./scene/s00-blank";
 import * as s01 from "./scene/s01-software";
