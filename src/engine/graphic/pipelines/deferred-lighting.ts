@@ -16,6 +16,11 @@ const enum LightModel {
   Phong,
 }
 
+const enum LightType {
+  Directional,
+  Point,
+}
+
 const geometryVertexShader = `
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
@@ -306,11 +311,6 @@ interface LightState<TLight> extends State {
   light: TLight;
   normalAndGlossinessBuffer: WebGLTexture;
   viewportSize: vector.Vector2;
-}
-
-const enum LightType {
-  Directional,
-  Point,
 }
 
 interface MaterialState extends State {

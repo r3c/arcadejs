@@ -43,31 +43,31 @@ function downloadFiles(files) {
 
 downloadFiles([
   {
-    destination: "www/obj/cube/mybricks1_AO.png",
+    destination: "public/obj/cube/mybricks1_AO.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_AO.png"
   },
   {
-    destination: "www/obj/cube/mybricks1_basecolor.png",
+    destination: "public/obj/cube/mybricks1_basecolor.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_basecolor.png"
   },
   {
-    destination: "www/obj/cube/mybricks1_gloss.png",
+    destination: "public/obj/cube/mybricks1_gloss.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_gloss.png"
   },
   {
-    destination: "www/obj/cube/mybricks1_height.png",
+    destination: "public/obj/cube/mybricks1_height.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_height.png"
   },
   {
-    destination: "www/obj/cube/mybricks1_metallic.png",
+    destination: "public/obj/cube/mybricks1_metallic.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_metallic.png"
   },
   {
-    destination: "www/obj/cube/mybricks1_normal.png",
+    destination: "public/obj/cube/mybricks1_normal.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_normal.png"
   },
   {
-    destination: "www/obj/cube/mybricks1_roughness.png",
+    destination: "public/obj/cube/mybricks1_roughness.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_roughness.png"
   }
 ]);
