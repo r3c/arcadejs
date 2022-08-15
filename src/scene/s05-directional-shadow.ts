@@ -34,7 +34,7 @@ interface SceneState {
   move: number;
   pipelines: {
     debug: debugTexture.Pipeline;
-    lights: forwardLighting.Pipeline[];
+    lights: forwardLighting.ForwardLightingPipeline[];
   };
   projectionMatrix: matrix.Matrix4;
   target: webgl.Target;
@@ -88,8 +88,8 @@ const prepare = () =>
           }),
           lights: bitfield.enumerate(getOptions(tweak)).map(
             (flags) =>
-              new forwardLighting.Pipeline(gl, {
-                lightModel: forwardLighting.LightModel.Phong,
+              new forwardLighting.ForwardLightingPipeline(gl, {
+                model: forwardLighting.ForwardLightingModel.Phong,
                 maxDirectionalLights: 1,
                 noShadow: !flags[0],
               })

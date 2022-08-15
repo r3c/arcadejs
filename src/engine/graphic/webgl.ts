@@ -13,6 +13,11 @@ interface AttachmentRenderbuffer {
   handle: WebGLRenderbuffer;
 }
 
+enum AttachementTarget {
+  Color,
+  Depth,
+}
+
 interface AttachmentTexture {
   format: TextureFormat;
   handle: WebGLTexture;
@@ -477,17 +482,17 @@ const loadMaterial = (
     ),
     glossMap: functional.map(material.glossMap, toColorMap),
     heightMap: functional.map(material.heightMap, toColorMap),
-    heightParallaxBias: functional.coalesce(material.heightParallaxBias, 0),
-    heightParallaxScale: functional.coalesce(material.heightParallaxScale, 0),
+    heightParallaxBias: material.heightParallaxBias ?? 0,
+    heightParallaxScale: material.heightParallaxScale ?? 0,
     id: id,
     metalnessMap: functional.map(material.metalnessMap, toColorMap),
-    metalnessStrength: functional.coalesce(material.metalnessStrength, 0),
+    metalnessStrength: material.metalnessStrength ?? 0,
     normalMap: functional.map(material.normalMap, toColorMap),
     occlusionMap: functional.map(material.occlusionMap, toColorMap),
-    occlusionStrength: functional.coalesce(material.occlusionStrength, 1),
+    occlusionStrength: material.occlusionStrength ?? 1,
     roughnessMap: functional.map(material.roughnessMap, toColorMap),
-    roughnessStrength: functional.coalesce(material.roughnessStrength, 1),
-    shininess: functional.coalesce(material.shininess, 30),
+    roughnessStrength: material.roughnessStrength ?? 1,
+    shininess: material.shininess ?? 30,
   };
 };
 
@@ -550,7 +555,7 @@ const loadTextureCube = (
     facePositiveX.width,
     facePositiveX.height,
     TextureFormat.RGBA8,
-    functional.coalesce(filter, model.defaultFilter),
+    filter ?? model.defaultFilter,
     [
       facePositiveX,
       faceNegativeX,
@@ -574,7 +579,7 @@ const loadTextureQuad = (
     image.width,
     image.height,
     TextureFormat.RGBA8,
-    functional.coalesce(filter, model.defaultFilter),
+    filter ?? model.defaultFilter,
     image
   );
 };
@@ -1029,20 +1034,21 @@ class Target {
     return this.attachRenderbuffer(
       this.colorAttachment,
       format,
-      this.gl.COLOR_ATTACHMENT0
+      AttachementTarget.Color
     );
   }
 
   public setupColorTexture(format: TextureFormat, type: TextureType) {
-    const gl = this.gl;
     const texture = this.attachTexture(
       this.colorAttachment,
       format,
       type,
-      gl.COLOR_ATTACHMENT0
+      AttachementTarget.Color
     );
 
     // Configure draw buffers
+    const gl = this.gl;
+
     if (this.colorAttachment.textures !== undefined) {
       for (const framebuffer of this.framebuffers) {
         if (framebuffer === undefined) continue;
@@ -1068,7 +1074,7 @@ class Target {
     return this.attachRenderbuffer(
       this.depthAttachment,
       format,
-      this.gl.DEPTH_ATTACHMENT
+      AttachementTarget.Depth
     );
   }
 
@@ -1077,7 +1083,7 @@ class Target {
       this.depthAttachment,
       format,
       type,
-      this.gl.DEPTH_ATTACHMENT
+      AttachementTarget.Depth
     );
   }
 
@@ -1177,19 +1183,17 @@ class Target {
     attachment: Attachment,
     format: TextureFormat,
     type: TextureType,
-    framebufferTarget: number
+    framebufferTarget: AttachementTarget
   ) {
     const gl = this.gl;
+    const cubeTextureBase = gl.TEXTURE_CUBE_MAP_POSITIVE_X;
 
     // Generate texture targets
     let textureTargets: number[];
 
     switch (type) {
       case TextureType.Cube:
-        textureTargets = functional.range(
-          6,
-          (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i
-        );
+        textureTargets = functional.range(6, (i) => cubeTextureBase + i);
 
         break;
 
@@ -1238,7 +1242,7 @@ class Target {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
       gl.framebufferTexture2D(
         gl.FRAMEBUFFER,
-        framebufferTarget + offset - 1,
+        this.getAttachment(framebufferTarget, offset - 1),
         textureTarget,
         texture,
         0
@@ -1250,6 +1254,19 @@ class Target {
     }
 
     return texture;
+  }
+
+  private getAttachment(attachementTarget: AttachementTarget, index: number) {
+    switch (attachementTarget) {
+      case AttachementTarget.Color:
+        return this.gl.COLOR_ATTACHMENT0 + index;
+
+      case AttachementTarget.Depth:
+        return this.gl.DEPTH_ATTACHMENT + index;
+
+      default:
+        throw Error(`invalid attachment target ${attachementTarget}`);
+    }
   }
 }
 

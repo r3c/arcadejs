@@ -2,7 +2,10 @@ import * as application from "../engine/application";
 import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
-import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
+import {
+  ForwardLightingModel,
+  ForwardLightingPipeline,
+} from "../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../engine/language/functional";
 import * as load from "../engine/graphic/load";
 import * as matrix from "../engine/math/matrix";
@@ -39,7 +42,7 @@ interface SceneState {
   };
   move: number;
   pipelines: {
-    lights: forwardLighting.Pipeline[];
+    lights: ForwardLightingPipeline[];
   };
   projectionMatrix: matrix.Matrix4;
   target: webgl.Target;
@@ -86,7 +89,7 @@ const prepare = () =>
       return {
         camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
         input: input,
-        lightPositions: functional.range(3, (i) => vector.Vector3.zero),
+        lightPositions: functional.range(3, () => vector.Vector3.zero),
         meshes: {
           cube: webgl.loadMesh(gl, cubeMesh),
           ground: webgl.loadMesh(gl, groundMesh),
@@ -96,15 +99,19 @@ const prepare = () =>
         pipelines: {
           lights: bitfield.enumerate(getOptions(tweak)).map(
             (flags) =>
-              new forwardLighting.Pipeline(gl, {
-                forceHeightMap: flags[3] ? undefined : false,
-                forceNormalMap: flags[4] ? undefined : false,
-                lightModel: forwardLighting.LightModel.Phong,
-                lightModelPhongNoAmbient: !flags[0],
-                lightModelPhongNoDiffuse: !flags[1],
-                lightModelPhongNoSpecular: !flags[2],
-                maxPointLights: 3,
-                noShadow: true,
+              new ForwardLightingPipeline(gl, {
+                light: {
+                  maxPointLights: 3,
+                  model: ForwardLightingModel.Phong,
+                  modelPhongNoAmbient: !flags[0],
+                  modelPhongNoDiffuse: !flags[1],
+                  modelPhongNoSpecular: !flags[2],
+                  noShadow: true,
+                },
+                material: {
+                  forceHeightMap: flags[3] ? undefined : false,
+                  forceNormalMap: flags[4] ? undefined : false,
+                },
               })
           ),
         },

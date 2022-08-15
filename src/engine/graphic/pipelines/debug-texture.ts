@@ -205,7 +205,7 @@ class Pipeline implements webgl.Pipeline {
     this.gl = gl;
     this.painter = new painter.Painter(load(gl, configuration));
     this.quad = webgl.loadMesh(gl, quad.mesh);
-    this.scale = functional.coalesce(configuration.scale, 0.4);
+    this.scale = configuration.scale ?? 0.4;
   }
 
   public process(

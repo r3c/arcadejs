@@ -1,4 +1,3 @@
-import * as functional from "../../language/functional";
 import * as image from "../image";
 import * as matrix from "../../math/matrix";
 import * as model from "../model";
@@ -89,7 +88,7 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
     converter: (value: T) => number[],
     stride: number
   ) => ({
-    buffer: new Float32Array(functional.flatten(values.map(converter))),
+    buffer: new Float32Array(values.map(converter).flatMap((items) => items)),
     stride: stride,
   });
 
@@ -113,11 +112,9 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
           )
         : undefined,
     indices: new Uint32Array(
-      functional.flatten(
-        toArrayOf(`${name}.faces`, instance.faces, (name, item) =>
-          toTuple3(name, item, toInteger)
-        )
-      )
+      toArrayOf(`${name}.faces`, instance.faces, (name, item) =>
+        toTuple3(name, item, toInteger)
+      ).flatMap((items) => items)
     ),
     materialName:
       instance.materialName !== undefined
