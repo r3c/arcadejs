@@ -2,7 +2,6 @@
 
 ## ToDo
 
-- Fix forward phong lighting scene
 - Fix directional shadow scene
 - Rename WebGL types and import them individually to avoid webgl.Type references
 - Move matrix3 to engine library
