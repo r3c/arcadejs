@@ -924,7 +924,7 @@ class Pipeline implements webgl.Pipeline {
     this.pointShadowBuffers = pointShadowTargets.map((target) =>
       target.setupDepthTexture(
         webgl.TextureFormat.Depth16,
-        webgl.TextureType.Cube
+        webgl.TextureType.Quad
       )
     );
     this.pointShadowPainter = new singularPainter.Painter(loadShadowPoint(gl));
