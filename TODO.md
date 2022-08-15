@@ -1,9 +1,14 @@
-Arcade.js TODO
-==============
+# Arcade.js TODO
 
-ToDo
-----
+## ToDo
 
+- Fix forward phong lighting scene
+- Fix directional shadow scene
+- Rename WebGL types and import them individually to avoid webgl.Type references
+- Move matrix3 to engine library
+- Use scalar fields for matrix4 instead of vector
+- Strong typing for tweaks
+- Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}
 - Implement point light shadow maps
 - Implement smooth shadows
@@ -15,8 +20,7 @@ ToDo
 - Split scene update and draw to perform batch sorting only on change
 - Support animated models and load animations from glTF files
 
-Done
-----
+## Done
 
 - Yield + errors in OBJ loader
 - Return T from io.readURL, not Request<T>
