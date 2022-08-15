@@ -235,10 +235,7 @@ const expandMesh = (url: string, mesh: Mesh): model.Geometry[] => {
 
 const expandNode = (url: string, node: Node): model.Node => ({
   children: node.children.map((child) => expandNode(url, child)),
-  geometries: functional.coalesce(
-    functional.map(node.mesh, (mesh) => expandMesh(url, mesh)),
-    []
-  ),
+  geometries: functional.map(node.mesh, (mesh) => expandMesh(url, mesh)) ?? [],
   transform: node.transform,
 });
 
@@ -252,26 +249,16 @@ const loadAccessor = (
   index: number
 ): Accessor => {
   const source = `accessor[${index}]`;
-  const byteOffset = functional.coalesce(
-    <number | undefined>accessor.byteOffset,
-    0
-  );
+  const byteOffset = <number | undefined>accessor.byteOffset ?? 0;
   const bufferView = convertReferenceTo(
     url,
     source + ".bufferView",
     accessor.bufferView,
     bufferViews
   );
-  const componentType = functional.coalesce(
-    <number | undefined>accessor.componentType,
-    0
-  );
-  const count = functional.coalesce(<number | undefined>accessor.count, 0);
-  const typeName = functional.coalesce(
-    <string | undefined>accessor.type,
-    "undefined"
-  );
-
+  const componentType = <number | undefined>accessor.componentType ?? 0;
+  const count = <number | undefined>accessor.count ?? 0;
+  const typeName = <string | undefined>accessor.type ?? "undefined";
   if (accessor.sparse !== undefined)
     throw invalidData(url, source + " has unsupported sparse attribute");
 
@@ -402,14 +389,8 @@ const loadBufferView = (
     bufferView.buffer,
     buffers
   );
-  const byteLength = functional.coalesce(
-    <number | undefined>bufferView.byteLength,
-    0
-  );
-  const byteOffset = functional.coalesce(
-    <number | undefined>bufferView.byteOffset,
-    0
-  );
+  const byteLength = <number | undefined>bufferView.byteLength ?? 0;
+  const byteOffset = <number | undefined>bufferView.byteOffset ?? 0;
   const stop = byteOffset + byteLength;
 
   if (buffer.length < stop)
@@ -490,7 +471,7 @@ const loadMaterial = (
     baseColorTexture: toTexture(pbr.baseColorTexture, "baseColorTexture"),
     emissiveFactor: toFactor(material.emissiveFactor, "emissiveFactor"),
     emissiveTexture: toTexture(material.emissiveTexture, "emissiveTexture"),
-    metallicFactor: functional.coalesce(pbr.metallicFactor, 1.0),
+    metallicFactor: pbr.metallicFactor ?? 1.0,
     metallicRoughnessTexture: toTexture(
       pbr.metallicRoughnessTexture,
       "metallicRoughnessTexture"
@@ -500,7 +481,7 @@ const loadMaterial = (
     normalTexture: toTexture(material.normalTexture, "normalTexture"),
     occlusionFactor: toFactor(material.occlusionFactor, "occlusionFactor"),
     occlusionTexture: toTexture(material.occlusionTexture, "occlusionTexture"),
-    roughnessFactor: functional.coalesce(pbr.roughnessFactor, 1.0),
+    roughnessFactor: pbr.roughnessFactor ?? 1.0,
   };
 };
 
@@ -665,11 +646,8 @@ const loadRoot = async (
   embedded: ArrayBuffer | undefined
 ) => {
   const defaultScene = <number | undefined>structure.scene;
-  const version: string = functional.coalesce(
-    functional.map(structure.asset, (asset) => asset.version),
-    "unknown"
-  );
-
+  const version: string =
+    functional.map(structure.asset, (asset) => asset.version) ?? "unknown";
   if (defaultScene === undefined)
     throw invalidData(url, "no default scene is defined");
 

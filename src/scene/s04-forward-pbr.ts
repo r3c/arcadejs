@@ -54,7 +54,7 @@ interface SceneState {
   };
   move: number;
   pipelines: {
-    lights: forwardLighting.Pipeline[];
+    lights: forwardLighting.ForwardLightingPipeline[];
   };
   projectionMatrix: matrix.Matrix4;
   target: webgl.Target;
@@ -177,14 +177,14 @@ const prepare = async () =>
         pipelines: {
           lights: bitfield.enumerate(getOptions(tweak)).map(
             (flags) =>
-              new forwardLighting.Pipeline(gl, {
+              new forwardLighting.ForwardLightingPipeline(gl, {
                 forceEmissiveMap: flags[1] ? undefined : false,
                 forceHeightMap: flags[4] ? undefined : false,
                 forceNormalMap: flags[5] ? undefined : false,
                 forceOcclusionMap: flags[2] ? undefined : false,
-                lightModel: forwardLighting.LightModel.Physical,
-                lightModelPhysicalNoAmbient: !flags[0],
-                lightModelPhysicalNoIBL: !flags[3],
+                model: forwardLighting.ForwardLightingModel.Physical,
+                modelPhysicalNoAmbient: !flags[0],
+                modelPhysicalNoIBL: !flags[3],
                 maxPointLights: 3,
                 noShadow: true,
               })

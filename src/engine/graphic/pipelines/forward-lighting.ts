@@ -1,26 +1,91 @@
-import * as compiler from "./snippets/compiler";
-import * as functional from "../../language/functional";
-import * as light from "./snippets/light";
-import * as material from "./snippets/material";
-import * as materialPainter from "../painters/material";
+import { getDirectiveOrValue } from "./snippets/compiler";
+import { range } from "../../language/functional";
+import {
+  sourceDeclare,
+  sourceInvokeDirectional,
+  sourceInvokePoint,
+  sourceTypeDirectional,
+  sourceTypePoint,
+  sourceTypeResult,
+} from "./snippets/light";
+import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
+import { Painter as MaterialPainter } from "../painters/material";
+import { Painter as SingularPainter } from "../painters/singular";
 import * as matrix from "../../math/matrix";
 import * as normal from "./snippets/normal";
 import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
-import * as singularPainter from "../painters/singular";
 import * as vector from "../../math/vector";
 import * as webgl from "../webgl";
 
-const enum LightModel {
+type ForwardLightingConfiguration = {
+  light?: LightConfiguration;
+  material?: MaterialConfiguration;
+  noMaterialShader?: boolean;
+};
+
+enum ForwardLightingModel {
   None,
   Phong,
   Physical,
 }
 
+interface DirectionalLight extends webgl.DirectionalLight {
+  shadowMap: WebGLTexture;
+  shadowViewMatrix: matrix.Matrix4;
+}
+
+type LightConfiguration = {
+  maxDirectionalLights?: number;
+  maxPointLights?: number;
+  model?: ForwardLightingModel;
+  modelPhongNoAmbient?: boolean;
+  modelPhongNoDiffuse?: boolean;
+  modelPhongNoSpecular?: boolean;
+  modelPhysicalNoAmbient?: boolean;
+  modelPhysicalNoIBL?: boolean;
+  noShadow?: boolean;
+};
+
+interface LightState extends State {
+  ambientLightColor: vector.Vector3;
+  directionalLights: DirectionalLight[];
+  environmentLight?: {
+    brdf: WebGLTexture;
+    diffuse: WebGLTexture;
+    specular: WebGLTexture;
+  };
+  pointLights: webgl.PointLight[]; // FIXME: extend PointLight with extra properties
+  projectionMatrix: matrix.Matrix4;
+  shadowProjectionMatrix: matrix.Matrix4;
+  viewMatrix: matrix.Matrix4;
+}
+
+type MaterialConfiguration = {
+  forceAlbedoMap?: boolean;
+  forceEmissiveMap?: boolean;
+  forceGlossMap?: boolean;
+  forceHeightMap?: boolean;
+  forceMetalnessMap?: boolean;
+  forceNormalMap?: boolean;
+  forceOcclusionMap?: boolean;
+  forceRoughnessMap?: boolean;
+};
+
+interface ShadowState extends State {
+  projectionMatrix: matrix.Matrix4;
+  viewMatrix: matrix.Matrix4;
+}
+
+interface State {
+  projectionMatrix: matrix.Matrix4;
+  viewMatrix: matrix.Matrix4;
+}
+
 const lightHeaderShader = `
-${light.sourceDeclare("HAS_SHADOW")}
+${sourceDeclare("HAS_SHADOW")}
 
 const mat4 texUnitConverter = mat4(
 	0.5, 0.0, 0.0, 0.0,
@@ -32,10 +97,8 @@ const mat4 texUnitConverter = mat4(
 uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform ${
-  light.sourceTypeDirectional
-} directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
-uniform ${light.sourceTypePoint} pointLights[max(MAX_POINT_LIGHTS, 1)];
+uniform ${sourceTypeDirectional} directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+uniform ${sourceTypePoint} pointLights[max(MAX_POINT_LIGHTS, 1)];
 
 // FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
 #ifdef HAS_SHADOW
@@ -148,7 +211,7 @@ uniform samplerCube environmentSpecularMap;
 ${rgb.linearToStandardDeclare()}
 ${rgb.standardToLinearDeclare()}
 
-${material.sampleDeclare(
+${sampleDeclare(
   "FORCE_ALBEDO_MAP",
   "albedoMapEnabled",
   "albedoMap",
@@ -192,10 +255,8 @@ in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in ${light.sourceTypeResult} light, in ${
-  material.sampleType
-} material, in vec3 normal, in vec3 eyeDirection) {
-	#if LIGHT_MODEL == ${LightModel.Phong}
+vec3 getLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
+	#if LIGHT_MODEL == ${ForwardLightingModel.Phong}
 		return ${phong.lightInvoke(
       "light",
       "material.albedo.rgb",
@@ -204,7 +265,7 @@ vec3 getLight(in ${light.sourceTypeResult} light, in ${
       "normal",
       "eyeDirection"
     )};
-	#elif LIGHT_MODEL == ${LightModel.Physical}
+	#elif LIGHT_MODEL == ${ForwardLightingModel.Physical}
 		return ${pbr.lightInvoke("light", "material", "normal", "eyeDirection")};
 	#endif
 }
@@ -226,7 +287,7 @@ void main(void) {
   )};
 	vec3 modifiedNormal = ${normal.perturbInvoke("coordParallax", "t", "b", "n")};
 
-	${material.sampleType} material = ${material.sampleInvoke("coordParallax")};
+	${sampleType} material = ${sampleInvoke("coordParallax")};
 
 	// Apply environment (ambient or influence-based) lighting
 	vec3 color = ${pbr.environmentInvoke(
@@ -244,7 +305,7 @@ void main(void) {
 				continue;
 		#endif
 
-		${light.sourceTypeResult} light = ${light.sourceInvokeDirectional(
+		${sourceTypeResult} light = ${sourceInvokeDirectional(
   "directionalLights[i]",
   "directionalLightDistances[i]"
 )};
@@ -254,7 +315,7 @@ void main(void) {
 
 	// Apply components from point lights
 	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
-		${light.sourceTypeResult} light = ${light.sourceInvokePoint(
+		${sourceTypeResult} light = ${sourceInvokePoint(
   "pointLights[i]",
   "pointLightDistances[i]"
 )};
@@ -263,17 +324,11 @@ void main(void) {
 	}
 
 	// Apply occlusion component
-	if (bool(${compiler.getDirectiveOrValue(
-    "FORCE_OCCLUSION_MAP",
-    "occlusionMapEnabled"
-  )}))
+	if (bool(${getDirectiveOrValue("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")}))
 		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
 	// Apply emissive component
-	if (bool(${compiler.getDirectiveOrValue(
-    "FORCE_EMISSIVE_MAP",
-    "emissiveMapEnabled"
-  )}))
+	if (bool(${getDirectiveOrValue("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")}))
 		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke(
       "texture(emissiveMap, coordParallax).rgb"
     )};
@@ -299,106 +354,44 @@ void main(void) {
 	fragColor = vec4(1, 1, 1, 1);
 }`;
 
-interface Configuration extends LightConfiguration, MaterialConfiguration {
-  noMaterialShader?: boolean;
-}
-
-interface DirectionalLight extends webgl.DirectionalLight {
-  shadowMap: WebGLTexture;
-  shadowViewMatrix: matrix.Matrix4;
-}
-
-interface LightConfiguration {
-  lightModel: LightModel;
-  lightModelPhongNoAmbient?: boolean;
-  lightModelPhongNoDiffuse?: boolean;
-  lightModelPhongNoSpecular?: boolean;
-  lightModelPhysicalNoAmbient?: boolean;
-  lightModelPhysicalNoIBL?: boolean;
-  maxDirectionalLights?: number;
-  maxPointLights?: number;
-  noShadow?: boolean;
-}
-
-interface LightState extends State {
-  ambientLightColor: vector.Vector3;
-  directionalLights: DirectionalLight[];
-  environmentLight?: {
-    brdf: WebGLTexture;
-    diffuse: WebGLTexture;
-    specular: WebGLTexture;
-  };
-  pointLights: webgl.PointLight[]; // FIXME: extend PointLight with extra properties
-  projectionMatrix: matrix.Matrix4;
-  shadowProjectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
-}
-
-interface MaterialConfiguration {
-  forceAlbedoMap?: boolean;
-  forceEmissiveMap?: boolean;
-  forceGlossMap?: boolean;
-  forceHeightMap?: boolean;
-  forceMetalnessMap?: boolean;
-  forceNormalMap?: boolean;
-  forceOcclusionMap?: boolean;
-  forceRoughnessMap?: boolean;
-}
-
-interface ShadowState extends State {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
-}
-
-interface State {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
-}
-
 const loadLight = (
   gl: WebGLRenderingContext,
   materialConfiguration: MaterialConfiguration,
   lightConfiguration: LightConfiguration
 ) => {
-  const maxDirectionalLights = functional.coalesce(
-    lightConfiguration.maxDirectionalLights,
-    0
-  );
-  const maxPointLights = functional.coalesce(
-    lightConfiguration.maxPointLights,
-    0
-  );
+  const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
+  const maxPointLights = lightConfiguration.maxPointLights ?? 0;
 
   const directives = [
-    { name: "LIGHT_MODEL", value: <number>lightConfiguration.lightModel },
+    { name: "LIGHT_MODEL", value: <number>lightConfiguration.model },
     { name: "MAX_DIRECTIONAL_LIGHTS", value: maxDirectionalLights },
     { name: "MAX_POINT_LIGHTS", value: maxPointLights },
   ];
 
-  switch (lightConfiguration.lightModel) {
-    case LightModel.Phong:
+  switch (lightConfiguration.model) {
+    case ForwardLightingModel.Phong:
       directives.push({
         name: "LIGHT_AMBIENT",
-        value: lightConfiguration.lightModelPhongNoAmbient ? 0 : 1,
+        value: lightConfiguration.modelPhongNoAmbient ? 0 : 1,
       });
       directives.push({
         name: "LIGHT_MODEL_PHONG_DIFFUSE",
-        value: lightConfiguration.lightModelPhongNoDiffuse ? 0 : 1,
+        value: lightConfiguration.modelPhongNoDiffuse ? 0 : 1,
       });
       directives.push({
         name: "LIGHT_MODEL_PHONG_SPECULAR",
-        value: lightConfiguration.lightModelPhongNoSpecular ? 0 : 1,
+        value: lightConfiguration.modelPhongNoSpecular ? 0 : 1,
       });
 
       break;
 
-    case LightModel.Physical:
-      if (!lightConfiguration.lightModelPhysicalNoIBL)
+    case ForwardLightingModel.Physical:
+      if (!lightConfiguration.modelPhysicalNoIBL)
         directives.push({ name: "LIGHT_MODEL_PBR_IBL", value: 1 });
 
       directives.push({
         name: "LIGHT_AMBIENT",
-        value: lightConfiguration.lightModelPhysicalNoAmbient ? 0 : 1,
+        value: lightConfiguration.modelPhysicalNoAmbient ? 0 : 1,
       });
 
       break;
@@ -535,8 +528,8 @@ const loadLight = (
     (gl) => gl.uniform4fv
   );
 
-  switch (lightConfiguration.lightModel) {
-    case LightModel.Phong:
+  switch (lightConfiguration.model) {
+    case ForwardLightingModel.Phong:
       if (materialConfiguration.forceGlossMap !== false)
         shader.setupTexturePerMaterial(
           "glossinessMap",
@@ -560,8 +553,8 @@ const loadLight = (
 
       break;
 
-    case LightModel.Physical:
-      if (!lightConfiguration.lightModelPhysicalNoIBL) {
+    case ForwardLightingModel.Physical:
+      if (!lightConfiguration.modelPhysicalNoIBL) {
         shader.setupTexturePerTarget(
           "environmentBrdfMap",
           undefined,
@@ -813,7 +806,7 @@ const loadShadowPoint = (gl: WebGLRenderingContext) => {
   );
 };
 
-class Pipeline implements webgl.Pipeline {
+class ForwardLightingPipeline implements webgl.Pipeline {
   public readonly directionalShadowBuffers: WebGLTexture[];
   public readonly pointShadowBuffers: WebGLTexture[];
 
@@ -828,7 +821,10 @@ class Pipeline implements webgl.Pipeline {
   private readonly pointShadowProjectionMatrix: matrix.Matrix4;
   private readonly pointShadowTargets: webgl.Target[];
 
-  public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+  public constructor(
+    gl: WebGLRenderingContext,
+    configuration: ForwardLightingConfiguration
+  ) {
     const materialClassifier = (material: webgl.Material) =>
       (material.albedoMap !== undefined ? 1 : 0) +
       (material.emissiveMap !== undefined ? 2 : 0) +
@@ -843,52 +839,38 @@ class Pipeline implements webgl.Pipeline {
       configuration: MaterialConfiguration,
       material: webgl.Material
     ) => ({
-      forceAlbedoMap: functional.coalesce(
-        configuration.forceAlbedoMap,
-        material.albedoMap !== undefined
-      ),
-      forceEmissiveMap: functional.coalesce(
-        configuration.forceEmissiveMap,
-        material.emissiveMap !== undefined
-      ),
-      forceGlossMap: functional.coalesce(
-        configuration.forceGlossMap,
-        material.glossMap !== undefined
-      ),
-      forceHeightMap: functional.coalesce(
-        configuration.forceHeightMap,
-        material.heightMap !== undefined
-      ),
-      forceMetalnessMap: functional.coalesce(
-        configuration.forceMetalnessMap,
-        material.metalnessMap !== undefined
-      ),
-      forceNormalMap: functional.coalesce(
-        configuration.forceNormalMap,
-        material.normalMap !== undefined
-      ),
-      forceOcclusionMap: functional.coalesce(
-        configuration.forceOcclusionMap,
-        material.occlusionMap !== undefined
-      ),
-      forceRoughnessMap: functional.coalesce(
-        configuration.forceRoughnessMap,
-        material.roughnessMap !== undefined
-      ),
+      forceAlbedoMap:
+        configuration.forceAlbedoMap ?? material.albedoMap !== undefined,
+      forceEmissiveMap:
+        configuration.forceEmissiveMap ?? material.emissiveMap !== undefined,
+      forceGlossMap:
+        configuration.forceGlossMap ?? material.glossMap !== undefined,
+      forceHeightMap:
+        configuration.forceHeightMap ?? material.heightMap !== undefined,
+      forceMetalnessMap:
+        configuration.forceMetalnessMap ?? material.metalnessMap !== undefined,
+      forceNormalMap:
+        configuration.forceNormalMap ?? material.normalMap !== undefined,
+      forceOcclusionMap:
+        configuration.forceOcclusionMap ?? material.occlusionMap !== undefined,
+      forceRoughnessMap:
+        configuration.forceRoughnessMap ?? material.roughnessMap !== undefined,
     });
 
-    const maxDirectionalLights = configuration.maxDirectionalLights || 0;
-    const maxPointLights = configuration.maxPointLights || 0;
+    const lightConfiguration = configuration.light ?? {};
+    const materialConfiguration = configuration.material ?? {};
+    const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
+    const maxPointLights = lightConfiguration.maxPointLights ?? 0;
     const targetHeight = 1024;
     const targetWidth = 1024;
 
-    const directionalShadowTargets = functional.range(
+    const directionalShadowTargets = range(
       maxDirectionalLights,
-      (i) => new webgl.Target(gl, targetWidth, targetHeight)
+      () => new webgl.Target(gl, targetWidth, targetHeight)
     );
-    const pointShadowTargets = functional.range(
+    const pointShadowTargets = range(
       maxPointLights,
-      (i) => new webgl.Target(gl, targetWidth, targetHeight)
+      () => new webgl.Target(gl, targetWidth, targetHeight)
     );
 
     this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
@@ -897,7 +879,7 @@ class Pipeline implements webgl.Pipeline {
         webgl.TextureType.Quad
       )
     );
-    this.directionalShadowPainter = new singularPainter.Painter(
+    this.directionalShadowPainter = new SingularPainter(
       loadShadowDirectional(gl)
     );
     this.directionalShadowProjectionMatrix = matrix.Matrix4.createOrthographic(
@@ -911,12 +893,14 @@ class Pipeline implements webgl.Pipeline {
     this.directionalShadowTargets = directionalShadowTargets;
     this.gl = gl;
     this.lightPainter = configuration.noMaterialShader
-      ? new singularPainter.Painter(loadLight(gl, configuration, configuration))
-      : new materialPainter.Painter(materialClassifier, (material) =>
+      ? new SingularPainter(
+          loadLight(gl, materialConfiguration, lightConfiguration)
+        )
+      : new MaterialPainter(materialClassifier, (material) =>
           loadLight(
             gl,
-            materialConfigurator(configuration, material),
-            configuration
+            materialConfigurator(materialConfiguration, material),
+            lightConfiguration
           )
         );
     this.maxDirectionalLights = maxDirectionalLights;
@@ -927,7 +911,7 @@ class Pipeline implements webgl.Pipeline {
         webgl.TextureType.Quad
       )
     );
-    this.pointShadowPainter = new singularPainter.Painter(loadShadowPoint(gl));
+    this.pointShadowPainter = new SingularPainter(loadShadowPoint(gl));
     this.pointShadowProjectionMatrix = matrix.Matrix4.createPerspective(
       Math.PI * 0.5,
       targetWidth / targetHeight,
@@ -1017,7 +1001,11 @@ class Pipeline implements webgl.Pipeline {
     });
   }
 
-  public resize(width: number, height: number) {}
+  public resize(_width: number, _height: number) {}
 }
 
-export { Configuration, LightModel, Pipeline };
+export {
+  ForwardLightingConfiguration,
+  ForwardLightingModel,
+  ForwardLightingPipeline,
+};
