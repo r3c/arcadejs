@@ -1,7 +1,7 @@
 import * as functional from "../language/functional";
-import * as matrix from "../math/matrix";
+import { Matrix4 } from "../math/matrix";
 import * as model from "./model";
-import * as vector from "../math/vector";
+import { Vector3, Vector4 } from "../math/vector";
 
 interface Attachment {
   renderbuffer: AttachmentRenderbuffer | undefined;
@@ -33,8 +33,8 @@ interface Attribute {
 type AttributeBinding<TSource> = (source: TSource) => void;
 
 interface DirectionalLight {
-  color: vector.Vector3;
-  direction: vector.Vector3;
+  color: Vector3;
+  direction: Vector3;
   shadow: boolean;
 }
 
@@ -88,19 +88,19 @@ interface NativeFormat {
 interface Node {
   children: Node[];
   primitives: Primitive[];
-  transform: matrix.Matrix4;
+  transform: Matrix4;
 }
 
 interface NodeState {
   normalMatrix: Iterable<number>; // FIXME: inconsistent type
-  transform: matrix.Matrix4;
+  transform: Matrix4;
 }
 
 interface Painter<T> {
   paint(
     target: Target,
     subjects: Iterable<Subject>,
-    view: matrix.Matrix4,
+    view: Matrix4,
     state: T
   ): void;
 }
@@ -111,8 +111,8 @@ interface Pipeline {
 }
 
 interface PointLight {
-  color: vector.Vector3;
-  position: vector.Vector3;
+  color: Vector3;
+  position: Vector3;
   radius: number;
 }
 
@@ -124,7 +124,7 @@ interface Primitive {
 type PropertyBinding<T> = (source: T) => void;
 
 interface Scene {
-  ambientLightColor?: vector.Vector3;
+  ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   environmentLight?: {
     brdf: WebGLTexture;
@@ -136,7 +136,7 @@ interface Scene {
 }
 
 interface Subject {
-  matrix: matrix.Matrix4;
+  matrix: Matrix4;
   mesh: Mesh;
   noShadow?: boolean;
 }
@@ -154,8 +154,8 @@ const enum TextureType {
 }
 
 interface Transform {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 }
 
 type UniformMatrixSetter<T> = (
@@ -396,13 +396,6 @@ const textureGetWrap = (gl: WebGLRenderingContext, wrap: model.Wrap) => {
   }
 };
 
-const invalidAttributeBinding = (name: string) =>
-  Error(`cannot draw mesh with no ${name} attribute when shader expects one`);
-const invalidMaterial = (name: string) =>
-  Error(`cannot use unknown material "${name}" on mesh`);
-const invalidUniformBinding = (name: string) =>
-  Error(`cannot draw mesh with no ${name} uniform when shader expects one`);
-
 const loadGeometry = (
   gl: WebGLRenderingContext,
   geometry: model.Geometry,
@@ -471,13 +464,11 @@ const loadMaterial = (
     );
 
   return {
-    albedoFactor: vector.Vector4.toArray(material.albedoFactor || colorWhite),
+    albedoFactor: Vector4.toArray(material.albedoFactor || colorWhite),
     albedoMap: functional.map(material.albedoMap, toColorMap),
-    emissiveFactor: vector.Vector4.toArray(
-      material.emissiveFactor || colorBlack
-    ),
+    emissiveFactor: Vector4.toArray(material.emissiveFactor || colorBlack),
     emissiveMap: functional.map(material.emissiveMap, toColorMap),
-    glossFactor: vector.Vector4.toArray(
+    glossFactor: Vector4.toArray(
       material.glossFactor || material.albedoFactor || colorWhite
     ),
     glossMap: functional.map(material.glossMap, toColorMap),
@@ -689,7 +680,7 @@ class Shader<State> {
     const gl = this.gl;
     const location = this.findAttribute(name);
 
-    this.attributePerGeometryBindings.push((geometry: Geometry) => {
+    this.attributePerGeometryBindings.push(() => {
       gl.disableVertexAttribArray(location);
     });
   }
@@ -933,7 +924,7 @@ class Target {
   private readonly gl: WebGLRenderingContext;
 
   private colorAttachment: Attachment;
-  private colorClear: vector.Vector4;
+  private colorClear: Vector4;
   private depthAttachment: Attachment;
   private depthClear: number;
   private framebuffers: WebGLFramebuffer[];

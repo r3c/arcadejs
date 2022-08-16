@@ -1,5 +1,5 @@
-import * as matrix from "../../math/matrix";
-import * as painter from "../painters/singular";
+import { Matrix4 } from "../../math/matrix";
+import { Painter as SingularPainter } from "../painters/singular";
 import * as webgl from "../webgl";
 
 const vertexShader = `
@@ -21,8 +21,8 @@ void main(void) {
 }`;
 
 interface State {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 }
 
 const load = (gl: WebGLRenderingContext) => {
@@ -55,7 +55,7 @@ class Pipeline implements webgl.Pipeline {
 
   public constructor(gl: WebGLRenderingContext) {
     this.gl = gl;
-    this.painter = new painter.Painter(load(gl));
+    this.painter = new SingularPainter(load(gl));
   }
 
   public process(
@@ -76,7 +76,7 @@ class Pipeline implements webgl.Pipeline {
     });
   }
 
-  public resize(width: number, height: number) {}
+  public resize(_width: number, _height: number) {}
 }
 
 export { Pipeline };

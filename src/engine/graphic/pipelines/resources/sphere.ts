@@ -1,4 +1,4 @@
-import * as matrix from "../../../math/matrix";
+import { Matrix4 } from "../../../math/matrix";
 
 const mesh = {
   materials: {},
@@ -145,7 +145,7 @@ const mesh = {
           },
         },
       ],
-      transform: matrix.Matrix4.createIdentity(),
+      transform: Matrix4.createIdentity(),
     },
   ],
 };

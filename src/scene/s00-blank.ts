@@ -7,13 +7,9 @@ interface State {
 }
 
 const prepare = () =>
-  application.runtime(
-    display.Context2DScreen,
-    undefined,
-    async (screen, input) => ({
-      renderer: new software.Renderer(screen),
-    })
-  );
+  application.runtime(display.Context2DScreen, undefined, async (screen) => ({
+    renderer: new software.Renderer(screen),
+  }));
 
 const render = (state: State) => {
   state.renderer.clear();

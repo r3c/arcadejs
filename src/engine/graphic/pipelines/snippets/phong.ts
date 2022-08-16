@@ -1,7 +1,10 @@
 import * as compiler from "./compiler";
 import * as light from "./light";
 
-const lightDeclare = (diffuseDirective: string, specularDirective: string) => `
+const lightDeclare = (
+  diffuseDirective: string,
+  specularDirective: string
+): string => `
 float phongLightDiffusePower(in ${
   light.sourceTypeResult
 } light, in vec3 normal) {
@@ -53,10 +56,10 @@ const lightInvoke = (
   materialShininess: string,
   normal: string,
   eyeDirection: string
-) =>
+): string =>
   `phongLight(${light}, ${materialAlbedo}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
 
-const lightInvokeDiffusePower = (light: string, normal: string) =>
+const lightInvokeDiffusePower = (light: string, normal: string): string =>
   `phongLightDiffusePower(${light}, ${normal})`;
 
 const lightInvokeSpecularPower = (
@@ -65,7 +68,7 @@ const lightInvokeSpecularPower = (
   materialShininess: string,
   normal: string,
   eyeDirection: string
-) =>
+): string =>
   `phongLightSpecularPower(${light}, ${materialGloss}, ${materialShininess}, ${normal}, ${eyeDirection})`;
 
 export {

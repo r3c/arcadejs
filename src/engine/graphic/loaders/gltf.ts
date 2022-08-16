@@ -1,11 +1,11 @@
 import * as encoding from "../../text/encoding";
 import * as functional from "../../language/functional";
 import * as image from "../image";
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
-import * as vector from "../../math/vector";
+import { Vector4 } from "../../math/vector";
 
 /*
  ** Implementation based on:
@@ -50,17 +50,17 @@ const enum ComponentType {
 }
 
 interface Material {
-  baseColorFactor: vector.Vector4 | undefined;
+  baseColorFactor: Vector4 | undefined;
   baseColorTexture: Texture | undefined;
-  emissiveFactor: vector.Vector4 | undefined;
+  emissiveFactor: Vector4 | undefined;
   emissiveTexture: Texture | undefined;
   metallicFactor: number;
   metallicRoughnessTexture: Texture | undefined;
   roughnessFactor: number;
   name: string;
-  normalFactor: vector.Vector4 | undefined;
+  normalFactor: Vector4 | undefined;
   normalTexture: Texture | undefined;
-  occlusionFactor: vector.Vector4 | undefined;
+  occlusionFactor: Vector4 | undefined;
   occlusionTexture: Texture | undefined;
 }
 
@@ -71,7 +71,7 @@ interface Mesh {
 interface Node {
   children: Node[];
   mesh: Mesh | undefined;
-  transform: matrix.Matrix4;
+  transform: Matrix4;
 }
 
 interface Primitive {
@@ -453,7 +453,7 @@ const loadMaterial = (
   const pbr = material.pbrMetallicRoughness || {};
   const source = `material[${index}]`;
 
-  const toFactor = (property: any, name: string) =>
+  const toFactor = (property: any) =>
     functional.map(property, (factor) => ({
       x: factor[0],
       y: factor[1],
@@ -467,9 +467,9 @@ const loadMaterial = (
     );
 
   return {
-    baseColorFactor: toFactor(pbr.baseColorFactor, "baseColorFactor"),
+    baseColorFactor: toFactor(pbr.baseColorFactor),
     baseColorTexture: toTexture(pbr.baseColorTexture, "baseColorTexture"),
-    emissiveFactor: toFactor(material.emissiveFactor, "emissiveFactor"),
+    emissiveFactor: toFactor(material.emissiveFactor),
     emissiveTexture: toTexture(material.emissiveTexture, "emissiveTexture"),
     metallicFactor: pbr.metallicFactor ?? 1.0,
     metallicRoughnessTexture: toTexture(
@@ -477,9 +477,9 @@ const loadMaterial = (
       "metallicRoughnessTexture"
     ),
     name: material.name || `_${index}`,
-    normalFactor: toFactor(material.normalFactor, "normalFactor"),
+    normalFactor: toFactor(material.normalFactor),
     normalTexture: toTexture(material.normalTexture, "normalTexture"),
-    occlusionFactor: toFactor(material.occlusionFactor, "occlusionFactor"),
+    occlusionFactor: toFactor(material.occlusionFactor),
     occlusionTexture: toTexture(material.occlusionTexture, "occlusionTexture"),
     roughnessFactor: pbr.roughnessFactor ?? 1.0,
   };
@@ -511,10 +511,10 @@ const loadNode = (
   if (nodes[index] === undefined) {
     const source = `node[${index}]`;
 
-    let transform: matrix.Matrix4;
+    let transform: Matrix4;
 
     if (node.matrix !== undefined) {
-      transform = matrix.Matrix4.create(
+      transform = Matrix4.create(
         convertArrayOf(url, source + ".matrix", node.matrix, (value) =>
           parseFloat(value)
         )
@@ -524,7 +524,7 @@ const loadNode = (
       node.scale !== undefined &&
       node.translation !== undefined
     ) {
-      transform = matrix.Matrix4.createIdentity()
+      transform = Matrix4.createIdentity()
         .translate({
           x: node.translation[0],
           y: node.translation[1],
@@ -535,7 +535,7 @@ const loadNode = (
           node.rotation[3]
         )
         .scale({ x: node.scale[0], y: node.scale[1], z: node.scale[2] });
-    } else transform = matrix.Matrix4.createIdentity();
+    } else transform = Matrix4.createIdentity();
 
     const childrenIndices = convertArrayOf(
       url,
@@ -733,7 +733,7 @@ const loadRoot = async (
   };
 };
 
-const loadSampler = (url: string, sampler: any, index: number): Sampler => {
+const loadSampler = (_url: string, sampler: any, _index: number): Sampler => {
   const magFilter = parseInt(sampler.magFilter || 9729);
   const minFilter = parseInt(sampler.minFilter || 9729);
   const wrap = Math.min(
@@ -838,7 +838,7 @@ const load = async (url: string) => {
 
     // Second chunk: binary
     if (reader.getOffset() < fileLength) {
-      const binaryLength = reader.readInt32u();
+      reader.readInt32u(); // _binaryLength
       const binaryType = reader.readInt32u();
 
       if (binaryType !== 0x004e4942)

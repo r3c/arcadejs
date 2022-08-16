@@ -1,5 +1,3 @@
-import * as vector from "../../engine/math/vector";
-
 const orbitate = (
   index: number,
   amount: number,

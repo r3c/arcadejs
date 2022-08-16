@@ -2,10 +2,10 @@ import * as application from "../engine/application";
 import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as load from "../engine/graphic/load";
-import * as matrix from "../engine/math/matrix";
+import { Matrix4 } from "../engine/math/matrix";
 import * as model from "../engine/graphic/model";
 import * as software from "../engine/graphic/software";
-import * as vector from "../engine/math/vector";
+import { Vector3 } from "../engine/math/vector";
 import * as view from "./shared/view";
 
 /*
@@ -25,7 +25,7 @@ interface State {
   cubeWithColor: model.Mesh;
   cubeWithTexture: model.Mesh;
   input: controller.Input;
-  projection: matrix.Matrix4;
+  projection: Matrix4;
   renderer: software.Renderer;
   tweak: application.Tweak<Configuration>;
 }
@@ -42,11 +42,11 @@ const prepare = () =>
       const renderer = new software.Renderer(screen);
 
       return {
-        camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
+        camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
         cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
         cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
         input: input,
-        projection: matrix.Matrix4.createIdentity(),
+        projection: Matrix4.createIdentity(),
         renderer: renderer,
         tweak: tweak,
       };
@@ -56,7 +56,7 @@ const prepare = () =>
 const render = (state: State) => {
   const camera = state.camera;
   const renderer = state.renderer;
-  const view = matrix.Matrix4.createIdentity()
+  const view = Matrix4.createIdentity()
     .translate(camera.position)
     .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
     .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
@@ -70,15 +70,10 @@ const render = (state: State) => {
 };
 
 const resize = (state: State, screen: display.Context2DScreen) => {
-  state.projection = matrix.Matrix4.createPerspective(
-    45,
-    screen.getRatio(),
-    0.1,
-    100
-  );
+  state.projection = Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
 };
 
-const update = (state: State, dt: number) => {
+const update = (state: State) => {
   state.camera.move(state.input);
 };
 

@@ -1,10 +1,10 @@
 import * as encoding from "../../text/encoding";
 import * as image from "../image";
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
-import * as vector from "../../math/vector";
+import { Vector4 } from "../../math/vector";
 
 /*
  ** Implementation based on:
@@ -49,10 +49,10 @@ const load = async (url: string) => {
 
 const readColor = async (
   context: Context,
-  end: number,
+  _end: number,
   chunk: number,
-  state: vector.Vector4
-) => {
+  state: Vector4
+): Promise<Vector4> => {
   switch (chunk) {
     case 0x0010: // COL_RGB
     case 0x0013: // COL_UNK
@@ -99,7 +99,7 @@ const readEdit = async (
           materialName: mesh.materialName,
           points: { buffer: new Float32Array(mesh.points), stride: 3 },
         })),
-        transform: matrix.Matrix4.createIdentity(),
+        transform: Matrix4.createIdentity(),
       });
 
       return state;
@@ -205,7 +205,7 @@ const readMaterial = async (
 
 const readMaterialMap = async (
   context: Context,
-  end: number,
+  _end: number,
   chunk: number,
   state: model.Texture | undefined
 ) => {
@@ -235,7 +235,7 @@ const readObject = async (
   end: number,
   chunk: number,
   state: RawMesh[]
-) => {
+): Promise<RawMesh[]> => {
   switch (chunk) {
     case 0x4100: // OBJ_TRIMESH
       const mesh = await scan(context, end, readPolygon, {
@@ -248,23 +248,6 @@ const readObject = async (
       state.push(mesh);
 
       return state;
-  }
-
-  return state;
-};
-
-const readPercent = async (
-  context: Context,
-  end: number,
-  chunk: number,
-  state: number
-) => {
-  switch (chunk) {
-    case 0x0030:
-      return context.reader.readInt16u() * 0.01;
-
-    case 0x0031:
-      return context.reader.readFloat32();
   }
 
   return state;
@@ -313,10 +296,10 @@ const readPolygon = async (
 
 const readPolygonMaterial = async (
   context: Context,
-  end: number,
+  _end: number,
   chunk: number,
   state: string
-) => {
+): Promise<string> => {
   switch (chunk) {
     case 0x4130: // TRI_MATERIAL
       const name = context.codec.decode(context.reader.readBufferZero());

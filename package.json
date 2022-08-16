@@ -9,6 +9,7 @@
     "vite": "^2.9.15"
   },
   "scripts": {
+    "check": "tsc --noEmit",
     "build": "vite build",
     "install": "node script/install.js",
     "start": "vite",

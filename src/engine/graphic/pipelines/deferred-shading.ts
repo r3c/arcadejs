@@ -1,13 +1,13 @@
 import * as light from "./snippets/light";
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as normal from "./snippets/normal";
-import * as painter from "../painters/singular";
+import { Painter as SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import * as quad from "./resources/quad";
 import * as shininess from "./snippets/shininess";
 import * as sphere from "./resources/sphere";
-import * as vector from "../../math/vector";
+import { Vector2, Vector3 } from "../../math/vector";
 import * as webgl from "../webgl";
 
 const enum LightModel {
@@ -248,7 +248,7 @@ void main(void) {
 
 interface AmbientState extends State {
   albedoAndShininessBuffer: WebGLTexture;
-  ambientLightColor: vector.Vector3;
+  ambientLightColor: Vector3;
 }
 
 interface Configuration {
@@ -261,8 +261,8 @@ interface Configuration {
 }
 
 interface State {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 }
 
 interface LightState<TLight> extends State {
@@ -270,7 +270,7 @@ interface LightState<TLight> extends State {
   depthBuffer: WebGLTexture;
   light: TLight;
   normalAndGlossinessBuffer: WebGLTexture;
-  viewportSize: vector.Vector2;
+  viewportSize: Vector2;
 }
 
 const loadAmbient = (
@@ -325,7 +325,7 @@ const loadAmbient = (
   );
   shader.setupPropertyPerTarget(
     "ambientLightColor",
-    (state) => vector.Vector3.toArray(state.ambientLightColor),
+    (state) => Vector3.toArray(state.ambientLightColor),
     (gl) => gl.uniform3fv
   );
 
@@ -488,7 +488,7 @@ const loadLight = <T>(
 
   shader.setupPropertyPerTarget(
     "viewportSize",
-    (state) => vector.Vector2.toArray(state.viewportSize),
+    (state) => Vector2.toArray(state.viewportSize),
     (gl) => gl.uniform2fv
   );
 
@@ -526,12 +526,12 @@ const loadLightDirectional = (
 
   shader.setupPropertyPerTarget(
     "directionalLight.color",
-    (state) => vector.Vector3.toArray(state.light.color),
+    (state) => Vector3.toArray(state.light.color),
     (gl) => gl.uniform3fv
   );
   shader.setupPropertyPerTarget(
     "directionalLight.direction",
-    (state) => vector.Vector3.toArray(state.light.direction),
+    (state) => Vector3.toArray(state.light.direction),
     (gl) => gl.uniform3fv
   );
 
@@ -550,12 +550,12 @@ const loadLightPoint = (
 
   shader.setupPropertyPerTarget(
     "pointLight.color",
-    (state) => vector.Vector3.toArray(state.light.color),
+    (state) => Vector3.toArray(state.light.color),
     (gl) => gl.uniform3fv
   );
   shader.setupPropertyPerTarget(
     "pointLight.position",
-    (state) => vector.Vector3.toArray(state.light.position),
+    (state) => Vector3.toArray(state.light.position),
     (gl) => gl.uniform3fv
   );
   shader.setupPropertyPerTarget(
@@ -577,7 +577,7 @@ class Pipeline implements webgl.Pipeline {
     LightState<webgl.DirectionalLight>
   >;
   private readonly fullscreenMesh: webgl.Mesh;
-  private readonly fullscreenProjection: matrix.Matrix4;
+  private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: webgl.Painter<State>;
   private readonly geometryTarget: webgl.Target;
   private readonly gl: WebGLRenderingContext;
@@ -597,33 +597,26 @@ class Pipeline implements webgl.Pipeline {
       webgl.TextureFormat.RGBA8,
       webgl.TextureType.Quad
     );
-    this.ambientLightPainter = new painter.Painter(
+    this.ambientLightPainter = new SingularPainter(
       loadAmbient(gl, configuration)
     );
     this.depthBuffer = geometry.setupDepthTexture(
       webgl.TextureFormat.Depth16,
       webgl.TextureType.Quad
     );
-    this.directionalLightPainter = new painter.Painter(
+    this.directionalLightPainter = new SingularPainter(
       loadLightDirectional(gl, configuration)
     );
     this.fullscreenMesh = webgl.loadMesh(gl, quad.mesh);
-    this.fullscreenProjection = matrix.Matrix4.createOrthographic(
-      -1,
-      1,
-      -1,
-      1,
-      -1,
-      1
-    );
-    this.geometryPainter = new painter.Painter(loadGeometry(gl, configuration));
+    this.fullscreenProjection = Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
+    this.geometryPainter = new SingularPainter(loadGeometry(gl, configuration));
     this.geometryTarget = geometry;
     this.gl = gl;
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
       webgl.TextureFormat.RGBA8,
       webgl.TextureType.Quad
     );
-    this.pointLightPainter = new painter.Painter(
+    this.pointLightPainter = new SingularPainter(
       loadLightPoint(gl, configuration)
     );
     this.sphereModel = webgl.loadMesh(gl, sphere.mesh);
@@ -668,7 +661,7 @@ class Pipeline implements webgl.Pipeline {
     if (scene.ambientLightColor !== undefined) {
       const subjects = [
         {
-          matrix: matrix.Matrix4.createIdentity(),
+          matrix: Matrix4.createIdentity(),
           mesh: this.fullscreenMesh,
         },
       ];
@@ -677,7 +670,7 @@ class Pipeline implements webgl.Pipeline {
         albedoAndShininessBuffer: this.albedoAndShininessBuffer,
         ambientLightColor: scene.ambientLightColor,
         projectionMatrix: this.fullscreenProjection,
-        viewMatrix: matrix.Matrix4.createIdentity(),
+        viewMatrix: Matrix4.createIdentity(),
       });
     }
 
@@ -716,7 +709,7 @@ class Pipeline implements webgl.Pipeline {
     if (scene.pointLights !== undefined) {
       const subjects = [
         {
-          matrix: matrix.Matrix4.createIdentity(),
+          matrix: Matrix4.createIdentity(),
           mesh: this.sphereModel,
         },
       ];
@@ -724,7 +717,7 @@ class Pipeline implements webgl.Pipeline {
       gl.cullFace(gl.FRONT);
 
       for (const pointLight of scene.pointLights) {
-        subjects[0].matrix = matrix.Matrix4.createIdentity()
+        subjects[0].matrix = Matrix4.createIdentity()
           .translate(pointLight.position)
           .scale({
             x: pointLight.radius,

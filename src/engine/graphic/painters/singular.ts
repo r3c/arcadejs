@@ -1,4 +1,4 @@
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as webgl from "../webgl";
 
 class Painter<State> implements webgl.Painter<State> {
@@ -11,9 +11,9 @@ class Painter<State> implements webgl.Painter<State> {
   public paint(
     target: webgl.Target,
     subjects: Iterable<webgl.Subject>,
-    view: matrix.Matrix4,
+    view: Matrix4,
     state: State
-  ) {
+  ): void {
     const shader = this.shader;
 
     shader.activate();
@@ -28,10 +28,10 @@ class Painter<State> implements webgl.Painter<State> {
   private draw(
     target: webgl.Target,
     nodes: Iterable<webgl.Node>,
-    parentTransform: matrix.Matrix4,
-    viewMatrix: matrix.Matrix4,
+    parentTransform: Matrix4,
+    viewMatrix: Matrix4,
     textureIndex: number
-  ) {
+  ): void {
     const shader = this.shader;
 
     for (const node of nodes) {

@@ -2,9 +2,9 @@ import * as application from "../engine/application";
 import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as load from "../engine/graphic/load";
-import * as matrix from "../engine/math/matrix";
+import { Matrix4 } from "../engine/math/matrix";
 import * as painter from "../engine/graphic/painters/singular";
-import * as vector from "../engine/math/vector";
+import { Vector3 } from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
 
@@ -52,13 +52,13 @@ interface SceneState {
   input: controller.Input;
   mesh: webgl.Mesh;
   painter: webgl.Painter<ShaderState>;
-  projectionMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
   target: webgl.Target;
 }
 
 interface ShaderState {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 }
 
 const prepare = () =>
@@ -99,12 +99,12 @@ const prepare = () =>
     );
 
     return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
+      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       gl: gl,
       input: input,
       mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
       painter: new painter.Painter(shader),
-      projectionMatrix: matrix.Matrix4.createIdentity(),
+      projectionMatrix: Matrix4.createIdentity(),
       screen: screen,
       target: new webgl.Target(
         screen.context,
@@ -119,13 +119,13 @@ const render = (state: SceneState) => {
   const gl = state.gl;
   const target = state.target;
 
-  const viewMatrix = matrix.Matrix4.createIdentity()
+  const viewMatrix = Matrix4.createIdentity()
     .translate(camera.position)
     .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
     .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
   const cube = {
-    matrix: matrix.Matrix4.createIdentity(),
+    matrix: Matrix4.createIdentity(),
     mesh: state.mesh,
   };
 
@@ -143,7 +143,7 @@ const render = (state: SceneState) => {
 };
 
 const resize = (state: SceneState, screen: display.WebGLScreen) => {
-  state.projectionMatrix = matrix.Matrix4.createPerspective(
+  state.projectionMatrix = Matrix4.createPerspective(
     45,
     screen.getRatio(),
     0.1,
@@ -153,7 +153,7 @@ const resize = (state: SceneState, screen: display.WebGLScreen) => {
   state.target.resize(screen.getWidth(), screen.getHeight());
 };
 
-const update = (state: SceneState, dt: number) => {
+const update = (state: SceneState) => {
   state.camera.move(state.input);
 };
 

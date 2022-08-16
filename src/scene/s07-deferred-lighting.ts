@@ -7,9 +7,9 @@ import * as deferredLighting from "../engine/graphic/pipelines/deferred-lighting
 import * as display from "../engine/display";
 import * as functional from "../engine/language/functional";
 import * as load from "../engine/graphic/load";
-import * as matrix from "../engine/math/matrix";
+import { Matrix4 } from "../engine/math/matrix";
 import * as move from "./shared/move";
-import * as vector from "../engine/math/vector";
+import { Vector3 } from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
 
@@ -43,7 +43,7 @@ interface SceneState {
     scene: deferredLighting.Pipeline[];
   };
   pointLights: webgl.PointLight[];
-  projectionMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
   target: webgl.Target;
   tweak: application.Tweak<Configuration>;
 }
@@ -81,7 +81,7 @@ const prepare = () =>
 
       // Load meshes
       const cubeMesh = await load.fromJSON("./obj/cube/mesh.json", {
-        transform: matrix.Matrix4.createIdentity().scale({
+        transform: Matrix4.createIdentity().scale({
           x: 0.4,
           y: 0.4,
           z: 0.4,
@@ -90,7 +90,7 @@ const prepare = () =>
       const directionalLightMesh = await load.fromJSON(
         "./obj/sphere/mesh.json",
         {
-          transform: matrix.Matrix4.createIdentity().scale({
+          transform: Matrix4.createIdentity().scale({
             x: 0.5,
             y: 0.5,
             z: 0.5,
@@ -99,7 +99,7 @@ const prepare = () =>
       );
       const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
       const pointLightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-        transform: matrix.Matrix4.createIdentity().scale({
+        transform: Matrix4.createIdentity().scale({
           x: 0.1,
           y: 0.1,
           z: 0.1,
@@ -108,10 +108,10 @@ const prepare = () =>
 
       // Create state
       return {
-        camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
+        camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
         directionalLights: functional.range(10, (i) => ({
           color: color.createBright(i),
-          direction: vector.Vector3.zero,
+          direction: Vector3.zero,
           shadow: false,
         })),
         input: input,
@@ -171,10 +171,10 @@ const prepare = () =>
         },
         pointLights: functional.range(500, (i) => ({
           color: color.createBright(i),
-          position: vector.Vector3.zero,
+          position: Vector3.zero,
           radius: 2,
         })),
-        projectionMatrix: matrix.Matrix4.createIdentity(),
+        projectionMatrix: Matrix4.createIdentity(),
         target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
         tweak: tweak,
       };
@@ -190,7 +190,7 @@ const render = (state: SceneState) => {
 
   const transform = {
     projectionMatrix: state.projectionMatrix,
-    viewMatrix: matrix.Matrix4.createIdentity()
+    viewMatrix: Matrix4.createIdentity()
       .translate(camera.position)
       .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
       .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
@@ -214,7 +214,7 @@ const render = (state: SceneState) => {
     pointLights: pointLights,
     subjects: [
       {
-        matrix: matrix.Matrix4.createIdentity().translate({
+        matrix: Matrix4.createIdentity().translate({
           x: 0,
           y: -1.5,
           z: 0,
@@ -224,7 +224,7 @@ const render = (state: SceneState) => {
     ]
       .concat(
         functional.range(16, (i) => ({
-          matrix: matrix.Matrix4.createIdentity().translate({
+          matrix: Matrix4.createIdentity().translate({
             x: ((i % 4) - 1.5) * 2,
             y: 0,
             z: (Math.floor(i / 4) - 1.5) * 2,
@@ -234,15 +234,15 @@ const render = (state: SceneState) => {
       )
       .concat(
         directionalLights.map((light) => ({
-          matrix: matrix.Matrix4.createIdentity().translate(
-            vector.Vector3.scale(vector.Vector3.normalize(light.direction), 10)
+          matrix: Matrix4.createIdentity().translate(
+            Vector3.scale(Vector3.normalize(light.direction), 10)
           ),
           mesh: meshes.directionalLight,
         }))
       )
       .concat(
         pointLights.map((light) => ({
-          matrix: matrix.Matrix4.createIdentity().translate(light.position),
+          matrix: Matrix4.createIdentity().translate(light.position),
           mesh: meshes.pointLight,
         }))
       ),
@@ -277,7 +277,7 @@ const resize = (state: SceneState, screen: display.WebGLScreen) => {
   for (const pipeline of state.pipelines.scene)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 
-  state.projectionMatrix = matrix.Matrix4.createPerspective(
+  state.projectionMatrix = Matrix4.createPerspective(
     45,
     screen.getRatio(),
     0.1,

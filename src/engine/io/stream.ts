@@ -117,9 +117,9 @@ const readURL = async <T>(
     request.open("GET", url, true);
     request.responseType = format.responseType;
 
-    request.onabort = (event) => reject(`request aborted on ${url}`);
-    request.onerror = (event) => reject(`request failed on ${url}`);
-    request.onload = (event) => resolve(new format(request).data);
+    request.onabort = () => reject(`request aborted on ${url}`);
+    request.onerror = () => reject(`request failed on ${url}`);
+    request.onload = () => resolve(new format(request).data);
 
     request.send(null);
   });

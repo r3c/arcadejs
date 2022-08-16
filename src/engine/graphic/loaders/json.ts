@@ -1,9 +1,9 @@
 import * as image from "../image";
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
-import * as vector from "../../math/vector";
+import { Vector2, Vector3, Vector4 } from "../../math/vector";
 
 const load = async (urlOrData: any) => {
   let directory: string;
@@ -28,7 +28,7 @@ const load = async (urlOrData: any) => {
       {
         children: [],
         geometries: toArrayOf("geometries", root.geometries, toGeometry),
-        transform: matrix.Matrix4.createIdentity(),
+        transform: Matrix4.createIdentity(),
       },
     ],
   };
@@ -50,7 +50,7 @@ const toArrayOf = <T>(
   return (<any[]>instance).map((v, i) => converter(name + "[" + i + "]", v));
 };
 
-const toColor = (name: string, instance: any): vector.Vector4 => {
+const toColor = (name: string, instance: any): Vector4 => {
   if (typeof instance !== "object")
     throw invalid(name, instance, "rgb(a) color");
 
@@ -65,7 +65,7 @@ const toColor = (name: string, instance: any): vector.Vector4 => {
   };
 };
 
-const toCoord = (name: string, instance: any): vector.Vector2 => {
+const toCoord = (name: string, instance: any): Vector2 => {
   if (typeof instance !== "object")
     throw invalid(name, instance, "texture coordinate");
 
@@ -99,7 +99,7 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
       instance.colors !== undefined
         ? toAttribute(
             toArrayOf(`${name}.colors`, instance.colors, toColor),
-            vector.Vector4.toArray,
+            Vector4.toArray,
             4
           )
         : undefined,
@@ -107,7 +107,7 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
       instance.coords !== undefined
         ? toAttribute(
             toArrayOf(`${name}.coords`, instance.coords, toCoord),
-            vector.Vector2.toArray,
+            Vector2.toArray,
             2
           )
         : undefined,
@@ -124,13 +124,13 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
       instance.normals !== undefined
         ? toAttribute(
             toArrayOf(`${name}.normals`, instance.normals, toVertex),
-            vector.Vector3.toArray,
+            Vector3.toArray,
             3
           )
         : undefined,
     points: toAttribute(
       toArrayOf(`${name}.points`, instance.points, toVertex),
-      vector.Vector3.toArray,
+      Vector3.toArray,
       3
     ),
   };
@@ -292,7 +292,7 @@ const toTuple3 = <T>(
   ];
 };
 
-const toVertex = (name: string, instance: any): vector.Vector3 => {
+const toVertex = (name: string, instance: any): Vector3 => {
   if (typeof instance !== "object") throw invalid(name, instance, "vertex");
 
   return {

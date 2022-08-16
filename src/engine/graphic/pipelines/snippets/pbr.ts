@@ -10,7 +10,7 @@ const declare = (
   environmentBrdfMap: string,
   environmentDiffuseMap: string,
   environmentSpecularMap: string
-) => `
+): string => `
 const vec3 PBR_F0 = vec3(0.04);
 const float PBR_PI = 3.141592653589793;
 
@@ -112,13 +112,13 @@ const environmentInvoke = (
   material: string,
   normal: string,
   eyeDirection: string
-) => `pbrEnvironment(${material}, ${normal}, ${eyeDirection})`;
+): string => `pbrEnvironment(${material}, ${normal}, ${eyeDirection})`;
 
 const lightInvoke = (
   light: string,
   material: string,
   normal: string,
   eyeDirection: string
-) => `pbrLight(${light}, ${material}, ${normal}, ${eyeDirection})`;
+): string => `pbrLight(${light}, ${material}, ${normal}, ${eyeDirection})`;
 
 export { declare, environmentInvoke, lightInvoke };

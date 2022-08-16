@@ -1,5 +1,5 @@
-import * as matrix from "../math/matrix";
-import * as vector from "../math/vector";
+import { Matrix4 } from "../math/matrix";
+import { Vector3, Vector4 } from "../math/vector";
 
 type Array =
   | Float32Array
@@ -47,11 +47,11 @@ const enum Interpolation {
 }
 
 interface Material {
-  albedoFactor?: vector.Vector4;
+  albedoFactor?: Vector4;
   albedoMap?: Texture;
-  emissiveFactor?: vector.Vector4;
+  emissiveFactor?: Vector4;
   emissiveMap?: Texture;
-  glossFactor?: vector.Vector4;
+  glossFactor?: Vector4;
   glossMap?: Texture;
   heightMap?: Texture;
   heightParallaxBias?: number;
@@ -74,7 +74,7 @@ interface Mesh {
 interface Node {
   children: Node[];
   geometries: Geometry[];
-  transform: matrix.Matrix4;
+  transform: Matrix4;
 }
 
 interface Texture {
@@ -88,7 +88,7 @@ const enum Wrap {
   Mirror,
 }
 
-const defaultColor: vector.Vector4 = {
+const defaultColor: Vector4 = {
   x: 1,
   y: 1,
   z: 1,
@@ -104,14 +104,10 @@ const defaultFilter: Filter = {
 
 const reduceNode = <TState>(
   nodes: Node[],
-  parent: matrix.Matrix4,
+  parent: Matrix4,
   state: TState,
-  reduce: (
-    previous: TState,
-    geometry: Geometry,
-    transform: matrix.Matrix4
-  ) => TState
-) => {
+  reduce: (previous: TState, geometry: Geometry, transform: Matrix4) => TState
+): TState => {
   for (const node of nodes) {
     const transform = parent.compose(node.transform);
 
@@ -126,15 +122,15 @@ const reduceNode = <TState>(
 
 const reduceNodePoints = <TState>(
   nodes: Node[],
-  parent: matrix.Matrix4,
+  parent: Matrix4,
   state: TState,
-  reduce: (previous: TState, point: vector.Vector3) => TState
-) => {
+  reduce: (previous: TState, point: Vector3) => TState
+): TState => {
   return reduceNode(
     nodes,
     parent,
     state,
-    (previous: TState, geometry: Geometry, transform: matrix.Matrix4) => {
+    (previous: TState, geometry: Geometry, transform: Matrix4) => {
       const points = geometry.points;
       const buffer = points.buffer;
       const count = points.stride;
@@ -167,9 +163,9 @@ const computeBounds = (mesh: Mesh) => {
 
   return reduceNodePoints<Bounds>(
     mesh.nodes,
-    matrix.Matrix4.createIdentity(),
+    Matrix4.createIdentity(),
     initial,
-    (previous: Bounds, point: vector.Vector3) => ({
+    (previous: Bounds, point: Vector3) => ({
       xMax: Math.max(previous.xMax, point.x),
       xMin: Math.min(previous.xMin, point.x),
       yMax: Math.max(previous.yMax, point.y),
