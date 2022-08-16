@@ -1,35 +1,37 @@
 /*
- ** Button unique identifier.
+ ** User-defined button identifier.
  */
-type ButtonId = string;
+type Button = string;
 
 /*
- ** Button configuration.
+ ** Button setup.
  */
-interface Button {
-  enabled: boolean;
-  id: ButtonId;
-}
+type ButtonSetup = {
+  active: boolean;
+  button: Button;
+};
 
 /*
  ** 2D position.
  */
-interface Position {
+type Position = {
   x: number;
   y: number;
-}
+};
+
+const emptyButtonSetups: ButtonSetup[] = [];
 
 /*
  ** Keyboard & mouse input abstraction class.
  */
 class Input {
-  private buttonMap: { [key: number]: Button[] };
+  private buttonMap: Map<string, ButtonSetup[]>;
   private mouseMouvement: Position;
   private mousePosition: Position;
   private mouseOffset: Position;
   private mouseOrigin: HTMLElement;
   private mouseWheel: number;
-  private presses: { [buttonId: string]: boolean };
+  private pressedButtons: Set<string>;
 
   constructor(eventSource: HTMLElement, mouseOrigin?: HTMLElement) {
     if (eventSource.tabIndex < 0)
@@ -37,66 +39,60 @@ class Input {
         "eventSource element requires a 'tabindex=\"1\"' attribute to capture key events"
       );
 
-    this.buttonMap = {};
+    this.buttonMap = new Map();
     this.mouseMouvement = { x: 0, y: 0 };
     this.mousePosition = { x: 0, y: 0 };
     this.mouseOffset = { x: 0, y: 0 };
-    this.mouseOrigin = mouseOrigin || eventSource;
+    this.mouseOrigin = mouseOrigin ?? eventSource;
     this.mouseWheel = 0;
-    this.presses = {};
+    this.pressedButtons = new Set();
 
     // Define and attach event listeners
-    const handlers: [string, (event: Event) => void, boolean][] = [
-      ["contextmenu", (event: Event) => {}, true], // NoOp, just disable context menu on canvas
+    const handlers: [string, (event: any) => void, boolean][] = [
+      ["contextmenu", () => {}, true], // NoOp, just disable context menu on canvas
       [
         "keydown",
-        <(Event: Event) => void>(
-          ((event: KeyboardEvent) =>
-            this.processKeyPress(event.keyCode || event.which, true))
-        ),
+        (event: KeyboardEvent) => {
+          if (event.repeat) {
+            return;
+          }
+
+          this.processKeyPress(event.key, true);
+        },
         true,
       ],
       [
         "keyup",
-        <(Event: Event) => void>(
-          ((event: KeyboardEvent) =>
-            this.processKeyPress(event.keyCode || event.which, false))
-        ),
+        (event: KeyboardEvent) => {
+          if (event.repeat) {
+            return;
+          }
+
+          this.processKeyPress(event.key, false);
+        },
         true,
       ],
       [
         "mousedown",
-        <(Event: Event) => void>(
-          ((event: MouseEvent) => this.processKeyPress(event.button, true))
-        ),
+        (event: MouseEvent) =>
+          this.processKeyPress(event.button.toString(), true),
         false,
       ],
-      [
-        "mousemove",
-        <(Event: Event) => void>(
-          ((event: MouseEvent) => this.processMouseMove(event))
-        ),
-        false,
-      ],
+      ["mousemove", (event: MouseEvent) => this.processMouseMove(event), false],
       [
         "mouseup",
-        <(Event: Event) => void>(
-          ((event: MouseEvent) => this.processKeyPress(event.button, false))
-        ),
+        (event: MouseEvent) =>
+          this.processKeyPress(event.button.toString(), false),
         false,
       ],
       [
         "mousewheel",
-        <(Event: Event) => void>(
-          ((event: WheelEvent) => this.processMouseWheel(event.deltaX / 120))
-        ),
+        (event: WheelEvent) => this.processMouseWheel(event.deltaX / 120),
         true,
       ],
       [
         "DOMMouseScroll",
-        <(Event: Event) => void>(
-          ((event: WheelEvent) => this.processMouseWheel(-event.detail / 3))
-        ),
+        (event: WheelEvent) => this.processMouseWheel(-event.detail / 3),
         true,
       ],
     ];
@@ -106,19 +102,18 @@ class Input {
         const event = e || window.event;
 
         if (cancel) {
-          if (event.preventDefault) event.preventDefault();
-
-          if (event.stopPropagation) event.stopPropagation();
-
-          event.returnValue = false;
+          event.preventDefault?.();
+          event.stopPropagation?.();
         }
 
         callback(event);
       });
     }
 
-    // Register all known keys as buttons having the same lowercase name (e.g. Key.Left as button "left")
-    for (const key in Key) this.assign(key.toLowerCase(), (<any>Key)[key]);
+    // Register known keys as buttons
+    for (const key in Key) {
+      this.assign(key.toLowerCase(), Key[key as keyof typeof Key]);
+    }
 
     // Relocate mouse on window resize
     window.addEventListener("resize", () => this.mouseRelocate());
@@ -127,57 +122,59 @@ class Input {
   }
 
   /*
-   ** Internal assign function.
+   ** Assign button to key.
+   ** button: user-defined button ID to be associated to key
+   ** key: target key
    */
-  public assign(buttonId: ButtonId, key: Key) {
-    let buttons = this.buttonMap[key];
+  public assign(button: Button, key: Key) {
+    let buttonSetups = this.buttonMap.get(key);
 
-    if (buttons === undefined) {
-      buttons = [];
+    if (buttonSetups === undefined) {
+      buttonSetups = [];
 
-      this.buttonMap[key] = buttons;
+      this.buttonMap.set(key, buttonSetups);
     }
 
-    for (let i = buttons.length; i-- > 0; ) {
-      if (buttons[i].id == buttonId) return;
+    if (buttonSetups.every((buttonSetup) => buttonSetup.button !== button)) {
+      buttonSetups.push({
+        active: true,
+        button: button,
+      });
     }
-
-    buttons.push({
-      enabled: true,
-      id: buttonId,
-    });
   }
 
   /*
    ** Clear all keys mapped to given button.
    ** button:	button ID
    */
-  public clear(buttonId: ButtonId) {
-    for (const key in this.buttonMap) {
-      const buttons = this.buttonMap[key];
-
-      for (let i = buttons.length; i-- > 0; ) {
-        if (buttons[i].id == buttonId) buttons.splice(i, 1);
+  public clear(button: Button) {
+    for (const [key, buttonSetups] of this.buttonMap.entries()) {
+      for (let i = buttonSetups.length; i-- > 0; ) {
+        if (buttonSetups[i].button === button) {
+          buttonSetups.splice(i, 1);
+        }
       }
 
-      if (buttons.length == 0) delete this.buttonMap[key];
+      if (buttonSetups.length === 0) {
+        this.buttonMap.delete(key);
+      }
     }
 
-    delete this.presses[buttonId];
+    this.pressedButtons.delete(button);
   }
 
   /*
    ** Disable presses on given button.
    */
-  public disable(buttonId: ButtonId) {
-    this.setEnabled(buttonId, false);
+  public disable(button: Button) {
+    this.setActive(button, false);
   }
 
   /*
    ** Enable presses on given button.
    */
-  public enable(buttonId: ButtonId) {
-    this.setEnabled(buttonId, true);
+  public enable(button: Button) {
+    this.setActive(button, true);
   }
 
   /*
@@ -195,12 +192,12 @@ class Input {
   /*
    ** Get and reset button pressed state.
    */
-  public fetchPressed(buttonId: ButtonId) {
-    if (!this.presses[buttonId]) return false;
+  public fetchPressed(button: Button) {
+    const state = this.pressedButtons.has(button);
 
-    this.presses[buttonId] = false;
+    this.pressedButtons.delete(button);
 
-    return true;
+    return state;
   }
 
   /*
@@ -224,8 +221,8 @@ class Input {
   /*
    ** Check if button is pressed.
    */
-  public isPressed(buttonId: ButtonId) {
-    return !!this.presses[buttonId];
+  public isPressed(buttonId: Button) {
+    return this.pressedButtons.has(buttonId);
   }
 
   /*
@@ -251,17 +248,21 @@ class Input {
 
   /*
    ** Change state of enabled buttons in given list.
-   ** states:	current button states
-   ** buttons:	button IDs list
-   ** value:	new button state
+   ** states: current button states
+   ** buttons: button IDs list
+   ** value: new button state
    */
-  private processKeyPress(key: number, pressed: boolean) {
-    const buttons = this.buttonMap[key];
+  private processKeyPress(key: string, pressed: boolean) {
+    const buttonSetups = this.buttonMap.get(key) ?? emptyButtonSetups;
 
-    if (buttons === undefined) return;
-
-    for (const button of buttons) {
-      if (button.enabled) this.presses[button.id] = pressed;
+    for (const buttonSetup of buttonSetups) {
+      if (buttonSetup.active) {
+        if (pressed) {
+          this.pressedButtons.add(buttonSetup.button);
+        } else {
+          this.pressedButtons.delete(buttonSetup.button);
+        }
+      }
     }
   }
 
@@ -294,12 +295,12 @@ class Input {
   /*
    ** Enable or disable button presses.
    */
-  private setEnabled(buttonId: ButtonId, enabled: boolean) {
-    for (const key in this.buttonMap) {
-      const buttons = this.buttonMap[key];
-
-      for (const button of buttons) {
-        if (button.id == buttonId) button.enabled = enabled;
+  private setActive(button: Button, enabled: boolean) {
+    for (const [_, buttonSetups] of this.buttonMap.entries()) {
+      for (const buttonSetup of buttonSetups) {
+        if (buttonSetup.button === button) {
+          buttonSetup.active = enabled;
+        }
       }
     }
   }
@@ -309,31 +310,31 @@ class Input {
  ** Mouse and keyboard key codes.
  */
 enum Key {
-  MouseLeft = 0,
-  MouseMiddle = 1,
-  MouseRight = 2,
-  Backspace = 8,
-  Tab = 9,
-  Enter = 13,
-  Shift = 16,
-  Control = 17,
-  Alt = 18,
-  Pause = 19,
-  Capslock = 20,
-  Escape = 27,
-  Space = 32,
-  PageUp = 33,
-  PageDown = 34,
-  End = 35,
-  Home = 36,
-  Left = 37,
-  Up = 38,
-  Right = 39,
-  Down = 40,
-  Insert = 45,
-  Delete = 46,
-  Windows = 91,
-  Numlock = 144,
+  MouseLeft = "0",
+  MouseMiddle = "1",
+  MouseRight = "2",
+  Backspace = "Backspace",
+  Tab = "Tab",
+  Enter = "Enter",
+  Shift = "Shift",
+  Control = "Control",
+  Alt = "Alt",
+  Pause = "Pause",
+  Capslock = "Capslock",
+  Escape = "Escape",
+  Space = " ",
+  PageUp = "PageUp",
+  PageDown = "PageDown",
+  End = "End",
+  Home = "Home",
+  ArrowLeft = "ArrowLeft",
+  ArrowUp = "ArrowUp",
+  ArrowRight = "ArrowRight",
+  ArrowDown = "ArrowDown",
+  Insert = "Insert",
+  Delete = "Delete",
+  OS = "OS",
+  Numlock = "NumLock",
 }
 
 export { Input, Key };
