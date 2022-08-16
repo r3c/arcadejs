@@ -1,4 +1,4 @@
-const getDirectiveOrValue = (directive: string, value: string) => `
+const getDirectiveOrValue = (directive: string, value: string): string => `
 #ifdef ${directive}
 	${directive}
 #else

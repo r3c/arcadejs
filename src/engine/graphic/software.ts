@@ -1,8 +1,7 @@
 import * as display from "../display";
-import * as functional from "../language/functional";
-import * as matrix from "../math/matrix";
+import { Matrix4 } from "../math/matrix";
 import * as model from "../graphic/model";
-import * as vector from "../math/vector";
+import { Vector2, Vector3, Vector4 } from "../math/vector";
 
 enum DrawMode {
   Default,
@@ -17,9 +16,9 @@ interface Image {
 }
 
 interface Vertex {
-  color: vector.Vector4;
-  coord: vector.Vector2;
-  point: vector.Vector3;
+  color: Vector4;
+  coord: Vector2;
+  point: Vector3;
 }
 
 const defaultAttribute = {
@@ -27,38 +26,18 @@ const defaultAttribute = {
   stride: 0,
 };
 
-const defaultColor = {
-  x: 1,
-  y: 1,
-  z: 1,
-  w: 1,
-};
-
-const defaultCoord = {
-  x: 0,
-  y: 0,
-};
-
 const lerpScalar = (min: number, max: number, ratio: number) => {
   return min + (max - min) * ratio;
 };
 
-const lerpVector2 = (
-  min: vector.Vector2,
-  max: vector.Vector2,
-  ratio: number
-) => {
+const lerpVector2 = (min: Vector2, max: Vector2, ratio: number) => {
   return {
     x: lerpScalar(min.x, max.x, ratio),
     y: lerpScalar(min.y, max.y, ratio),
   };
 };
 
-const lerpVector4 = (
-  min: vector.Vector4,
-  max: vector.Vector4,
-  ratio: number
-) => {
+const lerpVector4 = (min: Vector4, max: Vector4, ratio: number) => {
   return {
     x: lerpScalar(min.x, max.x, ratio),
     y: lerpScalar(min.y, max.y, ratio),
@@ -196,7 +175,7 @@ const fillTriangle = (
   }
 };
 
-const wireLine = (image: Image, begin: vector.Vector3, end: vector.Vector3) => {
+const wireLine = (image: Image, begin: Vector3, end: Vector3) => {
   let x0 = ~~begin.x;
   const x1 = ~~end.x;
   let y0 = ~~begin.y;
@@ -240,10 +219,10 @@ const wireTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
 };
 
 const projectToScreen = (
-  modelViewProjection: matrix.Matrix4,
+  modelViewProjection: Matrix4,
   halfWidth: number,
   halfHeight: number,
-  position: vector.Vector3
+  position: Vector3
 ) => {
   const point = modelViewProjection.transform({
     x: position.x,
@@ -265,41 +244,6 @@ const projectToScreen = (
   };
 };
 
-const loadImageData = (url: string) => {
-  return new Promise<ImageData>((resolve, reject) => {
-    const image = new Image();
-
-    image.onabort = () => reject(`image load aborted: "${url}"`);
-    image.onerror = () => reject(`image load failed: "${url}"`);
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-
-      canvas.height = image.height;
-      canvas.width = image.width;
-
-      const context = canvas.getContext("2d");
-
-      if (context === null) return reject("cannot get canvas 2d contxt");
-
-      context.drawImage(
-        image,
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
-
-      resolve(context.getImageData(0, 0, canvas.width, canvas.height));
-    };
-
-    image.src = url;
-  });
-};
-
 class Renderer {
   private readonly screen: display.Context2DScreen;
 
@@ -316,8 +260,8 @@ class Renderer {
 
   public draw(
     mesh: model.Mesh,
-    projection: matrix.Matrix4,
-    modelView: matrix.Matrix4,
+    projection: Matrix4,
+    modelView: Matrix4,
     drawMode: DrawMode
   ) {
     const screen = this.screen;
@@ -351,7 +295,7 @@ class Renderer {
   private static drawNodes(
     image: Image,
     nodes: Iterable<model.Node>,
-    modelViewProjection: matrix.Matrix4,
+    modelViewProjection: Matrix4,
     materials: { [name: string]: model.Material },
     drawMode: DrawMode
   ) {

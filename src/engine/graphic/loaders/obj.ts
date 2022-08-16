@@ -1,9 +1,9 @@
 import * as image from "../image";
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as model from "../model";
 import * as path from "../../fs/path";
 import * as stream from "../../io/stream";
-import * as vector from "../../math/vector";
+import { Vector2, Vector3 } from "../../math/vector";
 
 /*
  ** Implementation based on:
@@ -119,12 +119,12 @@ const loadMaterial = async (
 };
 
 const loadObject = async (data: string, fileName: string) => {
-  const coords: vector.Vector2[] = [];
+  const coords: Vector2[] = [];
   const geometries: model.Geometry[] = [];
   const groups: WavefrontOBJGroup[] = [];
   const materials: { [name: string]: model.Material } = {};
-  const normals: vector.Vector3[] = [];
-  const points: vector.Vector3[] = [];
+  const normals: Vector3[] = [];
+  const points: Vector3[] = [];
 
   let mustStartNew = true;
   let mustUseMaterial: string | undefined = undefined;
@@ -214,8 +214,6 @@ const loadObject = async (data: string, fileName: string) => {
     // vertices [0, i + 1, i + 2] for 0 <= i < N - 2 (equivalent to gl.TRIANGLE_FAN mode)
     for (const face of group.faces) {
       for (let triangle = 0; triangle + 2 < face.length; ++triangle) {
-        const indices: [number, number, number] = [0, 0, 0];
-
         for (let i = 0; i < 3; ++i) {
           const vertex = face[i === 0 ? i : triangle + i];
           const key = vertex.point + "/" + vertex.coord + "/" + vertex.normal;
@@ -292,7 +290,7 @@ const loadObject = async (data: string, fileName: string) => {
       {
         children: [],
         geometries: geometries,
-        transform: matrix.Matrix4.createIdentity(),
+        transform: Matrix4.createIdentity(),
       },
     ],
   };

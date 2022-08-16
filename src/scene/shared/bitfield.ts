@@ -2,7 +2,7 @@ import * as functional from "../../engine/language/functional";
 
 const enumerate = (flags: boolean[]) => {
   return functional.range(Math.pow(2, flags.length), (i) =>
-    flags.map((flag, index) => (i & Math.pow(2, index)) !== 0)
+    flags.map((_flag, index) => (i & Math.pow(2, index)) !== 0)
   );
 };
 

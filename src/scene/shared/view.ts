@@ -1,7 +1,7 @@
 import * as controller from "../../engine/io/controller";
-import * as vector from "../../engine/math/vector";
+import { Vector3 } from "../../engine/math/vector";
 
-const ease = (from: vector.Vector3, to: vector.Vector3, speed: number) => {
+const ease = (from: Vector3, to: Vector3, speed: number) => {
   return {
     x: from.x + (to.x - from.x) * speed,
     y: from.y + (to.y - from.y) * speed,
@@ -10,13 +10,13 @@ const ease = (from: vector.Vector3, to: vector.Vector3, speed: number) => {
 };
 
 class Camera {
-  public position: vector.Vector3;
-  public rotation: vector.Vector3;
+  public position: Vector3;
+  public rotation: Vector3;
 
-  private nextPosition: vector.Vector3;
-  private nextRotation: vector.Vector3;
+  private nextPosition: Vector3;
+  private nextRotation: Vector3;
 
-  public constructor(position: vector.Vector3, rotation: vector.Vector3) {
+  public constructor(position: Vector3, rotation: Vector3) {
     this.nextPosition = position;
     this.nextRotation = rotation;
     this.position = position;
@@ -39,8 +39,8 @@ class Camera {
       z: 0,
     };
 
-    this.nextPosition = vector.Vector3.add(this.nextPosition, deltaPosition);
-    this.nextRotation = vector.Vector3.add(this.nextRotation, deltaRotation);
+    this.nextPosition = Vector3.add(this.nextPosition, deltaPosition);
+    this.nextRotation = Vector3.add(this.nextRotation, deltaRotation);
 
     this.position = ease(this.position, this.nextPosition, 0.2);
     this.rotation = ease(this.rotation, this.nextRotation, 0.2);

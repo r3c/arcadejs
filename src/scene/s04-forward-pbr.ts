@@ -6,11 +6,9 @@ import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../engine/language/functional";
 import * as image from "../engine/graphic/image";
 import * as load from "../engine/graphic/load";
-import * as matrix from "../engine/math/matrix";
-import * as model from "../engine/graphic/model";
+import { Matrix4 } from "../engine/math/matrix";
 import * as move from "./shared/move";
-import * as stream from "../engine/io/stream";
-import * as vector from "../engine/math/vector";
+import { Vector3 } from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
 
@@ -33,14 +31,7 @@ interface Configuration {
 }
 
 interface Light {
-  position: vector.Vector3;
-}
-
-interface CallState {
-  lightPositions: Light[];
-  projectionMatrix: matrix.Matrix4;
-  tweak: application.Tweak<Configuration>;
-  viewMatrix: matrix.Matrix4;
+  position: Vector3;
 }
 
 interface SceneState {
@@ -56,7 +47,7 @@ interface SceneState {
   pipelines: {
     lights: forwardLighting.ForwardLightingPipeline[];
   };
-  projectionMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
   target: webgl.Target;
   textures: {
     brdf: WebGLTexture;
@@ -98,13 +89,13 @@ const prepare = async () =>
       const helmetMesh = await load.fromGLTF(
         "https://github.com/KhronosGroup/glTF-Sample-Models/raw/fb85803eaeb9208d1b6f04e3f3769ebc8aa706f6/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf",
         {
-          transform: matrix.Matrix4.createIdentity()
+          transform: Matrix4.createIdentity()
             .rotate({ x: 0, y: 1, z: 0 }, Math.PI)
             .rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5),
         }
       );
       const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-        transform: matrix.Matrix4.createIdentity().scale({
+        transform: Matrix4.createIdentity().scale({
           x: 0.2,
           y: 0.2,
           z: 0.2,
@@ -165,7 +156,7 @@ const prepare = async () =>
       return {
         camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
         input: input,
-        lights: functional.range(3, (i) => ({
+        lights: functional.range(3, () => ({
           position: { x: 0, y: 0, z: 0 },
         })),
         meshes: {
@@ -178,19 +169,23 @@ const prepare = async () =>
           lights: bitfield.enumerate(getOptions(tweak)).map(
             (flags) =>
               new forwardLighting.ForwardLightingPipeline(gl, {
-                forceEmissiveMap: flags[1] ? undefined : false,
-                forceHeightMap: flags[4] ? undefined : false,
-                forceNormalMap: flags[5] ? undefined : false,
-                forceOcclusionMap: flags[2] ? undefined : false,
-                model: forwardLighting.ForwardLightingModel.Physical,
-                modelPhysicalNoAmbient: !flags[0],
-                modelPhysicalNoIBL: !flags[3],
-                maxPointLights: 3,
-                noShadow: true,
+                light: {
+                  model: forwardLighting.ForwardLightingModel.Physical,
+                  modelPhysicalNoAmbient: !flags[0],
+                  modelPhysicalNoIBL: !flags[3],
+                  maxPointLights: 3,
+                  noShadow: true,
+                },
+                material: {
+                  forceEmissiveMap: flags[1] ? undefined : false,
+                  forceHeightMap: flags[4] ? undefined : false,
+                  forceNormalMap: flags[5] ? undefined : false,
+                  forceOcclusionMap: flags[2] ? undefined : false,
+                },
               })
           ),
         },
-        projectionMatrix: matrix.Matrix4.createPerspective(
+        projectionMatrix: Matrix4.createPerspective(
           45,
           screen.getRatio(),
           0.1,
@@ -216,7 +211,7 @@ const render = (state: SceneState) => {
   const pipelines = state.pipelines;
   const target = state.target;
 
-  const cameraView = matrix.Matrix4.createIdentity()
+  const cameraView = Matrix4.createIdentity()
     .translate(camera.position)
     .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
     .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
@@ -226,17 +221,17 @@ const render = (state: SceneState) => {
 
   // PBR render
   const cube = {
-    matrix: matrix.Matrix4.createIdentity(),
+    matrix: Matrix4.createIdentity(),
     mesh: meshes.helmet,
   };
 
   const ground = {
-    matrix: matrix.Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
+    matrix: Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
     mesh: meshes.ground,
   };
 
   const lights = lightPositions.map((position) => ({
-    matrix: matrix.Matrix4.createIdentity().translate(position),
+    matrix: Matrix4.createIdentity().translate(position),
     mesh: meshes.light,
   }));
 
@@ -269,7 +264,7 @@ const resize = (state: SceneState, screen: display.WebGLScreen) => {
   for (const pipeline of state.pipelines.lights)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 
-  state.projectionMatrix = matrix.Matrix4.createPerspective(
+  state.projectionMatrix = Matrix4.createPerspective(
     45,
     screen.getRatio(),
     0.1,

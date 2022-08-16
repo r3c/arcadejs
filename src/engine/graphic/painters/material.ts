@@ -1,5 +1,4 @@
-import * as functional from "../../language/functional";
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as webgl from "../webgl";
 
 interface MaterialBatch {
@@ -9,7 +8,7 @@ interface MaterialBatch {
 
 interface ModelBatch {
   geometry: webgl.Geometry;
-  transform: matrix.Matrix4;
+  transform: Matrix4;
 }
 
 interface RootBatch<State> {
@@ -47,9 +46,9 @@ class Painter<State> implements webgl.Painter<State> {
   public paint(
     target: webgl.Target,
     subjects: Iterable<webgl.Subject>,
-    view: matrix.Matrix4,
+    view: Matrix4,
     state: State
-  ) {
+  ): void {
     const batch: RootBatch<State> = {
       shaders: {},
     };
@@ -70,9 +69,9 @@ class Painter<State> implements webgl.Painter<State> {
   private draw(
     target: webgl.Target,
     batch: RootBatch<State>,
-    view: matrix.Matrix4,
+    view: Matrix4,
     state: State
-  ) {
+  ): void {
     // Process batch shaders
     for (const shaderIndex in batch.shaders) {
       const shaderBatch = batch.shaders[shaderIndex];
@@ -117,9 +116,9 @@ class Painter<State> implements webgl.Painter<State> {
   private sort(
     batch: RootBatch<State>,
     nodes: Iterable<webgl.Node>,
-    parent: matrix.Matrix4,
+    parent: Matrix4,
     state: State
-  ) {
+  ): void {
     for (const node of nodes) {
       const transform = parent.compose(node.transform);
 

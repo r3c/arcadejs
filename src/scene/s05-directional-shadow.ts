@@ -5,9 +5,9 @@ import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
 import * as display from "../engine/display";
 import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
 import * as load from "../engine/graphic/load";
-import * as matrix from "../engine/math/matrix";
+import { Matrix4 } from "../engine/math/matrix";
 import * as move from "./shared/move";
-import * as vector from "../engine/math/vector";
+import { Vector3 } from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
 
@@ -36,7 +36,7 @@ interface SceneState {
     debug: debugTexture.Pipeline;
     lights: forwardLighting.ForwardLightingPipeline[];
   };
-  projectionMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
   target: webgl.Target;
   tweak: application.Tweak<Configuration>;
 }
@@ -62,7 +62,7 @@ const prepare = () =>
       const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
       const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
       const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-        transform: matrix.Matrix4.createIdentity().scale({
+        transform: Matrix4.createIdentity().scale({
           x: 0.5,
           y: 0.5,
           z: 0.5,
@@ -71,7 +71,7 @@ const prepare = () =>
 
       // Create state
       return {
-        camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
+        camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
         input: input,
         meshes: {
           cube: webgl.loadMesh(gl, cubeMesh),
@@ -89,13 +89,15 @@ const prepare = () =>
           lights: bitfield.enumerate(getOptions(tweak)).map(
             (flags) =>
               new forwardLighting.ForwardLightingPipeline(gl, {
-                model: forwardLighting.ForwardLightingModel.Phong,
-                maxDirectionalLights: 1,
-                noShadow: !flags[0],
+                light: {
+                  model: forwardLighting.ForwardLightingModel.Phong,
+                  maxDirectionalLights: 1,
+                  noShadow: !flags[0],
+                },
               })
           ),
         },
-        projectionMatrix: matrix.Matrix4.createIdentity(),
+        projectionMatrix: Matrix4.createIdentity(),
         target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
         tweak: tweak,
       };
@@ -111,7 +113,7 @@ const render = (state: SceneState) => {
   // Setup view matrices
   const transform = {
     projectionMatrix: state.projectionMatrix,
-    viewMatrix: matrix.Matrix4.createIdentity()
+    viewMatrix: Matrix4.createIdentity()
       .translate(camera.position)
       .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
       .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
@@ -132,14 +134,14 @@ const render = (state: SceneState) => {
     ],
     subjects: [
       {
-        matrix: matrix.Matrix4.createIdentity().rotate(
+        matrix: Matrix4.createIdentity().rotate(
           { x: 0, y: 1, z: 1 },
           state.move * 5
         ),
         mesh: meshes.cube,
       },
       {
-        matrix: matrix.Matrix4.createIdentity().translate({
+        matrix: Matrix4.createIdentity().translate({
           x: 0,
           y: -1.5,
           z: 0,
@@ -147,8 +149,8 @@ const render = (state: SceneState) => {
         mesh: meshes.ground,
       },
       {
-        matrix: matrix.Matrix4.createIdentity().translate(
-          vector.Vector3.scale(vector.Vector3.normalize(lightDirection), 10)
+        matrix: Matrix4.createIdentity().translate(
+          Vector3.scale(Vector3.normalize(lightDirection), 10)
         ),
         mesh: meshes.light,
         noShadow: true,
@@ -175,7 +177,7 @@ const resize = (state: SceneState, screen: display.WebGLScreen) => {
   for (const pipeline of state.pipelines.lights)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 
-  state.projectionMatrix = matrix.Matrix4.createPerspective(
+  state.projectionMatrix = Matrix4.createPerspective(
     45,
     screen.getRatio(),
     0.1,

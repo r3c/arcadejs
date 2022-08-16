@@ -8,9 +8,9 @@ import {
 } from "../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../engine/language/functional";
 import * as load from "../engine/graphic/load";
-import * as matrix from "../engine/math/matrix";
+import { Matrix4 } from "../engine/math/matrix";
 import * as move from "./shared/move";
-import * as vector from "../engine/math/vector";
+import { Vector3 } from "../engine/math/vector";
 import * as view from "./shared/view";
 import * as webgl from "../engine/graphic/webgl";
 
@@ -34,7 +34,7 @@ interface Configuration {
 interface SceneState {
   camera: view.Camera;
   input: controller.Input;
-  lightPositions: vector.Vector3[];
+  lightPositions: Vector3[];
   meshes: {
     cube: webgl.Mesh;
     ground: webgl.Mesh;
@@ -44,7 +44,7 @@ interface SceneState {
   pipelines: {
     lights: ForwardLightingPipeline[];
   };
-  projectionMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
   target: webgl.Target;
   tweak: application.Tweak<Configuration>;
 }
@@ -78,7 +78,7 @@ const prepare = () =>
       const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
       const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
       const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-        transform: matrix.Matrix4.createIdentity().scale({
+        transform: Matrix4.createIdentity().scale({
           x: 0.2,
           y: 0.2,
           z: 0.2,
@@ -87,9 +87,9 @@ const prepare = () =>
 
       // Create state
       return {
-        camera: new view.Camera({ x: 0, y: 0, z: -5 }, vector.Vector3.zero),
+        camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
         input: input,
-        lightPositions: functional.range(3, () => vector.Vector3.zero),
+        lightPositions: functional.range(3, () => Vector3.zero),
         meshes: {
           cube: webgl.loadMesh(gl, cubeMesh),
           ground: webgl.loadMesh(gl, groundMesh),
@@ -115,7 +115,7 @@ const prepare = () =>
               })
           ),
         },
-        projectionMatrix: matrix.Matrix4.createIdentity(),
+        projectionMatrix: Matrix4.createIdentity(),
         target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
         tweak: tweak,
       };
@@ -130,7 +130,7 @@ const render = (state: SceneState) => {
 
   const transform = {
     projectionMatrix: state.projectionMatrix,
-    viewMatrix: matrix.Matrix4.createIdentity()
+    viewMatrix: Matrix4.createIdentity()
       .translate(camera.position)
       .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
       .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
@@ -153,11 +153,11 @@ const render = (state: SceneState) => {
       })),
     subjects: [
       {
-        matrix: matrix.Matrix4.createIdentity(),
+        matrix: Matrix4.createIdentity(),
         mesh: meshes.cube,
       },
       {
-        matrix: matrix.Matrix4.createIdentity().translate({
+        matrix: Matrix4.createIdentity().translate({
           x: 0,
           y: -1.5,
           z: 0,
@@ -166,7 +166,7 @@ const render = (state: SceneState) => {
       },
     ].concat(
       state.lightPositions.slice(0, state.tweak.nbLights).map((position) => ({
-        matrix: matrix.Matrix4.createIdentity().translate(position),
+        matrix: Matrix4.createIdentity().translate(position),
         mesh: meshes.light,
       }))
     ),
@@ -179,7 +179,7 @@ const resize = (state: SceneState, screen: display.WebGLScreen) => {
   for (const pipeline of state.pipelines.lights)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 
-  state.projectionMatrix = matrix.Matrix4.createPerspective(
+  state.projectionMatrix = Matrix4.createPerspective(
     45,
     screen.getRatio(),
     0.1,

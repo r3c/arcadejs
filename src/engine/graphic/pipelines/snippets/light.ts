@@ -2,7 +2,7 @@ const sourceTypeDirectional = "DirectionalLight";
 const sourceTypePoint = "PointLight";
 const sourceTypeResult = "ResultLight";
 
-const sourceDeclare = (shadowMacro: string) => `
+const sourceDeclare = (shadowMacro: string): string => `
 struct ${sourceTypeDirectional} {
 	vec3 color;
 	vec3 direction;
@@ -40,10 +40,12 @@ ${sourceTypeResult} lightSourcePoint(in ${sourceTypePoint} light, in vec3 distan
 	);
 }`;
 
-const sourceInvokeDirectional = (light: string, distanceCamera: string) =>
-  `lightSourceDirectional(${light}, ${distanceCamera})`;
+const sourceInvokeDirectional = (
+  light: string,
+  distanceCamera: string
+): string => `lightSourceDirectional(${light}, ${distanceCamera})`;
 
-const sourceInvokePoint = (light: string, distanceCamera: string) =>
+const sourceInvokePoint = (light: string, distanceCamera: string): string =>
   `lightSourcePoint(${light}, ${distanceCamera})`;
 
 export {

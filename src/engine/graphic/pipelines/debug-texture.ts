@@ -1,6 +1,5 @@
-import * as functional from "../../language/functional";
-import * as matrix from "../../math/matrix";
-import * as painter from "../painters/singular";
+import { Matrix4 } from "../../math/matrix";
+import { Painter as SingularPainter } from "../painters/singular";
 import * as quad from "./resources/quad";
 import * as webgl from "../webgl";
 
@@ -174,12 +173,10 @@ class Pipeline implements webgl.Pipeline {
    ** by "process" method easily.
    */
   public static createScene(source: WebGLTexture): webgl.Scene {
-    const defaultColor = [0, 0, 0, 0];
-
     return {
       subjects: [
         {
-          matrix: matrix.Matrix4.createIdentity(),
+          matrix: Matrix4.createIdentity(),
           mesh: {
             nodes: [
               {
@@ -192,7 +189,7 @@ class Pipeline implements webgl.Pipeline {
                     },
                   },
                 ],
-                transform: matrix.Matrix4.createIdentity(),
+                transform: Matrix4.createIdentity(),
               },
             ],
           },
@@ -203,14 +200,14 @@ class Pipeline implements webgl.Pipeline {
 
   public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
     this.gl = gl;
-    this.painter = new painter.Painter(load(gl, configuration));
+    this.painter = new SingularPainter(load(gl, configuration));
     this.quad = webgl.loadMesh(gl, quad.mesh);
     this.scale = configuration.scale ?? 0.4;
   }
 
   public process(
     target: webgl.Target,
-    transform: webgl.Transform,
+    _transform: webgl.Transform,
     scene: webgl.Scene
   ) {
     const gl = this.gl;
@@ -223,7 +220,7 @@ class Pipeline implements webgl.Pipeline {
 
     const subjects = [
       {
-        matrix: matrix.Matrix4.createIdentity()
+        matrix: Matrix4.createIdentity()
           .translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 })
           .scale({ x: this.scale, y: this.scale, z: 0 }),
         mesh: this.quad,
@@ -235,14 +232,9 @@ class Pipeline implements webgl.Pipeline {
       for (const node of subject.mesh.nodes) {
         for (const primitive of node.primitives) {
           if (primitive.material.albedoMap !== undefined) {
-            this.painter.paint(
-              target,
-              subjects,
-              matrix.Matrix4.createIdentity(),
-              {
-                source: primitive.material.albedoMap,
-              }
-            );
+            this.painter.paint(target, subjects, Matrix4.createIdentity(), {
+              source: primitive.material.albedoMap,
+            });
 
             return;
           }
@@ -251,7 +243,7 @@ class Pipeline implements webgl.Pipeline {
     }
   }
 
-  public resize(width: number, height: number) {}
+  public resize(_width: number, _height: number) {}
 }
 
 export { Format, Pipeline, Select };

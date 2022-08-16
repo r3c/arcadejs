@@ -9,6 +9,7 @@
     "vite": "^2.9.15"
   },
   "scripts": {
+    "check": "tsc --noEmit",
     "build": "vite build",
     "start": "vite",
     "test": "echo \"Error: no test specified\" && exit 1"

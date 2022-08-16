@@ -1,4 +1,4 @@
-import * as vector from "./vector";
+import { Vector3, Vector4 } from "./vector";
 
 class Matrix4 {
   private static readonly identity3: [1, 0, 0, 0, 1, 0, 0, 0, 1];
@@ -23,10 +23,10 @@ class Matrix4 {
    ** Create new matrix for "looking to given direction" transformation.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
    */
-  public static createDirection(direction: vector.Vector3, up: vector.Vector3) {
-    const f = vector.Vector3.normalize(direction);
-    const s = vector.Vector3.cross(f, vector.Vector3.normalize(up));
-    const u = vector.Vector3.cross(vector.Vector3.normalize(s), f);
+  public static createDirection(direction: Vector3, up: Vector3) {
+    const f = Vector3.normalize(direction);
+    const s = Vector3.cross(f, Vector3.normalize(up));
+    const u = Vector3.cross(Vector3.normalize(s), f);
 
     return new Matrix4([
       s.x,
@@ -308,7 +308,7 @@ class Matrix4 {
    ** Rotate matrix around an arbitrary axis
    ** From: https://fr.wikipedia.org/wiki/Matrice_de_rotation#Matrices_de_rotation_dans_le_cas_g%C3%A9n%C3%A9ral
    */
-  public rotate(axis: vector.Vector3, angle: number) {
+  public rotate(axis: Vector3, angle: number) {
     // Normalized axis
     const modInv =
       1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
@@ -350,7 +350,7 @@ class Matrix4 {
     );
   }
 
-  public scale(vector: vector.Vector3) {
+  public scale(vector: Vector3) {
     return new Matrix4(
       Matrix4.multiply(this.values, [
         vector.x,
@@ -373,7 +373,7 @@ class Matrix4 {
     );
   }
 
-  public transform(vertex: vector.Vector4) {
+  public transform(vertex: Vector4) {
     const m = this.values;
 
     return {
@@ -386,7 +386,7 @@ class Matrix4 {
     };
   }
 
-  public translate(vector: vector.Vector3) {
+  public translate(vector: Vector3) {
     return new Matrix4(
       Matrix4.multiply(this.values, [
         1,

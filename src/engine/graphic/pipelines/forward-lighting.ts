@@ -11,13 +11,13 @@ import {
 import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
 import { Painter as MaterialPainter } from "../painters/material";
 import { Painter as SingularPainter } from "../painters/singular";
-import * as matrix from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import * as normal from "./snippets/normal";
 import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
-import * as vector from "../../math/vector";
+import { Vector3 } from "../../math/vector";
 import * as webgl from "../webgl";
 
 type ForwardLightingConfiguration = {
@@ -34,7 +34,7 @@ enum ForwardLightingModel {
 
 interface DirectionalLight extends webgl.DirectionalLight {
   shadowMap: WebGLTexture;
-  shadowViewMatrix: matrix.Matrix4;
+  shadowViewMatrix: Matrix4;
 }
 
 type LightConfiguration = {
@@ -50,7 +50,7 @@ type LightConfiguration = {
 };
 
 interface LightState extends State {
-  ambientLightColor: vector.Vector3;
+  ambientLightColor: Vector3;
   directionalLights: DirectionalLight[];
   environmentLight?: {
     brdf: WebGLTexture;
@@ -58,9 +58,9 @@ interface LightState extends State {
     specular: WebGLTexture;
   };
   pointLights: webgl.PointLight[]; // FIXME: extend PointLight with extra properties
-  projectionMatrix: matrix.Matrix4;
-  shadowProjectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
+  shadowProjectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 }
 
 type MaterialConfiguration = {
@@ -75,13 +75,13 @@ type MaterialConfiguration = {
 };
 
 interface ShadowState extends State {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 }
 
 interface State {
-  projectionMatrix: matrix.Matrix4;
-  viewMatrix: matrix.Matrix4;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 }
 
 const lightHeaderShader = `
@@ -688,7 +688,7 @@ const loadLight = (
 
   shader.setupPropertyPerTarget(
     "ambientLightColor",
-    (state) => vector.Vector3.toArray(state.ambientLightColor),
+    (state) => Vector3.toArray(state.ambientLightColor),
     (gl) => gl.uniform3fv
   );
 
@@ -710,7 +710,7 @@ const loadLight = (
         (state) =>
           index < state.directionalLights.length
             ? state.directionalLights[index].shadowViewMatrix.getValues()
-            : matrix.Matrix4.createIdentity().getValues(),
+            : Matrix4.createIdentity().getValues(),
         (gl) => gl.uniformMatrix4fv
       );
       shader.setupTexturePerTarget(
@@ -725,7 +725,7 @@ const loadLight = (
       `directionalLights[${i}].color`,
       (state) =>
         index < state.directionalLights.length
-          ? vector.Vector3.toArray(state.directionalLights[index].color)
+          ? Vector3.toArray(state.directionalLights[index].color)
           : defaultColor,
       (gl) => gl.uniform3fv
     );
@@ -733,7 +733,7 @@ const loadLight = (
       `directionalLights[${i}].direction`,
       (state) =>
         index < state.directionalLights.length
-          ? vector.Vector3.toArray(state.directionalLights[index].direction)
+          ? Vector3.toArray(state.directionalLights[index].direction)
           : defaultDirection,
       (gl) => gl.uniform3fv
     );
@@ -746,7 +746,7 @@ const loadLight = (
       `pointLights[${i}].color`,
       (state) =>
         index < state.pointLights.length
-          ? vector.Vector3.toArray(state.pointLights[index].color)
+          ? Vector3.toArray(state.pointLights[index].color)
           : defaultColor,
       (gl) => gl.uniform3fv
     );
@@ -754,7 +754,7 @@ const loadLight = (
       `pointLights[${i}].position`,
       (state) =>
         index < state.pointLights.length
-          ? vector.Vector3.toArray(state.pointLights[index].position)
+          ? Vector3.toArray(state.pointLights[index].position)
           : defaultPosition,
       (gl) => gl.uniform3fv
     );
@@ -811,14 +811,14 @@ class ForwardLightingPipeline implements webgl.Pipeline {
   public readonly pointShadowBuffers: WebGLTexture[];
 
   private readonly directionalShadowPainter: webgl.Painter<ShadowState>;
-  private readonly directionalShadowProjectionMatrix: matrix.Matrix4;
+  private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: webgl.Target[];
   private readonly gl: WebGLRenderingContext;
   private readonly lightPainter: webgl.Painter<LightState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
   private readonly pointShadowPainter: webgl.Painter<ShadowState>;
-  private readonly pointShadowProjectionMatrix: matrix.Matrix4;
+  private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: webgl.Target[];
 
   public constructor(
@@ -882,7 +882,7 @@ class ForwardLightingPipeline implements webgl.Pipeline {
     this.directionalShadowPainter = new SingularPainter(
       loadShadowDirectional(gl)
     );
-    this.directionalShadowProjectionMatrix = matrix.Matrix4.createOrthographic(
+    this.directionalShadowProjectionMatrix = Matrix4.createOrthographic(
       -10,
       10,
       -10,
@@ -912,7 +912,7 @@ class ForwardLightingPipeline implements webgl.Pipeline {
       )
     );
     this.pointShadowPainter = new SingularPainter(loadShadowPoint(gl));
-    this.pointShadowProjectionMatrix = matrix.Matrix4.createPerspective(
+    this.pointShadowProjectionMatrix = Matrix4.createPerspective(
       Math.PI * 0.5,
       targetWidth / targetHeight,
       0.1,
@@ -953,10 +953,10 @@ class ForwardLightingPipeline implements webgl.Pipeline {
         z: -light.direction.z,
       };
 
-      const viewMatrix = matrix.Matrix4.createIdentity()
+      const viewMatrix = Matrix4.createIdentity()
         .translate({ x: 0, y: 0, z: -10 })
         .compose(
-          matrix.Matrix4.createDirection(shadowDirection, { x: 0, y: 1, z: 0 })
+          Matrix4.createDirection(shadowDirection, { x: 0, y: 1, z: 0 })
         );
 
       gl.colorMask(false, false, false, false);
@@ -991,7 +991,7 @@ class ForwardLightingPipeline implements webgl.Pipeline {
     gl.cullFace(gl.BACK);
 
     this.lightPainter.paint(target, scene.subjects, transform.viewMatrix, {
-      ambientLightColor: scene.ambientLightColor || vector.Vector3.zero,
+      ambientLightColor: scene.ambientLightColor || Vector3.zero,
       directionalLights: directionalLightStates,
       environmentLight: scene.environmentLight,
       pointLights: pointLights,
