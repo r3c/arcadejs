@@ -1,58 +1,93 @@
 import { Vector3, Vector4 } from "./vector";
 
+type Matrix4Data = Pick<
+  Matrix4,
+  | "v00"
+  | "v01"
+  | "v02"
+  | "v03"
+  | "v10"
+  | "v11"
+  | "v12"
+  | "v13"
+  | "v20"
+  | "v21"
+  | "v22"
+  | "v23"
+  | "v30"
+  | "v31"
+  | "v32"
+  | "v33"
+>;
+
 class Matrix4 {
   private static readonly identity3: [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
-  private static readonly identity4: Matrix4 = new Matrix4([
-    1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1,
-  ]);
-
-  private readonly values: number[];
-
-  /*
-   ** Create new matrix with custom values.
-   */
-  public static create(values: number[]) {
-    if (values.length !== 16)
-      throw Error("4x4 matrix must contain 16 elements");
-
-    return new Matrix4(values);
-  }
+  public v00: number;
+  public v01: number;
+  public v02: number;
+  public v03: number;
+  public v10: number;
+  public v11: number;
+  public v12: number;
+  public v13: number;
+  public v20: number;
+  public v21: number;
+  public v22: number;
+  public v23: number;
+  public v30: number;
+  public v31: number;
+  public v32: number;
+  public v33: number;
 
   /*
    ** Create new matrix for "looking to given direction" transformation.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
    */
-  public static createDirection(direction: Vector3, up: Vector3) {
+  public static createDirection(direction: Vector3, up: Vector3): Matrix4 {
     const f = Vector3.normalize(direction);
     const s = Vector3.cross(f, Vector3.normalize(up));
     const u = Vector3.cross(Vector3.normalize(s), f);
 
-    return new Matrix4([
-      s.x,
-      u.x,
-      -f.x,
-      0,
-      s.y,
-      u.y,
-      -f.y,
-      0,
-      s.z,
-      u.z,
-      -f.z,
-      0,
-      0,
-      0,
-      0,
-      1,
-    ]);
+    return new Matrix4({
+      v00: s.x,
+      v01: u.x,
+      v02: -f.x,
+      v03: 0,
+      v10: s.y,
+      v11: u.y,
+      v12: -f.y,
+      v13: 0,
+      v20: s.z,
+      v21: u.z,
+      v22: -f.z,
+      v23: 0,
+      v30: 0,
+      v31: 0,
+      v32: 0,
+      v33: 1,
+    });
   }
 
-  /*
-   ** Create new identity matrix (actually returns a static immutable instance).
-   */
-  public static createIdentity() {
-    return Matrix4.identity4;
+  public static createIdentity(): Matrix4 {
+    return new Matrix4({
+      v00: 1,
+      v01: 0,
+      v02: 0,
+      v03: 0,
+      v10: 0,
+      v11: 1,
+      v12: 0,
+      v13: 0,
+      v20: 0,
+      v21: 0,
+      v22: 1,
+      v23: 0,
+      v30: 0,
+      v31: 0,
+      v32: 0,
+      v33: 1,
+    });
   }
 
   /*
@@ -66,29 +101,29 @@ class Matrix4 {
     yMax: number,
     zMin: number,
     zMax: number
-  ) {
+  ): Matrix4 {
     const dx = xMax - xMin;
     const dy = yMax - yMin;
     const dz = zMax - zMin;
 
-    return new Matrix4([
-      2 / dx,
-      0,
-      0,
-      0,
-      0,
-      2 / dy,
-      0,
-      0,
-      0,
-      0,
-      -2 / dz,
-      0,
-      -(xMax + xMin) / dx,
-      -(yMax + yMin) / dy,
-      -(zMax + zMin) / dz,
-      1,
-    ]);
+    return new Matrix4({
+      v00: 2 / dx,
+      v01: 0,
+      v02: 0,
+      v03: 0,
+      v10: 0,
+      v11: 2 / dy,
+      v12: 0,
+      v13: 0,
+      v20: 0,
+      v21: 0,
+      v22: -2 / dz,
+      v23: 0,
+      v30: -(xMax + xMin) / dx,
+      v31: -(yMax + yMin) / dy,
+      v32: -(zMax + zMin) / dz,
+      v33: 1,
+    });
   }
 
   /*
@@ -100,208 +135,356 @@ class Matrix4 {
     ratio: number,
     zMin: number,
     zMax: number
-  ) {
+  ): Matrix4 {
     var f = 1.0 / Math.tan((angle * Math.PI) / 360.0);
     var q = 1 / (zMin - zMax);
 
-    return new Matrix4([
-      f / ratio,
-      0,
-      0,
-      0,
-      0,
-      f,
-      0,
-      0,
-      0,
-      0,
-      (zMax + zMin) * q,
-      -1,
-      0,
-      0,
-      2 * zMax * zMin * q,
-      0,
-    ]);
+    return new Matrix4({
+      v00: f / ratio,
+      v01: 0,
+      v02: 0,
+      v03: 0,
+      v10: 0,
+      v11: f,
+      v12: 0,
+      v13: 0,
+      v20: 0,
+      v21: 0,
+      v22: (zMax + zMin) * q,
+      v23: -1,
+      v30: 0,
+      v31: 0,
+      v32: 2 * zMax * zMin * q,
+      v33: 0,
+    });
   }
 
-  private constructor(values: number[]) {
-    this.values = values;
+  public static fromArray(values: number[]): Matrix4 {
+    if (values.length !== 16) {
+      throw Error("4x4 matrix must contain 16 elements");
+    }
+
+    return new Matrix4({
+      v00: values[0],
+      v01: values[1],
+      v02: values[2],
+      v03: values[3],
+      v10: values[4],
+      v11: values[5],
+      v12: values[6],
+      v13: values[7],
+      v20: values[8],
+      v21: values[9],
+      v22: values[10],
+      v23: values[11],
+      v30: values[12],
+      v31: values[13],
+      v32: values[14],
+      v33: values[15],
+    });
   }
 
-  public compose(other: Matrix4) {
-    return new Matrix4(Matrix4.multiply(this.values, other.values));
+  public static fromObject(obj: Matrix4Data): Matrix4 {
+    return new Matrix4(obj);
   }
 
-  public getTransposedInverse3x3() {
-    const m = this.values;
-    const determinant =
-      m[0] * (m[5] * m[10] - m[6] * m[9]) -
-      m[1] * (m[4] * m[10] - m[6] * m[8]) +
-      m[2] * (m[4] * m[9] - m[5] * m[8]);
-
-    if (Math.abs(determinant) < Number.EPSILON) return Matrix4.identity3;
-
-    const inverse = 1 / determinant;
-
-    return [
-      (m[5] * m[10] - m[9] * m[6]) * inverse,
-      (m[4] * m[10] - m[6] * m[8]) * -inverse,
-      (m[4] * m[9] - m[8] * m[5]) * inverse,
-      (m[1] * m[10] - m[2] * m[9]) * -inverse,
-      (m[0] * m[10] - m[2] * m[8]) * inverse,
-      (m[0] * m[9] - m[8] * m[1]) * -inverse,
-      (m[1] * m[6] - m[2] * m[5]) * inverse,
-      (m[0] * m[6] - m[4] * m[2]) * -inverse,
-      (m[0] * m[5] - m[4] * m[1]) * inverse,
-    ];
+  private constructor(obj: Matrix4Data) {
+    this.v00 = obj.v00;
+    this.v01 = obj.v01;
+    this.v02 = obj.v02;
+    this.v03 = obj.v03;
+    this.v10 = obj.v10;
+    this.v11 = obj.v11;
+    this.v12 = obj.v12;
+    this.v13 = obj.v13;
+    this.v20 = obj.v20;
+    this.v21 = obj.v21;
+    this.v22 = obj.v22;
+    this.v23 = obj.v23;
+    this.v30 = obj.v30;
+    this.v31 = obj.v31;
+    this.v32 = obj.v32;
+    this.v33 = obj.v33;
   }
 
-  public getValues(): Iterable<number> {
-    return this.values;
+  public clone(): Matrix4 {
+    return new Matrix4(this);
   }
 
   /*
    ** From: https://github.com/jlyharia/Computer_GraphicsII/blob/master/gluInvertMatrix.h
    */
-  public inverse() {
-    const inv = [];
-    const m = this.values;
+  public invert(): Matrix4 {
+    const v00 =
+      this.v11 * this.v22 * this.v33 -
+      this.v11 * this.v23 * this.v32 -
+      this.v21 * this.v12 * this.v33 +
+      this.v21 * this.v13 * this.v32 +
+      this.v31 * this.v12 * this.v23 -
+      this.v31 * this.v13 * this.v22;
 
-    inv[0] =
-      m[5] * m[10] * m[15] -
-      m[5] * m[11] * m[14] -
-      m[9] * m[6] * m[15] +
-      m[9] * m[7] * m[14] +
-      m[13] * m[6] * m[11] -
-      m[13] * m[7] * m[10];
+    const v10 =
+      -this.v10 * this.v22 * this.v33 +
+      this.v10 * this.v23 * this.v32 +
+      this.v20 * this.v12 * this.v33 -
+      this.v20 * this.v13 * this.v32 -
+      this.v30 * this.v12 * this.v23 +
+      this.v30 * this.v13 * this.v22;
 
-    inv[4] =
-      -m[4] * m[10] * m[15] +
-      m[4] * m[11] * m[14] +
-      m[8] * m[6] * m[15] -
-      m[8] * m[7] * m[14] -
-      m[12] * m[6] * m[11] +
-      m[12] * m[7] * m[10];
+    const v20 =
+      this.v10 * this.v21 * this.v33 -
+      this.v10 * this.v23 * this.v31 -
+      this.v20 * this.v11 * this.v33 +
+      this.v20 * this.v13 * this.v31 +
+      this.v30 * this.v11 * this.v23 -
+      this.v30 * this.v13 * this.v21;
 
-    inv[8] =
-      m[4] * m[9] * m[15] -
-      m[4] * m[11] * m[13] -
-      m[8] * m[5] * m[15] +
-      m[8] * m[7] * m[13] +
-      m[12] * m[5] * m[11] -
-      m[12] * m[7] * m[9];
+    const v30 =
+      -this.v10 * this.v21 * this.v32 +
+      this.v10 * this.v22 * this.v31 +
+      this.v20 * this.v11 * this.v32 -
+      this.v20 * this.v12 * this.v31 -
+      this.v30 * this.v11 * this.v22 +
+      this.v30 * this.v12 * this.v21;
 
-    inv[12] =
-      -m[4] * m[9] * m[14] +
-      m[4] * m[10] * m[13] +
-      m[8] * m[5] * m[14] -
-      m[8] * m[6] * m[13] -
-      m[12] * m[5] * m[10] +
-      m[12] * m[6] * m[9];
+    const determinant =
+      this.v00 * v00 + this.v01 * v10 + this.v02 * v20 + this.v03 * v30;
 
-    inv[1] =
-      -m[1] * m[10] * m[15] +
-      m[1] * m[11] * m[14] +
-      m[9] * m[2] * m[15] -
-      m[9] * m[3] * m[14] -
-      m[13] * m[2] * m[11] +
-      m[13] * m[3] * m[10];
+    if (determinant !== 0) {
+      const v01 =
+        -this.v01 * this.v22 * this.v33 +
+        this.v01 * this.v23 * this.v32 +
+        this.v21 * this.v02 * this.v33 -
+        this.v21 * this.v03 * this.v32 -
+        this.v31 * this.v02 * this.v23 +
+        this.v31 * this.v03 * this.v22;
 
-    inv[5] =
-      m[0] * m[10] * m[15] -
-      m[0] * m[11] * m[14] -
-      m[8] * m[2] * m[15] +
-      m[8] * m[3] * m[14] +
-      m[12] * m[2] * m[11] -
-      m[12] * m[3] * m[10];
+      const v11 =
+        this.v00 * this.v22 * this.v33 -
+        this.v00 * this.v23 * this.v32 -
+        this.v20 * this.v02 * this.v33 +
+        this.v20 * this.v03 * this.v32 +
+        this.v30 * this.v02 * this.v23 -
+        this.v30 * this.v03 * this.v22;
 
-    inv[9] =
-      -m[0] * m[9] * m[15] +
-      m[0] * m[11] * m[13] +
-      m[8] * m[1] * m[15] -
-      m[8] * m[3] * m[13] -
-      m[12] * m[1] * m[11] +
-      m[12] * m[3] * m[9];
+      const v21 =
+        -this.v00 * this.v21 * this.v33 +
+        this.v00 * this.v23 * this.v31 +
+        this.v20 * this.v01 * this.v33 -
+        this.v20 * this.v03 * this.v31 -
+        this.v30 * this.v01 * this.v23 +
+        this.v30 * this.v03 * this.v21;
 
-    inv[13] =
-      m[0] * m[9] * m[14] -
-      m[0] * m[10] * m[13] -
-      m[8] * m[1] * m[14] +
-      m[8] * m[2] * m[13] +
-      m[12] * m[1] * m[10] -
-      m[12] * m[2] * m[9];
+      const v31 =
+        this.v00 * this.v21 * this.v32 -
+        this.v00 * this.v22 * this.v31 -
+        this.v20 * this.v01 * this.v32 +
+        this.v20 * this.v02 * this.v31 +
+        this.v30 * this.v01 * this.v22 -
+        this.v30 * this.v02 * this.v21;
 
-    inv[2] =
-      m[1] * m[6] * m[15] -
-      m[1] * m[7] * m[14] -
-      m[5] * m[2] * m[15] +
-      m[5] * m[3] * m[14] +
-      m[13] * m[2] * m[7] -
-      m[13] * m[3] * m[6];
+      const v02 =
+        this.v01 * this.v12 * this.v33 -
+        this.v01 * this.v13 * this.v32 -
+        this.v11 * this.v02 * this.v33 +
+        this.v11 * this.v03 * this.v32 +
+        this.v31 * this.v02 * this.v13 -
+        this.v31 * this.v03 * this.v12;
 
-    inv[6] =
-      -m[0] * m[6] * m[15] +
-      m[0] * m[7] * m[14] +
-      m[4] * m[2] * m[15] -
-      m[4] * m[3] * m[14] -
-      m[12] * m[2] * m[7] +
-      m[12] * m[3] * m[6];
+      const v12 =
+        -this.v00 * this.v12 * this.v33 +
+        this.v00 * this.v13 * this.v32 +
+        this.v10 * this.v02 * this.v33 -
+        this.v10 * this.v03 * this.v32 -
+        this.v30 * this.v02 * this.v13 +
+        this.v30 * this.v03 * this.v12;
 
-    inv[10] =
-      m[0] * m[5] * m[15] -
-      m[0] * m[7] * m[13] -
-      m[4] * m[1] * m[15] +
-      m[4] * m[3] * m[13] +
-      m[12] * m[1] * m[7] -
-      m[12] * m[3] * m[5];
+      const v22 =
+        this.v00 * this.v11 * this.v33 -
+        this.v00 * this.v13 * this.v31 -
+        this.v10 * this.v01 * this.v33 +
+        this.v10 * this.v03 * this.v31 +
+        this.v30 * this.v01 * this.v13 -
+        this.v30 * this.v03 * this.v11;
 
-    inv[14] =
-      -m[0] * m[5] * m[14] +
-      m[0] * m[6] * m[13] +
-      m[4] * m[1] * m[14] -
-      m[4] * m[2] * m[13] -
-      m[12] * m[1] * m[6] +
-      m[12] * m[2] * m[5];
+      const v32 =
+        -this.v00 * this.v11 * this.v32 +
+        this.v00 * this.v12 * this.v31 +
+        this.v10 * this.v01 * this.v32 -
+        this.v10 * this.v02 * this.v31 -
+        this.v30 * this.v01 * this.v12 +
+        this.v30 * this.v02 * this.v11;
 
-    inv[3] =
-      -m[1] * m[6] * m[11] +
-      m[1] * m[7] * m[10] +
-      m[5] * m[2] * m[11] -
-      m[5] * m[3] * m[10] -
-      m[9] * m[2] * m[7] +
-      m[9] * m[3] * m[6];
+      const v03 =
+        -this.v01 * this.v12 * this.v23 +
+        this.v01 * this.v13 * this.v22 +
+        this.v11 * this.v02 * this.v23 -
+        this.v11 * this.v03 * this.v22 -
+        this.v21 * this.v02 * this.v13 +
+        this.v21 * this.v03 * this.v12;
 
-    inv[7] =
-      m[0] * m[6] * m[11] -
-      m[0] * m[7] * m[10] -
-      m[4] * m[2] * m[11] +
-      m[4] * m[3] * m[10] +
-      m[8] * m[2] * m[7] -
-      m[8] * m[3] * m[6];
+      const v13 =
+        this.v00 * this.v12 * this.v23 -
+        this.v00 * this.v13 * this.v22 -
+        this.v10 * this.v02 * this.v23 +
+        this.v10 * this.v03 * this.v22 +
+        this.v20 * this.v02 * this.v13 -
+        this.v20 * this.v03 * this.v12;
 
-    inv[11] =
-      -m[0] * m[5] * m[11] +
-      m[0] * m[7] * m[9] +
-      m[4] * m[1] * m[11] -
-      m[4] * m[3] * m[9] -
-      m[8] * m[1] * m[7] +
-      m[8] * m[3] * m[5];
+      const v23 =
+        -this.v00 * this.v11 * this.v23 +
+        this.v00 * this.v13 * this.v21 +
+        this.v10 * this.v01 * this.v23 -
+        this.v10 * this.v03 * this.v21 -
+        this.v20 * this.v01 * this.v13 +
+        this.v20 * this.v03 * this.v11;
 
-    inv[15] =
-      m[0] * m[5] * m[10] -
-      m[0] * m[6] * m[9] -
-      m[4] * m[1] * m[10] +
-      m[4] * m[2] * m[9] +
-      m[8] * m[1] * m[6] -
-      m[8] * m[2] * m[5];
+      const v33 =
+        this.v00 * this.v11 * this.v22 -
+        this.v00 * this.v12 * this.v21 -
+        this.v10 * this.v01 * this.v22 +
+        this.v10 * this.v02 * this.v21 +
+        this.v20 * this.v01 * this.v12 -
+        this.v20 * this.v02 * this.v11;
 
-    const det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+      const determinantInverse = 1.0 / determinant;
 
-    if (det === 0) return this;
+      this.v00 = v00 * determinantInverse;
+      this.v01 = v01 * determinantInverse;
+      this.v02 = v02 * determinantInverse;
+      this.v03 = v03 * determinantInverse;
+      this.v10 = v10 * determinantInverse;
+      this.v11 = v11 * determinantInverse;
+      this.v12 = v12 * determinantInverse;
+      this.v13 = v13 * determinantInverse;
+      this.v20 = v20 * determinantInverse;
+      this.v21 = v21 * determinantInverse;
+      this.v22 = v22 * determinantInverse;
+      this.v23 = v23 * determinantInverse;
+      this.v30 = v30 * determinantInverse;
+      this.v31 = v31 * determinantInverse;
+      this.v32 = v32 * determinantInverse;
+      this.v33 = v33 * determinantInverse;
+    }
 
-    const invDet = 1.0 / det;
+    return this;
+  }
 
-    return new Matrix4(inv.map((v) => v * invDet));
+  public multiply(other: Matrix4Data): Matrix4 {
+    const v00 =
+      this.v00 * other.v00 +
+      this.v10 * other.v01 +
+      this.v20 * other.v02 +
+      this.v30 * other.v03;
+
+    const v01 =
+      this.v01 * other.v00 +
+      this.v11 * other.v01 +
+      this.v21 * other.v02 +
+      this.v31 * other.v03;
+
+    const v02 =
+      this.v02 * other.v00 +
+      this.v12 * other.v01 +
+      this.v22 * other.v02 +
+      this.v32 * other.v03;
+
+    const v03 =
+      this.v03 * other.v00 +
+      this.v13 * other.v01 +
+      this.v23 * other.v02 +
+      this.v33 * other.v03;
+
+    const v10 =
+      this.v00 * other.v10 +
+      this.v10 * other.v11 +
+      this.v20 * other.v12 +
+      this.v30 * other.v13;
+
+    const v11 =
+      this.v01 * other.v10 +
+      this.v11 * other.v11 +
+      this.v21 * other.v12 +
+      this.v31 * other.v13;
+
+    const v12 =
+      this.v02 * other.v10 +
+      this.v12 * other.v11 +
+      this.v22 * other.v12 +
+      this.v32 * other.v13;
+
+    const v13 =
+      this.v03 * other.v10 +
+      this.v13 * other.v11 +
+      this.v23 * other.v12 +
+      this.v33 * other.v13;
+
+    const v20 =
+      this.v00 * other.v20 +
+      this.v10 * other.v21 +
+      this.v20 * other.v22 +
+      this.v30 * other.v23;
+
+    const v21 =
+      this.v01 * other.v20 +
+      this.v11 * other.v21 +
+      this.v21 * other.v22 +
+      this.v31 * other.v23;
+
+    const v22 =
+      this.v02 * other.v20 +
+      this.v12 * other.v21 +
+      this.v22 * other.v22 +
+      this.v32 * other.v23;
+
+    const v23 =
+      this.v03 * other.v20 +
+      this.v13 * other.v21 +
+      this.v23 * other.v22 +
+      this.v33 * other.v23;
+
+    const v30 =
+      this.v00 * other.v30 +
+      this.v10 * other.v31 +
+      this.v20 * other.v32 +
+      this.v30 * other.v33;
+
+    const v31 =
+      this.v01 * other.v30 +
+      this.v11 * other.v31 +
+      this.v21 * other.v32 +
+      this.v31 * other.v33;
+
+    const v32 =
+      this.v02 * other.v30 +
+      this.v12 * other.v31 +
+      this.v22 * other.v32 +
+      this.v32 * other.v33;
+
+    const v33 =
+      this.v03 * other.v30 +
+      this.v13 * other.v31 +
+      this.v23 * other.v32 +
+      this.v33 * other.v33;
+
+    this.v00 = v00;
+    this.v01 = v01;
+    this.v02 = v02;
+    this.v03 = v03;
+    this.v10 = v10;
+    this.v11 = v11;
+    this.v12 = v12;
+    this.v13 = v13;
+    this.v20 = v20;
+    this.v21 = v21;
+    this.v22 = v22;
+    this.v23 = v23;
+    this.v30 = v30;
+    this.v31 = v31;
+    this.v32 = v32;
+    this.v33 = v33;
+
+    return this;
   }
 
   /*
@@ -310,11 +493,11 @@ class Matrix4 {
    */
   public rotate(axis: Vector3, angle: number) {
     // Normalized axis
-    const modInv =
+    const modInverse =
       1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
-    const x = axis.x * modInv;
-    const y = axis.y * modInv;
-    const z = axis.z * modInv;
+    const x = axis.x * modInverse;
+    const y = axis.y * modInverse;
+    const z = axis.z * modInverse;
 
     // Rotation angle
     const cos = Math.cos(angle);
@@ -328,118 +511,137 @@ class Matrix4 {
     const ySin = y * sin;
     const zSin = z * sin;
 
-    return new Matrix4(
-      Matrix4.multiply(this.values, [
-        xCos * x + cos,
-        xCos * y - zSin,
-        xCos * z + ySin,
-        0,
-        xCos * y + zSin,
-        yCos * y + cos,
-        yCos * z - xSin,
-        0,
-        xCos * z - ySin,
-        yCos * z + xSin,
-        zCos * z + cos,
-        0,
-        0,
-        0,
-        0,
-        1,
-      ])
-    );
+    return this.multiply({
+      v00: xCos * x + cos,
+      v01: xCos * y - zSin,
+      v02: xCos * z + ySin,
+      v03: 0,
+      v10: xCos * y + zSin,
+      v11: yCos * y + cos,
+      v12: yCos * z - xSin,
+      v13: 0,
+      v20: xCos * z - ySin,
+      v21: yCos * z + xSin,
+      v22: zCos * z + cos,
+      v23: 0,
+      v30: 0,
+      v31: 0,
+      v32: 0,
+      v33: 1,
+    });
   }
 
   public scale(vector: Vector3) {
-    return new Matrix4(
-      Matrix4.multiply(this.values, [
-        vector.x,
-        0,
-        0,
-        0,
-        0,
-        vector.y,
-        0,
-        0,
-        0,
-        0,
-        vector.z,
-        0,
-        0,
-        0,
-        0,
-        1,
-      ])
-    );
+    return this.multiply({
+      v00: vector.x,
+      v01: 0,
+      v02: 0,
+      v03: 0,
+      v10: 0,
+      v11: vector.y,
+      v12: 0,
+      v13: 0,
+      v20: 0,
+      v21: 0,
+      v22: vector.z,
+      v23: 0,
+      v30: 0,
+      v31: 0,
+      v32: 0,
+      v33: 1,
+    });
   }
 
   public transform(vertex: Vector4) {
-    const m = this.values;
-
     return {
-      x: vertex.x * m[0] + vertex.y * m[4] + vertex.z * m[8] + vertex.w * m[12],
-      y: vertex.x * m[1] + vertex.y * m[5] + vertex.z * m[9] + vertex.w * m[13],
+      x:
+        vertex.x * this.v00 +
+        vertex.y * this.v10 +
+        vertex.z * this.v20 +
+        vertex.w * this.v30,
+      y:
+        vertex.x * this.v01 +
+        vertex.y * this.v11 +
+        vertex.z * this.v21 +
+        vertex.w * this.v31,
       z:
-        vertex.x * m[2] + vertex.y * m[6] + vertex.z * m[10] + vertex.w * m[14],
+        vertex.x * this.v02 +
+        vertex.y * this.v12 +
+        vertex.z * this.v22 +
+        vertex.w * this.v32,
       w:
-        vertex.x * m[3] + vertex.y * m[7] + vertex.z * m[11] + vertex.w * m[15],
+        vertex.x * this.v03 +
+        vertex.y * this.v13 +
+        vertex.z * this.v23 +
+        vertex.w * this.v33,
     };
   }
 
-  public translate(vector: Vector3) {
-    return new Matrix4(
-      Matrix4.multiply(this.values, [
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0,
-        vector.x,
-        vector.y,
-        vector.z,
-        1,
-      ])
-    );
+  public toArray(): number[] {
+    return [
+      this.v00,
+      this.v01,
+      this.v02,
+      this.v03,
+      this.v10,
+      this.v11,
+      this.v12,
+      this.v13,
+      this.v20,
+      this.v21,
+      this.v22,
+      this.v23,
+      this.v30,
+      this.v31,
+      this.v32,
+      this.v33,
+    ];
   }
 
-  private static multiply(lhs: number[], rhs: number[]) {
+  public toTransposedInverse3x3() {
+    const determinant =
+      this.v00 * (this.v11 * this.v22 - this.v12 * this.v21) -
+      this.v01 * (this.v10 * this.v22 - this.v12 * this.v20) +
+      this.v02 * (this.v10 * this.v21 - this.v11 * this.v20);
+
+    if (Math.abs(determinant) < Number.EPSILON) {
+      return Matrix4.identity3;
+    }
+
+    const inverse = 1 / determinant;
+
     return [
-      lhs[0] * rhs[0] + lhs[4] * rhs[1] + lhs[8] * rhs[2] + lhs[12] * rhs[3],
-      lhs[1] * rhs[0] + lhs[5] * rhs[1] + lhs[9] * rhs[2] + lhs[13] * rhs[3],
-      lhs[2] * rhs[0] + lhs[6] * rhs[1] + lhs[10] * rhs[2] + lhs[14] * rhs[3],
-      lhs[3] * rhs[0] + lhs[7] * rhs[1] + lhs[11] * rhs[2] + lhs[15] * rhs[3],
-      lhs[0] * rhs[4] + lhs[4] * rhs[5] + lhs[8] * rhs[6] + lhs[12] * rhs[7],
-      lhs[1] * rhs[4] + lhs[5] * rhs[5] + lhs[9] * rhs[6] + lhs[13] * rhs[7],
-      lhs[2] * rhs[4] + lhs[6] * rhs[5] + lhs[10] * rhs[6] + lhs[14] * rhs[7],
-      lhs[3] * rhs[4] + lhs[7] * rhs[5] + lhs[11] * rhs[6] + lhs[15] * rhs[7],
-      lhs[0] * rhs[8] + lhs[4] * rhs[9] + lhs[8] * rhs[10] + lhs[12] * rhs[11],
-      lhs[1] * rhs[8] + lhs[5] * rhs[9] + lhs[9] * rhs[10] + lhs[13] * rhs[11],
-      lhs[2] * rhs[8] + lhs[6] * rhs[9] + lhs[10] * rhs[10] + lhs[14] * rhs[11],
-      lhs[3] * rhs[8] + lhs[7] * rhs[9] + lhs[11] * rhs[10] + lhs[15] * rhs[11],
-      lhs[0] * rhs[12] +
-        lhs[4] * rhs[13] +
-        lhs[8] * rhs[14] +
-        lhs[12] * rhs[15],
-      lhs[1] * rhs[12] +
-        lhs[5] * rhs[13] +
-        lhs[9] * rhs[14] +
-        lhs[13] * rhs[15],
-      lhs[2] * rhs[12] +
-        lhs[6] * rhs[13] +
-        lhs[10] * rhs[14] +
-        lhs[14] * rhs[15],
-      lhs[3] * rhs[12] +
-        lhs[7] * rhs[13] +
-        lhs[11] * rhs[14] +
-        lhs[15] * rhs[15],
+      (this.v11 * this.v22 - this.v21 * this.v12) * inverse,
+      (this.v10 * this.v22 - this.v12 * this.v20) * -inverse,
+      (this.v10 * this.v21 - this.v20 * this.v11) * inverse,
+      (this.v01 * this.v22 - this.v02 * this.v21) * -inverse,
+      (this.v00 * this.v22 - this.v02 * this.v20) * inverse,
+      (this.v00 * this.v21 - this.v20 * this.v01) * -inverse,
+      (this.v01 * this.v12 - this.v02 * this.v11) * inverse,
+      (this.v00 * this.v12 - this.v10 * this.v02) * -inverse,
+      (this.v00 * this.v11 - this.v10 * this.v01) * inverse,
     ];
+  }
+
+  public translate(vector: Vector3): Matrix4 {
+    return this.multiply({
+      v00: 1,
+      v01: 0,
+      v02: 0,
+      v03: 0,
+      v10: 0,
+      v11: 1,
+      v12: 0,
+      v13: 0,
+      v20: 0,
+      v21: 0,
+      v22: 1,
+      v23: 0,
+      v30: vector.x,
+      v31: vector.y,
+      v32: vector.z,
+      v33: 1,
+    });
   }
 }
 

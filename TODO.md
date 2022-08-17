@@ -5,7 +5,6 @@
 - Fix directional shadow scene
 - Rename WebGL types and import them individually to avoid webgl.Type references
 - Move matrix3 to engine library
-- Use scalar fields for matrix4 instead of vector
 - Strong typing for tweaks
 - Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}
@@ -21,6 +20,7 @@
 
 ## Done
 
+- Use scalar fields for matrix4 instead of vector
 - Yield + errors in OBJ loader
 - Return T from io.readURL, not Request<T>
 - Load images from graphic loader

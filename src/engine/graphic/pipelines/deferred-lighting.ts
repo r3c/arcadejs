@@ -348,7 +348,7 @@ const loadGeometry = (
 
   shader.setupMatrixPerNode(
     "modelMatrix",
-    (state) => state.transform.getValues(),
+    (state) => state.transform.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerNode(
@@ -358,12 +358,12 @@ const loadGeometry = (
   );
   shader.setupMatrixPerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.getValues(),
+    (state) => state.projectionMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
     "viewMatrix",
-    (state) => state.viewMatrix.getValues(),
+    (state) => state.viewMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
 
@@ -430,23 +430,23 @@ const loadLight = <T>(
 
   shader.setupMatrixPerNode(
     "modelMatrix",
-    (state) => state.transform.getValues(),
+    (state) => state.transform.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
 
   shader.setupMatrixPerTarget(
     "inverseProjectionMatrix",
-    (state) => state.projectionMatrix.inverse().getValues(),
+    (state) => state.projectionMatrix.clone().invert().toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.getValues(),
+    (state) => state.projectionMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
     "viewMatrix",
-    (state) => state.viewMatrix.getValues(),
+    (state) => state.viewMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
 
@@ -570,7 +570,7 @@ const loadMaterial = (
 
   shader.setupMatrixPerNode(
     "modelMatrix",
-    (state) => state.transform.getValues(),
+    (state) => state.transform.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerNode(
@@ -580,12 +580,12 @@ const loadMaterial = (
   );
   shader.setupMatrixPerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.getValues(),
+    (state) => state.projectionMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
     "viewMatrix",
-    (state) => state.viewMatrix.getValues(),
+    (state) => state.viewMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
 
@@ -754,7 +754,7 @@ class Pipeline implements webgl.Pipeline {
       // - One for computing light directions in camera space
       const subjects = [
         {
-          matrix: transform.viewMatrix.inverse(),
+          matrix: transform.viewMatrix.clone().invert(),
           mesh: this.fullscreenMesh,
         },
       ];

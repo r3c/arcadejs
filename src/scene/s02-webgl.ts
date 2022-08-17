@@ -84,17 +84,17 @@ const prepare = () =>
 
     shader.setupMatrixPerNode(
       "modelMatrix",
-      (state) => state.transform.getValues(),
+      (state) => state.transform.toArray(),
       (gl) => gl.uniformMatrix4fv
     );
     shader.setupMatrixPerTarget(
       "projectionMatrix",
-      (state) => state.projectionMatrix.getValues(),
+      (state) => state.projectionMatrix.toArray(),
       (gl) => gl.uniformMatrix4fv
     );
     shader.setupMatrixPerTarget(
       "viewMatrix",
-      (state) => state.viewMatrix.getValues(),
+      (state) => state.viewMatrix.toArray(),
       (gl) => gl.uniformMatrix4fv
     );
 

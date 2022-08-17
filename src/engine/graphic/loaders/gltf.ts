@@ -514,7 +514,7 @@ const loadNode = (
     let transform: Matrix4;
 
     if (node.matrix !== undefined) {
-      transform = Matrix4.create(
+      transform = Matrix4.fromArray(
         convertArrayOf(url, source + ".matrix", node.matrix, (value) =>
           parseFloat(value)
         )

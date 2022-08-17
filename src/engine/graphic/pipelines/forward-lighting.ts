@@ -485,7 +485,7 @@ const loadLight = (
   // Bind matrix uniforms
   shader.setupMatrixPerNode(
     "modelMatrix",
-    (state) => state.transform.getValues(),
+    (state) => state.transform.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerNode(
@@ -495,19 +495,19 @@ const loadLight = (
   );
   shader.setupMatrixPerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.getValues(),
+    (state) => state.projectionMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
     "viewMatrix",
-    (state) => state.viewMatrix.getValues(),
+    (state) => state.viewMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
 
   if (!lightConfiguration.noShadow)
     shader.setupMatrixPerTarget(
       "shadowProjectionMatrix",
-      (state) => state.shadowProjectionMatrix.getValues(),
+      (state) => state.shadowProjectionMatrix.toArray(),
       (gl) => gl.uniformMatrix4fv
     );
 
@@ -709,8 +709,8 @@ const loadLight = (
         `directionalLights[${index}].shadowViewMatrix`,
         (state) =>
           index < state.directionalLights.length
-            ? state.directionalLights[index].shadowViewMatrix.getValues()
-            : Matrix4.createIdentity().getValues(),
+            ? state.directionalLights[index].shadowViewMatrix.toArray()
+            : Matrix4.createIdentity().toArray(),
         (gl) => gl.uniformMatrix4fv
       );
       shader.setupTexturePerTarget(
@@ -780,17 +780,17 @@ const loadShadowDirectional = (gl: WebGLRenderingContext) => {
 
   shader.setupMatrixPerNode(
     "modelMatrix",
-    (state) => state.transform.getValues(),
+    (state) => state.transform.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.getValues(),
+    (state) => state.projectionMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
     "viewMatrix",
-    (state) => state.viewMatrix.getValues(),
+    (state) => state.viewMatrix.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
 
@@ -955,7 +955,7 @@ class ForwardLightingPipeline implements webgl.Pipeline {
 
       const viewMatrix = Matrix4.createIdentity()
         .translate({ x: 0, y: 0, z: -10 })
-        .compose(
+        .multiply(
           Matrix4.createDirection(shadowDirection, { x: 0, y: 1, z: 0 })
         );
 

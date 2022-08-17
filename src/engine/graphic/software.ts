@@ -284,7 +284,7 @@ class Renderer {
     Renderer.drawNodes(
       image,
       mesh.nodes,
-      projection.compose(modelView),
+      projection.clone().multiply(modelView),
       mesh.materials,
       drawMode
     );
