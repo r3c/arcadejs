@@ -230,10 +230,11 @@ const finalize = async (
   // Transform top-level nodes using provided transform matrix if any
   const transform = config.transform;
 
-  if (transform !== undefined)
+  if (transform !== undefined) {
     mesh.nodes.forEach(
-      (node) => (node.transform = transform.compose(node.transform))
+      (node) => (node.transform = transform.clone().multiply(node.transform))
     );
+  }
 
   // Finalize mesh nodes recursively
   mesh.nodes.forEach((node) => finalizeNode(node, config));

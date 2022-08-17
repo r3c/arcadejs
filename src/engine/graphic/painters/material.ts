@@ -97,8 +97,9 @@ class Painter<State> implements webgl.Painter<State> {
           shader.bindGeometry(geometry);
           shader.bindNode({
             normalMatrix: view
-              .compose(model.transform)
-              .getTransposedInverse3x3(),
+              .clone()
+              .multiply(model.transform)
+              .toTransposedInverse3x3(),
             transform: model.transform,
           });
 
@@ -120,7 +121,7 @@ class Painter<State> implements webgl.Painter<State> {
     state: State
   ): void {
     for (const node of nodes) {
-      const transform = parent.compose(node.transform);
+      const transform = parent.clone().multiply(node.transform);
 
       this.sort(batch, node.children, transform, state);
 

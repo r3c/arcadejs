@@ -154,7 +154,7 @@ const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
 
   shader.setupMatrixPerNode(
     "modelMatrix",
-    (state) => state.transform.getValues(),
+    (state) => state.transform.toArray(),
     (gl) => gl.uniformMatrix4fv
   );
 
