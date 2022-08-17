@@ -5,13 +5,15 @@
   "repository": "github:r3c/arcadejs",
   "license": "MIT",
   "dependencies": {
+    "express": "^4.18.1",
     "typescript": "^4.5.4",
     "vite": "^2.9.15"
   },
   "scripts": {
     "check": "tsc --noEmit",
     "build": "vite build",
-    "start": "vite",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "vite build && node start.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "vite"
   }
 }
