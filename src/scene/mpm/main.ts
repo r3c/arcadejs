@@ -1,12 +1,24 @@
-import { type Tweak, declare, configure } from "../../engine/application";
-import * as load from "../../engine/graphic/load";
+import {
+  type Application,
+  type Tweak,
+  declare,
+  configure,
+} from "../../engine/application";
+import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import * as painter from "../../engine/graphic/painters/singular";
+import { SingularPainter } from "../../engine/graphic/webgl/painters/singular";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
-import * as webgl from "../../engine/graphic/webgl";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { Input } from "../../engine/io/controller";
+import {
+  GlModel,
+  GlPainter,
+  GlShader,
+  GlTarget,
+  GlTextureType,
+  loadModel,
+} from "../../engine/graphic/webgl";
 
 /*
  ** Source: https://nialltl.neocities.org/articles/mpm_guide.html
@@ -82,11 +94,11 @@ interface SceneState {
   camera: view.Camera;
   gl: WebGLRenderingContext;
   input: Input;
-  mesh: webgl.Mesh;
-  painter: webgl.Painter<ShaderState>;
+  model: GlModel;
+  painter: GlPainter<ShaderState>;
   projectionMatrix: Matrix4;
   simulation: Simulation;
-  target: webgl.Target;
+  target: GlTarget;
   tweak: Tweak<Configuration>;
 }
 
@@ -197,306 +209,412 @@ function getGridCell(cells: Cell[], position: Vector3): Cell {
 }
 
 const gravity = -0.1;
+const rest_density = 4.0;
+const dynamic_viscosity = 0.1;
+const eos_stiffness = 10;
+const eos_power = 4;
 const half: Vector3 = { x: 0.5, y: 0.5, z: 0.5 };
 
-const prepare = async (screen: WebGLScreen) => {
-  const gl = screen.context;
-  const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
-  const tweak = configure(configuration);
+const application: Application<WebGLScreen, SceneState> = {
+  async prepare(screen) {
+    const gl = screen.context;
+    const shader = new GlShader<ShaderState>(gl, vsSource, fsSource);
+    const tweak = configure(configuration);
 
-  shader.setupAttributePerGeometry("colors", (geometry) => geometry.colors);
-  shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
+    shader.setupAttributePerGeometry("colors", (geometry) => geometry.colors);
+    shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
+    shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-  shader.setupPropertyPerMaterial(
-    "albedoFactor",
-    (material) => material.albedoFactor,
-    (gl) => gl.uniform4fv
-  );
-  shader.setupTexturePerMaterial(
-    "albedoMap",
-    undefined,
-    webgl.TextureType.Quad,
-    (material) => material.albedoMap
-  );
-
-  shader.setupMatrixPerNode(
-    "modelMatrix",
-    (state) => state.transform.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-  shader.setupMatrixPerTarget(
-    "projectionMatrix",
-    (state) => state.projectionMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-  shader.setupMatrixPerTarget(
-    "viewMatrix",
-    (state) => state.viewMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-
-  const simulation: Simulation = {
-    particles: [...Array(100)].map(createParticle),
-    cells: [...Array(gridSize * gridSize * gridSize)].map(() => ({
-      mass: 0,
-      velocity: Vector3.zero,
-    })),
-  };
-
-  return {
-    camera: new view.Camera(
-      { x: -gridSize / 2, y: -gridSize / 2, z: -gridSize * 3 },
-      Vector3.zero
-    ),
-    gl: gl,
-    input: new Input(screen.canvas),
-    mesh: webgl.loadMesh(
-      gl,
-      await load.fromJSON("./obj/cube/mesh.json", {
-        transform: Matrix4.createIdentity().scale({
-          x: 0.5,
-          y: 0.5,
-          z: 0.5,
-        }),
-      })
-    ),
-    painter: new painter.Painter(shader),
-    projectionMatrix: Matrix4.createIdentity(),
-    screen: screen,
-    simulation,
-    target: new webgl.Target(
-      screen.context,
-      screen.getWidth(),
-      screen.getHeight()
-    ),
-    tweak,
-  };
-};
-
-const render = (state: SceneState) => {
-  const camera = state.camera;
-  const gl = state.gl;
-  const target = state.target;
-
-  const viewMatrix = Matrix4.createIdentity()
-    .translate(camera.position)
-    .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-    .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
-
-  const subjects = state.simulation.particles.map((particle) => ({
-    matrix: Matrix4.createIdentity().translate(particle.position),
-    mesh: state.mesh,
-  }));
-
-  gl.enable(gl.CULL_FACE);
-  gl.enable(gl.DEPTH_TEST);
-
-  gl.cullFace(gl.BACK);
-
-  target.clear(0);
-
-  state.painter.paint(target, subjects, viewMatrix, {
-    projectionMatrix: state.projectionMatrix,
-    viewMatrix: viewMatrix,
-  });
-};
-
-const resize = (state: SceneState, screen: WebGLScreen) => {
-  state.projectionMatrix = Matrix4.createPerspective(
-    45,
-    screen.getRatio(),
-    0.1,
-    1000
-  );
-
-  state.target.resize(screen.getWidth(), screen.getHeight());
-};
-
-const update = (state: SceneState, dt: number) => {
-  dt = 1; // Fake simulation speed
-
-  state.camera.move(state.input);
-
-  if (state.input.fetchPressed("space")) {
-    for (let i = 0; i < state.simulation.particles.length; ++i) {
-      state.simulation.particles[i] = createParticle();
-    }
-  }
-
-  const { cells, particles } = state.simulation;
-  cells.forEach((cell) => {
-    cell.mass = 0;
-    cell.velocity = Vector3.zero;
-  });
-
-  // Step 1: particle to grid
-  for (let i = 0; i < particles.length; ++i) {
-    const particle = particles[i];
-
-    // quadratic interpolation weights
-    const particleFloor = Vector3.apply(particle.position, Math.floor);
-    const particleShift = Vector3.sub(
-      Vector3.sub(particle.position, particleFloor),
-      half
+    shader.setupPropertyPerMaterial(
+      "albedoFactor",
+      (material) => material.albedoFactor,
+      (gl) => gl.uniform4fv
+    );
+    shader.setupTexturePerMaterial(
+      "albedoMap",
+      undefined,
+      GlTextureType.Quad,
+      (material) => material.albedoMap
     );
 
-    const weights = [
-      Vector3.apply(particleShift, (v) => 0.5 * Math.pow(0.5 - v, 2)),
-      Vector3.apply(particleShift, (v) => 0.75 - Math.pow(v, 2)),
-      Vector3.apply(particleShift, (v) => 0.5 * Math.pow(0.5 + v, 2)),
-    ];
+    shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+    shader.setupMatrix4PerTarget(
+      "projectionMatrix",
+      (state) => state.projectionMatrix
+    );
+    shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
 
-    // for all surrounding 9 cells
-    for (let gx = 0; gx < 3; ++gx) {
-      for (let gy = 0; gy < 3; ++gy) {
-        for (let gz = 0; gz < 3; ++gz) {
-          const weight = weights[gx].x * weights[gy].y * weights[gz].z;
+    const simulation: Simulation = {
+      particles: [...Array(100)].map(createParticle),
+      cells: [...Array(gridSize * gridSize * gridSize)].map(() => ({
+        mass: 0,
+        velocity: Vector3.zero,
+      })),
+    };
 
-          const neighborFloor: Vector3 = {
-            x: particleFloor.x + gx - 1,
-            y: particleFloor.y + gy - 1,
-            z: particleFloor.z + gz - 1,
-          };
+    return {
+      camera: new view.Camera(
+        { x: -gridSize / 2, y: -gridSize / 2, z: -gridSize * 3 },
+        Vector3.zero
+      ),
+      gl: gl,
+      input: new Input(screen.canvas),
+      model: loadModel(
+        gl,
+        await loadModelFromJson("model/cube/mesh.json", {
+          transform: Matrix4.createIdentity().scale({
+            x: 0.5,
+            y: 0.5,
+            z: 0.5,
+          }),
+        })
+      ),
+      painter: new SingularPainter(shader),
+      projectionMatrix: Matrix4.createIdentity(),
+      screen: screen,
+      simulation,
+      target: new GlTarget(
+        screen.context,
+        screen.getWidth(),
+        screen.getHeight()
+      ),
+      tweak,
+    };
+  },
 
-          const neighborDistance = Vector3.add(
-            Vector3.sub(neighborFloor, particle.position),
-            half
-          );
+  render(state) {
+    const camera = state.camera;
+    const gl = state.gl;
+    const target = state.target;
 
-          const Q = matrix3mul3(particle.momentum, neighborDistance);
+    const viewMatrix = Matrix4.createIdentity()
+      .translate(camera.position)
+      .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+      .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-          // MPM course, equation 172
-          const contribMass = weight * particle.mass;
-          const contribVelocity = Vector3.scale(
-            Vector3.add(particle.velocity, Q),
-            contribMass
-          );
+    const subjects = state.simulation.particles.map((particle) => ({
+      matrix: Matrix4.createIdentity().translate(particle.position),
+      mesh: state.model,
+    }));
 
-          // converting 2D index to 1D
-          const cell = getGridCell(cells, neighborFloor);
+    gl.enable(gl.CULL_FACE);
+    gl.enable(gl.DEPTH_TEST);
 
-          // scatter mass to the grid
-          cell.mass += contribMass;
-          cell.velocity = Vector3.add(cell.velocity, contribVelocity);
-        }
-      }
-    }
-  }
+    gl.cullFace(gl.BACK);
 
-  // Step 2: grid momentum update
-  for (let i = 0; i < cells.length; ++i) {
-    const cell = cells[i];
+    target.clear(0);
 
-    if (cell.mass > 0) {
-      // convert momentum to velocity, apply gravity
-      cell.velocity = Vector3.scale(cell.velocity, 1 / cell.mass);
+    state.painter.paint(target, subjects, viewMatrix, {
+      projectionMatrix: state.projectionMatrix,
+      viewMatrix: viewMatrix,
+    });
+  },
 
-      if (state.tweak.applyGravity) {
-        cell.velocity = Vector3.add(cell.velocity, {
-          x: 0,
-          y: gravity * dt,
-          z: 0,
-        });
-      }
-
-      // boundary conditions
-      const x = Math.floor(i / gridSize / gridSize);
-      const y = Math.floor(i / gridSize) % gridSize;
-      const z = i % gridSize;
-
-      if (x < 2 || x > gridSize - 3) {
-        cell.velocity = { x: 0, y: cell.velocity.y, z: cell.velocity.z };
-      }
-
-      if (y < 2 || y > gridSize - 3) {
-        cell.velocity = { x: cell.velocity.x, y: 0, z: cell.velocity.z };
-      }
-
-      if (z < 2 || z > gridSize - 3) {
-        cell.velocity = { x: cell.velocity.x, y: cell.velocity.y, z: 0 };
-      }
-    }
-  }
-
-  // Step 3: grid to particle
-  for (let i = 0; i < particles.length; ++i) {
-    const particle = particles[i];
-
-    // reset particle velocity. we calculate it from scratch each step using the grid
-    particle.velocity = Vector3.zero;
-
-    // quadratic interpolation weights
-    const particleFloor = Vector3.apply(particle.position, Math.floor);
-    const particleShift = Vector3.sub(
-      Vector3.sub(particle.position, particleFloor),
-      half
+  resize(state, screen) {
+    state.projectionMatrix = Matrix4.createPerspective(
+      45,
+      screen.getRatio(),
+      0.1,
+      1000
     );
 
-    const weights = [
-      Vector3.apply(particleShift, (v) => 0.5 * Math.pow(0.5 - v, 2)),
-      Vector3.apply(particleShift, (v) => 0.75 - Math.pow(v, 2)),
-      Vector3.apply(particleShift, (v) => 0.5 * Math.pow(0.5 + v, 2)),
-    ];
+    state.target.resize(screen.getWidth(), screen.getHeight());
+  },
 
-    // constructing affine per-particle momentum matrix from APIC / MLS-MPM.
-    // see APIC paper (https://web.archive.org/web/20190427165435/https://www.math.ucla.edu/~jteran/papers/JSSTS15.pdf), page 6
-    // below equation 11 for clarification. this is calculating C = B * (D^-1) for APIC equation 8,
-    // where B is calculated in the inner loop at (D^-1) = 4 is a constant when using quadratic interpolation functions
-    let B = matrix3zero;
+  update(state, dt) {
+    dt = 0.2; // Fake simulation speed
 
-    for (let gx = 0; gx < 3; ++gx) {
-      for (let gy = 0; gy < 3; ++gy) {
-        for (let gz = 0; gz < 3; ++gz) {
-          const weight = weights[gx].x * weights[gy].y * weights[gz].z;
+    state.camera.move(state.input);
 
-          const neighborFloor: Vector3 = {
-            x: particleFloor.x + gx - 1,
-            y: particleFloor.y + gy - 1,
-            z: particleFloor.z + gz - 1,
-          };
+    if (state.input.fetchPressed("space")) {
+      for (let i = 0; i < state.simulation.particles.length; ++i) {
+        state.simulation.particles[i] = createParticle();
+      }
+    }
 
-          const cell = getGridCell(cells, neighborFloor);
-          const dist = Vector3.add(
-            Vector3.sub(neighborFloor, particle.position),
-            half
-          );
-          const weighted_velocity = Vector3.scale(cell.velocity, weight);
+    const { cells, particles } = state.simulation;
+    cells.forEach((cell) => {
+      cell.mass = 0;
+      cell.velocity = Vector3.zero;
+    });
 
-          // APIC paper equation 10, constructing inner term for B
-          var term = matrix3create3(
-            Vector3.scale(weighted_velocity, dist.x),
-            Vector3.scale(weighted_velocity, dist.y),
-            Vector3.scale(weighted_velocity, dist.z)
-          );
+    // Step 1a: particle to grid
+    for (let i = 0; i < particles.length; ++i) {
+      const particle = particles[i];
 
-          B = matrix3add(B, term);
+      // quadratic interpolation weights
+      const particleFloor = Vector3.map(particle.position, Math.floor);
+      const particleShift = Vector3.sub(
+        Vector3.sub(particle.position, particleFloor),
+        half
+      );
 
-          particle.velocity = Vector3.add(particle.velocity, weighted_velocity);
+      const weights = [
+        Vector3.map(particleShift, (v) => 0.5 * Math.pow(0.5 - v, 2)),
+        Vector3.map(particleShift, (v) => 0.75 - Math.pow(v, 2)),
+        Vector3.map(particleShift, (v) => 0.5 * Math.pow(0.5 + v, 2)),
+      ];
+
+      // for all surrounding 9 cells
+      for (let gx = 0; gx < 3; ++gx) {
+        for (let gy = 0; gy < 3; ++gy) {
+          for (let gz = 0; gz < 3; ++gz) {
+            const weight = weights[gx].x * weights[gy].y * weights[gz].z;
+
+            const neighborFloor: Vector3 = {
+              x: particleFloor.x + gx - 1,
+              y: particleFloor.y + gy - 1,
+              z: particleFloor.z + gz - 1,
+            };
+
+            const neighborDistance = Vector3.add(
+              Vector3.sub(neighborFloor, particle.position),
+              half
+            );
+
+            const Q = matrix3mul3(particle.momentum, neighborDistance);
+
+            // MPM course, equation 172
+            const contribMass = weight * particle.mass;
+            const contribVelocity = Vector3.scale(
+              Vector3.add(particle.velocity, Q),
+              contribMass
+            );
+
+            // converting 2D index to 1D
+            const cell = getGridCell(cells, neighborFloor);
+
+            // scatter mass to the grid
+            cell.mass += contribMass;
+            cell.velocity = Vector3.add(cell.velocity, contribVelocity);
+          }
         }
       }
     }
 
-    particle.momentum = matrix3scale(B, 9);
+    // Step 1b
+    for (let i = 0; i < particles.length; ++i) {
+      const particle = particles[i];
 
-    // advect particles
-    particle.position = Vector3.add(
-      particle.position,
-      Vector3.scale(particle.velocity, dt)
-    );
+      // quadratic interpolation weights
+      const particleFloor = Vector3.map(particle.position, Math.floor);
+      const particleShift = Vector3.sub(
+        Vector3.sub(particle.position, particleFloor),
+        half
+      );
 
-    // safety clamp to ensure particles don't exit simulation domain
-    particle.position = Vector3.apply(particle.position, (v) =>
-      Math.max(Math.min(v, gridSize - 2), 1)
-    );
-  }
+      const weights = [
+        Vector3.map(particleShift, (v) => 0.5 * Math.pow(0.5 - v, 2)),
+        Vector3.map(particleShift, (v) => 0.75 - Math.pow(v, 2)),
+        Vector3.map(particleShift, (v) => 0.5 * Math.pow(0.5 + v, 2)),
+      ];
+
+      // for all surrounding 9 cells
+      let density = 0;
+
+      for (let gx = 0; gx < 3; ++gx) {
+        for (let gy = 0; gy < 3; ++gy) {
+          for (let gz = 0; gz < 3; ++gz) {
+            const weight = weights[gx].x * weights[gy].y * weights[gz].z;
+
+            const cell = getGridCell(cells, {
+              x: particleFloor.x + gx - 1,
+              y: particleFloor.y + gy - 1,
+              z: particleFloor.z + gz - 1,
+            });
+
+            density += cell.mass * weight;
+          }
+        }
+      }
+
+      const volume = particle.mass / density;
+
+      // end goal, constitutive equation for isotropic fluid:
+      // stress = -pressure * I + viscosity * (velocity_gradient + velocity_gradient_transposed)
+
+      // Tait equation of state. i clamped it as a bit of a hack.
+      // clamping helps prevent particles absorbing into each other with negative pressures
+      const pressure = Math.max(
+        -0.1,
+        eos_stiffness * (Math.pow(density / rest_density, eos_power) - 1)
+      );
+
+      let stress: Matrix3 = {
+        v00: -pressure,
+        v01: 0,
+        v02: 0,
+        v10: 0,
+        v11: -pressure,
+        v12: 0,
+        v20: 0,
+        v21: 0,
+        v22: -pressure,
+      };
+
+      // velocity gradient - CPIC eq. 17, where deriv of quadratic polynomial is linear
+      const momentum = particle.momentum;
+      const trace = momentum.v00 + momentum.v11 + momentum.v22;
+      const strain: Matrix3 = {
+        v00: trace,
+        v01: momentum.v01,
+        v02: momentum.v02,
+        v10: momentum.v10,
+        v11: trace,
+        v12: momentum.v12,
+        v20: momentum.v20,
+        v21: momentum.v21,
+        v22: trace,
+      };
+
+      const viscosity_term = matrix3scale(strain, dynamic_viscosity);
+
+      stress = matrix3add(stress, viscosity_term);
+
+      let eq_16_term_0 = matrix3scale(stress, -volume * 9 * dt);
+
+      for (let gx = 0; gx < 3; ++gx) {
+        for (let gy = 0; gy < 3; ++gy) {
+          for (let gz = 0; gz < 3; ++gz) {
+            const weight = weights[gx].x * weights[gy].y * weights[gz].z;
+
+            const neighborFloor: Vector3 = {
+              x: particleFloor.x + gx - 1,
+              y: particleFloor.y + gy - 1,
+              z: particleFloor.z + gz - 1,
+            };
+
+            const neighborDistance = Vector3.add(
+              Vector3.sub(neighborFloor, particle.position),
+              half
+            );
+
+            const cell = getGridCell(cells, neighborFloor);
+
+            // fused force + momentum contribution from MLS-MPM
+            const momentum = matrix3mul3(
+              matrix3scale(eq_16_term_0, weight),
+              neighborDistance
+            );
+
+            cell.velocity = Vector3.add(cell.velocity, momentum);
+          }
+        }
+      }
+    }
+
+    // Step 2: grid momentum update
+    for (let i = 0; i < cells.length; ++i) {
+      const cell = cells[i];
+
+      if (cell.mass > 0) {
+        // convert momentum to velocity, apply gravity
+        cell.velocity = Vector3.scale(cell.velocity, 1 / cell.mass);
+
+        if (state.tweak.applyGravity) {
+          cell.velocity = Vector3.add(cell.velocity, {
+            x: 0,
+            y: gravity * dt,
+            z: 0,
+          });
+        }
+
+        // boundary conditions
+        const x = Math.floor(i / gridSize / gridSize);
+        const y = Math.floor(i / gridSize) % gridSize;
+        const z = i % gridSize;
+
+        if (x < 2 || x > gridSize - 3) {
+          cell.velocity = { x: 0, y: cell.velocity.y, z: cell.velocity.z };
+        }
+
+        if (y < 2 || y > gridSize - 3) {
+          cell.velocity = { x: cell.velocity.x, y: 0, z: cell.velocity.z };
+        }
+
+        if (z < 2 || z > gridSize - 3) {
+          cell.velocity = { x: cell.velocity.x, y: cell.velocity.y, z: 0 };
+        }
+      }
+    }
+
+    // Step 3: grid to particle
+    for (let i = 0; i < particles.length; ++i) {
+      const particle = particles[i];
+
+      // reset particle velocity. we calculate it from scratch each step using the grid
+      particle.velocity = Vector3.zero;
+
+      // quadratic interpolation weights
+      const particleFloor = Vector3.map(particle.position, Math.floor);
+      const particleShift = Vector3.sub(
+        Vector3.sub(particle.position, particleFloor),
+        half
+      );
+
+      const weights = [
+        Vector3.map(particleShift, (v) => 0.5 * Math.pow(0.5 - v, 2)),
+        Vector3.map(particleShift, (v) => 0.75 - Math.pow(v, 2)),
+        Vector3.map(particleShift, (v) => 0.5 * Math.pow(0.5 + v, 2)),
+      ];
+
+      // constructing affine per-particle momentum matrix from APIC / MLS-MPM.
+      // see APIC paper (https://web.archive.org/web/20190427165435/https://www.math.ucla.edu/~jteran/papers/JSSTS15.pdf), page 6
+      // below equation 11 for clarification. this is calculating C = B * (D^-1) for APIC equation 8,
+      // where B is calculated in the inner loop at (D^-1) = 4 is a constant when using quadratic interpolation functions
+      let B = matrix3zero;
+
+      for (let gx = 0; gx < 3; ++gx) {
+        for (let gy = 0; gy < 3; ++gy) {
+          for (let gz = 0; gz < 3; ++gz) {
+            const weight = weights[gx].x * weights[gy].y * weights[gz].z;
+
+            const neighborFloor: Vector3 = {
+              x: particleFloor.x + gx - 1,
+              y: particleFloor.y + gy - 1,
+              z: particleFloor.z + gz - 1,
+            };
+
+            const cell = getGridCell(cells, neighborFloor);
+            const dist = Vector3.add(
+              Vector3.sub(neighborFloor, particle.position),
+              half
+            );
+            const weighted_velocity = Vector3.scale(cell.velocity, weight);
+
+            // APIC paper equation 10, constructing inner term for B
+            var term = matrix3create3(
+              Vector3.scale(weighted_velocity, dist.x),
+              Vector3.scale(weighted_velocity, dist.y),
+              Vector3.scale(weighted_velocity, dist.z)
+            );
+
+            B = matrix3add(B, term);
+
+            particle.velocity = Vector3.add(
+              particle.velocity,
+              weighted_velocity
+            );
+          }
+        }
+      }
+
+      particle.momentum = matrix3scale(B, 9);
+
+      // advect particles
+      particle.position = Vector3.add(
+        particle.position,
+        Vector3.scale(particle.velocity, dt)
+      );
+
+      // safety clamp to ensure particles don't exit simulation domain
+      particle.position = Vector3.map(particle.position, (v) =>
+        Math.max(Math.min(v, gridSize - 2), 1)
+      );
+    }
+  },
 };
 
-const process = declare("Material Point Method", WebGLScreen, {
-  prepare,
-  render,
-  resize,
-  update,
-});
+const process = declare("Material Point Method", WebGLScreen, application);
 
 export { process };
