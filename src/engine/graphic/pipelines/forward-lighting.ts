@@ -984,7 +984,11 @@ class ForwardLightingPipeline implements webgl.Pipeline {
       ++bufferIndex;
     }
 
-    // TODO: create shadow maps for point lights
+    // TODO: create shadow maps for point lights ; following lines only skip compiler warnings
+    this.maxPointLights;
+    this.pointShadowPainter;
+    this.pointShadowProjectionMatrix;
+    this.pointShadowTargets;
 
     // Draw scene
     gl.colorMask(true, true, true, true);
@@ -1005,7 +1009,7 @@ class ForwardLightingPipeline implements webgl.Pipeline {
 }
 
 export {
-  ForwardLightingConfiguration,
+  type ForwardLightingConfiguration,
   ForwardLightingModel,
   ForwardLightingPipeline,
 };
