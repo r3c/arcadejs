@@ -1,4 +1,4 @@
-import * as encoding from "../../text/encoding";
+import { type Codec, asciiCodec } from "../../text/encoding";
 import * as image from "../image";
 import { Matrix4 } from "../../math/matrix";
 import * as model from "../model";
@@ -13,7 +13,7 @@ import { Vector4 } from "../../math/vector";
  */
 
 interface Context {
-  codec: encoding.Codec;
+  codec: Codec;
   directory: string;
   file: string;
   reader: stream.BinaryReader;
@@ -32,7 +32,7 @@ const invalidChunk = (file: string, chunk: number, description: string) => {
 
 const load = async (url: string) => {
   const context = {
-    codec: new encoding.ASCIICodec(),
+    codec: asciiCodec,
     directory: path.directory(url),
     file: url,
     reader: new stream.BinaryReader(

@@ -1,4 +1,4 @@
-import * as encoding from "../../text/encoding";
+import { asciiCodec } from "../../text/encoding";
 import * as functional from "../../language/functional";
 import * as image from "../image";
 import { Matrix4 } from "../../math/matrix";
@@ -803,7 +803,7 @@ const loadTexture = (
 
 const load = async (url: string) => {
   const buffer = await stream.readURL(stream.BinaryFormat, url);
-  const codec = new encoding.ASCIICodec();
+  const codec = asciiCodec;
   const reader = new stream.BinaryReader(buffer, stream.Endian.Little);
   const first = String.fromCharCode(reader.readInt8u());
 
