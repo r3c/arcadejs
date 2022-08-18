@@ -834,4 +834,4 @@ class Pipeline implements webgl.Pipeline {
   }
 }
 
-export { Configuration, LightModel, Pipeline };
+export { type Configuration, LightModel, Pipeline };

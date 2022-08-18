@@ -177,15 +177,15 @@ const computeBounds = (mesh: Mesh) => {
 };
 
 export {
-  Array,
-  Attribute,
-  Filter,
-  Geometry,
+  type Array,
+  type Attribute,
+  type Filter,
+  type Geometry,
+  type Material,
+  type Mesh,
+  type Node,
+  type Texture,
   Interpolation,
-  Material,
-  Mesh,
-  Node,
-  Texture,
   Wrap,
   computeBounds,
   defaultColor,
