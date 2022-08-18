@@ -1,4 +1,4 @@
-import * as application from "../engine/application";
+import { declare, runtime } from "../engine/application";
 import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as load from "../engine/graphic/load";
@@ -62,7 +62,7 @@ interface ShaderState {
 }
 
 const prepare = () =>
-  application.runtime(display.WebGLScreen, undefined, async (screen, input) => {
+  runtime(display.WebGLScreen, undefined, async (screen, input) => {
     const gl = screen.context;
     const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
@@ -157,7 +157,7 @@ const update = (state: SceneState) => {
   state.camera.move(state.input);
 };
 
-const process = application.declare("Basic WebGL rendering", {
+const process = declare("Basic WebGL rendering", {
   prepare,
   render,
   resize,

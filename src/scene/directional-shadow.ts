@@ -1,4 +1,4 @@
-import * as application from "../engine/application";
+import { type Tweak, declare, runtime } from "../engine/application";
 import * as bitfield from "./shared/bitfield";
 import * as controller from "../engine/io/controller";
 import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
@@ -38,7 +38,7 @@ interface SceneState {
   };
   projectionMatrix: Matrix4;
   target: webgl.Target;
-  tweak: application.Tweak<Configuration>;
+  tweak: Tweak<Configuration>;
 }
 
 const configuration = {
@@ -47,62 +47,56 @@ const configuration = {
   showDebug: false,
 };
 
-const getOptions = (tweak: application.Tweak<Configuration>) => [
-  tweak.enableShadow !== 0,
-];
+const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
 
 const prepare = () =>
-  application.runtime(
-    display.WebGLScreen,
-    configuration,
-    async (screen, input, tweak) => {
-      const gl = screen.context;
+  runtime(display.WebGLScreen, configuration, async (screen, input, tweak) => {
+    const gl = screen.context;
 
-      // Load meshes
-      const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
-      const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
-      const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-        transform: Matrix4.createIdentity().scale({
-          x: 0.5,
-          y: 0.5,
-          z: 0.5,
+    // Load meshes
+    const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
+    const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
+    const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
+      transform: Matrix4.createIdentity().scale({
+        x: 0.5,
+        y: 0.5,
+        z: 0.5,
+      }),
+    });
+
+    // Create state
+    return {
+      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      input: input,
+      meshes: {
+        cube: webgl.loadMesh(gl, cubeMesh),
+        ground: webgl.loadMesh(gl, groundMesh),
+        light: webgl.loadMesh(gl, lightMesh),
+      },
+      move: 0,
+      pipelines: {
+        debug: new debugTexture.Pipeline(gl, {
+          format: debugTexture.Format.Monochrome,
+          select: debugTexture.Select.Red,
+          zNear: 0.1,
+          zFar: 100,
         }),
-      });
-
-      // Create state
-      return {
-        camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-        input: input,
-        meshes: {
-          cube: webgl.loadMesh(gl, cubeMesh),
-          ground: webgl.loadMesh(gl, groundMesh),
-          light: webgl.loadMesh(gl, lightMesh),
-        },
-        move: 0,
-        pipelines: {
-          debug: new debugTexture.Pipeline(gl, {
-            format: debugTexture.Format.Monochrome,
-            select: debugTexture.Select.Red,
-            zNear: 0.1,
-            zFar: 100,
-          }),
-          lights: bitfield.enumerate(getOptions(tweak)).map(
-            (flags) =>
-              new forwardLighting.ForwardLightingPipeline(gl, {
-                light: {
-                  model: forwardLighting.ForwardLightingModel.Phong,
-                  maxDirectionalLights: 1,
-                  noShadow: !flags[0],
-                },
-              })
-          ),
-        },
-        projectionMatrix: Matrix4.createIdentity(),
-        target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
-        tweak: tweak,
-      };
-    }
-  );
+        lights: bitfield.enumerate(getOptions(tweak)).map(
+          (flags) =>
+            new forwardLighting.ForwardLightingPipeline(gl, {
+              light: {
+                model: forwardLighting.ForwardLightingModel.Phong,
+                maxDirectionalLights: 1,
+                noShadow: !flags[0],
+              },
+            })
+        ),
+      },
+      projectionMatrix: Matrix4.createIdentity(),
+      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+      tweak: tweak,
+    };
+  });
 
 const render = (state: SceneState) => {
   const camera = state.camera;
@@ -195,7 +189,7 @@ const update = (state: SceneState, dt: number) => {
   state.camera.move(state.input);
 };
 
-const process = application.declare("Directional shadow", {
+const process = declare("Directional shadow", {
   prepare,
   render,
   resize,
