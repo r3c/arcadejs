@@ -77,11 +77,11 @@ const update = (state: State) => {
   state.camera.move(state.input);
 };
 
-const process = application.declare({
-  prepare: prepare,
-  render: render,
-  resize: resize,
-  update: update,
+const process = application.declare("Software rendering", {
+  prepare,
+  render,
+  resize,
+  update,
 });
 
 export { process };

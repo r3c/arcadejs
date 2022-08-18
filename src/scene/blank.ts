@@ -15,9 +15,9 @@ const render = (state: State) => {
   state.renderer.clear();
 };
 
-const process = application.declare({
-  prepare: prepare,
-  render: render,
+const process = application.declare("Blank screen", {
+  prepare,
+  render,
 });
 
 export { process };

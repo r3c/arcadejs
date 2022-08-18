@@ -5,6 +5,7 @@ interface Process {
   change: (callback: (screen: display.Screen) => void) => void;
   start: () => Promise<void>;
   step: (dt: number) => void;
+  title: string;
 }
 
 interface Runtime<TScreen extends display.Screen, TState> {
@@ -157,11 +158,13 @@ const createSelect = (
 };
 
 const declare = <TScreen extends display.Screen, TState>(
+  title: string,
   scene: Scenario<TScreen, TState>
-) => {
+): Process => {
   let runtime: Runtime<TScreen, TState>;
 
   return {
+    title,
     change: (callback: (screen: display.Screen) => void) => {
       callback(runtime.screen);
     },
@@ -169,34 +172,29 @@ const declare = <TScreen extends display.Screen, TState>(
       runtime = await scene.prepare();
     },
     step: (dt: number) => {
-      const render = scene.render;
-      const resize = scene.resize;
-      const update = scene.update;
+      const { screen, size, state } = runtime;
+      const { render, resize, update } = scene;
 
       // FIXME: detect canvas resize [canvas-resize]
-      if (
-        resize !== undefined &&
-        (runtime.screen.getWidth() !== runtime.size.x ||
-          runtime.screen.getHeight() !== runtime.size.y)
-      ) {
-        resize(runtime.state, runtime.screen);
+      if (screen.getWidth() !== size.x || screen.getHeight() !== size.y) {
+        resize?.(state, screen);
 
-        (<any>runtime.screen).resize(); // FIXME: encapsulation violation [canvas-resize]
+        (<any>screen).resize(); // FIXME: encapsulation violation [canvas-resize]
 
         runtime.size = {
-          x: runtime.screen.getWidth(),
-          y: runtime.screen.getHeight(),
+          x: screen.getWidth(),
+          y: screen.getHeight(),
         };
       }
 
-      if (update !== undefined) update(runtime.state, dt);
+      update?.(state, dt);
 
-      if (render !== undefined) setTimeout(() => render(runtime.state), 0);
+      setTimeout(() => render?.(state), 0);
     },
   };
 };
 
-const initialize = (processes: { [name: string]: Process }) => {
+const initialize = (processes: Process[]) => {
   const frameContainer = document.getElementById("frames");
 
   if (frameContainer === null) {
@@ -223,8 +221,7 @@ const initialize = (processes: { [name: string]: Process }) => {
   };
 
   const select = async (value: number) => {
-    const name = Object.keys(processes)[value];
-    const process = processes[name];
+    const process = processes[value];
 
     current = undefined;
 
@@ -234,7 +231,7 @@ const initialize = (processes: { [name: string]: Process }) => {
       return;
     }
 
-    location.hash = `#${encodeURIComponent(name)}`;
+    location.hash = `#${encodeURIComponent(process.title)}`;
 
     await process.start();
 
@@ -264,15 +261,21 @@ const initialize = (processes: { [name: string]: Process }) => {
     window.requestAnimationFrame(tick);
   };
 
-  const names = Object.keys(processes);
   const hashName = decodeURIComponent(location.hash.substring(1));
   const hashValue = Math.max(
-    names.findIndex((name) => name === hashName),
+    processes.findIndex((process) => process.title === hashName),
     0
   );
 
   sceneContainer.appendChild(createButton("Fullscreen", fullscreen));
-  sceneContainer.appendChild(createSelect("", names, hashValue, select));
+  sceneContainer.appendChild(
+    createSelect(
+      "",
+      processes.map((process) => process.title),
+      hashValue,
+      select
+    )
+  );
 
   tick();
 };
