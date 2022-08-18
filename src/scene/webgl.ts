@@ -157,11 +157,11 @@ const update = (state: SceneState) => {
   state.camera.move(state.input);
 };
 
-const process = application.declare({
-  prepare: prepare,
-  render: render,
-  resize: resize,
-  update: update,
+const process = application.declare("Basic WebGL rendering", {
+  prepare,
+  render,
+  resize,
+  update,
 });
 
 export { process };

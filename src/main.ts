@@ -1,21 +1,21 @@
 import "./style/style.css";
-import * as application from "./engine/application";
-import * as s00 from "./scene/s00-blank";
-import * as s01 from "./scene/s01-software";
-import * as s02 from "./scene/s02-webgl";
-import * as s03 from "./scene/s03-forward-phong";
-import * as s04 from "./scene/s04-forward-pbr";
-import * as s05 from "./scene/s05-directional-shadow";
-import * as s06 from "./scene/s06-deferred-shading";
-import * as s07 from "./scene/s07-deferred-lighting";
+import { initialize } from "./engine/application";
+import { process as blank } from "./scene/blank";
+import { process as software } from "./scene/software";
+import { process as webgl } from "./scene/webgl";
+import { process as forwardPhong } from "./scene/forward-phong";
+import { process as forwardPbr } from "./scene/forward-pbr";
+import { process as directionalShadow } from "./scene/directional-shadow";
+import { process as deferredLighting } from "./scene/deferred-lighting";
+import { process as deferredShading } from "./scene/deferred-shading";
 
-application.initialize({
-  "Blank screen": s00.process,
-  "Software rendering": s01.process,
-  "Basic WebGL rendering": s02.process,
-  "Forward Phong lighting": s03.process,
-  "Forward PBR lighting": s04.process,
-  "Directional shadow": s05.process,
-  "Deferred shading": s06.process,
-  "Deferred lighting": s07.process,
-});
+initialize([
+  blank,
+  software,
+  webgl,
+  forwardPhong,
+  forwardPbr,
+  directionalShadow,
+  deferredLighting,
+  deferredShading,
+]);
