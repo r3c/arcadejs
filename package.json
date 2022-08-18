@@ -13,7 +13,7 @@
     "check": "tsc --noEmit",
     "build": "vite build",
     "install": "node script/install.js",
-    "start": "vite build && node start.js",
+    "start": "vite build && node script/start.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "vite"
   }
