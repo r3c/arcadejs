@@ -1,4 +1,4 @@
-import * as application from "../engine/application";
+import { type Tweak, declare, runtime } from "../engine/application";
 import * as controller from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as load from "../engine/graphic/load";
@@ -27,7 +27,7 @@ interface State {
   input: controller.Input;
   projection: Matrix4;
   renderer: software.Renderer;
-  tweak: application.Tweak<Configuration>;
+  tweak: Tweak<Configuration>;
 }
 
 const configuration = {
@@ -35,7 +35,7 @@ const configuration = {
 };
 
 const prepare = () =>
-  application.runtime(
+  runtime(
     display.Context2DScreen,
     configuration,
     async (screen, input, tweak) => {
@@ -77,7 +77,7 @@ const update = (state: State) => {
   state.camera.move(state.input);
 };
 
-const process = application.declare("Software rendering", {
+const process = declare("Software rendering", {
   prepare,
   render,
   resize,

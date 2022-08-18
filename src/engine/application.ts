@@ -304,4 +304,4 @@ const runtime = async <TScreen extends display.Screen, TState, TConfiguration>(
   };
 };
 
-export { Tweak, initialize, declare, runtime };
+export { type Tweak, initialize, declare, runtime };
