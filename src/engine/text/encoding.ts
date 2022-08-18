@@ -3,19 +3,21 @@ interface Codec {
   encode(plain: string): ArrayBuffer;
 }
 
-class ASCIICodec implements Codec {
-  public decode(buffer: ArrayBuffer): string {
+const asciiCodec: Codec = {
+  decode(buffer: ArrayBuffer): string {
     return String.fromCharCode.apply(null, Array.from(new Uint8Array(buffer)));
-  }
+  },
 
-  public encode(plain: string): ArrayBuffer {
+  encode(plain: string): ArrayBuffer {
     const arrayBuffer = new ArrayBuffer(plain.length);
     const bufferView = new Uint8Array(arrayBuffer);
 
-    for (let i = 0; i < plain.length; ++i) bufferView[i] = plain.charCodeAt(i);
+    for (let i = 0; i < plain.length; ++i) {
+      bufferView[i] = plain.charCodeAt(i);
+    }
 
     return arrayBuffer;
-  }
-}
+  },
+};
 
-export { ASCIICodec, Codec };
+export { type Codec, asciiCodec };
