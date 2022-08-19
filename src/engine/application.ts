@@ -1,4 +1,4 @@
-import * as controller from "./io/controller";
+import { Input } from "./io/controller";
 import * as display from "./display";
 
 interface Process {
@@ -9,7 +9,7 @@ interface Process {
 }
 
 interface Runtime<TScreen extends display.Screen, TState> {
-  input: controller.Input;
+  input: Input;
   screen: TScreen;
   size: { x: number; y: number };
   state: TState;
@@ -32,7 +32,7 @@ type StateConstructor<
   TConfiguration
 > = (
   screen: TScreen,
-  input: controller.Input,
+  input: Input,
   tweak: Tweak<TConfiguration>
 ) => Promise<TState>;
 
@@ -292,7 +292,7 @@ const runtime = async <TScreen extends display.Screen, TState, TConfiguration>(
   while (container.childNodes.length > 0)
     container.removeChild(container.childNodes[0]);
 
-  const input = new controller.Input(container);
+  const input = new Input(container);
   const screen = new screenConstructor(container);
   const state = await stateConstructor(screen, input, configure(configuration));
 

@@ -1,5 +1,5 @@
 import { declare, runtime } from "../engine/application";
-import * as controller from "../engine/io/controller";
+import { Input } from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as load from "../engine/graphic/load";
 import { Matrix4 } from "../engine/math/matrix";
@@ -49,7 +49,7 @@ void main(void) {
 interface SceneState {
   camera: view.Camera;
   gl: WebGLRenderingContext;
-  input: controller.Input;
+  input: Input;
   mesh: webgl.Mesh;
   painter: webgl.Painter<ShaderState>;
   projectionMatrix: Matrix4;

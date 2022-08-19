@@ -1,7 +1,7 @@
 import { type Tweak, declare, runtime } from "../engine/application";
 import * as bitfield from "./shared/bitfield";
 import * as color from "./shared/color";
-import * as controller from "../engine/io/controller";
+import { Input } from "../engine/io/controller";
 import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
 import * as deferredLighting from "../engine/graphic/pipelines/deferred-lighting";
 import * as display from "../engine/display";
@@ -30,7 +30,7 @@ interface Configuration {
 interface SceneState {
   camera: view.Camera;
   directionalLights: webgl.DirectionalLight[];
-  input: controller.Input;
+  input: Input;
   meshes: {
     cube: webgl.Mesh;
     directionalLight: webgl.Mesh;

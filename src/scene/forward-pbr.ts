@@ -1,6 +1,6 @@
 import { type Tweak, declare, runtime } from "../engine/application";
 import * as bitfield from "./shared/bitfield";
-import * as controller from "../engine/io/controller";
+import { Input } from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../engine/language/functional";
@@ -36,7 +36,7 @@ interface Light {
 
 interface SceneState {
   camera: view.Camera;
-  input: controller.Input;
+  input: Input;
   lights: Light[];
   meshes: {
     ground: webgl.Mesh;

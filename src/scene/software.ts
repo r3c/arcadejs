@@ -1,5 +1,5 @@
 import { type Tweak, declare, runtime } from "../engine/application";
-import * as controller from "../engine/io/controller";
+import { Input } from "../engine/io/controller";
 import * as display from "../engine/display";
 import * as load from "../engine/graphic/load";
 import { Matrix4 } from "../engine/math/matrix";
@@ -24,7 +24,7 @@ interface State {
   camera: view.Camera;
   cubeWithColor: model.Mesh;
   cubeWithTexture: model.Mesh;
-  input: controller.Input;
+  input: Input;
   projection: Matrix4;
   renderer: software.Renderer;
   tweak: Tweak<Configuration>;

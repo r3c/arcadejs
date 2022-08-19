@@ -1,6 +1,6 @@
 import { type Tweak, declare, runtime } from "../engine/application";
 import * as bitfield from "./shared/bitfield";
-import * as controller from "../engine/io/controller";
+import { Input } from "../engine/io/controller";
 import * as display from "../engine/display";
 import {
   ForwardLightingModel,
@@ -33,7 +33,7 @@ interface Configuration {
 
 interface SceneState {
   camera: view.Camera;
-  input: controller.Input;
+  input: Input;
   lightPositions: Vector3[];
   meshes: {
     cube: webgl.Mesh;
