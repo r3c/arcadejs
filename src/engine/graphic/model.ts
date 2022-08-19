@@ -109,7 +109,9 @@ const reduceNode = <TState>(
   reduce: (previous: TState, geometry: Geometry, transform: Matrix4) => TState
 ): TState => {
   for (const node of nodes) {
-    const transform = parent.clone().multiply(node.transform);
+    const transform = Matrix4.createIdentity()
+      .duplicate(parent)
+      .multiply(node.transform);
 
     for (const geometry of node.geometries)
       state = reduce(state, geometry, transform);

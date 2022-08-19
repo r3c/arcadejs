@@ -284,7 +284,7 @@ class Renderer {
     Renderer.drawNodes(
       image,
       mesh.nodes,
-      projection.clone().multiply(modelView),
+      Matrix4.createIdentity().duplicate(projection).multiply(modelView),
       mesh.materials,
       drawMode
     );

@@ -207,8 +207,25 @@ class Matrix4 {
     this.v33 = obj.v33;
   }
 
-  public clone(): Matrix4 {
-    return new Matrix4(this);
+  public duplicate(source: Matrix4Data): Matrix4 {
+    this.v00 = source.v00;
+    this.v01 = source.v01;
+    this.v02 = source.v02;
+    this.v03 = source.v03;
+    this.v10 = source.v10;
+    this.v11 = source.v11;
+    this.v12 = source.v12;
+    this.v13 = source.v13;
+    this.v20 = source.v20;
+    this.v21 = source.v21;
+    this.v22 = source.v22;
+    this.v23 = source.v23;
+    this.v30 = source.v30;
+    this.v31 = source.v31;
+    this.v32 = source.v32;
+    this.v33 = source.v33;
+
+    return this;
   }
 
   /*

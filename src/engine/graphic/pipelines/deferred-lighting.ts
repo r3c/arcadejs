@@ -436,7 +436,11 @@ const loadLight = <T>(
 
   shader.setupMatrixPerTarget(
     "inverseProjectionMatrix",
-    (state) => state.projectionMatrix.clone().invert().toArray(),
+    (state) =>
+      Matrix4.createIdentity()
+        .duplicate(state.projectionMatrix)
+        .invert()
+        .toArray(),
     (gl) => gl.uniformMatrix4fv
   );
   shader.setupMatrixPerTarget(
@@ -754,7 +758,9 @@ class Pipeline implements webgl.Pipeline {
       // - One for computing light directions in camera space
       const subjects = [
         {
-          matrix: transform.viewMatrix.clone().invert(),
+          matrix: Matrix4.createIdentity()
+            .duplicate(transform.viewMatrix)
+            .invert(),
           mesh: this.fullscreenMesh,
         },
       ];

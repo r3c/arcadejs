@@ -32,10 +32,12 @@ class Painter<State> implements webgl.Painter<State> {
     viewMatrix: Matrix4,
     textureIndex: number
   ): void {
+    const normal = Matrix4.createIdentity();
     const shader = this.shader;
+    const transform = Matrix4.createIdentity();
 
     for (const node of nodes) {
-      const transform = parentTransform.clone().multiply(node.transform);
+      transform.duplicate(parentTransform).multiply(node.transform);
 
       this.draw(target, node.children, transform, viewMatrix, textureIndex);
 
@@ -46,8 +48,8 @@ class Painter<State> implements webgl.Painter<State> {
         shader.bindGeometry(geometry);
         shader.bindMaterial(material, textureIndex);
         shader.bindNode({
-          normalMatrix: viewMatrix
-            .clone()
+          normalMatrix: normal
+            .duplicate(viewMatrix)
             .multiply(transform)
             .toTransposedInverse3x3(),
           transform: transform,

@@ -72,6 +72,8 @@ class Painter<State> implements webgl.Painter<State> {
     view: Matrix4,
     state: State
   ): void {
+    const normal = Matrix4.createIdentity();
+
     // Process batch shaders
     for (const shaderIndex in batch.shaders) {
       const shaderBatch = batch.shaders[shaderIndex];
@@ -96,8 +98,8 @@ class Painter<State> implements webgl.Painter<State> {
 
           shader.bindGeometry(geometry);
           shader.bindNode({
-            normalMatrix: view
-              .clone()
+            normalMatrix: normal
+              .duplicate(view)
               .multiply(model.transform)
               .toTransposedInverse3x3(),
             transform: model.transform,
@@ -120,8 +122,10 @@ class Painter<State> implements webgl.Painter<State> {
     parent: Matrix4,
     state: State
   ): void {
+    const transform = Matrix4.createIdentity();
+
     for (const node of nodes) {
-      const transform = parent.clone().multiply(node.transform);
+      transform.duplicate(parent).multiply(node.transform);
 
       this.sort(batch, node.children, transform, state);
 

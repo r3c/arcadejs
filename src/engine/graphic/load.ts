@@ -232,7 +232,10 @@ const finalize = async (
 
   if (transform !== undefined) {
     mesh.nodes.forEach(
-      (node) => (node.transform = transform.clone().multiply(node.transform))
+      (node) =>
+        (node.transform = Matrix4.createIdentity()
+          .duplicate(transform)
+          .multiply(node.transform))
     );
   }
 
