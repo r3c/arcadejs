@@ -1,0 +1,37 @@
+{
+  "materials": {
+    "side": {
+      "albedoMap": "level_{level}_albedo.png",
+      "glossMap": "level_{level}_gloss.png",
+      "normalMap": "level_{level}_normal.png",
+      "shininess": 100
+    }
+  },
+  "polygons": [
+    {
+      "coords": [
+        { "u": 0.0, "v": 0.0 },
+        { "u": 1.0, "v": 0.0 },
+        { "u": 1.0, "v": 1.0 },
+        { "u": 0.0, "v": 1.0 }
+      ],
+      "materialName": "side",
+      "normals": [
+        { "x": 0.0, "y": -1.0, "z": 0.0 },
+        { "x": 0.0, "y": -1.0, "z": 0.0 },
+        { "x": 0.0, "y": -1.0, "z": 0.0 },
+        { "x": 0.0, "y": -1.0, "z": 0.0 }
+      ],
+      "points": [
+        { "x": -1.0, "y": -1.0, "z": -1.0 },
+        { "x": 1.0, "y": -1.0, "z": -1.0 },
+        { "x": 1.0, "y": -1.0, "z": 1.0 },
+        { "x": -1.0, "y": -1.0, "z": 1.0 }
+      ],
+      "faces": [
+        [0, 1, 2],
+        [0, 2, 3]
+      ]
+    }
+  ]
+}

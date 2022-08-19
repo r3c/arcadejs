@@ -149,5 +149,129 @@ downloadFiles([
   {
     destination: "public/model/papermill/specular_back_0.jpg",
     url: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Environments/4eace30f795fa77f6e059e3b31aa640c08a82133/papermill/specular/specular_back_0.jpg"
+  },
+  {
+    destination: "public/model/select/select.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/select/select.png"
+  },
+  {
+    destination: "public/model/voxel/level_0_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_0_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_0_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_0_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_0_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_0_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_1_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_1_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_1_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_1_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_1_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_1_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_2_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_2_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_2_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_2_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_2_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_2_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_3_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_3_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_3_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_3_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_3_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_3_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_4_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_4_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_4_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_4_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_4_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_4_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_5_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_5_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_5_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_5_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_5_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_5_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_6_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_6_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_6_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_6_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_6_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_6_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_7_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_7_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_7_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_7_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_7_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_7_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_8_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_8_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_8_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_8_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_8_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_8_normal.png"
+  },
+  {
+    destination: "public/model/voxel/level_9_albedo.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_9_albedo.png"
+  },
+  {
+    destination: "public/model/voxel/level_9_gloss.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_9_gloss.png"
+  },
+  {
+    destination: "public/model/voxel/level_9_normal.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/voxel/level_9_normal.png"
   }
 ]);
