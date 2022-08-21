@@ -1,16 +1,16 @@
-import { type Tweak, declare, runtime } from "../engine/application";
-import * as bitfield from "./shared/bitfield";
-import { Input } from "../engine/io/controller";
-import * as display from "../engine/display";
-import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
-import * as functional from "../engine/language/functional";
-import * as image from "../engine/graphic/image";
-import * as load from "../engine/graphic/load";
-import { Matrix4 } from "../engine/math/matrix";
-import * as move from "./shared/move";
-import { Vector3 } from "../engine/math/vector";
-import * as view from "./shared/view";
-import * as webgl from "../engine/graphic/webgl";
+import { type Tweak, declare, runtime } from "../../engine/application";
+import * as bitfield from "../bitfield";
+import { Input } from "../../engine/io/controller";
+import * as display from "../../engine/display";
+import * as forwardLighting from "../../engine/graphic/pipelines/forward-lighting";
+import * as functional from "../../engine/language/functional";
+import * as image from "../../engine/graphic/image";
+import * as load from "../../engine/graphic/load";
+import { Matrix4 } from "../../engine/math/matrix";
+import * as move from "../move";
+import { Vector3 } from "../../engine/math/vector";
+import * as view from "../view";
+import * as webgl from "../../engine/graphic/webgl";
 
 /*
  ** What changed?

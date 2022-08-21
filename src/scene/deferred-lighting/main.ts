@@ -1,17 +1,17 @@
-import { type Tweak, declare, runtime } from "../engine/application";
-import * as bitfield from "./shared/bitfield";
-import * as color from "./shared/color";
-import { Input } from "../engine/io/controller";
-import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
-import * as deferredShading from "../engine/graphic/pipelines/deferred-shading";
-import * as display from "../engine/display";
-import * as functional from "../engine/language/functional";
-import * as load from "../engine/graphic/load";
-import { Matrix4 } from "../engine/math/matrix";
-import * as move from "./shared/move";
-import { Vector3 } from "../engine/math/vector";
-import * as view from "./shared/view";
-import * as webgl from "../engine/graphic/webgl";
+import { type Tweak, declare, runtime } from "../../engine/application";
+import * as bitfield from "../bitfield";
+import * as color from "../color";
+import { Input } from "../../engine/io/controller";
+import * as debugTexture from "../../engine/graphic/pipelines/debug-texture";
+import * as deferredLighting from "../../engine/graphic/pipelines/deferred-lighting";
+import * as display from "../../engine/display";
+import * as functional from "../../engine/language/functional";
+import * as load from "../../engine/graphic/load";
+import { Matrix4 } from "../../engine/math/matrix";
+import * as move from "../move";
+import { Vector3 } from "../../engine/math/vector";
+import * as view from "../view";
+import * as webgl from "../../engine/graphic/webgl";
 
 /*
  ** What changed?
@@ -40,7 +40,7 @@ interface SceneState {
   move: number;
   pipelines: {
     debug: debugTexture.Pipeline[];
-    scene: deferredShading.Pipeline[];
+    scene: deferredLighting.Pipeline[];
   };
   pointLights: webgl.PointLight[];
   projectionMatrix: Matrix4;
@@ -55,7 +55,15 @@ const configuration = {
   ambient: true,
   diffuse: true,
   specular: true,
-  debugMode: [".None", "Depth", "Albedo", "Normal", "Shininess", "Gloss"],
+  debugMode: [
+    ".None",
+    "Depth",
+    "Normal",
+    "Shininess",
+    "Gloss",
+    "Diffuse light",
+    "Specular light",
+  ],
 };
 
 const getOptions = (tweak: Tweak<Configuration>) => [
@@ -115,20 +123,24 @@ const prepare = () =>
             format: debugTexture.Format.Depth,
           },
           {
-            select: debugTexture.Select.RedGreenBlue,
-            format: debugTexture.Format.Colorful,
-          },
-          {
             select: debugTexture.Select.RedGreen,
             format: debugTexture.Format.Spheremap,
           },
           {
-            select: debugTexture.Select.Alpha,
+            select: debugTexture.Select.Blue,
             format: debugTexture.Format.Monochrome,
           },
           {
             select: debugTexture.Select.Alpha,
             format: debugTexture.Format.Monochrome,
+          },
+          {
+            select: debugTexture.Select.RedGreenBlue,
+            format: debugTexture.Format.Logarithm,
+          },
+          {
+            select: debugTexture.Select.Alpha,
+            format: debugTexture.Format.Logarithm,
           },
         ].map(
           (configuration) =>
@@ -141,8 +153,8 @@ const prepare = () =>
         ),
         scene: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new deferredShading.Pipeline(gl, {
-              lightModel: deferredShading.LightModel.Phong,
+            new deferredLighting.Pipeline(gl, {
+              lightModel: deferredLighting.LightModel.Phong,
               lightModelPhongNoAmbient: !flags[0],
               lightModelPhongNoDiffuse: !flags[1],
               lightModelPhongNoSpecular: !flags[2],
@@ -239,10 +251,11 @@ const render = (state: SceneState) => {
     const debugScene = debugTexture.Pipeline.createScene(
       [
         deferredPipeline.depthBuffer,
-        deferredPipeline.albedoAndShininessBuffer,
         deferredPipeline.normalAndGlossinessBuffer,
-        deferredPipeline.albedoAndShininessBuffer,
         deferredPipeline.normalAndGlossinessBuffer,
+        deferredPipeline.normalAndGlossinessBuffer,
+        deferredPipeline.lightBuffer,
+        deferredPipeline.lightBuffer,
       ][tweak.debugMode - 1]
     );
 
@@ -280,7 +293,7 @@ const update = (state: SceneState, dt: number) => {
   state.camera.move(state.input);
 };
 
-const process = declare("Deferred shading", {
+const process = declare("Deferred lighting", {
   prepare,
   render,
   resize,

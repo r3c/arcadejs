@@ -1,31 +1,40 @@
-import { type Tweak, declare, runtime } from "../engine/application";
-import * as bitfield from "./shared/bitfield";
-import { Input } from "../engine/io/controller";
-import * as debugTexture from "../engine/graphic/pipelines/debug-texture";
-import * as display from "../engine/display";
-import * as forwardLighting from "../engine/graphic/pipelines/forward-lighting";
-import * as load from "../engine/graphic/load";
-import { Matrix4 } from "../engine/math/matrix";
-import * as move from "./shared/move";
-import { Vector3 } from "../engine/math/vector";
-import * as view from "./shared/view";
-import * as webgl from "../engine/graphic/webgl";
+import { type Tweak, declare, runtime } from "../../engine/application";
+import * as bitfield from "../bitfield";
+import { Input } from "../../engine/io/controller";
+import * as display from "../../engine/display";
+import {
+  ForwardLightingModel,
+  ForwardLightingPipeline,
+} from "../../engine/graphic/pipelines/forward-lighting";
+import * as functional from "../../engine/language/functional";
+import * as load from "../../engine/graphic/load";
+import { Matrix4 } from "../../engine/math/matrix";
+import * as move from "../move";
+import { Vector3 } from "../../engine/math/vector";
+import * as view from "../view";
+import * as webgl from "../../engine/graphic/webgl";
 
 /*
  ** What changed?
- ** - Scene is first rendered from light's point of view to a shadow map
- ** - Then rendered a second time from camera's point of view, using this map for shadowing
+ ** - Directional (diffuse) and reflective (specular) lightning has been added to the scene
+ ** - Shader supports tangent space transform for normal and height mapping
+ ** - Scene uses two different shaders loaded from external files
  */
 
 interface Configuration {
+  nbLights: string[];
   animate: boolean;
-  enableShadow: boolean;
-  showDebug: boolean;
+  useAmbient: boolean;
+  useDiffuse: boolean;
+  useSpecular: boolean;
+  useNormalMap: boolean;
+  useHeightMap: boolean;
 }
 
 interface SceneState {
   camera: view.Camera;
   input: Input;
+  lightPositions: Vector3[];
   meshes: {
     cube: webgl.Mesh;
     ground: webgl.Mesh;
@@ -33,8 +42,7 @@ interface SceneState {
   };
   move: number;
   pipelines: {
-    debug: debugTexture.Pipeline;
-    lights: forwardLighting.ForwardLightingPipeline[];
+    lights: ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
   target: webgl.Target;
@@ -42,25 +50,35 @@ interface SceneState {
 }
 
 const configuration = {
+  nbLights: ["0", ".1", "2", "3"],
   animate: true,
-  enableShadow: true,
-  showDebug: false,
+  useAmbient: true,
+  useDiffuse: true,
+  useSpecular: true,
+  useNormalMap: true,
+  useHeightMap: true,
 };
 
-const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
+const getOptions = (tweak: Tweak<Configuration>) => [
+  tweak.useAmbient !== 0,
+  tweak.useDiffuse !== 0,
+  tweak.useSpecular !== 0,
+  tweak.useHeightMap !== 0,
+  tweak.useNormalMap !== 0,
+];
 
 const prepare = () =>
   runtime(display.WebGLScreen, configuration, async (screen, input, tweak) => {
     const gl = screen.context;
 
-    // Load meshes
+    // Load models
     const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
     const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
     const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
-        x: 0.5,
-        y: 0.5,
-        z: 0.5,
+        x: 0.2,
+        y: 0.2,
+        z: 0.2,
       }),
     });
 
@@ -68,6 +86,7 @@ const prepare = () =>
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: input,
+      lightPositions: functional.range(3, () => Vector3.zero),
       meshes: {
         cube: webgl.loadMesh(gl, cubeMesh),
         ground: webgl.loadMesh(gl, groundMesh),
@@ -75,19 +94,20 @@ const prepare = () =>
       },
       move: 0,
       pipelines: {
-        debug: new debugTexture.Pipeline(gl, {
-          format: debugTexture.Format.Monochrome,
-          select: debugTexture.Select.Red,
-          zNear: 0.1,
-          zFar: 100,
-        }),
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new forwardLighting.ForwardLightingPipeline(gl, {
+            new ForwardLightingPipeline(gl, {
               light: {
-                model: forwardLighting.ForwardLightingModel.Phong,
-                maxDirectionalLights: 1,
-                noShadow: !flags[0],
+                maxPointLights: 3,
+                model: ForwardLightingModel.Phong,
+                modelPhongNoAmbient: !flags[0],
+                modelPhongNoDiffuse: !flags[1],
+                modelPhongNoSpecular: !flags[2],
+                noShadow: true,
+              },
+              material: {
+                forceHeightMap: flags[3] ? undefined : false,
+                forceNormalMap: flags[4] ? undefined : false,
               },
             })
         ),
@@ -104,7 +124,6 @@ const render = (state: SceneState) => {
   const pipelines = state.pipelines;
   const target = state.target;
 
-  // Setup view matrices
   const transform = {
     projectionMatrix: state.projectionMatrix,
     viewMatrix: Matrix4.createIdentity()
@@ -113,25 +132,24 @@ const render = (state: SceneState) => {
       .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
   };
 
-  // Draw scene
-  const lightDirection = move.rotate(0, -state.move * 10);
+  // Clear screen
+  target.clear(0);
+
+  // Forward pass
   const lightPipeline =
     pipelines.lights[bitfield.index(getOptions(state.tweak))];
   const lightScene = {
-    ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-    directionalLights: [
-      {
+    ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+    pointLights: state.lightPositions
+      .slice(0, state.tweak.nbLights)
+      .map((position) => ({
         color: { x: 0.8, y: 0.8, z: 0.8 },
-        direction: lightDirection,
-        shadow: true,
-      },
-    ],
+        position: position,
+        radius: 5,
+      })),
     subjects: [
       {
-        matrix: Matrix4.createIdentity().rotate(
-          { x: 0, y: 1, z: 1 },
-          state.move * 5
-        ),
+        matrix: Matrix4.createIdentity(),
         mesh: meshes.cube,
       },
       {
@@ -142,29 +160,15 @@ const render = (state: SceneState) => {
         }),
         mesh: meshes.ground,
       },
-      {
-        matrix: Matrix4.createIdentity().translate(
-          Vector3.scale(Vector3.normalize(lightDirection), 10)
-        ),
+    ].concat(
+      state.lightPositions.slice(0, state.tweak.nbLights).map((position) => ({
+        matrix: Matrix4.createIdentity().translate(position),
         mesh: meshes.light,
-        noShadow: true,
-      },
-    ],
+      }))
+    ),
   };
 
-  target.clear(0);
-
   lightPipeline.process(target, transform, lightScene);
-
-  // Draw texture debug
-  if (state.tweak.showDebug) {
-    const debugPipeline = pipelines.debug;
-    const debugScene = debugTexture.Pipeline.createScene(
-      lightPipeline.directionalShadowBuffers[0]
-    );
-
-    debugPipeline.process(target, transform, debugScene);
-  }
 };
 
 const resize = (state: SceneState, screen: display.WebGLScreen) => {
@@ -177,19 +181,21 @@ const resize = (state: SceneState, screen: display.WebGLScreen) => {
     0.1,
     100
   );
-  state.pipelines.debug.resize(screen.getWidth(), screen.getHeight());
   state.target.resize(screen.getWidth(), screen.getHeight());
 };
 
 const update = (state: SceneState, dt: number) => {
-  // Update animation state
-  if (state.tweak.animate) state.move += dt * 0.00003;
+  // Update light positions
+  if (state.tweak.animate) state.move += dt * 0.0005;
+
+  for (let i = 0; i < state.lightPositions.length; ++i)
+    state.lightPositions[i] = move.orbitate(i, state.move, 2, 2);
 
   // Move camera
   state.camera.move(state.input);
 };
 
-const process = declare("Directional shadow", {
+const process = declare("Forward Phong lighting", {
   prepare,
   render,
   resize,

@@ -1,5 +1,5 @@
-import * as controller from "../../engine/io/controller";
-import { Vector3 } from "../../engine/math/vector";
+import * as controller from "../engine/io/controller";
+import { Vector3 } from "../engine/math/vector";
 
 const ease = (from: Vector3, to: Vector3, speed: number) => {
   return {

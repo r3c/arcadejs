@@ -1,18 +1,18 @@
 import "./style/style.css";
 import { initialize } from "./engine/application";
-import { process as blank } from "./scene/blank";
-import { process as software } from "./scene/software";
-import { process as webgl } from "./scene/webgl";
-import { process as forwardPhong } from "./scene/forward-phong";
-import { process as forwardPbr } from "./scene/forward-pbr";
-import { process as directionalShadow } from "./scene/directional-shadow";
-import { process as deferredLighting } from "./scene/deferred-lighting";
-import { process as deferredShading } from "./scene/deferred-shading";
+import { process as blank } from "./scene/blank/main";
+import { process as software } from "./scene/software/main";
+import { process as hardware } from "./scene/hardware/main";
+import { process as forwardPhong } from "./scene/forward-phong/main";
+import { process as forwardPbr } from "./scene/forward-pbr/main";
+import { process as directionalShadow } from "./scene/directional-shadow/main";
+import { process as deferredLighting } from "./scene/deferred-lighting/main";
+import { process as deferredShading } from "./scene/deferred-shading/main";
 
 initialize([
   blank,
   software,
-  webgl,
+  hardware,
   forwardPhong,
   forwardPbr,
   directionalShadow,

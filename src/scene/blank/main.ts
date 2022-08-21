@@ -1,6 +1,6 @@
-import { declare, runtime } from "../engine/application";
-import * as display from "../engine/display";
-import * as software from "../engine/graphic/software";
+import { declare, runtime } from "../../engine/application";
+import * as display from "../../engine/display";
+import * as software from "../../engine/graphic/software";
 
 interface State {
   renderer: software.Renderer;

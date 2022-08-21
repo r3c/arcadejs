@@ -1,12 +1,12 @@
-import { declare, runtime } from "../engine/application";
-import { Input } from "../engine/io/controller";
-import * as display from "../engine/display";
-import * as load from "../engine/graphic/load";
-import { Matrix4 } from "../engine/math/matrix";
-import * as painter from "../engine/graphic/painters/singular";
-import { Vector3 } from "../engine/math/vector";
-import * as view from "./shared/view";
-import * as webgl from "../engine/graphic/webgl";
+import { declare, runtime } from "../../engine/application";
+import { Input } from "../../engine/io/controller";
+import * as display from "../../engine/display";
+import * as load from "../../engine/graphic/load";
+import { Matrix4 } from "../../engine/math/matrix";
+import * as painter from "../../engine/graphic/painters/singular";
+import { Vector3 } from "../../engine/math/vector";
+import * as view from "../view";
+import * as webgl from "../../engine/graphic/webgl";
 
 /*
  ** What changed?
@@ -157,7 +157,7 @@ const update = (state: SceneState) => {
   state.camera.move(state.input);
 };
 
-const process = declare("Basic WebGL rendering", {
+const process = declare("Basic hardware rendering", {
   prepare,
   render,
   resize,

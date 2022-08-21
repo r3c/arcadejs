@@ -1,12 +1,12 @@
-import { type Tweak, declare, runtime } from "../engine/application";
-import { Input } from "../engine/io/controller";
-import * as display from "../engine/display";
-import * as load from "../engine/graphic/load";
-import { Matrix4 } from "../engine/math/matrix";
-import * as model from "../engine/graphic/model";
-import * as software from "../engine/graphic/software";
-import { Vector3 } from "../engine/math/vector";
-import * as view from "./shared/view";
+import { type Tweak, declare, runtime } from "../../engine/application";
+import { Input } from "../../engine/io/controller";
+import * as display from "../../engine/display";
+import * as load from "../../engine/graphic/load";
+import { Matrix4 } from "../../engine/math/matrix";
+import * as model from "../../engine/graphic/model";
+import * as software from "../../engine/graphic/software";
+import { Vector3 } from "../../engine/math/vector";
+import * as view from "../view";
 
 /*
  ** What changed?
