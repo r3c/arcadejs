@@ -1,9 +1,11 @@
+import { Vector3 } from "../engine/math/vector";
+
 const orbitate = (
   index: number,
   amount: number,
   width: number,
   height: number
-) => {
+): Vector3 => {
   const offset = index + 1;
 
   const distance = Math.cos(
@@ -23,7 +25,7 @@ const orbitate = (
   };
 };
 
-const rotate = (index: number, amount: number) => {
+const rotate = (index: number, amount: number): Vector3 => {
   const offset = index + 1;
   const angle = ((offset * 11) % 41) + (amount * ((offset * 17) % 47)) / 47;
 

@@ -1,4 +1,4 @@
-import * as controller from "../engine/io/controller";
+import { Input } from "../engine/io/controller";
 import { Vector3 } from "../engine/math/vector";
 
 const ease = (from: Vector3, to: Vector3, speed: number) => {
@@ -8,6 +8,11 @@ const ease = (from: Vector3, to: Vector3, speed: number) => {
     z: from.z + (to.z - from.z) * speed,
   };
 };
+
+const positionEasing = 0.5;
+const positionSpeed = 1 / 64;
+const rotationEasing = 0.5;
+const rotationSpeed = 1 / 64;
 
 class Camera {
   public position: Vector3;
@@ -23,27 +28,27 @@ class Camera {
     this.rotation = rotation;
   }
 
-  public move(input: controller.Input) {
+  public move(input: Input) {
     const movement = input.fetchMovement();
     const wheel = input.fetchWheel();
 
     const deltaPosition = {
-      x: input.isPressed("mouseleft") ? movement.x / 64 : 0,
-      y: input.isPressed("mouseleft") ? -movement.y / 64 : 0,
+      x: input.isPressed("mouseleft") ? movement.x * positionSpeed : 0,
+      y: input.isPressed("mouseleft") ? -movement.y * positionSpeed : 0,
       z: wheel / 4,
     };
 
     const deltaRotation = {
-      x: input.isPressed("mouseright") ? -movement.y / 64 : 0,
-      y: input.isPressed("mouseright") ? -movement.x / 64 : 0,
+      x: input.isPressed("mouseright") ? -movement.y * rotationSpeed : 0,
+      y: input.isPressed("mouseright") ? -movement.x * rotationSpeed : 0,
       z: 0,
     };
 
     this.nextPosition = Vector3.add(this.nextPosition, deltaPosition);
     this.nextRotation = Vector3.add(this.nextRotation, deltaRotation);
 
-    this.position = ease(this.position, this.nextPosition, 0.2);
-    this.rotation = ease(this.rotation, this.nextRotation, 0.2);
+    this.position = ease(this.position, this.nextPosition, positionEasing);
+    this.rotation = ease(this.rotation, this.nextRotation, rotationEasing);
   }
 }
 

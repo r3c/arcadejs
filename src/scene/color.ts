@@ -1,4 +1,6 @@
-const createBright = (index: number) => {
+import { Vector3 } from "../engine/math/vector";
+
+const createBright = (index: number): Vector3 => {
   const y = 0.8;
   const u = (((index * 1.17) % 2) - 1) * 0.436;
   const v = (((index * 1.43) % 2) - 1) * 0.615;
