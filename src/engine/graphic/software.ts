@@ -1,4 +1,4 @@
-import * as display from "../display";
+import * as display from "./display";
 import { Matrix4 } from "../math/matrix";
 import * as model from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";

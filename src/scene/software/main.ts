@@ -1,6 +1,6 @@
 import { type Tweak, declare, runtime } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
-import * as display from "../../engine/display";
+import { Context2DScreen } from "../../engine/graphic/display";
 import * as load from "../../engine/graphic/load";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as model from "../../engine/graphic/model";
@@ -35,7 +35,7 @@ const configuration = {
 };
 
 const prepare = () =>
-  runtime(display.Context2DScreen, configuration, async (screen, tweak) => {
+  runtime(Context2DScreen, configuration, async (screen, tweak) => {
     const renderer = new software.Renderer(screen);
 
     return {
@@ -65,7 +65,7 @@ const render = (state: State) => {
   renderer.draw(model, state.projection, view, software.DrawMode.Default);
 };
 
-const resize = (state: State, screen: display.Context2DScreen) => {
+const resize = (state: State, screen: Context2DScreen) => {
   state.projection = Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
 };
 

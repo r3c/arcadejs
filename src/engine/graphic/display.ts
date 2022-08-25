@@ -34,13 +34,9 @@ class Screen {
   }
 
   public goFullscreen() {
-    const canvas = <any>this.canvas;
-
-    if (canvas.requestFullscreen !== undefined) canvas.requestFullscreen();
-    else if (canvas.mozRequestFullScreen !== undefined)
-      canvas.mozRequestFullScreen();
-    else if (canvas.webkitRequestFullScreen !== undefined)
-      canvas.webkitRequestFullScreen();
+    if (this.canvas.requestFullscreen !== undefined) {
+      this.canvas.requestFullscreen();
+    }
   }
 }
 

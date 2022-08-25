@@ -1,7 +1,7 @@
 import { type Tweak, declare, runtime } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
-import * as display from "../../engine/display";
+import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
   ForwardLightingPipeline,
@@ -68,7 +68,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 ];
 
 const prepare = () =>
-  runtime(display.WebGLScreen, configuration, async (screen, tweak) => {
+  runtime(WebGLScreen, configuration, async (screen, tweak) => {
     const gl = screen.context;
 
     // Load models
@@ -171,7 +171,7 @@ const render = (state: SceneState) => {
   lightPipeline.process(target, transform, lightScene);
 };
 
-const resize = (state: SceneState, screen: display.WebGLScreen) => {
+const resize = (state: SceneState, screen: WebGLScreen) => {
   for (const pipeline of state.pipelines.lights)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 

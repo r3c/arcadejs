@@ -1,7 +1,7 @@
 import { type Tweak, declare, runtime } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
-import * as display from "../../engine/display";
+import { WebGLScreen } from "../../engine/graphic/display";
 import * as forwardLighting from "../../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../../engine/language/functional";
 import * as image from "../../engine/graphic/image";
@@ -78,7 +78,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 ];
 
 const prepare = async () =>
-  runtime(display.WebGLScreen, configuration, async (screen, tweak) => {
+  runtime(WebGLScreen, configuration, async (screen, tweak) => {
     const gl = screen.context;
 
     // Load meshes
@@ -256,7 +256,7 @@ const render = (state: SceneState) => {
   );
 };
 
-const resize = (state: SceneState, screen: display.WebGLScreen) => {
+const resize = (state: SceneState, screen: WebGLScreen) => {
   for (const pipeline of state.pipelines.lights)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 

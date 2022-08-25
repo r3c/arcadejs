@@ -2,7 +2,7 @@ import { type Tweak, declare, runtime } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import * as debugTexture from "../../engine/graphic/pipelines/debug-texture";
-import * as display from "../../engine/display";
+import { WebGLScreen } from "../../engine/graphic/display";
 import * as forwardLighting from "../../engine/graphic/pipelines/forward-lighting";
 import * as load from "../../engine/graphic/load";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -50,7 +50,7 @@ const configuration = {
 const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
 
 const prepare = () =>
-  runtime(display.WebGLScreen, configuration, async (screen, tweak) => {
+  runtime(WebGLScreen, configuration, async (screen, tweak) => {
     const gl = screen.context;
 
     // Load meshes
@@ -167,7 +167,7 @@ const render = (state: SceneState) => {
   }
 };
 
-const resize = (state: SceneState, screen: display.WebGLScreen) => {
+const resize = (state: SceneState, screen: WebGLScreen) => {
   for (const pipeline of state.pipelines.lights)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 

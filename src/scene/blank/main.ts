@@ -1,5 +1,5 @@
 import { declare, runtime } from "../../engine/application";
-import * as display from "../../engine/display";
+import { Context2DScreen } from "../../engine/graphic/display";
 import * as software from "../../engine/graphic/software";
 
 interface State {
@@ -7,7 +7,7 @@ interface State {
 }
 
 const prepare = () =>
-  runtime(display.Context2DScreen, undefined, async (screen) => ({
+  runtime(Context2DScreen, undefined, async (screen) => ({
     renderer: new software.Renderer(screen),
   }));
 

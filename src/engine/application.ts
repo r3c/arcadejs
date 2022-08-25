@@ -1,33 +1,32 @@
-import * as display from "./display";
+import { Screen } from "./graphic/display";
 
 interface Process {
-  change: (callback: (screen: display.Screen) => void) => void;
+  change: (callback: (screen: Screen) => void) => void;
   start: () => Promise<void>;
   step: (dt: number) => void;
   title: string;
 }
 
-interface Runtime<TScreen extends display.Screen, TState> {
+interface Runtime<TScreen extends Screen, TState> {
   screen: TScreen;
   state: TState;
 }
 
-interface Scenario<TScreen extends display.Screen, TState> {
+interface Scenario<TScreen extends Screen, TState> {
   prepare: () => Promise<Runtime<TScreen, TState>>;
   render: (state: TState) => void;
   resize?: (state: TState, screen: TScreen) => void;
   update: (state: TState, dt: number) => void;
 }
 
-interface ScreenConstructor<T> {
-  new (container: HTMLElement): T;
+interface ScreenConstructor<TScreen extends Screen> {
+  new (container: HTMLElement): TScreen;
 }
 
-type StateConstructor<
-  TScreen extends display.Screen,
-  TState,
-  TConfiguration
-> = (screen: TScreen, tweak: Tweak<TConfiguration>) => Promise<TState>;
+type StateConstructor<TScreen extends Screen, TState, TConfiguration> = (
+  screen: TScreen,
+  tweak: Tweak<TConfiguration>
+) => Promise<TState>;
 
 type Tweak<T> = {
   [P in keyof T]: number;
@@ -150,7 +149,7 @@ const createSelect = (
   return container;
 };
 
-const declare = <TScreen extends display.Screen, TState>(
+const declare = <TScreen extends Screen, TState>(
   title: string,
   scene: Scenario<TScreen, TState>
 ): Process => {
@@ -160,7 +159,7 @@ const declare = <TScreen extends display.Screen, TState>(
 
   return {
     title,
-    change: (callback: (screen: display.Screen) => void) => {
+    change: (callback: (screen: Screen) => void) => {
       callback(runtime.screen);
     },
     start: async () => {
@@ -271,7 +270,7 @@ const initialize = (processes: Process[]) => {
   tick();
 };
 
-const runtime = async <TScreen extends display.Screen, TState, TConfiguration>(
+const runtime = async <TScreen extends Screen, TState, TConfiguration>(
   screenConstructor: ScreenConstructor<TScreen>,
   configuration: TConfiguration,
   stateConstructor: StateConstructor<TScreen, TState, TConfiguration>

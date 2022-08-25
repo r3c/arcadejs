@@ -4,7 +4,7 @@ import * as color from "../color";
 import { Input } from "../../engine/io/controller";
 import * as debugTexture from "../../engine/graphic/pipelines/debug-texture";
 import * as deferredShading from "../../engine/graphic/pipelines/deferred-shading";
-import * as display from "../../engine/display";
+import { WebGLScreen } from "../../engine/graphic/display";
 import * as functional from "../../engine/language/functional";
 import * as load from "../../engine/graphic/load";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -65,7 +65,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 ];
 
 const prepare = () =>
-  runtime(display.WebGLScreen, configuration, async (screen, tweak) => {
+  runtime(WebGLScreen, configuration, async (screen, tweak) => {
     const gl = screen.context;
 
     // Load meshes
@@ -250,7 +250,7 @@ const render = (state: SceneState) => {
   }
 };
 
-const resize = (state: SceneState, screen: display.WebGLScreen) => {
+const resize = (state: SceneState, screen: WebGLScreen) => {
   for (const pipeline of state.pipelines.debug)
     pipeline.resize(screen.getWidth(), screen.getHeight());
 

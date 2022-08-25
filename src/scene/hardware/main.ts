@@ -1,6 +1,6 @@
 import { declare, runtime } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
-import * as display from "../../engine/display";
+import { WebGLScreen } from "../../engine/graphic/display";
 import * as load from "../../engine/graphic/load";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as painter from "../../engine/graphic/painters/singular";
@@ -62,7 +62,7 @@ interface ShaderState {
 }
 
 const prepare = () =>
-  runtime(display.WebGLScreen, undefined, async (screen) => {
+  runtime(WebGLScreen, undefined, async (screen) => {
     const gl = screen.context;
     const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
@@ -142,7 +142,7 @@ const render = (state: SceneState) => {
   });
 };
 
-const resize = (state: SceneState, screen: display.WebGLScreen) => {
+const resize = (state: SceneState, screen: WebGLScreen) => {
   state.projectionMatrix = Matrix4.createPerspective(
     45,
     screen.getRatio(),
