@@ -1,5 +1,5 @@
 import "./style/style.css";
-import { initialize } from "./engine/application";
+import { run } from "./engine/application";
 import { process as blank } from "./scene/blank/main";
 import { process as software } from "./scene/software/main";
 import { process as hardware } from "./scene/hardware/main";
@@ -9,7 +9,7 @@ import { process as directionalShadow } from "./scene/directional-shadow/main";
 import { process as deferredLighting } from "./scene/deferred-lighting/main";
 import { process as deferredShading } from "./scene/deferred-shading/main";
 
-initialize([
+run([
   blank,
   software,
   hardware,

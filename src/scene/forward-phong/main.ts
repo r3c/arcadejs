@@ -1,4 +1,4 @@
-import { type Tweak, declare, runtime } from "../../engine/application";
+import { type Tweak, configure, declare } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
@@ -67,56 +67,56 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.useNormalMap !== 0,
 ];
 
-const prepare = () =>
-  runtime(WebGLScreen, configuration, async (screen, tweak) => {
-    const gl = screen.context;
+const prepare = async (screen: WebGLScreen) => {
+  const gl = screen.context;
+  const tweak = configure(configuration);
 
-    // Load models
-    const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
-    const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
-    const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.2,
-        y: 0.2,
-        z: 0.2,
-      }),
-    });
-
-    // Create state
-    return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      input: new Input(screen.canvas),
-      lightPositions: functional.range(3, () => Vector3.zero),
-      meshes: {
-        cube: webgl.loadMesh(gl, cubeMesh),
-        ground: webgl.loadMesh(gl, groundMesh),
-        light: webgl.loadMesh(gl, lightMesh),
-      },
-      move: 0,
-      pipelines: {
-        lights: bitfield.enumerate(getOptions(tweak)).map(
-          (flags) =>
-            new ForwardLightingPipeline(gl, {
-              light: {
-                maxPointLights: 3,
-                model: ForwardLightingModel.Phong,
-                modelPhongNoAmbient: !flags[0],
-                modelPhongNoDiffuse: !flags[1],
-                modelPhongNoSpecular: !flags[2],
-                noShadow: true,
-              },
-              material: {
-                forceHeightMap: flags[3] ? undefined : false,
-                forceNormalMap: flags[4] ? undefined : false,
-              },
-            })
-        ),
-      },
-      projectionMatrix: Matrix4.createIdentity(),
-      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
-      tweak: tweak,
-    };
+  // Load models
+  const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
+  const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
+  const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
+    transform: Matrix4.createIdentity().scale({
+      x: 0.2,
+      y: 0.2,
+      z: 0.2,
+    }),
   });
+
+  // Create state
+  return {
+    camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+    input: new Input(screen.canvas),
+    lightPositions: functional.range(3, () => Vector3.zero),
+    meshes: {
+      cube: webgl.loadMesh(gl, cubeMesh),
+      ground: webgl.loadMesh(gl, groundMesh),
+      light: webgl.loadMesh(gl, lightMesh),
+    },
+    move: 0,
+    pipelines: {
+      lights: bitfield.enumerate(getOptions(tweak)).map(
+        (flags) =>
+          new ForwardLightingPipeline(gl, {
+            light: {
+              maxPointLights: 3,
+              model: ForwardLightingModel.Phong,
+              modelPhongNoAmbient: !flags[0],
+              modelPhongNoDiffuse: !flags[1],
+              modelPhongNoSpecular: !flags[2],
+              noShadow: true,
+            },
+            material: {
+              forceHeightMap: flags[3] ? undefined : false,
+              forceNormalMap: flags[4] ? undefined : false,
+            },
+          })
+      ),
+    },
+    projectionMatrix: Matrix4.createIdentity(),
+    target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+    tweak,
+  };
+};
 
 const render = (state: SceneState) => {
   const camera = state.camera;
@@ -195,7 +195,7 @@ const update = (state: SceneState, dt: number) => {
   state.camera.move(state.input);
 };
 
-const process = declare("Forward Phong lighting", {
+const process = declare("Forward Phong lighting", WebGLScreen, {
   prepare,
   render,
   resize,

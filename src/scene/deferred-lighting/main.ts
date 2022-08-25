@@ -1,4 +1,4 @@
-import { type Tweak, declare, runtime } from "../../engine/application";
+import { type Tweak, configure, declare } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import * as color from "../color";
 import { Input } from "../../engine/io/controller";
@@ -72,107 +72,107 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.specular !== 0,
 ];
 
-const prepare = () =>
-  runtime(WebGLScreen, configuration, async (screen, tweak) => {
-    const gl = screen.context;
+const prepare = async (screen: WebGLScreen) => {
+  const gl = screen.context;
+  const tweak = configure(configuration);
 
-    // Load meshes
-    const cubeMesh = await load.fromJSON("./obj/cube/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.4,
-        y: 0.4,
-        z: 0.4,
-      }),
-    });
-    const directionalLightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.5,
-        y: 0.5,
-        z: 0.5,
-      }),
-    });
-    const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
-    const pointLightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.1,
-        y: 0.1,
-        z: 0.1,
-      }),
-    });
-
-    // Create state
-    return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      directionalLights: functional.range(10, (i) => ({
-        color: color.createBright(i),
-        direction: Vector3.zero,
-        shadow: false,
-      })),
-      input: new Input(screen.canvas),
-      meshes: {
-        cube: webgl.loadMesh(gl, cubeMesh),
-        directionalLight: webgl.loadMesh(gl, directionalLightMesh),
-        ground: webgl.loadMesh(gl, groundMesh),
-        pointLight: webgl.loadMesh(gl, pointLightMesh),
-      },
-      move: 0,
-      pipelines: {
-        debug: [
-          {
-            select: debugTexture.Select.Red,
-            format: debugTexture.Format.Depth,
-          },
-          {
-            select: debugTexture.Select.RedGreen,
-            format: debugTexture.Format.Spheremap,
-          },
-          {
-            select: debugTexture.Select.Blue,
-            format: debugTexture.Format.Monochrome,
-          },
-          {
-            select: debugTexture.Select.Alpha,
-            format: debugTexture.Format.Monochrome,
-          },
-          {
-            select: debugTexture.Select.RedGreenBlue,
-            format: debugTexture.Format.Logarithm,
-          },
-          {
-            select: debugTexture.Select.Alpha,
-            format: debugTexture.Format.Logarithm,
-          },
-        ].map(
-          (configuration) =>
-            new debugTexture.Pipeline(gl, {
-              format: configuration.format,
-              select: configuration.select,
-              zNear: 0.1,
-              zFar: 100,
-            })
-        ),
-        scene: bitfield.enumerate(getOptions(tweak)).map(
-          (flags) =>
-            new deferredLighting.Pipeline(gl, {
-              lightModel: deferredLighting.LightModel.Phong,
-              lightModelPhongNoAmbient: !flags[0],
-              lightModelPhongNoDiffuse: !flags[1],
-              lightModelPhongNoSpecular: !flags[2],
-              useHeightMap: true,
-              useNormalMap: true,
-            })
-        ),
-      },
-      pointLights: functional.range(500, (i) => ({
-        color: color.createBright(i),
-        position: Vector3.zero,
-        radius: 2,
-      })),
-      projectionMatrix: Matrix4.createIdentity(),
-      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
-      tweak: tweak,
-    };
+  // Load meshes
+  const cubeMesh = await load.fromJSON("./obj/cube/mesh.json", {
+    transform: Matrix4.createIdentity().scale({
+      x: 0.4,
+      y: 0.4,
+      z: 0.4,
+    }),
   });
+  const directionalLightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
+    transform: Matrix4.createIdentity().scale({
+      x: 0.5,
+      y: 0.5,
+      z: 0.5,
+    }),
+  });
+  const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
+  const pointLightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
+    transform: Matrix4.createIdentity().scale({
+      x: 0.1,
+      y: 0.1,
+      z: 0.1,
+    }),
+  });
+
+  // Create state
+  return {
+    camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+    directionalLights: functional.range(10, (i) => ({
+      color: color.createBright(i),
+      direction: Vector3.zero,
+      shadow: false,
+    })),
+    input: new Input(screen.canvas),
+    meshes: {
+      cube: webgl.loadMesh(gl, cubeMesh),
+      directionalLight: webgl.loadMesh(gl, directionalLightMesh),
+      ground: webgl.loadMesh(gl, groundMesh),
+      pointLight: webgl.loadMesh(gl, pointLightMesh),
+    },
+    move: 0,
+    pipelines: {
+      debug: [
+        {
+          select: debugTexture.Select.Red,
+          format: debugTexture.Format.Depth,
+        },
+        {
+          select: debugTexture.Select.RedGreen,
+          format: debugTexture.Format.Spheremap,
+        },
+        {
+          select: debugTexture.Select.Blue,
+          format: debugTexture.Format.Monochrome,
+        },
+        {
+          select: debugTexture.Select.Alpha,
+          format: debugTexture.Format.Monochrome,
+        },
+        {
+          select: debugTexture.Select.RedGreenBlue,
+          format: debugTexture.Format.Logarithm,
+        },
+        {
+          select: debugTexture.Select.Alpha,
+          format: debugTexture.Format.Logarithm,
+        },
+      ].map(
+        (configuration) =>
+          new debugTexture.Pipeline(gl, {
+            format: configuration.format,
+            select: configuration.select,
+            zNear: 0.1,
+            zFar: 100,
+          })
+      ),
+      scene: bitfield.enumerate(getOptions(tweak)).map(
+        (flags) =>
+          new deferredLighting.Pipeline(gl, {
+            lightModel: deferredLighting.LightModel.Phong,
+            lightModelPhongNoAmbient: !flags[0],
+            lightModelPhongNoDiffuse: !flags[1],
+            lightModelPhongNoSpecular: !flags[2],
+            useHeightMap: true,
+            useNormalMap: true,
+          })
+      ),
+    },
+    pointLights: functional.range(500, (i) => ({
+      color: color.createBright(i),
+      position: Vector3.zero,
+      radius: 2,
+    })),
+    projectionMatrix: Matrix4.createIdentity(),
+    target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+    tweak: tweak,
+  };
+};
 
 const render = (state: SceneState) => {
   const camera = state.camera;
@@ -293,7 +293,7 @@ const update = (state: SceneState, dt: number) => {
   state.camera.move(state.input);
 };
 
-const process = declare("Deferred lighting", {
+const process = declare("Deferred lighting", WebGLScreen, {
   prepare,
   render,
   resize,

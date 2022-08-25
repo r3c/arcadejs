@@ -1,4 +1,4 @@
-import { type Tweak, declare, runtime } from "../../engine/application";
+import { type Tweak, configure, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { Context2DScreen } from "../../engine/graphic/display";
 import * as load from "../../engine/graphic/load";
@@ -34,20 +34,20 @@ const configuration = {
   useTexture: false,
 };
 
-const prepare = () =>
-  runtime(Context2DScreen, configuration, async (screen, tweak) => {
-    const renderer = new software.Renderer(screen);
+const prepare = async (screen: Context2DScreen) => {
+  const renderer = new software.Renderer(screen);
+  const tweak = configure(configuration);
 
-    return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
-      cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
-      input: new Input(screen.canvas),
-      projection: Matrix4.createIdentity(),
-      renderer: renderer,
-      tweak: tweak,
-    };
-  });
+  return {
+    camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+    cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
+    cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
+    input: new Input(screen.canvas),
+    projection: Matrix4.createIdentity(),
+    renderer: renderer,
+    tweak: tweak,
+  };
+};
 
 const render = (state: State) => {
   const camera = state.camera;
@@ -73,7 +73,7 @@ const update = (state: State) => {
   state.camera.move(state.input);
 };
 
-const process = declare("Software rendering", {
+const process = declare("Software rendering", Context2DScreen, {
   prepare,
   render,
   resize,

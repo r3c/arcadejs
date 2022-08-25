@@ -1,5 +1,12 @@
 import { Screen } from "./graphic/display";
 
+interface Application<TScreen extends Screen, TState> {
+  prepare: (screen: TScreen) => Promise<TState>;
+  render: (state: TState) => void;
+  resize?: (state: TState, screen: TScreen) => void;
+  update: (state: TState, dt: number) => void;
+}
+
 interface Process {
   change: (callback: (screen: Screen) => void) => void;
   start: () => Promise<void>;
@@ -7,26 +14,9 @@ interface Process {
   title: string;
 }
 
-interface Runtime<TScreen extends Screen, TState> {
-  screen: TScreen;
-  state: TState;
-}
-
-interface Scenario<TScreen extends Screen, TState> {
-  prepare: () => Promise<Runtime<TScreen, TState>>;
-  render: (state: TState) => void;
-  resize?: (state: TState, screen: TScreen) => void;
-  update: (state: TState, dt: number) => void;
-}
-
 interface ScreenConstructor<TScreen extends Screen> {
   new (container: HTMLElement): TScreen;
 }
-
-type StateConstructor<TScreen extends Screen, TState, TConfiguration> = (
-  screen: TScreen,
-  tweak: Tweak<TConfiguration>
-) => Promise<TState>;
 
 type Tweak<T> = {
   [P in keyof T]: number;
@@ -151,23 +141,43 @@ const createSelect = (
 
 const declare = <TScreen extends Screen, TState>(
   title: string,
-  scene: Scenario<TScreen, TState>
+  screenConstructor: ScreenConstructor<TScreen>,
+  application: Application<TScreen, TState>
 ): Process => {
-  let runtime: Runtime<TScreen, TState>;
+  let runtime: { screen: TScreen; state: TState } | undefined = undefined;
   let x = 0;
   let y = 0;
 
   return {
     title,
     change: (callback: (screen: Screen) => void) => {
-      callback(runtime.screen);
+      if (runtime !== undefined) {
+        callback(runtime.screen);
+      }
     },
     start: async () => {
-      runtime = await scene.prepare();
+      const container = document.getElementById("screens");
+
+      if (container === null) {
+        throw Error("missing screen container");
+      }
+
+      while (container.childNodes.length > 0) {
+        container.removeChild(container.childNodes[0]);
+      }
+
+      const screen = new screenConstructor(container);
+      const state = await application.prepare(screen);
+
+      runtime = { screen, state };
     },
     step: (dt: number) => {
+      if (runtime === undefined) {
+        return;
+      }
+
       const { screen, state } = runtime;
-      const { render, resize, update } = scene;
+      const { render, resize, update } = application;
 
       // FIXME: detect canvas resize [canvas-resize]
       if (screen.getWidth() !== x || screen.getHeight() !== y) {
@@ -184,7 +194,7 @@ const declare = <TScreen extends Screen, TState>(
   };
 };
 
-const initialize = (processes: Process[]) => {
+const run = (processes: Process[]) => {
   const frameContainer = document.getElementById("frames");
 
   if (frameContainer === null) {
@@ -270,25 +280,4 @@ const initialize = (processes: Process[]) => {
   tick();
 };
 
-const runtime = async <TScreen extends Screen, TState, TConfiguration>(
-  screenConstructor: ScreenConstructor<TScreen>,
-  configuration: TConfiguration,
-  stateConstructor: StateConstructor<TScreen, TState, TConfiguration>
-) => {
-  const container = document.getElementById("screens");
-
-  if (container === null) {
-    throw Error("missing screen container");
-  }
-
-  while (container.childNodes.length > 0) {
-    container.removeChild(container.childNodes[0]);
-  }
-
-  const screen = new screenConstructor(container);
-  const state = await stateConstructor(screen, configure(configuration));
-
-  return { screen, state };
-};
-
-export { type Tweak, initialize, declare, runtime };
+export { type Tweak, configure, declare, run };

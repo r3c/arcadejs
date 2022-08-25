@@ -1,4 +1,4 @@
-import { declare, runtime } from "../../engine/application";
+import { declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import * as load from "../../engine/graphic/load";
@@ -61,58 +61,57 @@ interface ShaderState {
   viewMatrix: Matrix4;
 }
 
-const prepare = () =>
-  runtime(WebGLScreen, undefined, async (screen) => {
-    const gl = screen.context;
-    const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
+const prepare = async (screen: WebGLScreen) => {
+  const gl = screen.context;
+  const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
-    shader.setupAttributePerGeometry("colors", (geometry) => geometry.colors);
-    shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
-    shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
+  shader.setupAttributePerGeometry("colors", (geometry) => geometry.colors);
+  shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
+  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-    shader.setupPropertyPerMaterial(
-      "albedoFactor",
-      (material) => material.albedoFactor,
-      (gl) => gl.uniform4fv
-    );
-    shader.setupTexturePerMaterial(
-      "albedoMap",
-      undefined,
-      webgl.TextureType.Quad,
-      (material) => material.albedoMap
-    );
+  shader.setupPropertyPerMaterial(
+    "albedoFactor",
+    (material) => material.albedoFactor,
+    (gl) => gl.uniform4fv
+  );
+  shader.setupTexturePerMaterial(
+    "albedoMap",
+    undefined,
+    webgl.TextureType.Quad,
+    (material) => material.albedoMap
+  );
 
-    shader.setupMatrixPerNode(
-      "modelMatrix",
-      (state) => state.transform.toArray(),
-      (gl) => gl.uniformMatrix4fv
-    );
-    shader.setupMatrixPerTarget(
-      "projectionMatrix",
-      (state) => state.projectionMatrix.toArray(),
-      (gl) => gl.uniformMatrix4fv
-    );
-    shader.setupMatrixPerTarget(
-      "viewMatrix",
-      (state) => state.viewMatrix.toArray(),
-      (gl) => gl.uniformMatrix4fv
-    );
+  shader.setupMatrixPerNode(
+    "modelMatrix",
+    (state) => state.transform.toArray(),
+    (gl) => gl.uniformMatrix4fv
+  );
+  shader.setupMatrixPerTarget(
+    "projectionMatrix",
+    (state) => state.projectionMatrix.toArray(),
+    (gl) => gl.uniformMatrix4fv
+  );
+  shader.setupMatrixPerTarget(
+    "viewMatrix",
+    (state) => state.viewMatrix.toArray(),
+    (gl) => gl.uniformMatrix4fv
+  );
 
-    return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      gl: gl,
-      input: new Input(screen.canvas),
-      mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
-      painter: new painter.Painter(shader),
-      projectionMatrix: Matrix4.createIdentity(),
-      screen: screen,
-      target: new webgl.Target(
-        screen.context,
-        screen.getWidth(),
-        screen.getHeight()
-      ),
-    };
-  });
+  return {
+    camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+    gl: gl,
+    input: new Input(screen.canvas),
+    mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
+    painter: new painter.Painter(shader),
+    projectionMatrix: Matrix4.createIdentity(),
+    screen: screen,
+    target: new webgl.Target(
+      screen.context,
+      screen.getWidth(),
+      screen.getHeight()
+    ),
+  };
+};
 
 const render = (state: SceneState) => {
   const camera = state.camera;
@@ -157,7 +156,7 @@ const update = (state: SceneState) => {
   state.camera.move(state.input);
 };
 
-const process = declare("Basic hardware rendering", {
+const process = declare("Basic hardware rendering", WebGLScreen, {
   prepare,
   render,
   resize,
