@@ -18,6 +18,7 @@ const render = (state: State) => {
 const process = declare("Blank screen", {
   prepare,
   render,
+  update: () => {},
 });
 
 export { process };

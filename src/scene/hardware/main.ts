@@ -62,7 +62,7 @@ interface ShaderState {
 }
 
 const prepare = () =>
-  runtime(display.WebGLScreen, undefined, async (screen, input) => {
+  runtime(display.WebGLScreen, undefined, async (screen) => {
     const gl = screen.context;
     const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
 
@@ -101,7 +101,7 @@ const prepare = () =>
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       gl: gl,
-      input: input,
+      input: new Input(screen.canvas),
       mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
       painter: new painter.Painter(shader),
       projectionMatrix: Matrix4.createIdentity(),

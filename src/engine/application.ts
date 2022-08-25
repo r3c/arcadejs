@@ -1,4 +1,3 @@
-import { Input } from "./io/controller";
 import * as display from "./display";
 
 interface Process {
@@ -9,17 +8,15 @@ interface Process {
 }
 
 interface Runtime<TScreen extends display.Screen, TState> {
-  input: Input;
   screen: TScreen;
-  size: { x: number; y: number };
   state: TState;
 }
 
 interface Scenario<TScreen extends display.Screen, TState> {
   prepare: () => Promise<Runtime<TScreen, TState>>;
-  render?: (state: TState) => void;
+  render: (state: TState) => void;
   resize?: (state: TState, screen: TScreen) => void;
-  update?: (state: TState, dt: number) => void;
+  update: (state: TState, dt: number) => void;
 }
 
 interface ScreenConstructor<T> {
@@ -30,11 +27,7 @@ type StateConstructor<
   TScreen extends display.Screen,
   TState,
   TConfiguration
-> = (
-  screen: TScreen,
-  input: Input,
-  tweak: Tweak<TConfiguration>
-) => Promise<TState>;
+> = (screen: TScreen, tweak: Tweak<TConfiguration>) => Promise<TState>;
 
 type Tweak<T> = {
   [P in keyof T]: number;
@@ -162,6 +155,8 @@ const declare = <TScreen extends display.Screen, TState>(
   scene: Scenario<TScreen, TState>
 ): Process => {
   let runtime: Runtime<TScreen, TState>;
+  let x = 0;
+  let y = 0;
 
   return {
     title,
@@ -172,24 +167,20 @@ const declare = <TScreen extends display.Screen, TState>(
       runtime = await scene.prepare();
     },
     step: (dt: number) => {
-      const { screen, size, state } = runtime;
+      const { screen, state } = runtime;
       const { render, resize, update } = scene;
 
       // FIXME: detect canvas resize [canvas-resize]
-      if (screen.getWidth() !== size.x || screen.getHeight() !== size.y) {
+      if (screen.getWidth() !== x || screen.getHeight() !== y) {
         resize?.(state, screen);
 
-        (<any>screen).resize(); // FIXME: encapsulation violation [canvas-resize]
-
-        runtime.size = {
-          x: screen.getWidth(),
-          y: screen.getHeight(),
-        };
+        x = screen.getWidth();
+        y = screen.getHeight();
       }
 
-      update?.(state, dt);
+      update(state, dt);
 
-      setTimeout(() => render?.(state), 0);
+      setTimeout(() => render(state), 0);
     },
   };
 };
@@ -287,21 +278,18 @@ const runtime = async <TScreen extends display.Screen, TState, TConfiguration>(
 ) => {
   const container = document.getElementById("screens");
 
-  if (container === null) throw Error("missing screen container");
+  if (container === null) {
+    throw Error("missing screen container");
+  }
 
-  while (container.childNodes.length > 0)
+  while (container.childNodes.length > 0) {
     container.removeChild(container.childNodes[0]);
+  }
 
-  const input = new Input(container);
   const screen = new screenConstructor(container);
-  const state = await stateConstructor(screen, input, configure(configuration));
+  const state = await stateConstructor(screen, configure(configuration));
 
-  return {
-    input: input,
-    screen: screen,
-    size: { x: 0, y: 0 },
-    state: state,
-  };
+  return { screen, state };
 };
 
 export { type Tweak, initialize, declare, runtime };

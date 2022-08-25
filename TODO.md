@@ -12,7 +12,6 @@
 - Implement smooth shadows
 - Implement PBR lighting model for deferred {shading,lighting}
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
-- Detect canvas resizing and stop violating encapsulation [canvas-resize]
 - Use RGB standard to linear conversion in deferred shader
 - Extract model textures out of materials to factorize bitmaps
 - Split scene update and draw to perform batch sorting only on change
@@ -20,6 +19,7 @@
 
 ## Done
 
+- Detect canvas resizing and stop violating encapsulation [canvas-resize]
 - Use scalar fields for matrix4 instead of vector
 - Yield + errors in OBJ loader
 - Return T from io.readURL, not Request<T>

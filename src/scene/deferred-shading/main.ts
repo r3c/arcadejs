@@ -65,7 +65,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 ];
 
 const prepare = () =>
-  runtime(display.WebGLScreen, configuration, async (screen, input, tweak) => {
+  runtime(display.WebGLScreen, configuration, async (screen, tweak) => {
     const gl = screen.context;
 
     // Load meshes
@@ -100,7 +100,7 @@ const prepare = () =>
         direction: Vector3.zero,
         shadow: false,
       })),
-      input: input,
+      input: new Input(screen.canvas),
       meshes: {
         cube: webgl.loadMesh(gl, cubeMesh),
         directionalLight: webgl.loadMesh(gl, directionalLightMesh),

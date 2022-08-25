@@ -35,23 +35,19 @@ const configuration = {
 };
 
 const prepare = () =>
-  runtime(
-    display.Context2DScreen,
-    configuration,
-    async (screen, input, tweak) => {
-      const renderer = new software.Renderer(screen);
+  runtime(display.Context2DScreen, configuration, async (screen, tweak) => {
+    const renderer = new software.Renderer(screen);
 
-      return {
-        camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-        cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
-        cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
-        input: input,
-        projection: Matrix4.createIdentity(),
-        renderer: renderer,
-        tweak: tweak,
-      };
-    }
-  );
+    return {
+      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
+      cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
+      input: new Input(screen.canvas),
+      projection: Matrix4.createIdentity(),
+      renderer: renderer,
+      tweak: tweak,
+    };
+  });
 
 const render = (state: State) => {
   const camera = state.camera;

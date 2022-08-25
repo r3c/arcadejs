@@ -78,7 +78,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 ];
 
 const prepare = async () =>
-  runtime(display.WebGLScreen, configuration, async (screen, input, tweak) => {
+  runtime(display.WebGLScreen, configuration, async (screen, tweak) => {
     const gl = screen.context;
 
     // Load meshes
@@ -152,7 +152,7 @@ const prepare = async () =>
     // Create state
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
-      input: input,
+      input: new Input(screen.canvas),
       lights: functional.range(3, () => ({
         position: { x: 0, y: 0, z: 0 },
       })),
