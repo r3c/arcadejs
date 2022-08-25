@@ -1,4 +1,4 @@
-import { Matrix4 } from "../../math/matrix";
+import { Matrix3, Matrix4 } from "../../math/matrix";
 import * as webgl from "../webgl";
 
 class Painter<State> implements webgl.Painter<State> {
@@ -18,9 +18,9 @@ class Painter<State> implements webgl.Painter<State> {
 
     shader.activate();
 
-    for (const subject of subjects) {
-      const textureIndex = shader.bindTarget(state);
+    const textureIndex = shader.bindTarget(state);
 
+    for (const subject of subjects) {
       this.draw(target, subject.mesh.nodes, subject.matrix, view, textureIndex);
     }
   }
@@ -29,7 +29,7 @@ class Painter<State> implements webgl.Painter<State> {
     target: webgl.Target,
     nodes: Iterable<webgl.Node>,
     parentTransform: Matrix4,
-    viewMatrix: Matrix4,
+    view: Matrix4,
     textureIndex: number
   ): void {
     const normal = Matrix4.createIdentity();
@@ -39,7 +39,13 @@ class Painter<State> implements webgl.Painter<State> {
     for (const node of nodes) {
       transform.duplicate(parentTransform).multiply(node.transform);
 
-      this.draw(target, node.children, transform, viewMatrix, textureIndex);
+      const viewTransformMatrix = normal.duplicate(view).multiply(transform);
+
+      const normalMatrix = Matrix3.fromObject(viewTransformMatrix)
+        .invert()
+        .toArray();
+
+      this.draw(target, node.children, transform, view, textureIndex);
 
       for (const primitive of node.primitives) {
         const geometry = primitive.geometry;
@@ -47,13 +53,7 @@ class Painter<State> implements webgl.Painter<State> {
 
         shader.bindGeometry(geometry);
         shader.bindMaterial(material, textureIndex);
-        shader.bindNode({
-          normalMatrix: normal
-            .duplicate(viewMatrix)
-            .multiply(transform)
-            .toTransposedInverse3x3(),
-          transform: transform,
-        });
+        shader.bindNode({ normalMatrix, transform });
 
         target.draw(
           0,

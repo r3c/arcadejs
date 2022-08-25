@@ -945,7 +945,12 @@ class Target {
   public clear(framebufferIndex: number) {
     const gl = this.gl;
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[framebufferIndex]);
+    gl.bindFramebuffer(
+      gl.FRAMEBUFFER,
+      framebufferIndex < this.framebuffers.length
+        ? this.framebuffers[framebufferIndex]
+        : null
+    );
     gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
     gl.clearColor(
@@ -973,7 +978,12 @@ class Target {
   ) {
     const gl = this.gl;
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[framebufferIndex]);
+    gl.bindFramebuffer(
+      gl.FRAMEBUFFER,
+      framebufferIndex < this.framebuffers.length
+        ? this.framebuffers[framebufferIndex]
+        : null
+    );
     gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);

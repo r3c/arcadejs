@@ -1,5 +1,118 @@
 import { Vector3, Vector4 } from "./vector";
 
+type Matrix3Data = Pick<
+  Matrix3,
+  "v00" | "v01" | "v02" | "v10" | "v11" | "v12" | "v20" | "v21" | "v22"
+>;
+
+class Matrix3 {
+  public v00: number;
+  public v01: number;
+  public v02: number;
+  public v10: number;
+  public v11: number;
+  public v12: number;
+  public v20: number;
+  public v21: number;
+  public v22: number;
+
+  public static createIdentity(): Matrix3 {
+    return new Matrix3({
+      v00: 1,
+      v01: 0,
+      v02: 0,
+      v10: 0,
+      v11: 1,
+      v12: 0,
+      v20: 0,
+      v21: 0,
+      v22: 1,
+    });
+  }
+
+  public static fromObject(obj: Matrix3Data): Matrix3 {
+    return new Matrix3(obj);
+  }
+
+  private constructor(obj: Matrix3Data) {
+    this.v00 = obj.v00;
+    this.v01 = obj.v01;
+    this.v02 = obj.v02;
+    this.v10 = obj.v10;
+    this.v11 = obj.v11;
+    this.v12 = obj.v12;
+    this.v20 = obj.v20;
+    this.v21 = obj.v21;
+    this.v22 = obj.v22;
+  }
+
+  public duplicate(source: Matrix4Data): Matrix3 {
+    this.v00 = source.v00;
+    this.v01 = source.v01;
+    this.v02 = source.v02;
+    this.v10 = source.v10;
+    this.v11 = source.v11;
+    this.v12 = source.v12;
+    this.v20 = source.v20;
+    this.v21 = source.v21;
+    this.v22 = source.v22;
+
+    return this;
+  }
+
+  /*
+   ** From: https://github.com/willnode/N-Matrix-Programmer/blob/master/Info/Matrix_3x3.txt
+   */
+  public invert(): Matrix3 {
+    const v00 = this.v11 * this.v22 - this.v12 * this.v21;
+    const v01 = this.v10 * this.v22 - this.v12 * this.v20;
+    const v02 = this.v10 * this.v21 - this.v11 * this.v20;
+
+    const determinant = this.v00 * v00 - this.v01 * v01 + this.v02 * v02;
+
+    if (Math.abs(determinant) >= Number.EPSILON) {
+      const v10 = this.v01 * this.v22 - this.v02 * this.v21;
+      const v11 = this.v00 * this.v22 - this.v02 * this.v20;
+      const v12 = this.v00 * this.v21 - this.v20 * this.v01;
+      const v20 = this.v01 * this.v12 - this.v02 * this.v11;
+      const v21 = this.v00 * this.v12 - this.v10 * this.v02;
+      const v22 = this.v00 * this.v11 - this.v10 * this.v01;
+
+      const determinantInverse = 1 / determinant;
+
+      this.v00 = v00 * determinantInverse;
+      this.v01 = v01 * -determinantInverse;
+      this.v02 = v02 * determinantInverse;
+      this.v10 = v10 * -determinantInverse;
+      this.v11 = v11 * determinantInverse;
+      this.v12 = v12 * -determinantInverse;
+      this.v20 = v20 * determinantInverse;
+      this.v21 = v21 * -determinantInverse;
+      this.v22 = v22 * determinantInverse;
+    }
+
+    return this;
+  }
+
+  public toArray(): number[] {
+    return [
+      this.v00,
+      this.v01,
+      this.v02,
+      this.v10,
+      this.v11,
+      this.v12,
+      this.v20,
+      this.v21,
+      this.v22,
+    ];
+  }
+
+  public transpose() {
+    // FIXME
+  }
+}
+
 type Matrix4Data = Pick<
   Matrix4,
   | "v00"
@@ -21,8 +134,6 @@ type Matrix4Data = Pick<
 >;
 
 class Matrix4 {
-  private static readonly identity3: [1, 0, 0, 0, 1, 0, 0, 0, 1];
-
   public v00: number;
   public v01: number;
   public v02: number;
@@ -267,7 +378,7 @@ class Matrix4 {
     const determinant =
       this.v00 * v00 + this.v01 * v10 + this.v02 * v20 + this.v03 * v30;
 
-    if (determinant !== 0) {
+    if (Math.abs(determinant) >= Number.EPSILON) {
       const v01 =
         -this.v01 * this.v22 * this.v33 +
         this.v01 * this.v23 * this.v32 +
@@ -615,31 +726,6 @@ class Matrix4 {
     ];
   }
 
-  public toTransposedInverse3x3() {
-    const determinant =
-      this.v00 * (this.v11 * this.v22 - this.v12 * this.v21) -
-      this.v01 * (this.v10 * this.v22 - this.v12 * this.v20) +
-      this.v02 * (this.v10 * this.v21 - this.v11 * this.v20);
-
-    if (Math.abs(determinant) < Number.EPSILON) {
-      return Matrix4.identity3;
-    }
-
-    const inverse = 1 / determinant;
-
-    return [
-      (this.v11 * this.v22 - this.v21 * this.v12) * inverse,
-      (this.v10 * this.v22 - this.v12 * this.v20) * -inverse,
-      (this.v10 * this.v21 - this.v20 * this.v11) * inverse,
-      (this.v01 * this.v22 - this.v02 * this.v21) * -inverse,
-      (this.v00 * this.v22 - this.v02 * this.v20) * inverse,
-      (this.v00 * this.v21 - this.v20 * this.v01) * -inverse,
-      (this.v01 * this.v12 - this.v02 * this.v11) * inverse,
-      (this.v00 * this.v12 - this.v10 * this.v02) * -inverse,
-      (this.v00 * this.v11 - this.v10 * this.v01) * inverse,
-    ];
-  }
-
   public translate(vector: Vector3): Matrix4 {
     return this.multiply({
       v00: 1,
@@ -662,4 +748,4 @@ class Matrix4 {
   }
 }
 
-export { Matrix4 };
+export { Matrix3, Matrix4 };

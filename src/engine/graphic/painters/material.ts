@@ -1,4 +1,4 @@
-import { Matrix4 } from "../../math/matrix";
+import { Matrix3, Matrix4 } from "../../math/matrix";
 import * as webgl from "../webgl";
 
 interface MaterialBatch {
@@ -93,17 +93,17 @@ class Painter<State> implements webgl.Painter<State> {
         shader.bindMaterial(material, shaderTextureIndex);
 
         // Process batch models
-        for (const model of materialBatch.models) {
-          const geometry = model.geometry;
+        for (const { geometry, transform } of materialBatch.models) {
+          const viewTransformMatrix = normal
+            .duplicate(view)
+            .multiply(transform);
+
+          const normalMatrix = Matrix3.fromObject(viewTransformMatrix)
+            .invert()
+            .toArray();
 
           shader.bindGeometry(geometry);
-          shader.bindNode({
-            normalMatrix: normal
-              .duplicate(view)
-              .multiply(model.transform)
-              .toTransposedInverse3x3(),
-            transform: model.transform,
-          });
+          shader.bindNode({ normalMatrix, transform });
 
           target.draw(
             0,
