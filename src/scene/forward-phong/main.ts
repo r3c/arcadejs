@@ -1,4 +1,9 @@
-import { type Tweak, configure, declare } from "../../engine/application";
+import {
+  type Application,
+  type Tweak,
+  configure,
+  declare,
+} from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
@@ -67,139 +72,136 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.useNormalMap !== 0,
 ];
 
-const prepare = async (screen: WebGLScreen) => {
-  const gl = screen.context;
-  const tweak = configure(configuration);
+const application: Application<WebGLScreen, SceneState> = {
+  async prepare(screen) {
+    const gl = screen.context;
+    const tweak = configure(configuration);
 
-  // Load models
-  const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
-  const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
-  const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
-    transform: Matrix4.createIdentity().scale({
-      x: 0.2,
-      y: 0.2,
-      z: 0.2,
-    }),
-  });
+    // Load models
+    const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
+    const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
+    const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
+      transform: Matrix4.createIdentity().scale({
+        x: 0.2,
+        y: 0.2,
+        z: 0.2,
+      }),
+    });
 
-  // Create state
-  return {
-    camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-    input: new Input(screen.canvas),
-    lightPositions: functional.range(3, () => Vector3.zero),
-    meshes: {
-      cube: webgl.loadMesh(gl, cubeMesh),
-      ground: webgl.loadMesh(gl, groundMesh),
-      light: webgl.loadMesh(gl, lightMesh),
-    },
-    move: 0,
-    pipelines: {
-      lights: bitfield.enumerate(getOptions(tweak)).map(
-        (flags) =>
-          new ForwardLightingPipeline(gl, {
-            light: {
-              maxPointLights: 3,
-              model: ForwardLightingModel.Phong,
-              modelPhongNoAmbient: !flags[0],
-              modelPhongNoDiffuse: !flags[1],
-              modelPhongNoSpecular: !flags[2],
-              noShadow: true,
-            },
-            material: {
-              forceHeightMap: flags[3] ? undefined : false,
-              forceNormalMap: flags[4] ? undefined : false,
-            },
-          })
+    // Create state
+    return {
+      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      input: new Input(screen.canvas),
+      lightPositions: functional.range(3, () => Vector3.zero),
+      meshes: {
+        cube: webgl.loadMesh(gl, cubeMesh),
+        ground: webgl.loadMesh(gl, groundMesh),
+        light: webgl.loadMesh(gl, lightMesh),
+      },
+      move: 0,
+      pipelines: {
+        lights: bitfield.enumerate(getOptions(tweak)).map(
+          (flags) =>
+            new ForwardLightingPipeline(gl, {
+              light: {
+                maxPointLights: 3,
+                model: ForwardLightingModel.Phong,
+                modelPhongNoAmbient: !flags[0],
+                modelPhongNoDiffuse: !flags[1],
+                modelPhongNoSpecular: !flags[2],
+                noShadow: true,
+              },
+              material: {
+                forceHeightMap: flags[3] ? undefined : false,
+                forceNormalMap: flags[4] ? undefined : false,
+              },
+            })
+        ),
+      },
+      projectionMatrix: Matrix4.createIdentity(),
+      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+      tweak,
+    };
+  },
+
+  render(state) {
+    const camera = state.camera;
+    const meshes = state.meshes;
+    const pipelines = state.pipelines;
+    const target = state.target;
+
+    const transform = {
+      projectionMatrix: state.projectionMatrix,
+      viewMatrix: Matrix4.createIdentity()
+        .translate(camera.position)
+        .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+        .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
+    };
+
+    // Clear screen
+    target.clear(0);
+
+    // Forward pass
+    const lightPipeline =
+      pipelines.lights[bitfield.index(getOptions(state.tweak))];
+    const lightScene = {
+      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+      pointLights: state.lightPositions
+        .slice(0, state.tweak.nbLights)
+        .map((position) => ({
+          color: { x: 0.8, y: 0.8, z: 0.8 },
+          position: position,
+          radius: 5,
+        })),
+      subjects: [
+        {
+          matrix: Matrix4.createIdentity(),
+          mesh: meshes.cube,
+        },
+        {
+          matrix: Matrix4.createIdentity().translate({
+            x: 0,
+            y: -1.5,
+            z: 0,
+          }),
+          mesh: meshes.ground,
+        },
+      ].concat(
+        state.lightPositions.slice(0, state.tweak.nbLights).map((position) => ({
+          matrix: Matrix4.createIdentity().translate(position),
+          mesh: meshes.light,
+        }))
       ),
-    },
-    projectionMatrix: Matrix4.createIdentity(),
-    target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
-    tweak,
-  };
+    };
+
+    lightPipeline.process(target, transform, lightScene);
+  },
+
+  resize(state, screen) {
+    for (const pipeline of state.pipelines.lights)
+      pipeline.resize(screen.getWidth(), screen.getHeight());
+
+    state.projectionMatrix = Matrix4.createPerspective(
+      45,
+      screen.getRatio(),
+      0.1,
+      100
+    );
+    state.target.resize(screen.getWidth(), screen.getHeight());
+  },
+
+  update(state, dt) {
+    // Update light positions
+    if (state.tweak.animate) state.move += dt * 0.0005;
+
+    for (let i = 0; i < state.lightPositions.length; ++i)
+      state.lightPositions[i] = move.orbitate(i, state.move, 2, 2);
+
+    // Move camera
+    state.camera.move(state.input);
+  },
 };
 
-const render = (state: SceneState) => {
-  const camera = state.camera;
-  const meshes = state.meshes;
-  const pipelines = state.pipelines;
-  const target = state.target;
-
-  const transform = {
-    projectionMatrix: state.projectionMatrix,
-    viewMatrix: Matrix4.createIdentity()
-      .translate(camera.position)
-      .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-      .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
-  };
-
-  // Clear screen
-  target.clear(0);
-
-  // Forward pass
-  const lightPipeline =
-    pipelines.lights[bitfield.index(getOptions(state.tweak))];
-  const lightScene = {
-    ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-    pointLights: state.lightPositions
-      .slice(0, state.tweak.nbLights)
-      .map((position) => ({
-        color: { x: 0.8, y: 0.8, z: 0.8 },
-        position: position,
-        radius: 5,
-      })),
-    subjects: [
-      {
-        matrix: Matrix4.createIdentity(),
-        mesh: meshes.cube,
-      },
-      {
-        matrix: Matrix4.createIdentity().translate({
-          x: 0,
-          y: -1.5,
-          z: 0,
-        }),
-        mesh: meshes.ground,
-      },
-    ].concat(
-      state.lightPositions.slice(0, state.tweak.nbLights).map((position) => ({
-        matrix: Matrix4.createIdentity().translate(position),
-        mesh: meshes.light,
-      }))
-    ),
-  };
-
-  lightPipeline.process(target, transform, lightScene);
-};
-
-const resize = (state: SceneState, screen: WebGLScreen) => {
-  for (const pipeline of state.pipelines.lights)
-    pipeline.resize(screen.getWidth(), screen.getHeight());
-
-  state.projectionMatrix = Matrix4.createPerspective(
-    45,
-    screen.getRatio(),
-    0.1,
-    100
-  );
-  state.target.resize(screen.getWidth(), screen.getHeight());
-};
-
-const update = (state: SceneState, dt: number) => {
-  // Update light positions
-  if (state.tweak.animate) state.move += dt * 0.0005;
-
-  for (let i = 0; i < state.lightPositions.length; ++i)
-    state.lightPositions[i] = move.orbitate(i, state.move, 2, 2);
-
-  // Move camera
-  state.camera.move(state.input);
-};
-
-const process = declare("Forward Phong lighting", WebGLScreen, {
-  prepare,
-  render,
-  resize,
-  update,
-});
+const process = declare("Forward Phong lighting", WebGLScreen, application);
 
 export { process };

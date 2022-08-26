@@ -280,4 +280,4 @@ const run = (processes: Process[]) => {
   tick();
 };
 
-export { type Tweak, configure, declare, run };
+export { type Application, type Tweak, configure, declare, run };

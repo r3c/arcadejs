@@ -1,4 +1,9 @@
-import { type Tweak, configure, declare } from "../../engine/application";
+import {
+  type Application,
+  type Tweak,
+  configure,
+  declare,
+} from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { Context2DScreen } from "../../engine/graphic/display";
 import * as load from "../../engine/graphic/load";
@@ -34,50 +39,52 @@ const configuration = {
   useTexture: false,
 };
 
-const prepare = async (screen: Context2DScreen) => {
-  const renderer = new software.Renderer(screen);
-  const tweak = configure(configuration);
+const application: Application<Context2DScreen, State> = {
+  async prepare(screen) {
+    const renderer = new software.Renderer(screen);
+    const tweak = configure(configuration);
 
-  return {
-    camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-    cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
-    cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
-    input: new Input(screen.canvas),
-    projection: Matrix4.createIdentity(),
-    renderer: renderer,
-    tweak: tweak,
-  };
+    return {
+      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      cubeWithColor: await load.fromJSON("./obj/cube-color.json"),
+      cubeWithTexture: await load.fromJSON("./obj/cube/mesh.json"),
+      input: new Input(screen.canvas),
+      projection: Matrix4.createIdentity(),
+      renderer: renderer,
+      tweak: tweak,
+    };
+  },
+
+  render(state) {
+    const camera = state.camera;
+    const renderer = state.renderer;
+    const view = Matrix4.createIdentity()
+      .translate(camera.position)
+      .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
+      .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+
+    const model = state.tweak.useTexture
+      ? state.cubeWithTexture
+      : state.cubeWithColor;
+
+    renderer.clear();
+    renderer.draw(model, state.projection, view, software.DrawMode.Default);
+  },
+
+  resize(state, screen) {
+    state.projection = Matrix4.createPerspective(
+      45,
+      screen.getRatio(),
+      0.1,
+      100
+    );
+  },
+
+  update(state) {
+    state.camera.move(state.input);
+  },
 };
 
-const render = (state: State) => {
-  const camera = state.camera;
-  const renderer = state.renderer;
-  const view = Matrix4.createIdentity()
-    .translate(camera.position)
-    .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-    .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
-
-  const model = state.tweak.useTexture
-    ? state.cubeWithTexture
-    : state.cubeWithColor;
-
-  renderer.clear();
-  renderer.draw(model, state.projection, view, software.DrawMode.Default);
-};
-
-const resize = (state: State, screen: Context2DScreen) => {
-  state.projection = Matrix4.createPerspective(45, screen.getRatio(), 0.1, 100);
-};
-
-const update = (state: State) => {
-  state.camera.move(state.input);
-};
-
-const process = declare("Software rendering", Context2DScreen, {
-  prepare,
-  render,
-  resize,
-  update,
-});
+const process = declare("Software rendering", Context2DScreen, application);
 
 export { process };
