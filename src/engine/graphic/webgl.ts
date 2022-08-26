@@ -46,7 +46,7 @@ interface Directive {
 interface Geometry {
   colors: Attribute | undefined;
   coords: Attribute | undefined;
-  count: number;
+  indexCount: number;
   indexBuffer: WebGLBuffer;
   indexType: number;
   normals: Attribute | undefined;
@@ -64,7 +64,6 @@ interface Material {
   heightMap: WebGLTexture | undefined;
   heightParallaxBias: number;
   heightParallaxScale: number;
-  id: string;
   metalnessMap: WebGLTexture | undefined;
   metalnessStrength: number;
   normalMap: WebGLTexture | undefined;
@@ -399,7 +398,7 @@ const textureGetWrap = (gl: WebGLRenderingContext, wrap: model.Wrap) => {
 const loadGeometry = (
   gl: WebGLRenderingContext,
   geometry: model.Geometry,
-  materials: { [name: string]: Material },
+  materials: Map<string, Material>,
   defaultMaterial: Material
 ): Primitive => {
   return {
@@ -416,7 +415,7 @@ const loadGeometry = (
         stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, coords.buffer),
       })),
-      count: geometry.indices.length,
+      indexCount: geometry.indices.length,
       indexBuffer: bufferConvert(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
       indexType: bufferGetType(gl, geometry.indices),
       normals: functional.map(geometry.normals, (normals) => ({
@@ -440,17 +439,16 @@ const loadGeometry = (
       })),
     },
     material:
-      geometry.materialName !== undefined
-        ? materials[geometry.materialName] || defaultMaterial
-        : defaultMaterial,
+      (geometry.materialName !== undefined
+        ? materials.get(geometry.materialName)
+        : undefined) ?? defaultMaterial,
   };
 };
 
 const loadMaterial = (
   gl: WebGLRenderingContext,
-  id: string,
   material: model.Material
-) => {
+): Material => {
   const toColorMap = (texture: model.Texture) =>
     textureConfigure(
       gl,
@@ -475,7 +473,6 @@ const loadMaterial = (
     heightMap: functional.map(material.heightMap, toColorMap),
     heightParallaxBias: material.heightParallaxBias ?? 0,
     heightParallaxScale: material.heightParallaxScale ?? 0,
-    id: id,
     metalnessMap: functional.map(material.metalnessMap, toColorMap),
     metalnessStrength: material.metalnessStrength ?? 0,
     normalMap: functional.map(material.normalMap, toColorMap),
@@ -488,23 +485,13 @@ const loadMaterial = (
 };
 
 const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh): Mesh => {
-  // Create pseudo-unique identifier
-  // See: https://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
-  const guid = () => {
-    const s4 = () =>
-      Math.floor((1 + Math.random()) * 0x10000)
-        .toString(16)
-        .substring(1);
-
-    return s4() + s4() + s4() + s4() + s4() + s4() + s4() + s4();
-  };
-
-  const defaultMaterial = loadMaterial(gl, guid(), {});
-  const materials: { [name: string]: Material } = {};
+  const defaultMaterial = loadMaterial(gl, {});
+  const materials = new Map<string, Material>();
   const nodes: Node[] = [];
 
-  for (const name in mesh.materials)
-    materials[name] = loadMaterial(gl, guid(), mesh.materials[name]);
+  for (const name in mesh.materials) {
+    materials.set(name, loadMaterial(gl, mesh.materials[name]));
+  }
 
   for (const node of mesh.nodes)
     nodes.push(loadNode(gl, node, materials, defaultMaterial));
@@ -517,7 +504,7 @@ const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh): Mesh => {
 const loadNode = (
   gl: WebGLRenderingContext,
   node: model.Node,
-  materials: { [name: string]: Material },
+  materials: Map<string, Material>,
   defaultMaterial: Material
 ): Node => ({
   children: node.children.map((child) =>

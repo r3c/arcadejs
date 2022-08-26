@@ -1,23 +1,21 @@
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import * as webgl from "../webgl";
 
-interface MaterialBatch {
-  material: webgl.Material;
-  models: ModelBatch[];
+interface Batch<State> {
+  shaders: Map<number, BatchOfShader<State>>;
 }
 
-interface ModelBatch {
-  geometry: webgl.Geometry;
-  transform: Matrix4;
+interface BatchOfGeometry {
+  instances: Matrix4[];
 }
 
-interface RootBatch<State> {
-  shaders: { [variant: number]: ShaderBatch<State> };
+interface BatchOfMaterial {
+  geometries: Map<webgl.Geometry, BatchOfGeometry>;
 }
 
-interface ShaderBatch<State> {
-  materials: { [id: string]: MaterialBatch };
-  shader: webgl.Shader<State>;
+interface BatchOfShader<TState> {
+  materials: Map<webgl.Material, BatchOfMaterial>;
+  shader: webgl.Shader<TState>;
 }
 
 type MaterialClassifier<State> = (
@@ -49,75 +47,71 @@ class Painter<State> implements webgl.Painter<State> {
     view: Matrix4,
     state: State
   ): void {
-    const batch: RootBatch<State> = {
-      shaders: {},
+    const batch: Batch<State> = {
+      shaders: new Map(),
     };
 
     for (const subject of subjects)
-      this.sort(batch, subject.mesh.nodes, subject.matrix, state);
+      this.group(batch, subject.mesh.nodes, subject.matrix, state);
 
     this.draw(target, batch, view, state);
   }
 
   private create(index: number, material: webgl.Material, state: State) {
-    if (this.shaderRepository[index] === undefined)
+    if (this.shaderRepository[index] === undefined) {
       this.shaderRepository[index] = this.shaderConstructor(material, state);
+    }
 
     return this.shaderRepository[index];
   }
 
   private draw(
     target: webgl.Target,
-    batch: RootBatch<State>,
+    batch: Batch<State>,
     view: Matrix4,
     state: State
   ): void {
     const normal = Matrix4.createIdentity();
 
     // Process batch shaders
-    for (const shaderIndex in batch.shaders) {
-      const shaderBatch = batch.shaders[shaderIndex];
-      const shader = shaderBatch.shader;
-
+    for (const { materials, shader } of batch.shaders.values()) {
       shader.activate();
 
-      // Assign per-call properties
       const shaderTextureIndex = shader.bindTarget(state);
 
       // Process batch materials
-      for (const id in shaderBatch.materials) {
-        const materialBatch = shaderBatch.materials[id];
-        const material = materialBatch.material;
-
-        // Assign per-material properties
+      for (const [material, { geometries }] of materials.entries()) {
         shader.bindMaterial(material, shaderTextureIndex);
 
-        // Process batch models
-        for (const { geometry, transform } of materialBatch.models) {
-          const viewTransformMatrix = normal
-            .duplicate(view)
-            .multiply(transform);
-
-          const normalMatrix = Matrix3.fromObject(viewTransformMatrix)
-            .invert()
-            .toArray();
-
+        // Process batch geometries
+        for (const [geometry, { instances }] of geometries.entries()) {
           shader.bindGeometry(geometry);
-          shader.bindNode({ normalMatrix, transform });
 
-          target.draw(
-            0,
-            geometry.indexBuffer,
-            geometry.count,
-            geometry.indexType
-          );
+          for (const transform of instances) {
+            const viewTransformMatrix = normal
+              .duplicate(view)
+              .multiply(transform);
+
+            const normalMatrix = Matrix3.fromObject(viewTransformMatrix)
+              .invert()
+              .toArray();
+
+            shader.bindNode({ normalMatrix, transform });
+
+            target.draw(
+              0,
+              geometry.indexBuffer,
+              geometry.indexCount,
+              geometry.indexType
+            );
+          }
         }
       }
     }
   }
 
-  private sort(
-    batch: RootBatch<State>,
+  private group(
+    batch: Batch<State>,
     nodes: Iterable<webgl.Node>,
     parent: Matrix4,
     state: State
@@ -127,40 +121,47 @@ class Painter<State> implements webgl.Painter<State> {
     for (const node of nodes) {
       transform.duplicate(parent).multiply(node.transform);
 
-      this.sort(batch, node.children, transform, state);
+      this.group(batch, node.children, transform, state);
 
-      for (const primitive of node.primitives) {
+      for (const { geometry, material } of node.primitives) {
         // Get or create shader batch
-        const shaderIndex = this.materialClassifier(primitive.material, state);
+        const shaderIndex = this.materialClassifier(material, state);
 
-        let shaderBatch = batch.shaders[shaderIndex];
+        let batchOfShader = batch.shaders.get(shaderIndex);
 
-        if (shaderBatch === undefined) {
-          shaderBatch = {
-            materials: {},
-            shader: this.create(shaderIndex, primitive.material, state),
+        if (batchOfShader === undefined) {
+          batchOfShader = {
+            materials: new Map(),
+            shader: this.create(shaderIndex, material, state),
           };
 
-          batch.shaders[shaderIndex] = shaderBatch;
+          batch.shaders.set(shaderIndex, batchOfShader);
         }
 
         // Get or create material batch
-        let materialBatch = shaderBatch.materials[primitive.material.id];
+        let batchOfMaterial = batchOfShader.materials.get(material);
 
-        if (materialBatch === undefined) {
-          materialBatch = {
-            material: primitive.material,
-            models: [],
+        if (batchOfMaterial === undefined) {
+          batchOfMaterial = {
+            geometries: new Map(),
           };
 
-          shaderBatch.materials[primitive.material.id] = materialBatch;
+          batchOfShader.materials.set(material, batchOfMaterial);
+        }
+
+        // Get or create geometry batch
+        let batchOfGeometry = batchOfMaterial.geometries.get(geometry);
+
+        if (batchOfGeometry === undefined) {
+          batchOfGeometry = {
+            instances: [],
+          };
+
+          batchOfMaterial.geometries.set(geometry, batchOfGeometry);
         }
 
         // Append to models
-        materialBatch.models.push({
-          geometry: primitive.geometry,
-          transform: transform,
-        });
+        batchOfGeometry.instances.push(transform);
       }
     }
   }
