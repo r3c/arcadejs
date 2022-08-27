@@ -40,10 +40,7 @@ class Painter<State> implements webgl.Painter<State> {
       transform.duplicate(parentTransform).multiply(node.transform);
 
       const viewTransformMatrix = normal.duplicate(view).multiply(transform);
-
-      const normalMatrix = Matrix3.fromObject(viewTransformMatrix)
-        .invert()
-        .toArray();
+      const normalMatrix = Matrix3.fromObject(viewTransformMatrix).invert();
 
       this.draw(target, node.children, transform, view, textureIndex);
 
@@ -53,7 +50,7 @@ class Painter<State> implements webgl.Painter<State> {
 
         shader.bindGeometry(geometry);
         shader.bindMaterial(material, textureIndex);
-        shader.bindNode({ normalMatrix, transform });
+        shader.bindNode({ normalMatrix, modelMatrix: transform });
 
         target.draw(
           0,

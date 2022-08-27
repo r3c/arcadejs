@@ -346,26 +346,13 @@ const loadGeometry = (
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
   shader.setupAttributePerGeometry("tangents", (geometry) => geometry.tangents);
 
-  shader.setupMatrixPerNode(
-    "modelMatrix",
-    (state) => state.transform.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-  shader.setupMatrixPerNode(
-    "normalMatrix",
-    (state) => state.normalMatrix,
-    (gl) => gl.uniformMatrix3fv
-  );
-  shader.setupMatrixPerTarget(
+  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+  shader.setupMatrix3PerNode("normalMatrix", (state) => state.normalMatrix);
+  shader.setupMatrix4PerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
+    (state) => state.projectionMatrix
   );
-  shader.setupMatrixPerTarget(
-    "viewMatrix",
-    (state) => state.viewMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
+  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
 
   if (configuration.lightModel === LightModel.Phong) {
     shader.setupTexturePerMaterial(
@@ -427,32 +414,15 @@ const loadLight = <T>(
   );
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
-
-  shader.setupMatrixPerNode(
-    "modelMatrix",
-    (state) => state.transform.toArray(),
-    (gl) => gl.uniformMatrix4fv
+  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+  shader.setupMatrix4PerTarget("inverseProjectionMatrix", (state) =>
+    Matrix4.createIdentity().duplicate(state.projectionMatrix).invert()
   );
-
-  shader.setupMatrixPerTarget(
-    "inverseProjectionMatrix",
-    (state) =>
-      Matrix4.createIdentity()
-        .duplicate(state.projectionMatrix)
-        .invert()
-        .toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-  shader.setupMatrixPerTarget(
+  shader.setupMatrix4PerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
+    (state) => state.projectionMatrix
   );
-  shader.setupMatrixPerTarget(
-    "viewMatrix",
-    (state) => state.viewMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
+  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
 
   shader.setupPropertyPerTarget(
     "viewportSize",
@@ -572,26 +542,13 @@ const loadMaterial = (
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
   shader.setupAttributePerGeometry("tangents", (geometry) => geometry.tangents);
 
-  shader.setupMatrixPerNode(
-    "modelMatrix",
-    (state) => state.transform.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-  shader.setupMatrixPerNode(
-    "normalMatrix",
-    (state) => state.normalMatrix,
-    (gl) => gl.uniformMatrix3fv
-  );
-  shader.setupMatrixPerTarget(
+  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+  shader.setupMatrix3PerNode("normalMatrix", (state) => state.normalMatrix);
+  shader.setupMatrix4PerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
+    (state) => state.projectionMatrix
   );
-  shader.setupMatrixPerTarget(
-    "viewMatrix",
-    (state) => state.viewMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
+  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
 
   shader.setupPropertyPerTarget(
     "ambientLightColor",

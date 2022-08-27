@@ -1,5 +1,5 @@
 import * as functional from "../language/functional";
-import { Matrix4 } from "../math/matrix";
+import { Matrix3, Matrix4 } from "../math/matrix";
 import * as model from "./model";
 import { Vector3, Vector4 } from "../math/vector";
 
@@ -91,8 +91,8 @@ interface Node {
 }
 
 interface NodeState {
-  normalMatrix: Iterable<number>; // FIXME: inconsistent type
-  transform: Matrix4;
+  modelMatrix: Matrix4;
+  normalMatrix: Matrix3;
 }
 
 interface Painter<T> {
@@ -627,17 +627,22 @@ class Shader<State> {
    ** Assign per-geometry attributes.
    */
   public bindGeometry(geometry: Geometry) {
-    for (const binding of this.attributePerGeometryBindings) binding(geometry);
+    for (const binding of this.attributePerGeometryBindings) {
+      binding(geometry);
+    }
   }
 
   /*
    ** Assign per-material uniforms.
    */
   public bindMaterial(material: Material, textureIndex: number) {
-    for (const binding of this.propertyPerMaterialBindings) binding(material);
+    for (const binding of this.propertyPerMaterialBindings) {
+      binding(material);
+    }
 
-    for (const binding of this.texturePerMaterialBindings)
+    for (const binding of this.texturePerMaterialBindings) {
       textureIndex += binding(material, textureIndex);
+    }
 
     return textureIndex;
   }
@@ -646,7 +651,9 @@ class Shader<State> {
    ** Assign per-node uniforms.
    */
   public bindNode(nodeState: NodeState) {
-    for (const binding of this.propertyPerNodeBindings) binding(nodeState);
+    for (const binding of this.propertyPerNodeBindings) {
+      binding(nodeState);
+    }
   }
 
   /*
@@ -655,10 +662,13 @@ class Shader<State> {
   public bindTarget(state: State) {
     let textureIndex = 0;
 
-    for (const binding of this.propertyPerTargetBindings) binding(state);
+    for (const binding of this.propertyPerTargetBindings) {
+      binding(state);
+    }
 
-    for (const binding of this.texturePerTargetBindings)
+    for (const binding of this.texturePerTargetBindings) {
       textureIndex += binding(state, textureIndex);
+    }
 
     return textureIndex;
   }
@@ -698,21 +708,59 @@ class Shader<State> {
     });
   }
 
-  public setupMatrixPerNode(
+  public setupMatrix3PerNode(
     name: string,
-    getter: (state: NodeState) => Iterable<number>,
-    assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>
+    getter: (state: NodeState) => Matrix3
   ) {
-    this.propertyPerNodeBindings.push(this.declareMatrix(name, getter, assign));
+    this.propertyPerNodeBindings.push(
+      this.declareMatrix(
+        name,
+        9,
+        (state, buffer) => buffer.set(getter(state).toArray()),
+        (gl) => gl.uniformMatrix3fv
+      )
+    );
   }
 
-  public setupMatrixPerTarget(
+  public setupMatrix3PerTarget(
     name: string,
-    getter: (state: State) => Iterable<number>,
-    assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>
+    getter: (state: State) => Matrix3
   ) {
     this.propertyPerTargetBindings.push(
-      this.declareMatrix(name, getter, assign)
+      this.declareMatrix(
+        name,
+        9,
+        (state, buffer) => buffer.set(getter(state).toArray()),
+        (gl) => gl.uniformMatrix3fv
+      )
+    );
+  }
+
+  public setupMatrix4PerNode(
+    name: string,
+    getter: (state: NodeState) => Matrix4
+  ) {
+    this.propertyPerNodeBindings.push(
+      this.declareMatrix(
+        name,
+        16,
+        (state, buffer) => buffer.set(getter(state).toArray()),
+        (gl) => gl.uniformMatrix4fv
+      )
+    );
+  }
+
+  public setupMatrix4PerTarget(
+    name: string,
+    getter: (state: State) => Matrix4
+  ) {
+    this.propertyPerTargetBindings.push(
+      this.declareMatrix(
+        name,
+        16,
+        (state, buffer) => buffer.set(getter(state).toArray()),
+        (gl) => gl.uniformMatrix4fv
+      )
     );
   }
 
@@ -773,15 +821,19 @@ class Shader<State> {
 
   private declareMatrix<TSource>(
     name: string,
-    getter: (state: TSource) => Iterable<number>,
+    length: number,
+    extract: (state: TSource, buffer: Float32Array) => void,
     assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
     const method = assign(gl);
+    const buffer = new Float32Array(length);
 
-    return (state: TSource) =>
-      method.call(gl, location, false, new Float32Array(getter(state)));
+    return (state: TSource) => {
+      extract(state, buffer);
+      method.call(gl, location, false, buffer);
+    };
   }
 
   private declareProperty<TSource, TValue>(

@@ -480,39 +480,28 @@ const loadLight = (
       "tangents",
       (geometry) => geometry.tangents
     );
-  else shader.clearAttributePerGeometry("tangents");
+  else {
+    shader.clearAttributePerGeometry("tangents");
+  }
 
   // Bind matrix uniforms
-  shader.setupMatrixPerNode(
-    "modelMatrix",
-    (state) => state.transform.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-  shader.setupMatrixPerNode(
-    "normalMatrix",
-    (state) => state.normalMatrix,
-    (gl) => gl.uniformMatrix3fv
-  );
-  shader.setupMatrixPerTarget(
+  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+  shader.setupMatrix3PerNode("normalMatrix", (state) => state.normalMatrix);
+  shader.setupMatrix4PerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
+    (state) => state.projectionMatrix
   );
-  shader.setupMatrixPerTarget(
-    "viewMatrix",
-    (state) => state.viewMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
+  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
 
-  if (!lightConfiguration.noShadow)
-    shader.setupMatrixPerTarget(
+  if (!lightConfiguration.noShadow) {
+    shader.setupMatrix4PerTarget(
       "shadowProjectionMatrix",
-      (state) => state.shadowProjectionMatrix.toArray(),
-      (gl) => gl.uniformMatrix4fv
+      (state) => state.shadowProjectionMatrix
     );
+  }
 
   // Bind material uniforms
-  if (materialConfiguration.forceAlbedoMap !== false)
+  if (materialConfiguration.forceAlbedoMap !== false) {
     shader.setupTexturePerMaterial(
       "albedoMap",
       materialConfiguration.forceAlbedoMap !== true
@@ -521,6 +510,7 @@ const loadLight = (
       webgl.TextureType.Quad,
       (material) => material.albedoMap
     );
+  }
 
   shader.setupPropertyPerMaterial(
     "albedoFactor",
@@ -705,13 +695,12 @@ const loadLight = (
             : 0,
         (gl) => gl.uniform1i
       );
-      shader.setupMatrixPerTarget(
+      shader.setupMatrix4PerTarget(
         `directionalLights[${index}].shadowViewMatrix`,
         (state) =>
           index < state.directionalLights.length
-            ? state.directionalLights[index].shadowViewMatrix.toArray()
-            : Matrix4.createIdentity().toArray(),
-        (gl) => gl.uniformMatrix4fv
+            ? state.directionalLights[index].shadowViewMatrix
+            : Matrix4.createIdentity()
       );
       shader.setupTexturePerTarget(
         `directionalLightShadowMaps[${index}]`,
@@ -777,22 +766,12 @@ const loadShadowDirectional = (gl: WebGLRenderingContext) => {
   );
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
-
-  shader.setupMatrixPerNode(
-    "modelMatrix",
-    (state) => state.transform.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
-  shader.setupMatrixPerTarget(
+  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+  shader.setupMatrix4PerTarget(
     "projectionMatrix",
-    (state) => state.projectionMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
+    (state) => state.projectionMatrix
   );
-  shader.setupMatrixPerTarget(
-    "viewMatrix",
-    (state) => state.viewMatrix.toArray(),
-    (gl) => gl.uniformMatrix4fv
-  );
+  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
 
   return shader;
 };

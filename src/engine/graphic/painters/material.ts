@@ -92,11 +92,10 @@ class Painter<State> implements webgl.Painter<State> {
               .duplicate(view)
               .multiply(transform);
 
-            const normalMatrix = Matrix3.fromObject(viewTransformMatrix)
-              .invert()
-              .toArray();
+            const normalMatrix =
+              Matrix3.fromObject(viewTransformMatrix).invert();
 
-            shader.bindNode({ normalMatrix, transform });
+            shader.bindNode({ normalMatrix, modelMatrix: transform });
 
             target.draw(
               0,

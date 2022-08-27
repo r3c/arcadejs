@@ -82,21 +82,12 @@ const application: Application<WebGLScreen, SceneState> = {
       (material) => material.albedoMap
     );
 
-    shader.setupMatrixPerNode(
-      "modelMatrix",
-      (state) => state.transform.toArray(),
-      (gl) => gl.uniformMatrix4fv
-    );
-    shader.setupMatrixPerTarget(
+    shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+    shader.setupMatrix4PerTarget(
       "projectionMatrix",
-      (state) => state.projectionMatrix.toArray(),
-      (gl) => gl.uniformMatrix4fv
+      (state) => state.projectionMatrix
     );
-    shader.setupMatrixPerTarget(
-      "viewMatrix",
-      (state) => state.viewMatrix.toArray(),
-      (gl) => gl.uniformMatrix4fv
-    );
+    shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
 
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
