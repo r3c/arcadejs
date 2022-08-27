@@ -822,37 +822,40 @@ class Shader<State> {
   private declareMatrix<TSource>(
     name: string,
     length: number,
-    extract: (state: TSource, buffer: Float32Array) => void,
-    assign: (gl: WebGLRenderingContext) => UniformMatrixSetter<Float32Array>
+    copyToBuffer: (state: TSource, buffer: Float32Array) => void,
+    setUniformGetter: (
+      gl: WebGLRenderingContext
+    ) => UniformMatrixSetter<Float32Array>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
-    const method = assign(gl);
+    const setUniform = setUniformGetter(gl);
     const buffer = new Float32Array(length);
 
     return (state: TSource) => {
-      extract(state, buffer);
-      method.call(gl, location, false, buffer);
+      copyToBuffer(state, buffer);
+      setUniform.call(gl, location, false, buffer);
     };
   }
 
   private declareProperty<TSource, TValue>(
     name: string,
-    getter: (source: TSource) => TValue,
-    assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>
+    propertyGetter: (source: TSource) => TValue,
+    setUniformGetter: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
-    const method = assign(gl);
+    const setUniform = setUniformGetter(gl);
 
-    return (source: TSource) => method.call(gl, location, getter(source));
+    return (source: TSource) =>
+      setUniform.call(gl, location, propertyGetter(source));
   }
 
   private declareTexture<TSource>(
     samplerName: string,
     enabledName: string | undefined,
     type: TextureType,
-    getter: (source: TSource) => WebGLTexture | undefined
+    textureGetter: (source: TSource) => WebGLTexture | undefined
   ) {
     const enabledLocation = functional.map(enabledName, (name) =>
       this.findUniform(name)
@@ -863,7 +866,7 @@ class Shader<State> {
 
     if (enabledLocation !== undefined) {
       return (source: TSource, textureIndex: number) => {
-        const texture = getter(source);
+        const texture = textureGetter(source);
 
         if (texture === undefined) {
           gl.uniform1i(enabledLocation, 0);
@@ -880,7 +883,7 @@ class Shader<State> {
       };
     } else {
       return (source: TSource, textureIndex: number) => {
-        const texture = getter(source);
+        const texture = textureGetter(source);
 
         if (texture === undefined)
           throw Error(`missing mandatory texture uniform "${samplerName}"`);
@@ -897,8 +900,9 @@ class Shader<State> {
   private findAttribute(name: string) {
     const location = this.gl.getAttribLocation(this.program, name);
 
-    if (location === -1)
+    if (location === -1) {
       throw Error(`cound not find location of attribute "${name}"`);
+    }
 
     return location;
   }
@@ -906,8 +910,9 @@ class Shader<State> {
   private findUniform(name: string) {
     const location = this.gl.getUniformLocation(this.program, name);
 
-    if (location === null)
+    if (location === null) {
       throw Error(`cound not find location of uniform "${name}"`);
+    }
 
     return location;
   }
@@ -919,7 +924,9 @@ class Shader<State> {
   ) {
     const shader = gl.createShader(shaderType);
 
-    if (shader === null) throw Error(`could not create shader`);
+    if (shader === null) {
+      throw Error(`could not create shader`);
+    }
 
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
@@ -960,7 +967,7 @@ class Shader<State> {
 }
 
 class Target {
-  private readonly gl: WebGLRenderingContext;
+  private readonly gl: WebGL2RenderingContext;
 
   private colorAttachment: Attachment;
   private colorClear: Vector4;
@@ -970,7 +977,11 @@ class Target {
   private viewHeight: number;
   private viewWidth: number;
 
-  public constructor(gl: WebGLRenderingContext, width: number, height: number) {
+  public constructor(
+    gl: WebGL2RenderingContext,
+    width: number,
+    height: number
+  ) {
     this.colorAttachment = { renderbuffer: undefined, textures: [] };
     this.colorClear = colorBlack;
     this.depthAttachment = { renderbuffer: undefined, textures: [] };
@@ -1034,7 +1045,7 @@ class Target {
 
     for (const attachment of [this.colorAttachment, this.depthAttachment]) {
       // Resize existing renderbuffer attachment if any
-      if (attachment.renderbuffer !== undefined)
+      if (attachment.renderbuffer !== undefined) {
         renderbufferConfigure(
           gl,
           attachment.renderbuffer.handle,
@@ -1043,9 +1054,10 @@ class Target {
           attachment.renderbuffer.format,
           1
         );
+      }
 
       // Resize previously existing texture attachments if any
-      for (const texture of attachment.textures)
+      for (const texture of attachment.textures) {
         textureConfigure(
           gl,
           texture.handle,
@@ -1056,6 +1068,7 @@ class Target {
           model.defaultFilter,
           undefined
         );
+      }
     }
 
     this.viewHeight = height;
@@ -1091,12 +1104,14 @@ class Target {
 
     if (this.colorAttachment.textures !== undefined) {
       for (const framebuffer of this.framebuffers) {
-        if (framebuffer === undefined) continue;
+        if (framebuffer === undefined) {
+          continue;
+        }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
         // FIXME: incomplete @type for WebGL2
-        (<any>gl).drawBuffers(
+        gl.drawBuffers(
           functional.range(
             this.colorAttachment.textures.length,
             (i) => gl.COLOR_ATTACHMENT0 + i

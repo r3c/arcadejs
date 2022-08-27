@@ -622,7 +622,7 @@ class Pipeline implements webgl.Pipeline {
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: webgl.Painter<State>;
   private readonly geometryTarget: webgl.Target;
-  private readonly gl: WebGLRenderingContext;
+  private readonly gl: WebGL2RenderingContext;
   private readonly lightTarget: webgl.Target;
   private readonly materialPainter: webgl.Painter<MaterialState>;
   private readonly pointLightPainter: webgl.Painter<
@@ -630,7 +630,7 @@ class Pipeline implements webgl.Pipeline {
   >;
   private readonly sphereMesh: webgl.Mesh;
 
-  public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+  public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
     const geometry = new webgl.Target(
       gl,
       gl.canvas.clientWidth,

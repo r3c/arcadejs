@@ -792,7 +792,7 @@ class ForwardLightingPipeline implements webgl.Pipeline {
   private readonly directionalShadowPainter: webgl.Painter<ShadowState>;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: webgl.Target[];
-  private readonly gl: WebGLRenderingContext;
+  private readonly gl: WebGL2RenderingContext;
   private readonly lightPainter: webgl.Painter<LightState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
@@ -801,7 +801,7 @@ class ForwardLightingPipeline implements webgl.Pipeline {
   private readonly pointShadowTargets: webgl.Target[];
 
   public constructor(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     configuration: ForwardLightingConfiguration
   ) {
     const materialClassifier = (material: webgl.Material) =>

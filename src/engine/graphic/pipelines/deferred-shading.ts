@@ -546,13 +546,13 @@ class Pipeline implements webgl.Pipeline {
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: webgl.Painter<State>;
   private readonly geometryTarget: webgl.Target;
-  private readonly gl: WebGLRenderingContext;
+  private readonly gl: WebGL2RenderingContext;
   private readonly pointLightPainter: webgl.Painter<
     LightState<webgl.PointLight>
   >;
   private readonly sphereModel: webgl.Mesh;
 
-  public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+  public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
     const geometry = new webgl.Target(
       gl,
       gl.canvas.clientWidth,
