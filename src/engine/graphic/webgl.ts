@@ -716,7 +716,7 @@ class Shader<State> {
       this.declareMatrix(
         name,
         9,
-        (state, buffer) => buffer.set(getter(state).toArray()),
+        (state, buffer) => getter(state).copyToArray(buffer),
         (gl) => gl.uniformMatrix3fv
       )
     );
@@ -730,7 +730,7 @@ class Shader<State> {
       this.declareMatrix(
         name,
         9,
-        (state, buffer) => buffer.set(getter(state).toArray()),
+        (state, buffer) => getter(state).copyToArray(buffer),
         (gl) => gl.uniformMatrix3fv
       )
     );
@@ -744,7 +744,7 @@ class Shader<State> {
       this.declareMatrix(
         name,
         16,
-        (state, buffer) => buffer.set(getter(state).toArray()),
+        (state, buffer) => getter(state).copyToArray(buffer),
         (gl) => gl.uniformMatrix4fv
       )
     );
@@ -758,7 +758,7 @@ class Shader<State> {
       this.declareMatrix(
         name,
         16,
-        (state, buffer) => buffer.set(getter(state).toArray()),
+        (state, buffer) => getter(state).copyToArray(buffer),
         (gl) => gl.uniformMatrix4fv
       )
     );

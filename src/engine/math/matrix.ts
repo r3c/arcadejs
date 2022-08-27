@@ -46,6 +46,18 @@ class Matrix3 {
     this.v22 = obj.v22;
   }
 
+  public copyToArray(target: Float32Array): void {
+    target[0] = this.v00;
+    target[1] = this.v01;
+    target[2] = this.v02;
+    target[3] = this.v10;
+    target[4] = this.v11;
+    target[5] = this.v12;
+    target[6] = this.v20;
+    target[7] = this.v21;
+    target[8] = this.v22;
+  }
+
   public duplicate(source: Matrix4Data): Matrix3 {
     this.v00 = source.v00;
     this.v01 = source.v01;
@@ -92,24 +104,6 @@ class Matrix3 {
     }
 
     return this;
-  }
-
-  public toArray(): number[] {
-    return [
-      this.v00,
-      this.v01,
-      this.v02,
-      this.v10,
-      this.v11,
-      this.v12,
-      this.v20,
-      this.v21,
-      this.v22,
-    ];
-  }
-
-  public transpose() {
-    // FIXME
   }
 }
 
@@ -316,6 +310,25 @@ class Matrix4 {
     this.v31 = obj.v31;
     this.v32 = obj.v32;
     this.v33 = obj.v33;
+  }
+
+  public copyToArray(target: Float32Array): void {
+    target[0] = this.v00;
+    target[1] = this.v01;
+    target[2] = this.v02;
+    target[3] = this.v03;
+    target[4] = this.v10;
+    target[5] = this.v11;
+    target[6] = this.v12;
+    target[7] = this.v13;
+    target[8] = this.v20;
+    target[9] = this.v21;
+    target[10] = this.v22;
+    target[11] = this.v23;
+    target[12] = this.v30;
+    target[13] = this.v31;
+    target[14] = this.v32;
+    target[15] = this.v33;
   }
 
   public duplicate(source: Matrix4Data): Matrix4 {
@@ -703,27 +716,6 @@ class Matrix4 {
         vertex.z * this.v23 +
         vertex.w * this.v33,
     };
-  }
-
-  public toArray(): number[] {
-    return [
-      this.v00,
-      this.v01,
-      this.v02,
-      this.v03,
-      this.v10,
-      this.v11,
-      this.v12,
-      this.v13,
-      this.v20,
-      this.v21,
-      this.v22,
-      this.v23,
-      this.v30,
-      this.v31,
-      this.v32,
-      this.v33,
-    ];
   }
 
   public translate(vector: Vector3): Matrix4 {
