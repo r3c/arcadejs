@@ -25,10 +25,13 @@ type Tweak<T> = {
 const configure = <T>(configuration: T) => {
   const tweakContainer = document.getElementById("tweaks");
 
-  if (tweakContainer === null) throw Error("missing tweak container");
+  if (tweakContainer === null) {
+    throw Error("missing tweak container");
+  }
 
-  while (tweakContainer.childNodes.length > 0)
+  while (tweakContainer.childNodes.length > 0) {
     tweakContainer.removeChild(tweakContainer.childNodes[0]);
+  }
 
   const tweak = <Tweak<T>>{};
 
@@ -119,7 +122,9 @@ const createSelect = (
 
   container.appendChild(select);
 
-  if (caption !== "") container.appendChild(document.createTextNode(caption));
+  if (caption !== "") {
+    container.appendChild(document.createTextNode(caption));
+  }
 
   container.className = "container";
 
@@ -170,6 +175,8 @@ const declare = <TScreen extends Screen, TState>(
       const state = await application.prepare(screen);
 
       runtime = { screen, state };
+      x = 0;
+      y = 0;
     },
     step: (dt: number) => {
       if (runtime === undefined) {
