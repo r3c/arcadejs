@@ -105,6 +105,30 @@ class Matrix3 {
 
     return this;
   }
+
+  public multiply(rhs: Matrix3Data): Matrix3 {
+    const v00 = this.v00 * rhs.v00 + this.v10 * rhs.v01 + this.v20 * rhs.v02;
+    const v01 = this.v01 * rhs.v00 + this.v11 * rhs.v01 + this.v21 * rhs.v02;
+    const v02 = this.v02 * rhs.v00 + this.v12 * rhs.v01 + this.v22 * rhs.v02;
+    const v10 = this.v00 * rhs.v10 + this.v10 * rhs.v11 + this.v20 * rhs.v12;
+    const v11 = this.v01 * rhs.v10 + this.v11 * rhs.v11 + this.v21 * rhs.v12;
+    const v12 = this.v02 * rhs.v10 + this.v12 * rhs.v11 + this.v22 * rhs.v12;
+    const v20 = this.v00 * rhs.v20 + this.v10 * rhs.v21 + this.v20 * rhs.v22;
+    const v21 = this.v01 * rhs.v20 + this.v11 * rhs.v21 + this.v21 * rhs.v22;
+    const v22 = this.v02 * rhs.v20 + this.v12 * rhs.v21 + this.v22 * rhs.v22;
+
+    this.v00 = v00;
+    this.v01 = v01;
+    this.v02 = v02;
+    this.v10 = v10;
+    this.v11 = v11;
+    this.v12 = v12;
+    this.v20 = v20;
+    this.v21 = v21;
+    this.v22 = v22;
+
+    return this;
+  }
 }
 
 type Matrix4Data = Pick<
@@ -511,102 +535,102 @@ class Matrix4 {
     return this;
   }
 
-  public multiply(other: Matrix4Data): Matrix4 {
+  public multiply(rhs: Matrix4Data): Matrix4 {
     const v00 =
-      this.v00 * other.v00 +
-      this.v10 * other.v01 +
-      this.v20 * other.v02 +
-      this.v30 * other.v03;
+      this.v00 * rhs.v00 +
+      this.v10 * rhs.v01 +
+      this.v20 * rhs.v02 +
+      this.v30 * rhs.v03;
 
     const v01 =
-      this.v01 * other.v00 +
-      this.v11 * other.v01 +
-      this.v21 * other.v02 +
-      this.v31 * other.v03;
+      this.v01 * rhs.v00 +
+      this.v11 * rhs.v01 +
+      this.v21 * rhs.v02 +
+      this.v31 * rhs.v03;
 
     const v02 =
-      this.v02 * other.v00 +
-      this.v12 * other.v01 +
-      this.v22 * other.v02 +
-      this.v32 * other.v03;
+      this.v02 * rhs.v00 +
+      this.v12 * rhs.v01 +
+      this.v22 * rhs.v02 +
+      this.v32 * rhs.v03;
 
     const v03 =
-      this.v03 * other.v00 +
-      this.v13 * other.v01 +
-      this.v23 * other.v02 +
-      this.v33 * other.v03;
+      this.v03 * rhs.v00 +
+      this.v13 * rhs.v01 +
+      this.v23 * rhs.v02 +
+      this.v33 * rhs.v03;
 
     const v10 =
-      this.v00 * other.v10 +
-      this.v10 * other.v11 +
-      this.v20 * other.v12 +
-      this.v30 * other.v13;
+      this.v00 * rhs.v10 +
+      this.v10 * rhs.v11 +
+      this.v20 * rhs.v12 +
+      this.v30 * rhs.v13;
 
     const v11 =
-      this.v01 * other.v10 +
-      this.v11 * other.v11 +
-      this.v21 * other.v12 +
-      this.v31 * other.v13;
+      this.v01 * rhs.v10 +
+      this.v11 * rhs.v11 +
+      this.v21 * rhs.v12 +
+      this.v31 * rhs.v13;
 
     const v12 =
-      this.v02 * other.v10 +
-      this.v12 * other.v11 +
-      this.v22 * other.v12 +
-      this.v32 * other.v13;
+      this.v02 * rhs.v10 +
+      this.v12 * rhs.v11 +
+      this.v22 * rhs.v12 +
+      this.v32 * rhs.v13;
 
     const v13 =
-      this.v03 * other.v10 +
-      this.v13 * other.v11 +
-      this.v23 * other.v12 +
-      this.v33 * other.v13;
+      this.v03 * rhs.v10 +
+      this.v13 * rhs.v11 +
+      this.v23 * rhs.v12 +
+      this.v33 * rhs.v13;
 
     const v20 =
-      this.v00 * other.v20 +
-      this.v10 * other.v21 +
-      this.v20 * other.v22 +
-      this.v30 * other.v23;
+      this.v00 * rhs.v20 +
+      this.v10 * rhs.v21 +
+      this.v20 * rhs.v22 +
+      this.v30 * rhs.v23;
 
     const v21 =
-      this.v01 * other.v20 +
-      this.v11 * other.v21 +
-      this.v21 * other.v22 +
-      this.v31 * other.v23;
+      this.v01 * rhs.v20 +
+      this.v11 * rhs.v21 +
+      this.v21 * rhs.v22 +
+      this.v31 * rhs.v23;
 
     const v22 =
-      this.v02 * other.v20 +
-      this.v12 * other.v21 +
-      this.v22 * other.v22 +
-      this.v32 * other.v23;
+      this.v02 * rhs.v20 +
+      this.v12 * rhs.v21 +
+      this.v22 * rhs.v22 +
+      this.v32 * rhs.v23;
 
     const v23 =
-      this.v03 * other.v20 +
-      this.v13 * other.v21 +
-      this.v23 * other.v22 +
-      this.v33 * other.v23;
+      this.v03 * rhs.v20 +
+      this.v13 * rhs.v21 +
+      this.v23 * rhs.v22 +
+      this.v33 * rhs.v23;
 
     const v30 =
-      this.v00 * other.v30 +
-      this.v10 * other.v31 +
-      this.v20 * other.v32 +
-      this.v30 * other.v33;
+      this.v00 * rhs.v30 +
+      this.v10 * rhs.v31 +
+      this.v20 * rhs.v32 +
+      this.v30 * rhs.v33;
 
     const v31 =
-      this.v01 * other.v30 +
-      this.v11 * other.v31 +
-      this.v21 * other.v32 +
-      this.v31 * other.v33;
+      this.v01 * rhs.v30 +
+      this.v11 * rhs.v31 +
+      this.v21 * rhs.v32 +
+      this.v31 * rhs.v33;
 
     const v32 =
-      this.v02 * other.v30 +
-      this.v12 * other.v31 +
-      this.v22 * other.v32 +
-      this.v32 * other.v33;
+      this.v02 * rhs.v30 +
+      this.v12 * rhs.v31 +
+      this.v22 * rhs.v32 +
+      this.v32 * rhs.v33;
 
     const v33 =
-      this.v03 * other.v30 +
-      this.v13 * other.v31 +
-      this.v23 * other.v32 +
-      this.v33 * other.v33;
+      this.v03 * rhs.v30 +
+      this.v13 * rhs.v31 +
+      this.v23 * rhs.v32 +
+      this.v33 * rhs.v33;
 
     this.v00 = v00;
     this.v01 = v01;

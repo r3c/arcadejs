@@ -29,20 +29,18 @@ class SingularPainter<TContext> implements webgl.Painter<TContext> {
     target: webgl.Target,
     nodes: Iterable<webgl.Node>,
     parentTransform: Matrix4,
-    view: Matrix4,
+    viewMatrix: Matrix4,
     textureIndex: number
   ): void {
-    const normal = Matrix4.createIdentity();
-    const shader = this.shader;
     const modelMatrix = Matrix4.createIdentity();
+    const normalMatrix = Matrix3.createIdentity();
+    const shader = this.shader;
 
     for (const node of nodes) {
       modelMatrix.duplicate(parentTransform).multiply(node.transform);
+      normalMatrix.duplicate(viewMatrix).multiply(modelMatrix).invert();
 
-      const viewTransformMatrix = normal.duplicate(view).multiply(modelMatrix);
-      const normalMatrix = Matrix3.fromObject(viewTransformMatrix).invert();
-
-      this.draw(target, node.children, modelMatrix, view, textureIndex);
+      this.draw(target, node.children, modelMatrix, viewMatrix, textureIndex);
 
       for (const primitive of node.primitives) {
         const geometry = primitive.geometry;

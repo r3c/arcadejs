@@ -72,10 +72,10 @@ class MaterialPainter<TContext> implements webgl.Painter<TContext> {
   private draw(
     target: webgl.Target,
     batch: Batch<TContext>,
-    view: Matrix4,
+    viewMatrix: Matrix4,
     state: TContext
   ): void {
-    const normal = Matrix4.createIdentity();
+    const normalMatrix = Matrix3.createIdentity();
 
     // Process batch shaders
     for (const { materials, shader } of batch.shaders.values()) {
@@ -92,14 +92,9 @@ class MaterialPainter<TContext> implements webgl.Painter<TContext> {
           shader.bindGeometry(geometry);
 
           for (const { modelMatrix } of instances) {
-            const viewTransformMatrix = normal
-              .duplicate(view)
-              .multiply(modelMatrix);
+            normalMatrix.duplicate(viewMatrix).multiply(modelMatrix).invert();
 
-            const normalMatrix =
-              Matrix3.fromObject(viewTransformMatrix).invert();
-
-            shader.bindNode({ normalMatrix, modelMatrix });
+            shader.bindNode({ modelMatrix, normalMatrix });
 
             target.draw(
               0,
