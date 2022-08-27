@@ -1,33 +1,35 @@
 import { Vector3 } from "../engine/math/vector";
 
-const orbitate = (
-  index: number,
-  amount: number,
-  width: number,
-  height: number
-): Vector3 => {
-  const offset = index + 1;
+/**
+ * Return arbitrary number, continuous depending on `dt`.
+ */
+const at = (dt: number, index: number, prime: number): number => {
+  const drift = (index + 1) * prime;
+  const speed = Math.sin(drift) / 2 + 1;
 
-  const distance = Math.cos(
-    ((offset * 31) % 71) / 71 + ((amount * ((offset * 37) % 73)) / 73) * 0.001
-  );
-  const pitch =
-    (((offset * 11) % 41) / 41) * 2 * Math.PI +
-    (amount * ((offset * 17) % 47)) / 47;
-  const yaw =
-    (((offset * 23) % 59) / 59) * 2 * Math.PI +
-    (amount * ((offset * 29) % 67)) / 67;
+  return dt * speed + drift * 0.001;
+};
+
+const orbitatePosition = (
+  dt: number,
+  index: number,
+  minRadius: number,
+  maxRadius: number
+): Vector3 => {
+  const amplitude = Math.sin(at(dt * 0.1, index, 193)) / 2 + 0.5;
+  const angle = at(dt * 0.1, index, 97);
+  const radius = minRadius + amplitude * (maxRadius - minRadius);
+  const slope = at(dt * 0.1, index, 157) - 0.5;
 
   return {
-    x: Math.cos(yaw) * Math.cos(pitch) * distance * width,
-    y: Math.sin(pitch) * distance * height,
-    z: Math.sin(yaw) * Math.cos(pitch) * distance * width,
+    x: Math.cos(angle * Math.PI * 2) * radius,
+    y: Math.sin(slope * Math.PI * 0.5),
+    z: Math.sin(angle * Math.PI * 2) * radius,
   };
 };
 
-const rotate = (index: number, amount: number): Vector3 => {
-  const offset = index + 1;
-  const angle = ((offset * 11) % 41) + (amount * ((offset * 17) % 47)) / 47;
+const rotateDirection = (dt: number, index: number): Vector3 => {
+  const angle = at(dt * 0.1, index, 97);
 
   return {
     x: Math.cos(angle),
@@ -36,4 +38,4 @@ const rotate = (index: number, amount: number): Vector3 => {
   };
 };
 
-export { orbitate, rotate };
+export { orbitatePosition, rotateDirection };

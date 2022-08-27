@@ -120,7 +120,7 @@ const application: Application<WebGLScreen, SceneState> = {
     };
 
     // Draw scene
-    const lightDirection = move.rotate(0, -state.move * 10);
+    const lightDirection = move.rotateDirection(-state.move * 10, 0);
     const lightPipeline =
       pipelines.lights[bitfield.index(getOptions(state.tweak))];
     const lightScene = {

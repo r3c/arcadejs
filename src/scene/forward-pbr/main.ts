@@ -12,10 +12,10 @@ import * as functional from "../../engine/language/functional";
 import * as image from "../../engine/graphic/image";
 import * as load from "../../engine/graphic/load";
 import { Matrix4 } from "../../engine/math/matrix";
-import * as move from "../move";
 import { Vector3 } from "../../engine/math/vector";
-import * as view from "../view";
 import * as webgl from "../../engine/graphic/webgl";
+import { orbitatePosition } from "../move";
+import * as view from "../view";
 
 /*
  ** What changed?
@@ -277,10 +277,13 @@ const application: Application<WebGLScreen, SceneState> = {
 
   update(state, dt) {
     // Update light positions
-    if (state.tweak.animate) state.move += dt * 0.0001;
+    if (state.tweak.animate) {
+      state.move += dt * 0.0001;
+    }
 
-    for (let i = 0; i < state.lights.length; ++i)
-      state.lights[i].position = move.orbitate(i, state.move * 5, 3, 1);
+    for (let i = 0; i < state.lights.length; ++i) {
+      state.lights[i].position = orbitatePosition(state.move * 5, i, 1, 3);
+    }
 
     // Move camera
     state.camera.move(state.input);
