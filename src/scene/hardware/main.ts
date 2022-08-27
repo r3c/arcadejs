@@ -94,7 +94,7 @@ const application: Application<WebGLScreen, SceneState> = {
       gl: gl,
       input: new Input(screen.canvas),
       mesh: webgl.loadMesh(gl, await load.fromJSON("./obj/cube/mesh.json")),
-      painter: new painter.Painter(shader),
+      painter: new painter.SingularPainter(shader),
       projectionMatrix: Matrix4.createIdentity(),
       screen: screen,
       target: new webgl.Target(

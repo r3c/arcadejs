@@ -1,10 +1,10 @@
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import * as webgl from "../webgl";
 
-class Painter<State> implements webgl.Painter<State> {
-  private readonly shader: webgl.Shader<State>;
+class SingularPainter<TContext> implements webgl.Painter<TContext> {
+  private readonly shader: webgl.Shader<TContext>;
 
-  public constructor(shader: webgl.Shader<State>) {
+  public constructor(shader: webgl.Shader<TContext>) {
     this.shader = shader;
   }
 
@@ -12,7 +12,7 @@ class Painter<State> implements webgl.Painter<State> {
     target: webgl.Target,
     subjects: Iterable<webgl.Subject>,
     view: Matrix4,
-    state: State
+    state: TContext
   ): void {
     const shader = this.shader;
 
@@ -34,15 +34,15 @@ class Painter<State> implements webgl.Painter<State> {
   ): void {
     const normal = Matrix4.createIdentity();
     const shader = this.shader;
-    const transform = Matrix4.createIdentity();
+    const modelMatrix = Matrix4.createIdentity();
 
     for (const node of nodes) {
-      transform.duplicate(parentTransform).multiply(node.transform);
+      modelMatrix.duplicate(parentTransform).multiply(node.transform);
 
-      const viewTransformMatrix = normal.duplicate(view).multiply(transform);
+      const viewTransformMatrix = normal.duplicate(view).multiply(modelMatrix);
       const normalMatrix = Matrix3.fromObject(viewTransformMatrix).invert();
 
-      this.draw(target, node.children, transform, view, textureIndex);
+      this.draw(target, node.children, modelMatrix, view, textureIndex);
 
       for (const primitive of node.primitives) {
         const geometry = primitive.geometry;
@@ -50,7 +50,7 @@ class Painter<State> implements webgl.Painter<State> {
 
         shader.bindGeometry(geometry);
         shader.bindMaterial(material, textureIndex);
-        shader.bindNode({ normalMatrix, modelMatrix: transform });
+        shader.bindNode({ normalMatrix, modelMatrix });
 
         target.draw(
           0,
@@ -63,4 +63,4 @@ class Painter<State> implements webgl.Painter<State> {
   }
 }
 
-export { Painter };
+export { SingularPainter };

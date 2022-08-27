@@ -1,5 +1,5 @@
 import { Matrix4 } from "../../math/matrix";
-import { Painter as SingularPainter } from "../painters/singular";
+import { SingularPainter } from "../painters/singular";
 import * as quad from "./resources/quad";
 import * as webgl from "../webgl";
 

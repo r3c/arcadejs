@@ -9,8 +9,8 @@ import {
   sourceTypeResult,
 } from "./snippets/light";
 import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
-import { Painter as MaterialPainter } from "../painters/material";
-import { Painter as SingularPainter } from "../painters/singular";
+import { MaterialPainter } from "../painters/material";
+import { SingularPainter } from "../painters/singular";
 import { Matrix4 } from "../../math/matrix";
 import * as normal from "./snippets/normal";
 import * as parallax from "./snippets/parallax";

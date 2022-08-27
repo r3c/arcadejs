@@ -1,7 +1,7 @@
 import * as light from "./snippets/light";
 import { Matrix4 } from "../../math/matrix";
 import * as normal from "./snippets/normal";
-import { Painter as SingularPainter } from "../painters/singular";
+import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import * as quad from "./resources/quad";

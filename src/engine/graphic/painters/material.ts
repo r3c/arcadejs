@@ -6,7 +6,7 @@ interface Batch<State> {
 }
 
 interface BatchOfGeometry {
-  instances: Matrix4[];
+  instances: Instance[];
 }
 
 interface BatchOfMaterial {
@@ -18,6 +18,10 @@ interface BatchOfShader<TState> {
   shader: webgl.Shader<TState>;
 }
 
+interface Instance {
+  modelMatrix: Matrix4;
+}
+
 type MaterialClassifier<State> = (
   material: webgl.Material,
   state: State
@@ -27,27 +31,27 @@ type ShaderConstructor<State> = (
   state: State
 ) => webgl.Shader<State>;
 
-class Painter<State> implements webgl.Painter<State> {
-  private readonly materialClassifier: MaterialClassifier<State>;
-  private readonly shaderConstructor: ShaderConstructor<State>;
-  private readonly shaderRepository: webgl.Shader<State>[];
+class MaterialPainter<TContext> implements webgl.Painter<TContext> {
+  private readonly materialClassifier: MaterialClassifier<TContext>;
+  private readonly shaderConstructor: ShaderConstructor<TContext>;
+  private readonly shaderRepository: webgl.Shader<TContext>[];
 
   public constructor(
-    materialClassifier: MaterialClassifier<State>,
-    shaderConstructor: ShaderConstructor<State>
+    materialClassifier: MaterialClassifier<TContext>,
+    shaderConstructor: ShaderConstructor<TContext>
   ) {
     this.materialClassifier = materialClassifier;
     this.shaderConstructor = shaderConstructor;
-    this.shaderRepository = new Array<webgl.Shader<State>>(64);
+    this.shaderRepository = new Array<webgl.Shader<TContext>>(64);
   }
 
   public paint(
     target: webgl.Target,
     subjects: Iterable<webgl.Subject>,
     view: Matrix4,
-    state: State
+    state: TContext
   ): void {
-    const batch: Batch<State> = {
+    const batch: Batch<TContext> = {
       shaders: new Map(),
     };
 
@@ -57,7 +61,7 @@ class Painter<State> implements webgl.Painter<State> {
     this.draw(target, batch, view, state);
   }
 
-  private create(index: number, material: webgl.Material, state: State) {
+  private create(index: number, material: webgl.Material, state: TContext) {
     if (this.shaderRepository[index] === undefined) {
       this.shaderRepository[index] = this.shaderConstructor(material, state);
     }
@@ -67,9 +71,9 @@ class Painter<State> implements webgl.Painter<State> {
 
   private draw(
     target: webgl.Target,
-    batch: Batch<State>,
+    batch: Batch<TContext>,
     view: Matrix4,
-    state: State
+    state: TContext
   ): void {
     const normal = Matrix4.createIdentity();
 
@@ -87,15 +91,15 @@ class Painter<State> implements webgl.Painter<State> {
         for (const [geometry, { instances }] of geometries.entries()) {
           shader.bindGeometry(geometry);
 
-          for (const transform of instances) {
+          for (const { modelMatrix } of instances) {
             const viewTransformMatrix = normal
               .duplicate(view)
-              .multiply(transform);
+              .multiply(modelMatrix);
 
             const normalMatrix =
               Matrix3.fromObject(viewTransformMatrix).invert();
 
-            shader.bindNode({ normalMatrix, modelMatrix: transform });
+            shader.bindNode({ normalMatrix, modelMatrix });
 
             target.draw(
               0,
@@ -110,17 +114,17 @@ class Painter<State> implements webgl.Painter<State> {
   }
 
   private group(
-    batch: Batch<State>,
+    batch: Batch<TContext>,
     nodes: Iterable<webgl.Node>,
     parent: Matrix4,
-    state: State
+    state: TContext
   ): void {
-    const transform = Matrix4.createIdentity();
+    const modelMatrix = Matrix4.createIdentity();
 
     for (const node of nodes) {
-      transform.duplicate(parent).multiply(node.transform);
+      modelMatrix.duplicate(parent).multiply(node.transform);
 
-      this.group(batch, node.children, transform, state);
+      this.group(batch, node.children, modelMatrix, state);
 
       for (const { geometry, material } of node.primitives) {
         // Get or create shader batch
@@ -160,10 +164,10 @@ class Painter<State> implements webgl.Painter<State> {
         }
 
         // Append to models
-        batchOfGeometry.instances.push(transform);
+        batchOfGeometry.instances.push({ modelMatrix });
       }
     }
   }
 }
 
-export { Painter };
+export { MaterialPainter };
