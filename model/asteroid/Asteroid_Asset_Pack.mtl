@@ -1,0 +1,170 @@
+# Blender MTL File: 'Asteroid_Asset_Pack.blend'
+# Material Count: 12
+
+newmtl Asteroid-11
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_01
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_02
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_03
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_04
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_05
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_06
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_07
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_08
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_09
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_10
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl Asteroid_12
+map_Kd {{type}}_color_1k.jpg
+map_Ks {{type}}_roughness_1k.jpg
+map_normal {{type}}_normal_opengl_1k.png
+map_bump {{type}}_height_1k.png
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
