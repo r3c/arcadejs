@@ -4,7 +4,6 @@
 
 - Fix directional shadow scene
 - Rename WebGL types and import them individually to avoid webgl.Type references
-- Move matrix3 to engine library
 - Strong typing for tweaks
 - Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}
@@ -19,6 +18,7 @@
 
 ## Done
 
+- Move matrix3 to engine library
 - Detect canvas resizing and stop violating encapsulation [canvas-resize]
 - Use scalar fields for matrix4 instead of vector
 - Yield + errors in OBJ loader

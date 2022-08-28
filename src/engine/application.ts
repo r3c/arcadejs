@@ -11,6 +11,7 @@ interface Process {
   change: (callback: (screen: Screen) => void) => void;
   start: () => Promise<void>;
   step: (dt: number) => void;
+  stop: () => void;
   title: string;
 }
 
@@ -149,9 +150,9 @@ const declare = <TScreen extends Screen, TState>(
   screenConstructor: ScreenConstructor<TScreen>,
   application: Application<TScreen, TState>
 ): Process => {
-  let runtime: { screen: TScreen; state: TState } | undefined = undefined;
-  let x = 0;
-  let y = 0;
+  let runtime:
+    | { screen: TScreen; state: TState; x: number; y: number }
+    | undefined = undefined;
 
   return {
     title,
@@ -174,29 +175,30 @@ const declare = <TScreen extends Screen, TState>(
       const screen = new screenConstructor(container);
       const state = await application.prepare(screen);
 
-      runtime = { screen, state };
-      x = 0;
-      y = 0;
+      runtime = { screen, state, x: 0, y: 0 };
     },
     step: (dt: number) => {
       if (runtime === undefined) {
         return;
       }
 
-      const { screen, state } = runtime;
+      const { screen, state, x, y } = runtime;
       const { render, resize, update } = application;
 
       // FIXME: detect canvas resize [canvas-resize]
       if (screen.getWidth() !== x || screen.getHeight() !== y) {
         resize?.(state, screen);
 
-        x = screen.getWidth();
-        y = screen.getHeight();
+        runtime.x = screen.getWidth();
+        runtime.y = screen.getHeight();
       }
 
       update(state, dt);
 
       setTimeout(() => render(state), 0);
+    },
+    stop: () => {
+      runtime = undefined;
     },
   };
 };
@@ -230,7 +232,10 @@ const run = (processes: Process[]) => {
   const select = async (value: number) => {
     const process = processes[value];
 
-    current = undefined;
+    if (current !== undefined) {
+      current.stop();
+      current = undefined;
+    }
 
     if (process === undefined) {
       location.hash = "";
