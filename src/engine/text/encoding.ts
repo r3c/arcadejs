@@ -5,7 +5,9 @@ interface Codec {
 
 const asciiCodec: Codec = {
   decode(buffer: ArrayBuffer): string {
-    return String.fromCharCode.apply(null, Array.from(new Uint8Array(buffer)));
+    return Array.from(new Uint8Array(buffer))
+      .map((value) => String.fromCharCode(value))
+      .join("");
   },
 
   encode(plain: string): ArrayBuffer {
