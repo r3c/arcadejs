@@ -69,7 +69,7 @@ class BinaryReader {
   public readBuffer(length: number) {
     const begin = this.skip(length);
 
-    return this.view.buffer.slice(begin, length);
+    return this.view.buffer.slice(begin, begin + length);
   }
 
   public readBufferZero() {
@@ -78,8 +78,9 @@ class BinaryReader {
     while (true) {
       const value = this.view.getInt8(this.offset++);
 
-      if (value === 0)
-        return this.view.buffer.slice(begin, this.offset - begin - 1);
+      if (value === 0) {
+        return this.view.buffer.slice(begin, this.offset - 1);
+      }
     }
   }
 
