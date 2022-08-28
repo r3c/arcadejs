@@ -88,16 +88,16 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
+    const groundMesh = await load.fromJSON("model/ground/mesh.json");
     const helmetMesh = await load.fromGLTF(
-      "https://github.com/KhronosGroup/glTF-Sample-Models/raw/fb85803eaeb9208d1b6f04e3f3769ebc8aa706f6/2.0/DamagedHelmet/glTF/DamagedHelmet.gltf",
+      "model/damaged-helmet/DamagedHelmet.gltf",
       {
         transform: Matrix4.createIdentity()
           .rotate({ x: 0, y: 1, z: 0 }, Math.PI)
           .rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5),
       }
     );
-    const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
+    const lightMesh = await load.fromJSON("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.2,
         y: 0.2,
@@ -108,51 +108,27 @@ const application: Application<WebGLScreen, SceneState> = {
     // Load textures
     const brdf = webgl.loadTextureQuad(
       gl,
-      await image.loadFromURL("./obj/ibl_brdf_lut.png")
+      await image.loadFromURL("model/ibl/ibl_brdf_lut.png")
     );
 
     const diffuse = webgl.loadTextureCube(
       gl,
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/diffuse/diffuse_right_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/diffuse/diffuse_left_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/diffuse/diffuse_top_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/diffuse/diffuse_bottom_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/diffuse/diffuse_front_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/diffuse/diffuse_back_0.jpg"
-      )
+      await image.loadFromURL("model/papermill/diffuse_right_0.jpg"),
+      await image.loadFromURL("model/papermill/diffuse_left_0.jpg"),
+      await image.loadFromURL("model/papermill/diffuse_top_0.jpg"),
+      await image.loadFromURL("model/papermill/diffuse_bottom_0.jpg"),
+      await image.loadFromURL("model/papermill/diffuse_front_0.jpg"),
+      await image.loadFromURL("model/papermill/diffuse_back_0.jpg")
     );
 
     const specular = webgl.loadTextureCube(
       gl,
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/specular/specular_right_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/specular/specular_left_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/specular/specular_top_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/specular/specular_bottom_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/specular/specular_front_0.jpg"
-      ),
-      await image.loadFromURL(
-        "https://raw.githubusercontent.com/KhronosGroup/glTF-WebGL-PBR/master/textures/papermill/specular/specular_back_0.jpg"
-      )
+      await image.loadFromURL("model/papermill/specular_right_0.jpg"),
+      await image.loadFromURL("model/papermill/specular_left_0.jpg"),
+      await image.loadFromURL("model/papermill/specular_top_0.jpg"),
+      await image.loadFromURL("model/papermill/specular_bottom_0.jpg"),
+      await image.loadFromURL("model/papermill/specular_front_0.jpg"),
+      await image.loadFromURL("model/papermill/specular_back_0.jpg")
     );
 
     // Create state

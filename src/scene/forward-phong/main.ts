@@ -78,9 +78,9 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load models
-    const cubeMesh = await load.fromJSON("./obj/cube/mesh.json");
-    const groundMesh = await load.fromJSON("./obj/ground/mesh.json");
-    const lightMesh = await load.fromJSON("./obj/sphere/mesh.json", {
+    const cubeMesh = await load.fromJSON("model/cube/mesh.json");
+    const groundMesh = await load.fromJSON("model/ground/mesh.json");
+    const lightMesh = await load.fromJSON("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.2,
         y: 0.2,
