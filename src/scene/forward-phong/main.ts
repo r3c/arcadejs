@@ -11,8 +11,8 @@ import {
   ForwardLightingModel,
   ForwardLightingPipeline,
 } from "../../engine/graphic/webgl/pipelines/forward-lighting";
-import * as functional from "../../engine/language/functional";
-import * as load from "../../engine/graphic/model";
+import { range } from "../../engine/language/functional";
+import { loadFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import * as webgl from "../../engine/graphic/webgl";
@@ -78,9 +78,9 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load models
-    const cubeMesh = await load.loadFromJson("model/cube/mesh.json");
-    const groundMesh = await load.loadFromJson("model/ground/mesh.json");
-    const lightMesh = await load.loadFromJson("model/sphere/mesh.json", {
+    const cubeMesh = await loadFromJson("model/cube/mesh.json");
+    const groundMesh = await loadFromJson("model/ground/mesh.json");
+    const lightMesh = await loadFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.2,
         y: 0.2,
@@ -92,7 +92,7 @@ const application: Application<WebGLScreen, SceneState> = {
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
-      lightPositions: functional.range(3, () => Vector3.zero),
+      lightPositions: range(3, () => Vector3.zero),
       meshes: {
         cube: webgl.loadMesh(gl, cubeMesh),
         ground: webgl.loadMesh(gl, groundMesh),

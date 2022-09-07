@@ -15,7 +15,7 @@ import {
   defaultColor,
   defaultFilter,
 } from "./model/definition";
-import * as functional from "../language/functional";
+import { range } from "../language/functional";
 import { load as gltfLoad } from "./model/loaders/gltf";
 import { load as jsonLoad } from "./model/loaders/json";
 import { load as objLoad } from "./model/loaders/obj";
@@ -55,7 +55,7 @@ const computeBounds = (model: Model): BoundingBox => {
 const computeNormals = (indices: TypedArray, points: Attribute): Attribute => {
   const pointsBuffer = points.buffer;
   const pointsStride = points.stride;
-  const normals = functional.range(
+  const normals = range(
     Math.floor(pointsBuffer.length / pointsStride),
     () => Vector3.zero
   );
@@ -122,7 +122,7 @@ const computeTangents = (
   const coordsStride = coords.stride;
   const pointsBuffer = points.buffer;
   const pointsStride = points.stride;
-  const tangents = functional.range(
+  const tangents = range(
     Math.floor(pointsBuffer.length / pointsStride),
     () => Vector3.zero
   );

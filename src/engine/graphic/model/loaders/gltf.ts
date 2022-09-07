@@ -1,5 +1,5 @@
 import { asciiCodec } from "../../../text/encoding";
-import * as functional from "../../../language/functional";
+import { map } from "../../../language/functional";
 import * as image from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
@@ -187,7 +187,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     textureOrUndefined: TfTexture | undefined,
     channels?: image.Channel[]
   ) =>
-    functional.map(textureOrUndefined, (texture) => ({
+    map(textureOrUndefined, (texture) => ({
       filter: {
         magnifier: texture.sampler.magnifier,
         minifier: texture.sampler.minifier,
@@ -212,7 +212,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     //normalFactor: material.normalFactor, // FIXME: normalFactor is not supported yet
     normalMap: toMap(material.normalTexture),
     occlusionMap: toMap(material.occlusionTexture),
-    occlusionStrength: functional.map(material.occlusionFactor, (factor) =>
+    occlusionStrength: map(material.occlusionFactor, (factor) =>
       Math.max(factor.x, factor.y, factor.z, factor.w)
     ),
     roughnessMap: toMap(material.metallicRoughnessTexture, [
@@ -227,19 +227,19 @@ const expandMesh = (url: string, mesh: TfMesh): Polygon[] => {
     const indices = expandAccessor(url, primitive.indices, 1, "index");
 
     return {
-      colors: functional.map(primitive.colors, (colors) =>
+      colors: map(primitive.colors, (colors) =>
         expandAccessor(url, colors, 4, "colors")
       ),
-      coords: functional.map(primitive.coords, (coords) =>
+      coords: map(primitive.coords, (coords) =>
         expandAccessor(url, coords, 2, "coords")
       ),
       indices: indices.buffer,
       materialName: primitive.materialName,
-      normals: functional.map(primitive.normals, (normals) =>
+      normals: map(primitive.normals, (normals) =>
         expandAccessor(url, normals, 3, "normals")
       ),
       points: expandAccessor(url, primitive.points, 3, "points"),
-      tangents: functional.map(primitive.tangents, (tangents) =>
+      tangents: map(primitive.tangents, (tangents) =>
         expandAccessor(url, tangents, 3, "tangents")
       ),
     };
@@ -248,7 +248,7 @@ const expandMesh = (url: string, mesh: TfMesh): Polygon[] => {
 
 const expandNode = (url: string, node: TfNode): Mesh => ({
   children: node.children.map((child) => expandNode(url, child)),
-  polygons: functional.map(node.mesh, (mesh) => expandMesh(url, mesh)) ?? [],
+  polygons: map(node.mesh, (mesh) => expandMesh(url, mesh)) ?? [],
   transform: node.transform,
 });
 
@@ -465,7 +465,7 @@ const loadMaterial = (
   const source = `material[${index}]`;
 
   const toFactor = (property: any) =>
-    functional.map(property, (factor) => ({
+    map(property, (factor) => ({
       x: factor[0],
       y: factor[1],
       z: factor[2],
@@ -473,7 +473,7 @@ const loadMaterial = (
     }));
 
   const toTexture = (property: any, name: string) =>
-    functional.map(property, (texture) =>
+    map(property, (texture) =>
       convertReferenceTo(url, source + "." + name, texture.index, textures)
     );
 
@@ -570,7 +570,7 @@ const loadNode = (
 
     nodes[index] = {
       children: children,
-      mesh: functional.map(node.mesh, (mesh) =>
+      mesh: map(node.mesh, (mesh) =>
         convertReferenceTo(url, source + ".mesh", mesh, meshes)
       ),
       transform: transform,
@@ -658,7 +658,7 @@ const loadRoot = async (
 ): Promise<Model> => {
   const defaultScene = <number | undefined>structure.scene;
   const version: string =
-    functional.map(structure.asset, (asset) => asset.version) ?? "unknown";
+    map(structure.asset, (asset) => asset.version) ?? "unknown";
   if (defaultScene === undefined)
     throw invalidData(url, "no default scene is defined");
 

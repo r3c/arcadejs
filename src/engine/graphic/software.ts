@@ -1,4 +1,4 @@
-import * as display from "./display";
+import { Context2DScreen } from "./display";
 import { Matrix4 } from "../math/matrix";
 import { Material, Model, Mesh } from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
@@ -245,9 +245,9 @@ const projectToScreen = (
 };
 
 class Renderer {
-  private readonly screen: display.Context2DScreen;
+  private readonly screen: Context2DScreen;
 
-  public constructor(screen: display.Context2DScreen) {
+  public constructor(screen: Context2DScreen) {
     this.screen = screen;
   }
 

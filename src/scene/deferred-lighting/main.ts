@@ -10,8 +10,8 @@ import { Input } from "../../engine/io/controller";
 import * as debugTexture from "../../engine/graphic/webgl/pipelines/debug-texture";
 import * as deferredLighting from "../../engine/graphic/webgl/pipelines/deferred-lighting";
 import { WebGLScreen } from "../../engine/graphic/display";
-import * as functional from "../../engine/language/functional";
-import * as load from "../../engine/graphic/model";
+import { range } from "../../engine/language/functional";
+import { loadFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import * as webgl from "../../engine/graphic/webgl";
@@ -83,22 +83,22 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const cubeMesh = await load.loadFromJson("model/cube/mesh.json", {
+    const cubeMesh = await loadFromJson("model/cube/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.4,
         y: 0.4,
         z: 0.4,
       }),
     });
-    const directionalLightMesh = await load.loadFromJson("model/sphere/mesh.json", {
+    const directionalLightMesh = await loadFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.5,
         y: 0.5,
         z: 0.5,
       }),
     });
-    const groundMesh = await load.loadFromJson("model/ground/mesh.json");
-    const pointLightMesh = await load.loadFromJson("model/sphere/mesh.json", {
+    const groundMesh = await loadFromJson("model/ground/mesh.json");
+    const pointLightMesh = await loadFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.1,
         y: 0.1,
@@ -109,7 +109,7 @@ const application: Application<WebGLScreen, SceneState> = {
     // Create state
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      directionalLights: functional.range(10, (i) => ({
+      directionalLights: range(10, (i) => ({
         color: color.createBright(i),
         direction: Vector3.zero,
         shadow: false,
@@ -169,7 +169,7 @@ const application: Application<WebGLScreen, SceneState> = {
             })
         ),
       },
-      pointLights: functional.range(500, (i) => ({
+      pointLights: range(500, (i) => ({
         color: color.createBright(i),
         position: Vector3.zero,
         radius: 2,
@@ -222,7 +222,7 @@ const application: Application<WebGLScreen, SceneState> = {
         },
       ]
         .concat(
-          functional.range(16, (i) => ({
+          range(16, (i) => ({
             matrix: Matrix4.createIdentity().translate({
               x: ((i % 4) - 1.5) * 2,
               y: 0,
