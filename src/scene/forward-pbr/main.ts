@@ -10,7 +10,7 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import * as forwardLighting from "../../engine/graphic/pipelines/forward-lighting";
 import * as functional from "../../engine/language/functional";
 import * as image from "../../engine/graphic/image";
-import * as load from "../../engine/graphic/load";
+import * as load from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import * as webgl from "../../engine/graphic/webgl";
@@ -88,8 +88,8 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const groundMesh = await load.fromJSON("model/ground/mesh.json");
-    const helmetMesh = await load.fromGLTF(
+    const groundMesh = await load.loadFromJson("model/ground/mesh.json");
+    const helmetMesh = await load.loadFromGltf(
       "model/damaged-helmet/DamagedHelmet.gltf",
       {
         transform: Matrix4.createIdentity()
@@ -97,7 +97,7 @@ const application: Application<WebGLScreen, SceneState> = {
           .rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5),
       }
     );
-    const lightMesh = await load.fromJSON("model/sphere/mesh.json", {
+    const lightMesh = await load.loadFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.2,
         y: 0.2,

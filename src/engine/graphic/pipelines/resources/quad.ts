@@ -1,11 +1,11 @@
 import { Matrix4 } from "../../../math/matrix";
 
 const mesh = {
-  materials: {},
-  nodes: [
+  materials: new Map(),
+  meshes: [
     {
       children: [],
-      geometries: [
+      polygons: [
         {
           coords: {
             buffer: new Float32Array([0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0]),

@@ -1,11 +1,11 @@
 import { Matrix4 } from "../../../math/matrix";
 
 const mesh = {
-  materials: {},
-  nodes: [
+  materials: new Map(),
+  meshes: [
     {
       children: [],
-      geometries: [
+      polygons: [
         {
           indices: new Uint32Array([
             2, 1, 0, 3, 2, 0, 4, 3, 0, 5, 4, 0, 6, 5, 0, 7, 6, 0, 8, 7, 0, 9, 8,

@@ -9,7 +9,7 @@ import { Input } from "../../engine/io/controller";
 import * as debugTexture from "../../engine/graphic/pipelines/debug-texture";
 import { WebGLScreen } from "../../engine/graphic/display";
 import * as forwardLighting from "../../engine/graphic/pipelines/forward-lighting";
-import * as load from "../../engine/graphic/load";
+import * as load from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as move from "../move";
 import { Vector3 } from "../../engine/math/vector";
@@ -60,9 +60,9 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const cubeMesh = await load.fromJSON("model/cube/mesh.json");
-    const groundMesh = await load.fromJSON("model/ground/mesh.json");
-    const lightMesh = await load.fromJSON("model/sphere/mesh.json", {
+    const cubeMesh = await load.loadFromJson("model/cube/mesh.json");
+    const groundMesh = await load.loadFromJson("model/ground/mesh.json");
+    const lightMesh = await load.loadFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.5,
         y: 0.5,

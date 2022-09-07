@@ -1,9 +1,16 @@
-import * as image from "../image";
-import { Matrix4 } from "../../math/matrix";
-import * as model from "../model";
-import * as path from "../../fs/path";
-import * as stream from "../../io/stream";
-import { Vector2, Vector3 } from "../../math/vector";
+import * as image from "../../image";
+import { Matrix4 } from "../../../math/matrix";
+import {
+  Interpolation,
+  Material,
+  Model,
+  Polygon,
+  Texture,
+  Wrap,
+} from "../definition";
+import * as path from "../../../fs/path";
+import * as stream from "../../../io/stream";
+import { Vector2, Vector3 } from "../../../math/vector";
 
 /*
  ** Implementation based on:
@@ -34,18 +41,18 @@ const invalidLine = (file: string, line: number, description: string) => {
   return Error(`invalid ${description} in file ${file} at line ${line}`);
 };
 
-const load = async (url: string) => {
+const load = async (url: string): Promise<Model> => {
   const data = await stream.readURL(stream.StringFormat, url);
 
   return loadObject(data, url);
 };
 
 const loadMaterial = async (
-  materials: { [name: string]: model.Material },
+  materials: Map<string, Material>,
   data: string,
   fileName: string
 ) => {
-  let current: model.Material | undefined;
+  let current: Material | undefined;
 
   for (const { line, fields } of parseFile(data)) {
     switch (fields[0]) {
@@ -110,7 +117,7 @@ const loadMaterial = async (
 
         const material = {};
 
-        materials[fields[1]] = material;
+        materials.set(fields[1], material);
         current = material;
 
         break;
@@ -118,11 +125,11 @@ const loadMaterial = async (
   }
 };
 
-const loadObject = async (data: string, fileName: string) => {
+const loadObject = async (data: string, fileName: string): Promise<Model> => {
   const coords: Vector2[] = [];
-  const geometries: model.Geometry[] = [];
+  const polygons: Polygon[] = [];
   const groups: WavefrontOBJGroup[] = [];
-  const materials: { [name: string]: model.Material } = {};
+  const materials = new Map<string, Material>();
   const normals: Vector3[] = [];
   const points: Vector3[] = [];
 
@@ -272,7 +279,7 @@ const loadObject = async (data: string, fileName: string) => {
       }
     }
 
-    geometries.push({
+    polygons.push({
       coords: undefined,
       indices: new Uint32Array(groupIndices),
       materialName: group.materialName,
@@ -285,11 +292,11 @@ const loadObject = async (data: string, fileName: string) => {
   }
 
   return {
-    materials: materials,
-    nodes: [
+    materials,
+    meshes: [
       {
         children: [],
-        geometries: geometries,
+        polygons,
         transform: Matrix4.createIdentity(),
       },
     ],
@@ -299,12 +306,12 @@ const loadObject = async (data: string, fileName: string) => {
 const loadTexture = async (
   fileName: string,
   textureName: string
-): Promise<model.Texture> => ({
+): Promise<Texture> => ({
   filter: {
-    magnifier: model.Interpolation.Linear,
-    minifier: model.Interpolation.Linear,
+    magnifier: Interpolation.Linear,
+    minifier: Interpolation.Linear,
     mipmap: true,
-    wrap: model.Wrap.Repeat,
+    wrap: Wrap.Repeat,
   },
   image: await image.loadFromURL(
     path.combine(path.directory(fileName), textureName)

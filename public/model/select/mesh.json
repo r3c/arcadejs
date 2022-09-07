@@ -1,6 +1,6 @@
 {
   "materials": { "side": { "albedoMap": "select.png" } },
-  "geometries": [
+  "polygons": [
     {
       "coords": [
         { "u": 0.0, "v": 0.0 },

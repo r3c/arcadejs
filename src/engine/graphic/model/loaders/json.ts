@@ -1,11 +1,18 @@
-import * as image from "../image";
-import { Matrix4 } from "../../math/matrix";
-import * as model from "../model";
-import * as path from "../../fs/path";
-import * as stream from "../../io/stream";
-import { Vector2, Vector3, Vector4 } from "../../math/vector";
+import * as image from "../../image";
+import { Matrix4 } from "../../../math/matrix";
+import {
+  Interpolation,
+  Material,
+  Model,
+  Polygon,
+  Texture,
+  Wrap,
+} from "../definition";
+import * as path from "../../../fs/path";
+import * as stream from "../../../io/stream";
+import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
-const load = async (urlOrData: any) => {
+const load = async (urlOrData: any): Promise<Model> => {
   let directory: string;
   let root: any;
 
@@ -17,17 +24,19 @@ const load = async (urlOrData: any) => {
   } else if (typeof urlOrData === "object") {
     directory = "";
     root = urlOrData;
-  } else throw invalid(urlOrData, root, "model");
+  } else {
+    throw invalid(urlOrData, root, "model");
+  }
 
   return {
     materials:
       root.materials !== undefined
         ? await toMapOf("materials", root.materials, toMaterial, directory)
-        : {},
-    nodes: [
+        : new Map(),
+    meshes: [
       {
         children: [],
-        geometries: toArrayOf("geometries", root.geometries, toGeometry),
+        polygons: toArrayOf("polygons", root.polygons, toPolygon),
         transform: Matrix4.createIdentity(),
       },
     ],
@@ -51,8 +60,9 @@ const toArrayOf = <T>(
 };
 
 const toColor = (name: string, instance: any): Vector4 => {
-  if (typeof instance !== "object")
+  if (typeof instance !== "object") {
     throw invalid(name, instance, "rgb(a) color");
+  }
 
   return {
     x: Math.max(Math.min(toDecimal(`${name}.r`, instance.r), 1), 0),
@@ -66,8 +76,9 @@ const toColor = (name: string, instance: any): Vector4 => {
 };
 
 const toCoord = (name: string, instance: any): Vector2 => {
-  if (typeof instance !== "object")
+  if (typeof instance !== "object") {
     throw invalid(name, instance, "texture coordinate");
+  }
 
   return {
     x: toDecimal(`${name}.u`, instance.u),
@@ -76,13 +87,14 @@ const toCoord = (name: string, instance: any): Vector2 => {
 };
 
 const toDecimal = (name: string, instance: any) => {
-  if (typeof instance !== "number")
+  if (typeof instance !== "number") {
     throw invalid(name, instance, "decimal number");
+  }
 
   return <number>instance;
 };
 
-const toGeometry = (name: string, instance: any): model.Geometry => {
+const toPolygon = (name: string, instance: any): Polygon => {
   const toAttribute = <T>(
     values: T[],
     converter: (value: T) => number[],
@@ -92,7 +104,9 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
     stride: stride,
   });
 
-  if (typeof instance !== "object") throw invalid(name, instance, "geometry");
+  if (typeof instance !== "object") {
+    throw invalid(name, instance, "polygon");
+  }
 
   return {
     colors:
@@ -136,14 +150,18 @@ const toGeometry = (name: string, instance: any): model.Geometry => {
   };
 };
 
-const toTexture = async (name: string, instance: any, directory: string) =>
+const toTexture = async (
+  name: string,
+  instance: any,
+  directory: string
+): Promise<Texture | undefined> =>
   instance !== undefined
     ? {
         filter: {
-          magnifier: model.Interpolation.Linear,
-          minifier: model.Interpolation.Linear,
+          magnifier: Interpolation.Linear,
+          minifier: Interpolation.Linear,
           mipmap: true,
-          wrap: model.Wrap.Repeat,
+          wrap: Wrap.Repeat,
         },
         image: await image.loadFromURL(
           toString(name, path.combine(directory, instance))
@@ -151,25 +169,28 @@ const toTexture = async (name: string, instance: any, directory: string) =>
       }
     : undefined;
 
-const toInteger = (name: string, instance: any) => {
-  if (typeof instance !== "number" || ~~instance !== instance)
+const toInteger = (name: string, instance: any): number => {
+  if (typeof instance !== "number" || ~~instance !== instance) {
     throw invalid(name, instance, "integer number");
+  }
 
-  return <number>instance;
+  return instance;
 };
 
-const toMapOf = async <T>(
+const toMapOf = async <TValue>(
   name: string,
   instance: any,
-  converter: (name: string, item: any, directory: string) => Promise<T>,
+  converter: (name: string, item: any, directory: string) => Promise<TValue>,
   directory: string
-) => {
-  if (typeof instance !== "object") throw invalid(name, instance, "map");
+): Promise<Map<string, TValue>> => {
+  if (typeof instance !== "object") {
+    throw invalid(name, instance, "map");
+  }
 
-  const map: { [key: string]: T } = {};
+  const map = new Map<string, TValue>();
 
   for (const key in instance)
-    map[key] = await converter(`${name}.${key}`, instance[key], directory);
+    map.set(key, await converter(`${name}.${key}`, instance[key], directory));
 
   return map;
 };
@@ -178,8 +199,10 @@ const toMaterial = async (
   name: string,
   instance: any,
   directory: string
-): Promise<model.Material> => {
-  if (typeof instance !== "object") throw invalid(name, instance, "material");
+): Promise<Material> => {
+  if (typeof instance !== "object") {
+    throw invalid(name, instance, "material");
+  }
 
   return {
     albedoFactor: toOptional(
@@ -262,28 +285,30 @@ const toMaterial = async (
   };
 };
 
-const toOptional = <T>(
+const toOptional = <TValue>(
   name: string,
   instance: any,
-  converter: (name: string, source: any) => T
-) => {
-  if (instance !== undefined) return converter(name, instance);
-
-  return undefined;
+  converter: (name: string, source: any) => TValue
+): TValue | undefined => {
+  return instance !== undefined ? converter(name, instance) : undefined;
 };
 
 const toString = (name: string, instance: any): string => {
-  if (typeof instance !== "string") throw invalid(name, instance, "string");
+  if (typeof instance !== "string") {
+    throw invalid(name, instance, "string");
+  }
 
-  return <string>instance;
+  return instance;
 };
 
-const toTuple3 = <T>(
+const toTuple3 = <TValue>(
   name: string,
   instance: any,
-  converter: (name: string, item: any) => T
-): [T, T, T] => {
-  if (typeof instance !== "object") throw invalid(name, instance, "3-tuple");
+  converter: (name: string, item: any) => TValue
+): [TValue, TValue, TValue] => {
+  if (typeof instance !== "object") {
+    throw invalid(name, instance, "3-tuple");
+  }
 
   return [
     converter(`${name}[0]`, instance[0]),
@@ -293,7 +318,9 @@ const toTuple3 = <T>(
 };
 
 const toVertex = (name: string, instance: any): Vector3 => {
-  if (typeof instance !== "object") throw invalid(name, instance, "vertex");
+  if (typeof instance !== "object") {
+    throw invalid(name, instance, "vertex");
+  }
 
   return {
     x: toDecimal(`${name}.x`, instance.x),

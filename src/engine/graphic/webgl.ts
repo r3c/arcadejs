@@ -170,7 +170,7 @@ const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 const bufferConvert = (
   gl: WebGLRenderingContext,
   target: number,
-  values: model.Array
+  values: model.TypedArray
 ) => {
   const buffer = gl.createBuffer();
 
@@ -186,7 +186,7 @@ const bufferConvert = (
  ** Find OpenGL type from associated array type.
  ** See: https://developer.mozilla.org/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
  */
-const bufferGetType = (gl: WebGLRenderingContext, array: model.Array) => {
+const bufferGetType = (gl: WebGLRenderingContext, array: model.TypedArray) => {
   if (array instanceof Float32Array) return gl.FLOAT;
   else if (array instanceof Int32Array) return gl.INT;
   else if (array instanceof Uint32Array) return gl.UNSIGNED_INT;
@@ -397,7 +397,7 @@ const textureGetWrap = (gl: WebGLRenderingContext, wrap: model.Wrap) => {
 
 const loadGeometry = (
   gl: WebGLRenderingContext,
-  geometry: model.Geometry,
+  geometry: model.Polygon,
   materials: Map<string, Material>,
   defaultMaterial: Material
 ): Primitive => {
@@ -484,16 +484,16 @@ const loadMaterial = (
   };
 };
 
-const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh): Mesh => {
+const loadMesh = (gl: WebGLRenderingContext, mesh: model.Model): Mesh => {
   const defaultMaterial = loadMaterial(gl, {});
   const materials = new Map<string, Material>();
   const nodes: Node[] = [];
 
-  for (const name in mesh.materials) {
-    materials.set(name, loadMaterial(gl, mesh.materials[name]));
+  for (const [name, material] of mesh.materials.entries()) {
+    materials.set(name, loadMaterial(gl, material));
   }
 
-  for (const node of mesh.nodes)
+  for (const node of mesh.meshes)
     nodes.push(loadNode(gl, node, materials, defaultMaterial));
 
   return {
@@ -503,14 +503,14 @@ const loadMesh = (gl: WebGLRenderingContext, mesh: model.Mesh): Mesh => {
 
 const loadNode = (
   gl: WebGLRenderingContext,
-  node: model.Node,
+  node: model.Mesh,
   materials: Map<string, Material>,
   defaultMaterial: Material
 ): Node => ({
   children: node.children.map((child) =>
     loadNode(gl, child, materials, defaultMaterial)
   ),
-  primitives: node.geometries.map((geometry) =>
+  primitives: node.polygons.map((geometry) =>
     loadGeometry(gl, geometry, materials, defaultMaterial)
   ),
   transform: node.transform,

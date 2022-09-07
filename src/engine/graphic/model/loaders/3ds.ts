@@ -1,10 +1,17 @@
-import { type Codec, asciiCodec } from "../../text/encoding";
-import * as image from "../image";
-import { Matrix4 } from "../../math/matrix";
-import * as model from "../model";
-import * as path from "../../fs/path";
-import * as stream from "../../io/stream";
-import { Vector4 } from "../../math/vector";
+import { type Codec, asciiCodec } from "../../../text/encoding";
+import * as image from "../../image";
+import { Matrix4 } from "../../../math/matrix";
+import {
+  defaultColor,
+  Interpolation,
+  Material,
+  Model,
+  Texture,
+  Wrap,
+} from "../definition";
+import * as path from "../../../fs/path";
+import * as stream from "../../../io/stream";
+import { Vector4 } from "../../../math/vector";
 
 /*
  ** Implementation based on:
@@ -42,8 +49,8 @@ const load = async (url: string) => {
   };
 
   return scan(context, context.reader.getLength(), readRoot, {
-    materials: {},
-    nodes: [],
+    materials: new Map(),
+    meshes: [],
   });
 };
 
@@ -80,7 +87,7 @@ const readEdit = async (
   context: Context,
   end: number,
   chunk: number,
-  state: model.Mesh
+  state: Model
 ) => {
   switch (chunk) {
     case 0x4000: // DIT_OBJECT
@@ -88,9 +95,9 @@ const readEdit = async (
 
       const meshes = await scan(context, end, readObject, []);
 
-      state.nodes.push({
+      state.meshes.push({
         children: [],
-        geometries: meshes.map((mesh) => ({
+        polygons: meshes.map((mesh) => ({
           coords:
             mesh.coords.length > 0
               ? { buffer: new Float32Array(mesh.coords), stride: 2 }
@@ -110,7 +117,7 @@ const readEdit = async (
         name: "",
       });
 
-      state.materials[name] = material;
+      state.materials.set(name, material);
 
       return state;
   }
@@ -122,7 +129,7 @@ const readMain = async (
   context: Context,
   end: number,
   chunk: number,
-  state: model.Mesh
+  state: Model
 ) => {
   switch (chunk) {
     case 0x3d3d: // EDIT3DS
@@ -136,7 +143,7 @@ const readMaterial = async (
   context: Context,
   end: number,
   chunk: number,
-  state: { material: model.Material; name: string }
+  state: { material: Material; name: string }
 ) => {
   switch (chunk) {
     case 0xa000: // Material name
@@ -149,7 +156,7 @@ const readMaterial = async (
         context,
         end,
         readColor,
-        model.defaultColor
+        defaultColor
       );
 
       break;
@@ -159,7 +166,7 @@ const readMaterial = async (
         context,
         end,
         readColor,
-        model.defaultColor
+        defaultColor
       );
 
       break;
@@ -207,16 +214,16 @@ const readMaterialMap = async (
   context: Context,
   _end: number,
   chunk: number,
-  state: model.Texture | undefined
+  state: Texture | undefined
 ) => {
   switch (chunk) {
     case 0xa300:
       return {
         filter: {
-          magnifier: model.Interpolation.Linear,
-          minifier: model.Interpolation.Linear,
+          magnifier: Interpolation.Linear,
+          minifier: Interpolation.Linear,
           mipmap: true,
-          wrap: model.Wrap.Repeat,
+          wrap: Wrap.Repeat,
         },
         image: await image.loadFromURL(
           path.combine(
@@ -316,7 +323,7 @@ const readRoot = async (
   context: Context,
   end: number,
   chunk: number,
-  state: model.Mesh
+  state: Model
 ) => {
   switch (chunk) {
     case 0x4d4d: // MAIN3DS

@@ -1,6 +1,6 @@
 import * as display from "./display";
 import { Matrix4 } from "../math/matrix";
-import * as model from "../graphic/model";
+import { Material, Model, Mesh } from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 
 enum DrawMode {
@@ -53,7 +53,7 @@ const fillScanline = (
   vb: Vertex,
   vc: Vertex,
   vd: Vertex,
-  material: model.Material | undefined
+  material: Material | undefined
 ) => {
   if (y < 0 || y >= image.height) return;
 
@@ -141,7 +141,7 @@ const fillTriangle = (
   v1: Vertex,
   v2: Vertex,
   v3: Vertex,
-  material: model.Material | undefined
+  material: Material | undefined
 ) => {
   // Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
   if (v1.point.y > v2.point.y) [v1, v2] = [v2, v1];
@@ -259,7 +259,7 @@ class Renderer {
   }
 
   public draw(
-    mesh: model.Mesh,
+    model: Model,
     projection: Matrix4,
     modelView: Matrix4,
     drawMode: DrawMode
@@ -281,22 +281,22 @@ class Renderer {
 
     image.depths.fill(Math.pow(2, 127));
 
-    Renderer.drawNodes(
+    Renderer.drawMeshes(
       image,
-      mesh.nodes,
+      model.meshes,
       Matrix4.createIdentity().duplicate(projection).multiply(modelView),
-      mesh.materials,
+      model.materials,
       drawMode
     );
 
     screen.context.putImageData(capture, 0, 0);
   }
 
-  private static drawNodes(
+  private static drawMeshes(
     image: Image,
-    nodes: Iterable<model.Node>,
+    meshes: Iterable<Mesh>,
     modelViewProjection: Matrix4,
-    materials: { [name: string]: model.Material },
+    materials: Map<string, Material>,
     drawMode: DrawMode
   ) {
     const halfWidth = image.width * 0.5;
@@ -304,24 +304,24 @@ class Renderer {
     const triangle =
       drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
 
-    for (const node of nodes) {
-      Renderer.drawNodes(
+    for (const mesh of meshes) {
+      Renderer.drawMeshes(
         image,
-        node.children,
+        mesh.children,
         modelViewProjection,
         materials,
         drawMode
       );
 
-      for (const mesh of node.geometries) {
-        const colors = mesh.colors || defaultAttribute;
-        const coords = mesh.coords || defaultAttribute;
-        const indices = mesh.indices;
+      for (const polygon of mesh.polygons) {
+        const colors = polygon.colors || defaultAttribute;
+        const coords = polygon.coords || defaultAttribute;
+        const indices = polygon.indices;
         const material =
-          materials !== undefined && mesh.materialName !== undefined
-            ? materials[mesh.materialName]
+          materials !== undefined && polygon.materialName !== undefined
+            ? materials.get(polygon.materialName)
             : undefined;
-        const points = mesh.points;
+        const points = polygon.points;
 
         const vertices: Vertex[] = [];
 
