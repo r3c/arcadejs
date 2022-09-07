@@ -34,7 +34,7 @@ const configure = <T>(configuration: T) => {
     tweakContainer.removeChild(tweakContainer.childNodes[0]);
   }
 
-  const tweak = <Tweak<T>>{};
+  const tweak = {} as Tweak<T>;
 
   for (const key in configuration) {
     const property = configuration[key];

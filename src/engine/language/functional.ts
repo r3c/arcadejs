@@ -1,8 +1,14 @@
-const map = <T, U>(optional: T | undefined, converter: (input: T) => U) => {
+const map = <TInput, TOutput>(
+  optional: TInput | undefined,
+  converter: (input: TInput) => TOutput
+) => {
   return optional !== undefined ? converter(optional) : undefined;
 };
 
-const range = <T>(length: number, generator: (index: number) => T) => {
+const range = <TValue>(
+  length: number,
+  generator: (index: number) => TValue
+) => {
   return new Array(length).fill(0).map((_, index) => generator(index));
 };
 

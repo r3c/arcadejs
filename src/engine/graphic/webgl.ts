@@ -168,7 +168,7 @@ const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
 const bufferConvert = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   target: number,
   values: model.TypedArray
 ) => {
@@ -184,9 +184,9 @@ const bufferConvert = (
 
 /*
  ** Find OpenGL type from associated array type.
- ** See: https://developer.mozilla.org/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
+ ** See: https://developer.mozilla.org/docs/Web/API/WebGL2RenderingContext/vertexAttribPointer
  */
-const bufferGetType = (gl: WebGLRenderingContext, array: model.TypedArray) => {
+const bufferGetType = (gl: WebGL2RenderingContext, array: model.TypedArray) => {
   if (array instanceof Float32Array) return gl.FLOAT;
   else if (array instanceof Int32Array) return gl.INT;
   else if (array instanceof Uint32Array) return gl.UNSIGNED_INT;
@@ -202,7 +202,7 @@ const bufferGetType = (gl: WebGLRenderingContext, array: model.TypedArray) => {
  ** Convert texture format into native WebGL format parameters.
  */
 const formatGetNative = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   format: TextureFormat
 ): NativeFormat => {
   switch (format) {
@@ -219,7 +219,7 @@ const formatGetNative = (
     case TextureFormat.RGBA8:
       return {
         format: gl.RGBA,
-        internal: (<any>gl).RGBA8, // FIXME: incomplete @type for WebGL2
+        internal: gl.RGBA8,
         type: gl.UNSIGNED_BYTE,
       };
 
@@ -229,7 +229,7 @@ const formatGetNative = (
 };
 
 const renderbufferConfigure = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   renderbuffer: WebGLRenderbuffer,
   width: number,
   height: number,
@@ -240,38 +240,40 @@ const renderbufferConfigure = (
 
   gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
 
-  if (samples > 1)
-    (<any>gl).renderbufferStorageMultisample(
+  if (samples > 1) {
+    gl.renderbufferStorageMultisample(
       gl.RENDERBUFFER,
       samples,
       nativeFormat.internal,
       width,
       height
     );
-  // FIXME: incomplete @type for WebGL2
-  else
+  } else {
     gl.renderbufferStorage(
       gl.RENDERBUFFER,
       nativeFormat.internal,
       width,
       height
     );
+  }
 
   gl.bindRenderbuffer(gl.RENDERBUFFER, null);
 
   return renderbuffer;
 };
 
-const renderbufferCreate = (gl: WebGLRenderingContext) => {
+const renderbufferCreate = (gl: WebGL2RenderingContext) => {
   const renderbuffer = gl.createRenderbuffer();
 
-  if (renderbuffer === null) throw Error("could not create renderbuffer");
+  if (renderbuffer === null) {
+    throw Error("could not create renderbuffer");
+  }
 
   return renderbuffer;
 };
 
 const textureConfigure = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   texture: WebGLTexture,
   type: TextureType,
   width: number,
@@ -358,7 +360,7 @@ const textureConfigure = (
   return texture;
 };
 
-const textureCreate = (gl: WebGLRenderingContext) => {
+const textureCreate = (gl: WebGL2RenderingContext) => {
   const texture = gl.createTexture();
 
   if (texture === null) throw Error("could not create texture");
@@ -366,7 +368,7 @@ const textureCreate = (gl: WebGLRenderingContext) => {
   return texture;
 };
 
-const textureGetTarget = (gl: WebGLRenderingContext, type: TextureType) => {
+const textureGetTarget = (gl: WebGL2RenderingContext, type: TextureType) => {
   switch (type) {
     case TextureType.Cube:
       return gl.TEXTURE_CUBE_MAP;
@@ -379,7 +381,7 @@ const textureGetTarget = (gl: WebGLRenderingContext, type: TextureType) => {
   }
 };
 
-const textureGetWrap = (gl: WebGLRenderingContext, wrap: model.Wrap) => {
+const textureGetWrap = (gl: WebGL2RenderingContext, wrap: model.Wrap) => {
   switch (wrap) {
     case model.Wrap.Clamp:
       return gl.CLAMP_TO_EDGE;
@@ -396,7 +398,7 @@ const textureGetWrap = (gl: WebGLRenderingContext, wrap: model.Wrap) => {
 };
 
 const loadGeometry = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   geometry: model.Polygon,
   materials: Map<string, Material>,
   defaultMaterial: Material
@@ -446,7 +448,7 @@ const loadGeometry = (
 };
 
 const loadMaterial = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   material: model.Material
 ): Material => {
   const toColorMap = (texture: model.Texture) =>
@@ -484,7 +486,7 @@ const loadMaterial = (
   };
 };
 
-const loadMesh = (gl: WebGLRenderingContext, mesh: model.Model): Mesh => {
+const loadMesh = (gl: WebGL2RenderingContext, mesh: model.Model): Mesh => {
   const defaultMaterial = loadMaterial(gl, {});
   const materials = new Map<string, Material>();
   const nodes: Node[] = [];
@@ -502,7 +504,7 @@ const loadMesh = (gl: WebGLRenderingContext, mesh: model.Model): Mesh => {
 };
 
 const loadNode = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   node: model.Mesh,
   materials: Map<string, Material>,
   defaultMaterial: Material
@@ -517,7 +519,7 @@ const loadNode = (
 });
 
 const loadTextureCube = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   facePositiveX: ImageData,
   faceNegativeX: ImageData,
   facePositiveY: ImageData,
@@ -546,7 +548,7 @@ const loadTextureCube = (
 };
 
 const loadTextureQuad = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   image: ImageData,
   filter?: model.Filter
 ): WebGLTexture => {
@@ -564,7 +566,7 @@ const loadTextureQuad = (
 
 class Shader<State> {
   private readonly attributePerGeometryBindings: AttributeBinding<Geometry>[];
-  private readonly gl: WebGLRenderingContext;
+  private readonly gl: WebGL2RenderingContext;
   private readonly program: WebGLProgram;
   private readonly propertyPerMaterialBindings: PropertyBinding<Material>[];
   private readonly propertyPerNodeBindings: PropertyBinding<NodeState>[];
@@ -573,7 +575,7 @@ class Shader<State> {
   private readonly texturePerTargetBindings: TextureBinding<State>[];
 
   public constructor(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     vsSource: string,
     fsSource: string,
     directives: Directive[] = []
@@ -767,7 +769,7 @@ class Shader<State> {
   public setupPropertyPerMaterial<TValue>(
     name: string,
     getter: (state: Material) => TValue,
-    assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>
+    assign: (gl: WebGL2RenderingContext) => UniformValueSetter<TValue>
   ) {
     this.propertyPerMaterialBindings.push(
       this.declareProperty(name, getter, assign)
@@ -777,7 +779,7 @@ class Shader<State> {
   public setupPropertyPerTarget<TValue>(
     name: string,
     getter: (state: State) => TValue,
-    assign: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>
+    assign: (gl: WebGL2RenderingContext) => UniformValueSetter<TValue>
   ) {
     this.propertyPerTargetBindings.push(
       this.declareProperty(name, getter, assign)
@@ -824,7 +826,7 @@ class Shader<State> {
     length: number,
     copyToBuffer: (state: TSource, buffer: Float32Array) => void,
     setUniformGetter: (
-      gl: WebGLRenderingContext
+      gl: WebGL2RenderingContext
     ) => UniformMatrixSetter<Float32Array>
   ) {
     const gl = this.gl;
@@ -841,7 +843,7 @@ class Shader<State> {
   private declareProperty<TSource, TValue>(
     name: string,
     propertyGetter: (source: TSource) => TValue,
-    setUniformGetter: (gl: WebGLRenderingContext) => UniformValueSetter<TValue>
+    setUniformGetter: (gl: WebGL2RenderingContext) => UniformValueSetter<TValue>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
@@ -918,7 +920,7 @@ class Shader<State> {
   }
 
   private static compile(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     shaderType: number,
     source: string
   ) {
@@ -1109,8 +1111,6 @@ class Target {
         }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-
-        // FIXME: incomplete @type for WebGL2
         gl.drawBuffers(
           functional.range(
             this.colorAttachment.textures.length,
@@ -1143,7 +1143,7 @@ class Target {
   }
 
   private static clearRenderbufferAttachments(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     attachment: Attachment
   ) {
     if (attachment.renderbuffer !== undefined) {
@@ -1154,7 +1154,7 @@ class Target {
   }
 
   private static clearTextureAttachments(
-    gl: WebGLRenderingContext,
+    gl: WebGL2RenderingContext,
     attachment: Attachment
   ) {
     if (attachment.textures !== undefined) {
@@ -1165,7 +1165,7 @@ class Target {
     }
   }
 
-  private static checkFramebuffer(gl: WebGLRenderingContext) {
+  private static checkFramebuffer(gl: WebGL2RenderingContext) {
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
       throw Error("invalid framebuffer operation");
   }

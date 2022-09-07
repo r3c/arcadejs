@@ -355,7 +355,7 @@ void main(void) {
 }`;
 
 const loadLight = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   materialConfiguration: MaterialConfiguration,
   lightConfiguration: LightConfiguration
 ) => {
@@ -758,7 +758,7 @@ const loadLight = (
   return shader;
 };
 
-const loadShadowDirectional = (gl: WebGLRenderingContext) => {
+const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
   const shader = new webgl.Shader<ShadowState>(
     gl,
     shadowDirectionalVertexShader,
@@ -776,7 +776,7 @@ const loadShadowDirectional = (gl: WebGLRenderingContext) => {
   return shader;
 };
 
-const loadShadowPoint = (gl: WebGLRenderingContext) => {
+const loadShadowPoint = (gl: WebGL2RenderingContext) => {
   // Not implemented
   return new webgl.Shader<ShadowState>(
     gl,

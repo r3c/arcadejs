@@ -49,14 +49,18 @@ const invalid = (name: string, instance: any, expected: string) => {
   );
 };
 
-const toArrayOf = <T>(
+const toArrayOf = <TValue>(
   name: string,
   instance: any,
-  converter: (name: string, item: any) => T
+  converter: (name: string, item: any) => TValue
 ) => {
-  if (!(instance instanceof Array)) throw invalid(name, instance, "array");
+  if (!(instance instanceof Array)) {
+    throw invalid(name, instance, "array");
+  }
 
-  return (<any[]>instance).map((v, i) => converter(name + "[" + i + "]", v));
+  return (instance as Array<unknown>).map((v, i) =>
+    converter(name + "[" + i + "]", v)
+  );
 };
 
 const toColor = (name: string, instance: any): Vector4 => {
@@ -95,9 +99,9 @@ const toDecimal = (name: string, instance: any) => {
 };
 
 const toPolygon = (name: string, instance: any): Polygon => {
-  const toAttribute = <T>(
-    values: T[],
-    converter: (value: T) => number[],
+  const toAttribute = <TValue>(
+    values: TValue[],
+    converter: (value: TValue) => number[],
     stride: number
   ) => ({
     buffer: new Float32Array(values.map(converter).flatMap((items) => items)),
@@ -189,8 +193,9 @@ const toMapOf = async <TValue>(
 
   const map = new Map<string, TValue>();
 
-  for (const key in instance)
+  for (const key in instance) {
     map.set(key, await converter(`${name}.${key}`, instance[key], directory));
+  }
 
   return map;
 };

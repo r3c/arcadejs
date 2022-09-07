@@ -324,7 +324,7 @@ interface State {
 }
 
 const loadGeometry = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   // Build directives from configuration
@@ -398,15 +398,15 @@ const loadGeometry = (
   return shader;
 };
 
-const loadLight = <T>(
-  gl: WebGLRenderingContext,
+const loadLight = <TState>(
+  gl: WebGL2RenderingContext,
   _configuration: Configuration,
   type: LightType
 ) => {
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
-  const shader = new webgl.Shader<LightState<T>>(
+  const shader = new webgl.Shader<LightState<TState>>(
     gl,
     lightVertexShader,
     lightFragmentShader,
@@ -447,7 +447,7 @@ const loadLight = <T>(
 };
 
 const loadLightDirectional = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   const shader = loadLight<webgl.DirectionalLight>(
@@ -471,7 +471,7 @@ const loadLightDirectional = (
 };
 
 const loadLightPoint = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   const shader = loadLight<webgl.PointLight>(
@@ -500,7 +500,7 @@ const loadLightPoint = (
 };
 
 const loadMaterial = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   // Build directives from configuration

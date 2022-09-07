@@ -274,7 +274,7 @@ interface LightState<TLight> extends State {
 }
 
 const loadAmbient = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   // Build directives from configuration
@@ -324,7 +324,7 @@ const loadAmbient = (
 };
 
 const loadGeometry = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   // Build directives from configuration
@@ -410,8 +410,8 @@ const loadGeometry = (
   return shader;
 };
 
-const loadLight = <T>(
-  gl: WebGLRenderingContext,
+const loadLight = <TState>(
+  gl: WebGL2RenderingContext,
   configuration: Configuration,
   type: LightType
 ) => {
@@ -433,7 +433,7 @@ const loadLight = <T>(
   }
 
   // Setup light shader
-  const shader = new webgl.Shader<LightState<T>>(
+  const shader = new webgl.Shader<LightState<TState>>(
     gl,
     lightVertexShader,
     lightFragmentShader,
@@ -481,7 +481,7 @@ const loadLight = <T>(
 };
 
 const loadLightDirectional = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   const shader = loadLight<webgl.DirectionalLight>(
@@ -505,7 +505,7 @@ const loadLightDirectional = (
 };
 
 const loadLightPoint = (
-  gl: WebGLRenderingContext,
+  gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
   const shader = loadLight<webgl.PointLight>(

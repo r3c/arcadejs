@@ -127,7 +127,7 @@ interface State {
   source: WebGLTexture;
 }
 
-const load = (gl: WebGLRenderingContext, configuration: Configuration) => {
+const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
   const directives = [
     { name: "FORMAT", value: configuration.format },
     { name: "SELECT", value: configuration.select },
@@ -179,10 +179,10 @@ class Pipeline implements webgl.Pipeline {
                 children: [],
                 primitives: [
                   {
-                    geometry: <any>undefined,
-                    material: <any>{
+                    geometry: undefined as any,
+                    material: {
                       albedoMap: source,
-                    },
+                    } as any,
                   },
                 ],
                 transform: Matrix4.createIdentity(),
@@ -194,7 +194,7 @@ class Pipeline implements webgl.Pipeline {
     };
   }
 
-  public constructor(gl: WebGLRenderingContext, configuration: Configuration) {
+  public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
     this.gl = gl;
     this.painter = new SingularPainter(load(gl, configuration));
     this.quad = webgl.loadMesh(gl, quad.mesh);

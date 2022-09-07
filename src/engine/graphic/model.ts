@@ -248,13 +248,14 @@ const finalizePolygon = (polygon: Polygon): void => {
       buffer[i + 1] = tangent.y;
       buffer[i + 2] = tangent.z;
     }
-  } else if (polygon.coords !== undefined)
+  } else if (polygon.coords !== undefined) {
     polygon.tangents = computeTangents(
       polygon.indices,
       polygon.points,
       polygon.coords,
       polygon.normals
     );
+  }
 };
 
 const finalizeModel = (
@@ -325,8 +326,9 @@ const reduceMeshes = <TState>(
       .duplicate(parent)
       .multiply(mesh.transform);
 
-    for (const polygon of mesh.polygons)
+    for (const polygon of mesh.polygons) {
       state = reduce(state, polygon, transform);
+    }
 
     state = reduceMeshes(mesh.children, transform, state, reduce);
   }
@@ -349,7 +351,7 @@ const reduceMeshPoints = <TState>(
       const buffer = points.buffer;
       const count = points.stride;
 
-      for (let i = 0; i + count - 1 < buffer.length; i += count)
+      for (let i = 0; i + count - 1 < buffer.length; i += count) {
         state = reduce(
           previous,
           transform.transform({
@@ -359,6 +361,7 @@ const reduceMeshPoints = <TState>(
             w: 1,
           })
         );
+      }
 
       return state;
     }

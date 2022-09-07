@@ -25,7 +25,7 @@ interface State {
   viewMatrix: Matrix4;
 }
 
-const load = (gl: WebGLRenderingContext) => {
+const load = (gl: WebGL2RenderingContext) => {
   const shader = new webgl.Shader<State>(gl, vertexShader, fragmentShader);
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
@@ -41,10 +41,10 @@ const load = (gl: WebGLRenderingContext) => {
 };
 
 class Pipeline implements webgl.Pipeline {
-  private readonly gl: WebGLRenderingContext;
+  private readonly gl: WebGL2RenderingContext;
   private readonly painter: webgl.Painter<State>;
 
-  public constructor(gl: WebGLRenderingContext) {
+  public constructor(gl: WebGL2RenderingContext) {
     this.gl = gl;
     this.painter = new SingularPainter(load(gl));
   }
