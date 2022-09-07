@@ -7,8 +7,8 @@ import {
 import * as bitfield from "../bitfield";
 import * as color from "../color";
 import { Input } from "../../engine/io/controller";
-import * as debugTexture from "../../engine/graphic/pipelines/debug-texture";
-import * as deferredLighting from "../../engine/graphic/pipelines/deferred-lighting";
+import * as debugTexture from "../../engine/graphic/webgl/pipelines/debug-texture";
+import * as deferredLighting from "../../engine/graphic/webgl/pipelines/deferred-lighting";
 import { WebGLScreen } from "../../engine/graphic/display";
 import * as functional from "../../engine/language/functional";
 import * as load from "../../engine/graphic/model";
@@ -34,22 +34,22 @@ interface Configuration {
 
 interface SceneState {
   camera: view.Camera;
-  directionalLights: webgl.DirectionalLight[];
+  directionalLights: webgl.GlDirectionalLight[];
   input: Input;
   meshes: {
-    cube: webgl.Mesh;
-    directionalLight: webgl.Mesh;
-    ground: webgl.Mesh;
-    pointLight: webgl.Mesh;
+    cube: webgl.GlModel;
+    directionalLight: webgl.GlModel;
+    ground: webgl.GlModel;
+    pointLight: webgl.GlModel;
   };
   move: number;
   pipelines: {
     debug: debugTexture.Pipeline[];
     scene: deferredLighting.Pipeline[];
   };
-  pointLights: webgl.PointLight[];
+  pointLights: webgl.GlPointLight[];
   projectionMatrix: Matrix4;
-  target: webgl.Target;
+  target: webgl.GlTarget;
   tweak: Tweak<Configuration>;
 }
 
@@ -175,7 +175,7 @@ const application: Application<WebGLScreen, SceneState> = {
         radius: 2,
       })),
       projectionMatrix: Matrix4.createIdentity(),
-      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak: tweak,
     };
   },

@@ -10,7 +10,7 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
   ForwardLightingPipeline,
-} from "../../engine/graphic/pipelines/forward-lighting";
+} from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import * as functional from "../../engine/language/functional";
 import * as load from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -41,16 +41,16 @@ interface SceneState {
   input: Input;
   lightPositions: Vector3[];
   meshes: {
-    cube: webgl.Mesh;
-    ground: webgl.Mesh;
-    light: webgl.Mesh;
+    cube: webgl.GlModel;
+    ground: webgl.GlModel;
+    light: webgl.GlModel;
   };
   move: number;
   pipelines: {
     lights: ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
-  target: webgl.Target;
+  target: webgl.GlTarget;
   tweak: Tweak<Configuration>;
 }
 
@@ -119,7 +119,7 @@ const application: Application<WebGLScreen, SceneState> = {
         ),
       },
       projectionMatrix: Matrix4.createIdentity(),
-      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },

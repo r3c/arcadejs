@@ -1,5 +1,5 @@
 import * as light from "./snippets/light";
-import { Matrix4 } from "../../math/matrix";
+import { Matrix4 } from "../../../math/matrix";
 import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
@@ -7,8 +7,8 @@ import * as phong from "./snippets/phong";
 import * as quad from "./resources/quad";
 import * as shininess from "./snippets/shininess";
 import * as sphere from "./resources/sphere";
-import { Vector2, Vector3 } from "../../math/vector";
-import * as webgl from "../webgl";
+import { Vector2, Vector3 } from "../../../math/vector";
+import * as webgl from "../../webgl";
 
 const enum LightModel {
   None,
@@ -291,7 +291,7 @@ const loadAmbient = (
   }
 
   // Setup light shader
-  const shader = new webgl.Shader<AmbientState>(
+  const shader = new webgl.GlShader<AmbientState>(
     gl,
     ambientVertexShader,
     ambientFragmentShader,
@@ -311,7 +311,7 @@ const loadAmbient = (
   shader.setupTexturePerTarget(
     "albedoAndShininess",
     undefined,
-    webgl.TextureType.Quad,
+    webgl.GlTextureType.Quad,
     (state) => state.albedoAndShininessBuffer
   );
   shader.setupPropertyPerTarget(
@@ -334,7 +334,7 @@ const loadGeometry = (
   ];
 
   // Setup geometry shader
-  const shader = new webgl.Shader<State>(
+  const shader = new webgl.GlShader<State>(
     gl,
     geometryVertexShader,
     geometryFragmentShader,
@@ -362,7 +362,7 @@ const loadGeometry = (
   shader.setupTexturePerMaterial(
     "albedoMap",
     undefined,
-    webgl.TextureType.Quad,
+    webgl.GlTextureType.Quad,
     (material) => material.albedoMap
   );
 
@@ -370,7 +370,7 @@ const loadGeometry = (
     shader.setupTexturePerMaterial(
       "glossinessMap",
       undefined,
-      webgl.TextureType.Quad,
+      webgl.GlTextureType.Quad,
       (material) => material.glossMap
     );
     shader.setupPropertyPerMaterial(
@@ -384,7 +384,7 @@ const loadGeometry = (
     shader.setupTexturePerMaterial(
       "heightMap",
       undefined,
-      webgl.TextureType.Quad,
+      webgl.GlTextureType.Quad,
       (material) => material.heightMap
     );
     shader.setupPropertyPerMaterial(
@@ -403,7 +403,7 @@ const loadGeometry = (
     shader.setupTexturePerMaterial(
       "normalMap",
       undefined,
-      webgl.TextureType.Quad,
+      webgl.GlTextureType.Quad,
       (material) => material.normalMap
     );
 
@@ -433,7 +433,7 @@ const loadLight = <TState>(
   }
 
   // Setup light shader
-  const shader = new webgl.Shader<LightState<TState>>(
+  const shader = new webgl.GlShader<LightState<TState>>(
     gl,
     lightVertexShader,
     lightFragmentShader,
@@ -461,19 +461,19 @@ const loadLight = <TState>(
   shader.setupTexturePerTarget(
     "albedoAndShininess",
     undefined,
-    webgl.TextureType.Quad,
+    webgl.GlTextureType.Quad,
     (state) => state.albedoAndShininessBuffer
   );
   shader.setupTexturePerTarget(
     "depth",
     undefined,
-    webgl.TextureType.Quad,
+    webgl.GlTextureType.Quad,
     (state) => state.depthBuffer
   );
   shader.setupTexturePerTarget(
     "normalAndGlossiness",
     undefined,
-    webgl.TextureType.Quad,
+    webgl.GlTextureType.Quad,
     (state) => state.normalAndGlossinessBuffer
   );
 
@@ -484,7 +484,7 @@ const loadLightDirectional = (
   gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
-  const shader = loadLight<webgl.DirectionalLight>(
+  const shader = loadLight<webgl.GlDirectionalLight>(
     gl,
     configuration,
     LightType.Directional
@@ -508,7 +508,7 @@ const loadLightPoint = (
   gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
-  const shader = loadLight<webgl.PointLight>(
+  const shader = loadLight<webgl.GlPointLight>(
     gl,
     configuration,
     LightType.Point
@@ -533,42 +533,42 @@ const loadLightPoint = (
   return shader;
 };
 
-class Pipeline implements webgl.Pipeline {
+class Pipeline implements webgl.GlPipeline {
   public readonly albedoAndShininessBuffer: WebGLTexture;
   public readonly depthBuffer: WebGLTexture;
   public readonly normalAndGlossinessBuffer: WebGLTexture;
 
-  private readonly ambientLightPainter: webgl.Painter<AmbientState>;
-  private readonly directionalLightPainter: webgl.Painter<
-    LightState<webgl.DirectionalLight>
+  private readonly ambientLightPainter: webgl.GlPainter<AmbientState>;
+  private readonly directionalLightPainter: webgl.GlPainter<
+    LightState<webgl.GlDirectionalLight>
   >;
-  private readonly fullscreenMesh: webgl.Mesh;
+  private readonly fullscreenMesh: webgl.GlModel;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: webgl.Painter<State>;
-  private readonly geometryTarget: webgl.Target;
+  private readonly geometryPainter: webgl.GlPainter<State>;
+  private readonly geometryTarget: webgl.GlTarget;
   private readonly gl: WebGL2RenderingContext;
-  private readonly pointLightPainter: webgl.Painter<
-    LightState<webgl.PointLight>
+  private readonly pointLightPainter: webgl.GlPainter<
+    LightState<webgl.GlPointLight>
   >;
-  private readonly sphereModel: webgl.Mesh;
+  private readonly sphereModel: webgl.GlModel;
 
   public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
-    const geometry = new webgl.Target(
+    const geometry = new webgl.GlTarget(
       gl,
       gl.canvas.clientWidth,
       gl.canvas.clientHeight
     );
 
     this.albedoAndShininessBuffer = geometry.setupColorTexture(
-      webgl.TextureFormat.RGBA8,
-      webgl.TextureType.Quad
+      webgl.GlTextureFormat.RGBA8,
+      webgl.GlTextureType.Quad
     );
     this.ambientLightPainter = new SingularPainter(
       loadAmbient(gl, configuration)
     );
     this.depthBuffer = geometry.setupDepthTexture(
-      webgl.TextureFormat.Depth16,
-      webgl.TextureType.Quad
+      webgl.GlTextureFormat.Depth16,
+      webgl.GlTextureType.Quad
     );
     this.directionalLightPainter = new SingularPainter(
       loadLightDirectional(gl, configuration)
@@ -579,8 +579,8 @@ class Pipeline implements webgl.Pipeline {
     this.geometryTarget = geometry;
     this.gl = gl;
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
-      webgl.TextureFormat.RGBA8,
-      webgl.TextureType.Quad
+      webgl.GlTextureFormat.RGBA8,
+      webgl.GlTextureType.Quad
     );
     this.pointLightPainter = new SingularPainter(
       loadLightPoint(gl, configuration)
@@ -589,9 +589,9 @@ class Pipeline implements webgl.Pipeline {
   }
 
   public process(
-    target: webgl.Target,
-    transform: webgl.Transform,
-    scene: webgl.Scene
+    target: webgl.GlTarget,
+    transform: webgl.GlTransform,
+    scene: webgl.GlScene
   ) {
     const gl = this.gl;
     const viewportSize = {

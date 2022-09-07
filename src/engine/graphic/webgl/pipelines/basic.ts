@@ -1,6 +1,6 @@
-import { Matrix4 } from "../../math/matrix";
+import { Matrix4 } from "../../../math/matrix";
 import { SingularPainter } from "../painters/singular";
-import * as webgl from "../webgl";
+import * as webgl from "../../webgl";
 
 const vertexShader = `
 uniform mat4 modelMatrix;
@@ -26,7 +26,7 @@ interface State {
 }
 
 const load = (gl: WebGL2RenderingContext) => {
-  const shader = new webgl.Shader<State>(gl, vertexShader, fragmentShader);
+  const shader = new webgl.GlShader<State>(gl, vertexShader, fragmentShader);
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
@@ -40,9 +40,9 @@ const load = (gl: WebGL2RenderingContext) => {
   return shader;
 };
 
-class Pipeline implements webgl.Pipeline {
+class Pipeline implements webgl.GlPipeline {
   private readonly gl: WebGL2RenderingContext;
-  private readonly painter: webgl.Painter<State>;
+  private readonly painter: webgl.GlPainter<State>;
 
   public constructor(gl: WebGL2RenderingContext) {
     this.gl = gl;
@@ -50,9 +50,9 @@ class Pipeline implements webgl.Pipeline {
   }
 
   public process(
-    target: webgl.Target,
-    transform: webgl.Transform,
-    scene: webgl.Scene
+    target: webgl.GlTarget,
+    transform: webgl.GlTransform,
+    scene: webgl.GlScene
   ) {
     const gl = this.gl;
 

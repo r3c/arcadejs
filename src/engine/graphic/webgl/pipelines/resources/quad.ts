@@ -1,4 +1,4 @@
-import { Matrix4 } from "../../../math/matrix";
+import { Matrix4 } from "../../../../math/matrix";
 
 const mesh = {
   materials: new Map(),

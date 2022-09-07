@@ -1,5 +1,5 @@
-import { Matrix3, Matrix4 } from "../../math/matrix";
-import * as webgl from "../webgl";
+import { Matrix3, Matrix4 } from "../../../math/matrix";
+import * as webgl from "../../webgl";
 
 interface Batch<State> {
   shaders: Map<number, BatchOfShader<State>>;
@@ -10,12 +10,12 @@ interface BatchOfGeometry {
 }
 
 interface BatchOfMaterial {
-  geometries: Map<webgl.Geometry, BatchOfGeometry>;
+  geometries: Map<webgl.GlPolygon, BatchOfGeometry>;
 }
 
 interface BatchOfShader<TState> {
-  materials: Map<webgl.Material, BatchOfMaterial>;
-  shader: webgl.Shader<TState>;
+  materials: Map<webgl.GlMaterial, BatchOfMaterial>;
+  shader: webgl.GlShader<TState>;
 }
 
 interface Instance {
@@ -23,18 +23,18 @@ interface Instance {
 }
 
 type MaterialClassifier<State> = (
-  material: webgl.Material,
+  material: webgl.GlMaterial,
   state: State
 ) => number;
 type ShaderConstructor<State> = (
-  material: webgl.Material,
+  material: webgl.GlMaterial,
   state: State
-) => webgl.Shader<State>;
+) => webgl.GlShader<State>;
 
-class MaterialPainter<TContext> implements webgl.Painter<TContext> {
+class MaterialPainter<TContext> implements webgl.GlPainter<TContext> {
   private readonly materialClassifier: MaterialClassifier<TContext>;
   private readonly shaderConstructor: ShaderConstructor<TContext>;
-  private readonly shaderRepository: webgl.Shader<TContext>[];
+  private readonly shaderRepository: webgl.GlShader<TContext>[];
 
   public constructor(
     materialClassifier: MaterialClassifier<TContext>,
@@ -42,12 +42,12 @@ class MaterialPainter<TContext> implements webgl.Painter<TContext> {
   ) {
     this.materialClassifier = materialClassifier;
     this.shaderConstructor = shaderConstructor;
-    this.shaderRepository = new Array<webgl.Shader<TContext>>(64);
+    this.shaderRepository = new Array<webgl.GlShader<TContext>>(64);
   }
 
   public paint(
-    target: webgl.Target,
-    subjects: Iterable<webgl.Subject>,
+    target: webgl.GlTarget,
+    subjects: Iterable<webgl.GlSubject>,
     view: Matrix4,
     state: TContext
   ): void {
@@ -56,12 +56,12 @@ class MaterialPainter<TContext> implements webgl.Painter<TContext> {
     };
 
     for (const subject of subjects)
-      this.group(batch, subject.mesh.nodes, subject.matrix, state);
+      this.group(batch, subject.mesh.meshes, subject.matrix, state);
 
     this.draw(target, batch, view, state);
   }
 
-  private create(index: number, material: webgl.Material, state: TContext) {
+  private create(index: number, material: webgl.GlMaterial, state: TContext) {
     if (this.shaderRepository[index] === undefined) {
       this.shaderRepository[index] = this.shaderConstructor(material, state);
     }
@@ -70,7 +70,7 @@ class MaterialPainter<TContext> implements webgl.Painter<TContext> {
   }
 
   private draw(
-    target: webgl.Target,
+    target: webgl.GlTarget,
     batch: Batch<TContext>,
     viewMatrix: Matrix4,
     state: TContext
@@ -110,7 +110,7 @@ class MaterialPainter<TContext> implements webgl.Painter<TContext> {
 
   private group(
     batch: Batch<TContext>,
-    nodes: Iterable<webgl.Node>,
+    nodes: Iterable<webgl.GlMesh>,
     parent: Matrix4,
     state: TContext
   ): void {
@@ -121,7 +121,7 @@ class MaterialPainter<TContext> implements webgl.Painter<TContext> {
 
       this.group(batch, node.children, modelMatrix, state);
 
-      for (const { geometry, material } of node.primitives) {
+      for (const { polygon: geometry, material } of node.primitives) {
         // Get or create shader batch
         const shaderIndex = this.materialClassifier(material, state);
 

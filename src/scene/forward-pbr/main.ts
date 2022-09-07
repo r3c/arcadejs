@@ -7,7 +7,7 @@ import {
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import * as forwardLighting from "../../engine/graphic/pipelines/forward-lighting";
+import * as forwardLighting from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import * as functional from "../../engine/language/functional";
 import * as image from "../../engine/graphic/image";
 import * as load from "../../engine/graphic/model";
@@ -44,16 +44,16 @@ interface SceneState {
   input: Input;
   lights: Light[];
   meshes: {
-    ground: webgl.Mesh;
-    helmet: webgl.Mesh;
-    light: webgl.Mesh;
+    ground: webgl.GlModel;
+    helmet: webgl.GlModel;
+    light: webgl.GlModel;
   };
   move: number;
   pipelines: {
     lights: forwardLighting.ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
-  target: webgl.Target;
+  target: webgl.GlTarget;
   textures: {
     brdf: WebGLTexture;
     diffuse: WebGLTexture;
@@ -170,7 +170,7 @@ const application: Application<WebGLScreen, SceneState> = {
         0.1,
         100
       ),
-      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
       textures: {
         brdf: brdf,
         diffuse: diffuse,

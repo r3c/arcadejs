@@ -3,7 +3,7 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import * as load from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import * as painter from "../../engine/graphic/painters/singular";
+import * as painter from "../../engine/graphic/webgl/painters/singular";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
 import * as webgl from "../../engine/graphic/webgl";
@@ -50,10 +50,10 @@ interface SceneState {
   camera: view.Camera;
   gl: WebGLRenderingContext;
   input: Input;
-  mesh: webgl.Mesh;
-  painter: webgl.Painter<ShaderState>;
+  mesh: webgl.GlModel;
+  painter: webgl.GlPainter<ShaderState>;
   projectionMatrix: Matrix4;
-  target: webgl.Target;
+  target: webgl.GlTarget;
 }
 
 interface ShaderState {
@@ -64,7 +64,7 @@ interface ShaderState {
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const shader = new webgl.Shader<ShaderState>(gl, vsSource, fsSource);
+    const shader = new webgl.GlShader<ShaderState>(gl, vsSource, fsSource);
 
     shader.setupAttributePerGeometry("colors", (geometry) => geometry.colors);
     shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
@@ -78,7 +78,7 @@ const application: Application<WebGLScreen, SceneState> = {
     shader.setupTexturePerMaterial(
       "albedoMap",
       undefined,
-      webgl.TextureType.Quad,
+      webgl.GlTextureType.Quad,
       (material) => material.albedoMap
     );
 
@@ -97,7 +97,7 @@ const application: Application<WebGLScreen, SceneState> = {
       painter: new painter.SingularPainter(shader),
       projectionMatrix: Matrix4.createIdentity(),
       screen: screen,
-      target: new webgl.Target(
+      target: new webgl.GlTarget(
         screen.context,
         screen.getWidth(),
         screen.getHeight()

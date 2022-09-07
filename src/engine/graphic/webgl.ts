@@ -1,29 +1,40 @@
-import * as functional from "../language/functional";
+import { map, range } from "../language/functional";
 import { Matrix3, Matrix4 } from "../math/matrix";
-import * as model from "./model";
+import {
+  defaultFilter,
+  Filter,
+  Interpolation,
+  Material,
+  Mesh,
+  Model,
+  Polygon,
+  Texture,
+  TypedArray,
+  Wrap,
+} from "./model";
 import { Vector3, Vector4 } from "../math/vector";
 
-interface Attachment {
-  renderbuffer: AttachmentRenderbuffer | undefined;
-  textures: AttachmentTexture[];
+interface GlAttachment {
+  renderbuffer: GlAttachmentRenderbuffer | undefined;
+  textures: GlAttachmentTexture[];
 }
 
-interface AttachmentRenderbuffer {
-  format: TextureFormat;
+interface GlAttachmentRenderbuffer {
+  format: GlTextureFormat;
   handle: WebGLRenderbuffer;
 }
 
-enum AttachementTarget {
+enum GlAttachementTarget {
   Color,
   Depth,
 }
 
-interface AttachmentTexture {
-  format: TextureFormat;
+interface GlAttachmentTexture {
+  format: GlTextureFormat;
   handle: WebGLTexture;
 }
 
-interface Attribute {
+interface GlAttribute {
   buffer: WebGLBuffer;
   size: number;
   stride: number;
@@ -32,29 +43,29 @@ interface Attribute {
 
 type AttributeBinding<TSource> = (source: TSource) => void;
 
-interface DirectionalLight {
+interface GlDirectionalLight {
   color: Vector3;
   direction: Vector3;
   shadow: boolean;
 }
 
-interface Directive {
+interface GlDirective {
   name: string;
   value: number;
 }
 
-interface Geometry {
-  colors: Attribute | undefined;
-  coords: Attribute | undefined;
+interface GlPolygon {
+  colors: GlAttribute | undefined;
+  coords: GlAttribute | undefined;
   indexCount: number;
   indexBuffer: WebGLBuffer;
   indexType: number;
-  normals: Attribute | undefined;
-  points: Attribute;
-  tangents: Attribute | undefined;
+  normals: GlAttribute | undefined;
+  points: GlAttribute;
+  tangents: GlAttribute | undefined;
 }
 
-interface Material {
+interface GlMaterial {
   albedoFactor: number[];
   albedoMap: WebGLTexture | undefined;
   emissiveFactor: number[];
@@ -74,8 +85,8 @@ interface Material {
   shininess: number;
 }
 
-interface Mesh {
-  nodes: Node[];
+interface GlModel {
+  meshes: GlMesh[];
 }
 
 interface NativeFormat {
@@ -84,85 +95,89 @@ interface NativeFormat {
   type: number;
 }
 
-interface Node {
-  children: Node[];
-  primitives: Primitive[];
+interface GlMesh {
+  children: GlMesh[];
+  primitives: GlPrimitive[];
   transform: Matrix4;
 }
 
-interface NodeState {
+interface GlMeshState {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
 }
 
-interface Painter<T> {
+interface GlPainter<T> {
   paint(
-    target: Target,
-    subjects: Iterable<Subject>,
+    target: GlTarget,
+    subjects: Iterable<GlSubject>,
     view: Matrix4,
     state: T
   ): void;
 }
 
-interface Pipeline {
-  process(target: Target, transform: Transform, scene: Scene): void;
+interface GlPipeline {
+  process(target: GlTarget, transform: GlTransform, scene: GlScene): void;
   resize(width: number, height: number): void;
 }
 
-interface PointLight {
+interface GlPointLight {
   color: Vector3;
   position: Vector3;
   radius: number;
 }
 
-interface Primitive {
-  geometry: Geometry;
-  material: Material;
+interface GlPrimitive {
+  material: GlMaterial;
+  polygon: GlPolygon;
 }
 
 type PropertyBinding<T> = (source: T) => void;
 
-interface Scene {
+interface GlScene {
   ambientLightColor?: Vector3;
-  directionalLights?: DirectionalLight[];
+  directionalLights?: GlDirectionalLight[];
   environmentLight?: {
     brdf: WebGLTexture;
     diffuse: WebGLTexture;
     specular: WebGLTexture;
   };
-  pointLights?: PointLight[];
-  subjects: Subject[];
+  pointLights?: GlPointLight[];
+  subjects: GlSubject[];
 }
 
-interface Subject {
+interface GlSubject {
   matrix: Matrix4;
-  mesh: Mesh;
+  mesh: GlModel;
   noShadow?: boolean;
 }
 
-type TextureBinding<T> = (source: T, textureIndex: number) => number;
+type GlTextureBinding<T> = (source: T, textureIndex: number) => number;
 
-const enum TextureFormat {
+const enum GlTextureFormat {
   Depth16,
   RGBA8,
 }
 
-const enum TextureType {
+const enum GlTextureType {
   Quad,
   Cube,
 }
 
-interface Transform {
+interface GlTransform {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 }
 
-type UniformMatrixSetter<T> = (
+type GlUniformMatrixSetter<T> = (
   location: WebGLUniformLocation,
   transpose: boolean,
   value: T
 ) => void;
-type UniformValueSetter<T> = (location: WebGLUniformLocation, value: T) => void;
+
+type GlUniformValueSetter<T> = (
+  location: WebGLUniformLocation,
+  value: T
+) => void;
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
@@ -170,7 +185,7 @@ const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 const bufferConvert = (
   gl: WebGL2RenderingContext,
   target: number,
-  values: model.TypedArray
+  values: TypedArray
 ) => {
   const buffer = gl.createBuffer();
 
@@ -186,7 +201,7 @@ const bufferConvert = (
  ** Find OpenGL type from associated array type.
  ** See: https://developer.mozilla.org/docs/Web/API/WebGL2RenderingContext/vertexAttribPointer
  */
-const bufferGetType = (gl: WebGL2RenderingContext, array: model.TypedArray) => {
+const bufferGetType = (gl: WebGL2RenderingContext, array: TypedArray) => {
   if (array instanceof Float32Array) return gl.FLOAT;
   else if (array instanceof Int32Array) return gl.INT;
   else if (array instanceof Uint32Array) return gl.UNSIGNED_INT;
@@ -203,10 +218,10 @@ const bufferGetType = (gl: WebGL2RenderingContext, array: model.TypedArray) => {
  */
 const formatGetNative = (
   gl: WebGL2RenderingContext,
-  format: TextureFormat
+  format: GlTextureFormat
 ): NativeFormat => {
   switch (format) {
-    case TextureFormat.Depth16:
+    case GlTextureFormat.Depth16:
       if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
         throw Error("depth texture WebGL extension is not available");
 
@@ -216,7 +231,7 @@ const formatGetNative = (
         type: gl.UNSIGNED_SHORT,
       };
 
-    case TextureFormat.RGBA8:
+    case GlTextureFormat.RGBA8:
       return {
         format: gl.RGBA,
         internal: gl.RGBA8,
@@ -233,7 +248,7 @@ const renderbufferConfigure = (
   renderbuffer: WebGLRenderbuffer,
   width: number,
   height: number,
-  format: TextureFormat,
+  format: GlTextureFormat,
   samples: number
 ) => {
   const nativeFormat = formatGetNative(gl, format);
@@ -275,11 +290,11 @@ const renderbufferCreate = (gl: WebGL2RenderingContext) => {
 const textureConfigure = (
   gl: WebGL2RenderingContext,
   texture: WebGLTexture,
-  type: TextureType,
+  type: GlTextureType,
   width: number,
   height: number,
-  format: TextureFormat,
-  filter: model.Filter,
+  format: GlTextureFormat,
+  filter: Filter,
   image: ImageData | ImageData[] | undefined
 ) => {
   const isPowerOfTwo =
@@ -290,11 +305,11 @@ const textureConfigure = (
 
   // Define texture format, filtering & wrapping parameters
   const magnifierFilter =
-    filter.magnifier === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+    filter.magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
   const minifierFilter =
-    filter.minifier === model.Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+    filter.minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
   const mipmapFilter =
-    filter.minifier === model.Interpolation.Linear
+    filter.minifier === Interpolation.Linear
       ? gl.NEAREST_MIPMAP_LINEAR
       : gl.NEAREST_MIPMAP_NEAREST;
   const nativeFormat = formatGetNative(gl, format);
@@ -368,12 +383,12 @@ const textureCreate = (gl: WebGL2RenderingContext) => {
   return texture;
 };
 
-const textureGetTarget = (gl: WebGL2RenderingContext, type: TextureType) => {
+const textureGetTarget = (gl: WebGL2RenderingContext, type: GlTextureType) => {
   switch (type) {
-    case TextureType.Cube:
+    case GlTextureType.Cube:
       return gl.TEXTURE_CUBE_MAP;
 
-    case TextureType.Quad:
+    case GlTextureType.Quad:
       return gl.TEXTURE_2D;
 
     default:
@@ -381,15 +396,15 @@ const textureGetTarget = (gl: WebGL2RenderingContext, type: TextureType) => {
   }
 };
 
-const textureGetWrap = (gl: WebGL2RenderingContext, wrap: model.Wrap) => {
+const textureGetWrap = (gl: WebGL2RenderingContext, wrap: Wrap) => {
   switch (wrap) {
-    case model.Wrap.Clamp:
+    case Wrap.Clamp:
       return gl.CLAMP_TO_EDGE;
 
-    case model.Wrap.Mirror:
+    case Wrap.Mirror:
       return gl.MIRRORED_REPEAT;
 
-    case model.Wrap.Repeat:
+    case Wrap.Repeat:
       return gl.REPEAT;
 
     default:
@@ -399,19 +414,19 @@ const textureGetWrap = (gl: WebGL2RenderingContext, wrap: model.Wrap) => {
 
 const loadGeometry = (
   gl: WebGL2RenderingContext,
-  geometry: model.Polygon,
-  materials: Map<string, Material>,
-  defaultMaterial: Material
-): Primitive => {
+  geometry: Polygon,
+  materials: Map<string, GlMaterial>,
+  defaultMaterial: GlMaterial
+): GlPrimitive => {
   return {
-    geometry: {
-      colors: functional.map(geometry.colors, (colors) => ({
+    polygon: {
+      colors: map(geometry.colors, (colors) => ({
         buffer: bufferConvert(gl, gl.ARRAY_BUFFER, colors.buffer),
         size: colors.stride,
         stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, colors.buffer),
       })),
-      coords: functional.map(geometry.coords, (coords) => ({
+      coords: map(geometry.coords, (coords) => ({
         buffer: bufferConvert(gl, gl.ARRAY_BUFFER, coords.buffer),
         size: coords.stride,
         stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
@@ -420,7 +435,7 @@ const loadGeometry = (
       indexCount: geometry.indices.length,
       indexBuffer: bufferConvert(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
       indexType: bufferGetType(gl, geometry.indices),
-      normals: functional.map(geometry.normals, (normals) => ({
+      normals: map(geometry.normals, (normals) => ({
         buffer: bufferConvert(gl, gl.ARRAY_BUFFER, normals.buffer),
         size: normals.stride,
         stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT,
@@ -433,7 +448,7 @@ const loadGeometry = (
           geometry.points.stride * geometry.points.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, geometry.points.buffer),
       },
-      tangents: functional.map(geometry.tangents, (tangents) => ({
+      tangents: map(geometry.tangents, (tangents) => ({
         buffer: bufferConvert(gl, gl.ARRAY_BUFFER, tangents.buffer),
         size: tangents.stride,
         stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT,
@@ -449,47 +464,47 @@ const loadGeometry = (
 
 const loadMaterial = (
   gl: WebGL2RenderingContext,
-  material: model.Material
-): Material => {
-  const toColorMap = (texture: model.Texture) =>
+  material: Material
+): GlMaterial => {
+  const toColorMap = (texture: Texture) =>
     textureConfigure(
       gl,
       textureCreate(gl),
-      TextureType.Quad,
+      GlTextureType.Quad,
       texture.image.width,
       texture.image.height,
-      TextureFormat.RGBA8,
+      GlTextureFormat.RGBA8,
       texture.filter,
       texture.image
     );
 
   return {
     albedoFactor: Vector4.toArray(material.albedoFactor || colorWhite),
-    albedoMap: functional.map(material.albedoMap, toColorMap),
+    albedoMap: map(material.albedoMap, toColorMap),
     emissiveFactor: Vector4.toArray(material.emissiveFactor || colorBlack),
-    emissiveMap: functional.map(material.emissiveMap, toColorMap),
+    emissiveMap: map(material.emissiveMap, toColorMap),
     glossFactor: Vector4.toArray(
       material.glossFactor || material.albedoFactor || colorWhite
     ),
-    glossMap: functional.map(material.glossMap, toColorMap),
-    heightMap: functional.map(material.heightMap, toColorMap),
+    glossMap: map(material.glossMap, toColorMap),
+    heightMap: map(material.heightMap, toColorMap),
     heightParallaxBias: material.heightParallaxBias ?? 0,
     heightParallaxScale: material.heightParallaxScale ?? 0,
-    metalnessMap: functional.map(material.metalnessMap, toColorMap),
+    metalnessMap: map(material.metalnessMap, toColorMap),
     metalnessStrength: material.metalnessStrength ?? 0,
-    normalMap: functional.map(material.normalMap, toColorMap),
-    occlusionMap: functional.map(material.occlusionMap, toColorMap),
+    normalMap: map(material.normalMap, toColorMap),
+    occlusionMap: map(material.occlusionMap, toColorMap),
     occlusionStrength: material.occlusionStrength ?? 1,
-    roughnessMap: functional.map(material.roughnessMap, toColorMap),
+    roughnessMap: map(material.roughnessMap, toColorMap),
     roughnessStrength: material.roughnessStrength ?? 1,
     shininess: material.shininess ?? 30,
   };
 };
 
-const loadMesh = (gl: WebGL2RenderingContext, mesh: model.Model): Mesh => {
+const loadMesh = (gl: WebGL2RenderingContext, mesh: Model): GlModel => {
   const defaultMaterial = loadMaterial(gl, {});
-  const materials = new Map<string, Material>();
-  const nodes: Node[] = [];
+  const materials = new Map<string, GlMaterial>();
+  const nodes: GlMesh[] = [];
 
   for (const [name, material] of mesh.materials.entries()) {
     materials.set(name, loadMaterial(gl, material));
@@ -499,16 +514,16 @@ const loadMesh = (gl: WebGL2RenderingContext, mesh: model.Model): Mesh => {
     nodes.push(loadNode(gl, node, materials, defaultMaterial));
 
   return {
-    nodes: nodes,
+    meshes: nodes,
   };
 };
 
 const loadNode = (
   gl: WebGL2RenderingContext,
-  node: model.Mesh,
-  materials: Map<string, Material>,
-  defaultMaterial: Material
-): Node => ({
+  node: Mesh,
+  materials: Map<string, GlMaterial>,
+  defaultMaterial: GlMaterial
+): GlMesh => ({
   children: node.children.map((child) =>
     loadNode(gl, child, materials, defaultMaterial)
   ),
@@ -526,16 +541,16 @@ const loadTextureCube = (
   faceNegativeY: ImageData,
   facePositiveZ: ImageData,
   faceNegativeZ: ImageData,
-  filter?: model.Filter
+  filter?: Filter
 ): WebGLTexture => {
   return textureConfigure(
     gl,
     textureCreate(gl),
-    TextureType.Cube,
+    GlTextureType.Cube,
     facePositiveX.width,
     facePositiveX.height,
-    TextureFormat.RGBA8,
-    filter ?? model.defaultFilter,
+    GlTextureFormat.RGBA8,
+    filter ?? defaultFilter,
     [
       facePositiveX,
       faceNegativeX,
@@ -550,35 +565,35 @@ const loadTextureCube = (
 const loadTextureQuad = (
   gl: WebGL2RenderingContext,
   image: ImageData,
-  filter?: model.Filter
+  filter?: Filter
 ): WebGLTexture => {
   return textureConfigure(
     gl,
     textureCreate(gl),
-    TextureType.Quad,
+    GlTextureType.Quad,
     image.width,
     image.height,
-    TextureFormat.RGBA8,
-    filter ?? model.defaultFilter,
+    GlTextureFormat.RGBA8,
+    filter ?? defaultFilter,
     image
   );
 };
 
-class Shader<State> {
-  private readonly attributePerGeometryBindings: AttributeBinding<Geometry>[];
+class GlShader<TState> {
+  private readonly attributePerGeometryBindings: AttributeBinding<GlPolygon>[];
   private readonly gl: WebGL2RenderingContext;
   private readonly program: WebGLProgram;
-  private readonly propertyPerMaterialBindings: PropertyBinding<Material>[];
-  private readonly propertyPerNodeBindings: PropertyBinding<NodeState>[];
-  private readonly propertyPerTargetBindings: PropertyBinding<State>[];
-  private readonly texturePerMaterialBindings: TextureBinding<Material>[];
-  private readonly texturePerTargetBindings: TextureBinding<State>[];
+  private readonly propertyPerMaterialBindings: PropertyBinding<GlMaterial>[];
+  private readonly propertyPerNodeBindings: PropertyBinding<GlMeshState>[];
+  private readonly propertyPerTargetBindings: PropertyBinding<TState>[];
+  private readonly texturePerMaterialBindings: GlTextureBinding<GlMaterial>[];
+  private readonly texturePerTargetBindings: GlTextureBinding<TState>[];
 
   public constructor(
     gl: WebGL2RenderingContext,
     vsSource: string,
     fsSource: string,
-    directives: Directive[] = []
+    directives: GlDirective[] = []
   ) {
     const program = gl.createProgram();
 
@@ -595,11 +610,11 @@ class Shader<State> {
 
     gl.attachShader(
       program,
-      Shader.compile(gl, gl.VERTEX_SHADER, header + vsSource)
+      GlShader.compile(gl, gl.VERTEX_SHADER, header + vsSource)
     );
     gl.attachShader(
       program,
-      Shader.compile(gl, gl.FRAGMENT_SHADER, header + fsSource)
+      GlShader.compile(gl, gl.FRAGMENT_SHADER, header + fsSource)
     );
     gl.linkProgram(program);
 
@@ -628,7 +643,7 @@ class Shader<State> {
   /*
    ** Assign per-geometry attributes.
    */
-  public bindGeometry(geometry: Geometry) {
+  public bindGeometry(geometry: GlPolygon) {
     for (const binding of this.attributePerGeometryBindings) {
       binding(geometry);
     }
@@ -637,7 +652,7 @@ class Shader<State> {
   /*
    ** Assign per-material uniforms.
    */
-  public bindMaterial(material: Material, textureIndex: number) {
+  public bindMaterial(material: GlMaterial, textureIndex: number) {
     for (const binding of this.propertyPerMaterialBindings) {
       binding(material);
     }
@@ -652,7 +667,7 @@ class Shader<State> {
   /*
    ** Assign per-node uniforms.
    */
-  public bindNode(nodeState: NodeState) {
+  public bindNode(nodeState: GlMeshState) {
     for (const binding of this.propertyPerNodeBindings) {
       binding(nodeState);
     }
@@ -661,7 +676,7 @@ class Shader<State> {
   /*
    ** Assign per-target uniforms.
    */
-  public bindTarget(state: State) {
+  public bindTarget(state: TState) {
     let textureIndex = 0;
 
     for (const binding of this.propertyPerTargetBindings) {
@@ -686,12 +701,12 @@ class Shader<State> {
 
   public setupAttributePerGeometry(
     name: string,
-    getter: (state: Geometry) => Attribute | undefined
+    getter: (state: GlPolygon) => GlAttribute | undefined
   ) {
     const gl = this.gl;
     const location = this.findAttribute(name);
 
-    this.attributePerGeometryBindings.push((geometry: Geometry) => {
+    this.attributePerGeometryBindings.push((geometry: GlPolygon) => {
       const attribute = getter(geometry);
 
       if (attribute === undefined)
@@ -712,7 +727,7 @@ class Shader<State> {
 
   public setupMatrix3PerNode(
     name: string,
-    getter: (state: NodeState) => Matrix3
+    getter: (state: GlMeshState) => Matrix3
   ) {
     this.propertyPerNodeBindings.push(
       this.declareMatrix(
@@ -726,7 +741,7 @@ class Shader<State> {
 
   public setupMatrix3PerTarget(
     name: string,
-    getter: (state: State) => Matrix3
+    getter: (state: TState) => Matrix3
   ) {
     this.propertyPerTargetBindings.push(
       this.declareMatrix(
@@ -740,7 +755,7 @@ class Shader<State> {
 
   public setupMatrix4PerNode(
     name: string,
-    getter: (state: NodeState) => Matrix4
+    getter: (state: GlMeshState) => Matrix4
   ) {
     this.propertyPerNodeBindings.push(
       this.declareMatrix(
@@ -754,7 +769,7 @@ class Shader<State> {
 
   public setupMatrix4PerTarget(
     name: string,
-    getter: (state: State) => Matrix4
+    getter: (state: TState) => Matrix4
   ) {
     this.propertyPerTargetBindings.push(
       this.declareMatrix(
@@ -768,8 +783,8 @@ class Shader<State> {
 
   public setupPropertyPerMaterial<TValue>(
     name: string,
-    getter: (state: Material) => TValue,
-    assign: (gl: WebGL2RenderingContext) => UniformValueSetter<TValue>
+    getter: (state: GlMaterial) => TValue,
+    assign: (gl: WebGL2RenderingContext) => GlUniformValueSetter<TValue>
   ) {
     this.propertyPerMaterialBindings.push(
       this.declareProperty(name, getter, assign)
@@ -778,8 +793,8 @@ class Shader<State> {
 
   public setupPropertyPerTarget<TValue>(
     name: string,
-    getter: (state: State) => TValue,
-    assign: (gl: WebGL2RenderingContext) => UniformValueSetter<TValue>
+    getter: (state: TState) => TValue,
+    assign: (gl: WebGL2RenderingContext) => GlUniformValueSetter<TValue>
   ) {
     this.propertyPerTargetBindings.push(
       this.declareProperty(name, getter, assign)
@@ -797,8 +812,8 @@ class Shader<State> {
   public setupTexturePerMaterial(
     samplerName: string,
     enabledName: string | undefined,
-    type: TextureType,
-    getter: (state: Material) => WebGLTexture | undefined
+    type: GlTextureType,
+    getter: (state: GlMaterial) => WebGLTexture | undefined
   ) {
     this.texturePerMaterialBindings.push(
       this.declareTexture(samplerName, enabledName, type, getter)
@@ -813,8 +828,8 @@ class Shader<State> {
   public setupTexturePerTarget(
     samplerName: string,
     enabledName: string | undefined,
-    type: TextureType,
-    getter: (state: State) => WebGLTexture | undefined
+    type: GlTextureType,
+    getter: (state: TState) => WebGLTexture | undefined
   ) {
     this.texturePerTargetBindings.push(
       this.declareTexture(samplerName, enabledName, type, getter)
@@ -827,7 +842,7 @@ class Shader<State> {
     copyToBuffer: (state: TSource, buffer: Float32Array) => void,
     setUniformGetter: (
       gl: WebGL2RenderingContext
-    ) => UniformMatrixSetter<Float32Array>
+    ) => GlUniformMatrixSetter<Float32Array>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
@@ -843,7 +858,9 @@ class Shader<State> {
   private declareProperty<TSource, TValue>(
     name: string,
     propertyGetter: (source: TSource) => TValue,
-    setUniformGetter: (gl: WebGL2RenderingContext) => UniformValueSetter<TValue>
+    setUniformGetter: (
+      gl: WebGL2RenderingContext
+    ) => GlUniformValueSetter<TValue>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
@@ -856,12 +873,10 @@ class Shader<State> {
   private declareTexture<TSource>(
     samplerName: string,
     enabledName: string | undefined,
-    type: TextureType,
+    type: GlTextureType,
     textureGetter: (source: TSource) => WebGLTexture | undefined
   ) {
-    const enabledLocation = functional.map(enabledName, (name) =>
-      this.findUniform(name)
-    );
+    const enabledLocation = map(enabledName, (name) => this.findUniform(name));
     const gl = this.gl;
     const samplerLocation = this.findUniform(samplerName);
     const target = textureGetTarget(gl, type);
@@ -968,12 +983,12 @@ class Shader<State> {
   }
 }
 
-class Target {
+class GlTarget {
   private readonly gl: WebGL2RenderingContext;
 
-  private colorAttachment: Attachment;
+  private colorAttachment: GlAttachment;
   private colorClear: Vector4;
-  private depthAttachment: Attachment;
+  private depthAttachment: GlAttachment;
   private depthClear: number;
   private framebuffers: WebGLFramebuffer[];
   private viewHeight: number;
@@ -1018,8 +1033,8 @@ class Target {
   public dispose() {
     const gl = this.gl;
 
-    Target.clearRenderbufferAttachments(gl, this.colorAttachment);
-    Target.clearTextureAttachments(gl, this.depthAttachment);
+    GlTarget.clearRenderbufferAttachments(gl, this.colorAttachment);
+    GlTarget.clearTextureAttachments(gl, this.depthAttachment);
   }
 
   public draw(
@@ -1063,11 +1078,11 @@ class Target {
         textureConfigure(
           gl,
           texture.handle,
-          TextureType.Quad,
+          GlTextureType.Quad,
           width,
           height,
           texture.format,
-          model.defaultFilter,
+          defaultFilter,
           undefined
         );
       }
@@ -1085,20 +1100,20 @@ class Target {
     this.depthClear = depth;
   }
 
-  public setupColorRenderbuffer(format: TextureFormat) {
+  public setupColorRenderbuffer(format: GlTextureFormat) {
     return this.attachRenderbuffer(
       this.colorAttachment,
       format,
-      AttachementTarget.Color
+      GlAttachementTarget.Color
     );
   }
 
-  public setupColorTexture(format: TextureFormat, type: TextureType) {
+  public setupColorTexture(format: GlTextureFormat, type: GlTextureType) {
     const texture = this.attachTexture(
       this.colorAttachment,
       format,
       type,
-      AttachementTarget.Color
+      GlAttachementTarget.Color
     );
 
     // Configure draw buffers
@@ -1110,14 +1125,13 @@ class Target {
           continue;
         }
 
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        gl.drawBuffers(
-          functional.range(
-            this.colorAttachment.textures.length,
-            (i) => gl.COLOR_ATTACHMENT0 + i
-          )
+        const buffers = range(
+          this.colorAttachment.textures.length,
+          (i) => gl.COLOR_ATTACHMENT0 + i
         );
 
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        gl.drawBuffers(buffers);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       }
     }
@@ -1125,26 +1139,26 @@ class Target {
     return texture;
   }
 
-  public setupDepthRenderbuffer(format: TextureFormat) {
+  public setupDepthRenderbuffer(format: GlTextureFormat) {
     return this.attachRenderbuffer(
       this.depthAttachment,
       format,
-      AttachementTarget.Depth
+      GlAttachementTarget.Depth
     );
   }
 
-  public setupDepthTexture(format: TextureFormat, type: TextureType) {
+  public setupDepthTexture(format: GlTextureFormat, type: GlTextureType) {
     return this.attachTexture(
       this.depthAttachment,
       format,
       type,
-      AttachementTarget.Depth
+      GlAttachementTarget.Depth
     );
   }
 
   private static clearRenderbufferAttachments(
     gl: WebGL2RenderingContext,
-    attachment: Attachment
+    attachment: GlAttachment
   ) {
     if (attachment.renderbuffer !== undefined) {
       gl.deleteRenderbuffer(attachment.renderbuffer.handle);
@@ -1155,7 +1169,7 @@ class Target {
 
   private static clearTextureAttachments(
     gl: WebGL2RenderingContext,
-    attachment: Attachment
+    attachment: GlAttachment
   ) {
     if (attachment.textures !== undefined) {
       for (const texture of attachment.textures)
@@ -1192,16 +1206,16 @@ class Target {
   }
 
   private attachRenderbuffer(
-    attachment: Attachment,
-    format: TextureFormat,
+    attachment: GlAttachment,
+    format: GlTextureFormat,
     target: number
   ) {
     const framebuffer = this.configureFramebuffer(0);
     const gl = this.gl;
 
     // Clear renderbuffer and texture attachments if any
-    Target.clearRenderbufferAttachments(gl, attachment);
-    Target.clearTextureAttachments(gl, attachment);
+    GlTarget.clearRenderbufferAttachments(gl, attachment);
+    GlTarget.clearTextureAttachments(gl, attachment);
 
     // Create renderbuffer attachment
     const renderbuffer = renderbufferConfigure(
@@ -1227,7 +1241,7 @@ class Target {
       renderbuffer
     );
 
-    Target.checkFramebuffer(gl);
+    GlTarget.checkFramebuffer(gl);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -1235,10 +1249,10 @@ class Target {
   }
 
   private attachTexture(
-    attachment: Attachment,
-    format: TextureFormat,
-    type: TextureType,
-    framebufferTarget: AttachementTarget
+    attachment: GlAttachment,
+    format: GlTextureFormat,
+    type: GlTextureType,
+    framebufferTarget: GlAttachementTarget
   ) {
     const gl = this.gl;
     const cubeTextureBase = gl.TEXTURE_CUBE_MAP_POSITIVE_X;
@@ -1247,12 +1261,12 @@ class Target {
     let textureTargets: number[];
 
     switch (type) {
-      case TextureType.Cube:
-        textureTargets = functional.range(6, (i) => cubeTextureBase + i);
+      case GlTextureType.Cube:
+        textureTargets = range(6, (i) => cubeTextureBase + i);
 
         break;
 
-      case TextureType.Quad:
+      case GlTextureType.Quad:
         textureTargets = [gl.TEXTURE_2D];
 
         break;
@@ -1263,10 +1277,10 @@ class Target {
 
     // Create new texture attachment
     const filter = {
-      magnifier: model.Interpolation.Nearest,
-      minifier: model.Interpolation.Nearest,
+      magnifier: Interpolation.Nearest,
+      minifier: Interpolation.Nearest,
       mipmap: false,
-      wrap: model.Wrap.Clamp,
+      wrap: Wrap.Clamp,
     };
 
     const texture = textureConfigure(
@@ -1286,7 +1300,7 @@ class Target {
       const textureTarget = textureTargets[i];
 
       // Clear renderbuffer attachment if any
-      Target.clearRenderbufferAttachments(gl, attachment);
+      GlTarget.clearRenderbufferAttachments(gl, attachment);
 
       const offset = attachment.textures.push({
         format: format,
@@ -1303,7 +1317,7 @@ class Target {
         0
       );
 
-      Target.checkFramebuffer(gl);
+      GlTarget.checkFramebuffer(gl);
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
@@ -1311,12 +1325,12 @@ class Target {
     return texture;
   }
 
-  private getAttachment(attachementTarget: AttachementTarget, index: number) {
+  private getAttachment(attachementTarget: GlAttachementTarget, index: number) {
     switch (attachementTarget) {
-      case AttachementTarget.Color:
+      case GlAttachementTarget.Color:
         return this.gl.COLOR_ATTACHMENT0 + index;
 
-      case AttachementTarget.Depth:
+      case GlAttachementTarget.Depth:
         return this.gl.DEPTH_ATTACHMENT + index;
 
       default:
@@ -1326,23 +1340,23 @@ class Target {
 }
 
 export {
-  type Attribute,
-  type DirectionalLight,
-  type Directive,
-  type Geometry,
-  type Material,
-  type Mesh,
-  type Node,
-  type Painter,
-  type Pipeline,
-  type PointLight,
-  type Scene,
-  type Subject,
-  type Transform,
-  Shader,
-  Target,
-  TextureFormat,
-  TextureType,
+  type GlAttribute,
+  type GlDirectionalLight,
+  type GlDirective,
+  type GlMaterial,
+  type GlMesh,
+  type GlModel,
+  type GlPainter,
+  type GlPipeline,
+  type GlPointLight,
+  type GlPolygon,
+  type GlScene,
+  type GlSubject,
+  type GlTransform,
+  GlShader,
+  GlTarget,
+  GlTextureFormat,
+  GlTextureType,
   loadMesh,
   loadTextureCube,
   loadTextureQuad,

@@ -6,9 +6,9 @@ import {
 } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
-import * as debugTexture from "../../engine/graphic/pipelines/debug-texture";
+import * as debugTexture from "../../engine/graphic/webgl/pipelines/debug-texture";
 import { WebGLScreen } from "../../engine/graphic/display";
-import * as forwardLighting from "../../engine/graphic/pipelines/forward-lighting";
+import * as forwardLighting from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import * as load from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as move from "../move";
@@ -32,9 +32,9 @@ interface SceneState {
   camera: view.Camera;
   input: Input;
   meshes: {
-    cube: webgl.Mesh;
-    ground: webgl.Mesh;
-    light: webgl.Mesh;
+    cube: webgl.GlModel;
+    ground: webgl.GlModel;
+    light: webgl.GlModel;
   };
   move: number;
   pipelines: {
@@ -42,7 +42,7 @@ interface SceneState {
     lights: forwardLighting.ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
-  target: webgl.Target;
+  target: webgl.GlTarget;
   tweak: Tweak<Configuration>;
 }
 
@@ -99,7 +99,7 @@ const application: Application<WebGLScreen, SceneState> = {
         ),
       },
       projectionMatrix: Matrix4.createIdentity(),
-      target: new webgl.Target(gl, screen.getWidth(), screen.getHeight()),
+      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },

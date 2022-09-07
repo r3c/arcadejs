@@ -1,16 +1,16 @@
-import { Matrix3, Matrix4 } from "../../math/matrix";
-import * as webgl from "../webgl";
+import { Matrix3, Matrix4 } from "../../../math/matrix";
+import * as webgl from "../../webgl";
 
-class SingularPainter<TContext> implements webgl.Painter<TContext> {
-  private readonly shader: webgl.Shader<TContext>;
+class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
+  private readonly shader: webgl.GlShader<TContext>;
 
-  public constructor(shader: webgl.Shader<TContext>) {
+  public constructor(shader: webgl.GlShader<TContext>) {
     this.shader = shader;
   }
 
   public paint(
-    target: webgl.Target,
-    subjects: Iterable<webgl.Subject>,
+    target: webgl.GlTarget,
+    subjects: Iterable<webgl.GlSubject>,
     view: Matrix4,
     state: TContext
   ): void {
@@ -21,13 +21,13 @@ class SingularPainter<TContext> implements webgl.Painter<TContext> {
     const textureIndex = shader.bindTarget(state);
 
     for (const subject of subjects) {
-      this.draw(target, subject.mesh.nodes, subject.matrix, view, textureIndex);
+      this.draw(target, subject.mesh.meshes, subject.matrix, view, textureIndex);
     }
   }
 
   private draw(
-    target: webgl.Target,
-    nodes: Iterable<webgl.Node>,
+    target: webgl.GlTarget,
+    nodes: Iterable<webgl.GlMesh>,
     parentTransform: Matrix4,
     viewMatrix: Matrix4,
     textureIndex: number
@@ -43,7 +43,7 @@ class SingularPainter<TContext> implements webgl.Painter<TContext> {
       this.draw(target, node.children, modelMatrix, viewMatrix, textureIndex);
 
       for (const primitive of node.primitives) {
-        const geometry = primitive.geometry;
+        const geometry = primitive.polygon;
         const material = primitive.material;
 
         shader.bindGeometry(geometry);
