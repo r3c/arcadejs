@@ -501,21 +501,19 @@ const loadMaterial = (
   };
 };
 
-const loadMesh = (gl: WebGL2RenderingContext, mesh: Model): GlModel => {
+const loadModel = (gl: WebGL2RenderingContext, mesh: Model): GlModel => {
   const defaultMaterial = loadMaterial(gl, {});
   const materials = new Map<string, GlMaterial>();
-  const nodes: GlMesh[] = [];
+  const meshes: GlMesh[] = [];
 
   for (const [name, material] of mesh.materials.entries()) {
     materials.set(name, loadMaterial(gl, material));
   }
 
   for (const node of mesh.meshes)
-    nodes.push(loadNode(gl, node, materials, defaultMaterial));
+    meshes.push(loadNode(gl, node, materials, defaultMaterial));
 
-  return {
-    meshes: nodes,
-  };
+  return { meshes };
 };
 
 const loadNode = (
@@ -1357,7 +1355,7 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  loadMesh,
+  loadModel,
   loadTextureCube,
   loadTextureQuad,
 };

@@ -75,9 +75,9 @@ const application: Application<WebGLScreen, SceneState> = {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
       meshes: {
-        cube: webgl.loadMesh(gl, cubeMesh),
-        ground: webgl.loadMesh(gl, groundMesh),
-        light: webgl.loadMesh(gl, lightMesh),
+        cube: webgl.loadModel(gl, cubeMesh),
+        ground: webgl.loadModel(gl, groundMesh),
+        light: webgl.loadModel(gl, lightMesh),
       },
       move: 0,
       pipelines: {

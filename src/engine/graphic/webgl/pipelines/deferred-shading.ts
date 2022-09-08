@@ -573,7 +573,7 @@ class Pipeline implements webgl.GlPipeline {
     this.directionalLightPainter = new SingularPainter(
       loadLightDirectional(gl, configuration)
     );
-    this.fullscreenMesh = webgl.loadMesh(gl, quad.mesh);
+    this.fullscreenMesh = webgl.loadModel(gl, quad.mesh);
     this.fullscreenProjection = Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = new SingularPainter(loadGeometry(gl, configuration));
     this.geometryTarget = geometry;
@@ -585,7 +585,7 @@ class Pipeline implements webgl.GlPipeline {
     this.pointLightPainter = new SingularPainter(
       loadLightPoint(gl, configuration)
     );
-    this.sphereModel = webgl.loadMesh(gl, sphere.mesh);
+    this.sphereModel = webgl.loadModel(gl, sphere.mesh);
   }
 
   public process(

@@ -197,7 +197,7 @@ class Pipeline implements webgl.GlPipeline {
   public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
     this.gl = gl;
     this.painter = new SingularPainter(load(gl, configuration));
-    this.quad = webgl.loadMesh(gl, quad.mesh);
+    this.quad = webgl.loadModel(gl, quad.mesh);
     this.scale = configuration.scale ?? 0.4;
   }
 

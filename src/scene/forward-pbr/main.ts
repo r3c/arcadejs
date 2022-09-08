@@ -139,9 +139,9 @@ const application: Application<WebGLScreen, SceneState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       meshes: {
-        ground: webgl.loadMesh(gl, groundMesh),
-        helmet: webgl.loadMesh(gl, helmetMesh),
-        light: webgl.loadMesh(gl, lightMesh),
+        ground: webgl.loadModel(gl, groundMesh),
+        helmet: webgl.loadModel(gl, helmetMesh),
+        light: webgl.loadModel(gl, lightMesh),
       },
       move: 0,
       pipelines: {

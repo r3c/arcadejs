@@ -108,10 +108,10 @@ const application: Application<WebGLScreen, SceneState> = {
       })),
       input: new Input(screen.canvas),
       meshes: {
-        cube: webgl.loadMesh(gl, cubeMesh),
-        directionalLight: webgl.loadMesh(gl, directionalLightMesh),
-        ground: webgl.loadMesh(gl, groundMesh),
-        pointLight: webgl.loadMesh(gl, pointLightMesh),
+        cube: webgl.loadModel(gl, cubeMesh),
+        directionalLight: webgl.loadModel(gl, directionalLightMesh),
+        ground: webgl.loadModel(gl, groundMesh),
+        pointLight: webgl.loadModel(gl, pointLightMesh),
       },
       move: 0,
       pipelines: {
