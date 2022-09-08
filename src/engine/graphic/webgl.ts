@@ -86,6 +86,7 @@ interface GlMaterial {
 }
 
 interface GlModel {
+  materials: Map<string, GlMaterial>;
   meshes: GlMesh[];
 }
 
@@ -185,14 +186,21 @@ const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 const bufferConvert = (
   gl: WebGL2RenderingContext,
   target: number,
-  values: TypedArray
+  values: TypedArray,
+  dynamicBuffer: boolean
 ) => {
   const buffer = gl.createBuffer();
 
-  if (buffer === null) throw Error("could not create buffer");
+  if (buffer === null) {
+    throw Error("could not create buffer");
+  }
 
   gl.bindBuffer(target, buffer);
-  gl.bufferData(target, values, gl.STATIC_DRAW);
+  gl.bufferData(
+    target,
+    values,
+    dynamicBuffer ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW
+  );
 
   return buffer;
 };
@@ -354,7 +362,7 @@ const textureConfigure = (
   } else if ((<ImageData[]>image).length !== undefined) {
     const images = <ImageData[]>image;
 
-    for (let i = 0; i < 6; ++i)
+    for (let i = 0; i < 6; ++i) {
       gl.texImage2D(
         gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
         0,
@@ -366,9 +374,12 @@ const textureConfigure = (
         nativeFormat.type,
         new Uint8Array((<ImageData>images[i]).data)
       );
+    }
   }
 
-  if (filter.mipmap && isPowerOfTwo) gl.generateMipmap(target);
+  if (filter.mipmap && isPowerOfTwo) {
+    gl.generateMipmap(target);
+  }
 
   gl.bindTexture(target, null);
 
@@ -378,7 +389,9 @@ const textureConfigure = (
 const textureCreate = (gl: WebGL2RenderingContext) => {
   const texture = gl.createTexture();
 
-  if (texture === null) throw Error("could not create texture");
+  if (texture === null) {
+    throw Error("could not create texture");
+  }
 
   return texture;
 };
@@ -410,56 +423,6 @@ const textureGetWrap = (gl: WebGL2RenderingContext, wrap: Wrap) => {
     default:
       throw Error(`unknown texture wrap mode ${wrap}`);
   }
-};
-
-const loadGeometry = (
-  gl: WebGL2RenderingContext,
-  geometry: Polygon,
-  materials: Map<string, GlMaterial>,
-  defaultMaterial: GlMaterial
-): GlPrimitive => {
-  return {
-    polygon: {
-      colors: map(geometry.colors, (colors) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, colors.buffer),
-        size: colors.stride,
-        stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, colors.buffer),
-      })),
-      coords: map(geometry.coords, (coords) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, coords.buffer),
-        size: coords.stride,
-        stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, coords.buffer),
-      })),
-      indexCount: geometry.indices.length,
-      indexBuffer: bufferConvert(gl, gl.ELEMENT_ARRAY_BUFFER, geometry.indices),
-      indexType: bufferGetType(gl, geometry.indices),
-      normals: map(geometry.normals, (normals) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, normals.buffer),
-        size: normals.stride,
-        stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, normals.buffer),
-      })),
-      points: {
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, geometry.points.buffer),
-        size: geometry.points.stride,
-        stride:
-          geometry.points.stride * geometry.points.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, geometry.points.buffer),
-      },
-      tangents: map(geometry.tangents, (tangents) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, tangents.buffer),
-        size: tangents.stride,
-        stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, tangents.buffer),
-      })),
-    },
-    material:
-      (geometry.materialName !== undefined
-        ? materials.get(geometry.materialName)
-        : undefined) ?? defaultMaterial,
-  };
 };
 
 const loadMaterial = (
@@ -501,35 +464,124 @@ const loadMaterial = (
   };
 };
 
-const loadModel = (gl: WebGL2RenderingContext, mesh: Model): GlModel => {
-  const defaultMaterial = loadMaterial(gl, {});
-  const materials = new Map<string, GlMaterial>();
-  const meshes: GlMesh[] = [];
-
-  for (const [name, material] of mesh.materials.entries()) {
-    materials.set(name, loadMaterial(gl, material));
-  }
-
-  for (const node of mesh.meshes)
-    meshes.push(loadNode(gl, node, materials, defaultMaterial));
-
-  return { meshes };
-};
-
-const loadNode = (
+const loadMesh = (
   gl: WebGL2RenderingContext,
-  node: Mesh,
+  mesh: Mesh,
   materials: Map<string, GlMaterial>,
+  dynamicBuffer: boolean,
   defaultMaterial: GlMaterial
 ): GlMesh => ({
-  children: node.children.map((child) =>
-    loadNode(gl, child, materials, defaultMaterial)
+  children: mesh.children.map((child) =>
+    loadMesh(gl, child, materials, dynamicBuffer, defaultMaterial)
   ),
-  primitives: node.polygons.map((geometry) =>
-    loadGeometry(gl, geometry, materials, defaultMaterial)
+  primitives: mesh.polygons.map((polygon) =>
+    loadPrimitive(gl, polygon, materials, dynamicBuffer, defaultMaterial)
   ),
-  transform: node.transform,
+  transform: mesh.transform,
 });
+
+const loadModel = (
+  gl: WebGL2RenderingContext,
+  model: Model,
+  recycle?: GlModel
+): GlModel => {
+  const defaultMaterial = loadMaterial(gl, {});
+  const dynamicBuffer = recycle !== undefined;
+  const materials = new Map(recycle !== undefined ? recycle.materials : []);
+  const meshes: GlMesh[] = [];
+
+  for (const [name, material] of model.materials.entries()) {
+    materials.set(name, materials.get(name) ?? loadMaterial(gl, material));
+  }
+
+  for (const mesh of model.meshes) {
+    meshes.push(loadMesh(gl, mesh, materials, dynamicBuffer, defaultMaterial));
+  }
+
+  return { materials, meshes };
+};
+
+const loadPrimitive = (
+  gl: WebGL2RenderingContext,
+  polygon: Polygon,
+  materials: Map<string, GlMaterial>,
+  dynamicBuffer: boolean,
+  defaultMaterial: GlMaterial
+): GlPrimitive => {
+  const material =
+    polygon.materialName !== undefined
+      ? materials.get(polygon.materialName)
+      : undefined;
+
+  return {
+    polygon: {
+      colors: map(polygon.colors, (colors) => ({
+        buffer: bufferConvert(
+          gl,
+          gl.ARRAY_BUFFER,
+          colors.buffer,
+          dynamicBuffer
+        ),
+        size: colors.stride,
+        stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT,
+        type: bufferGetType(gl, colors.buffer),
+      })),
+      coords: map(polygon.coords, (coords) => ({
+        buffer: bufferConvert(
+          gl,
+          gl.ARRAY_BUFFER,
+          coords.buffer,
+          dynamicBuffer
+        ),
+        size: coords.stride,
+        stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
+        type: bufferGetType(gl, coords.buffer),
+      })),
+      indexCount: polygon.indices.length,
+      indexBuffer: bufferConvert(
+        gl,
+        gl.ELEMENT_ARRAY_BUFFER,
+        polygon.indices,
+        dynamicBuffer
+      ),
+      indexType: bufferGetType(gl, polygon.indices),
+      normals: map(polygon.normals, (normals) => ({
+        buffer: bufferConvert(
+          gl,
+          gl.ARRAY_BUFFER,
+          normals.buffer,
+          dynamicBuffer
+        ),
+        size: normals.stride,
+        stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT,
+        type: bufferGetType(gl, normals.buffer),
+      })),
+      points: {
+        buffer: bufferConvert(
+          gl,
+          gl.ARRAY_BUFFER,
+          polygon.points.buffer,
+          dynamicBuffer
+        ),
+        size: polygon.points.stride,
+        stride: polygon.points.stride * polygon.points.buffer.BYTES_PER_ELEMENT,
+        type: bufferGetType(gl, polygon.points.buffer),
+      },
+      tangents: map(polygon.tangents, (tangents) => ({
+        buffer: bufferConvert(
+          gl,
+          gl.ARRAY_BUFFER,
+          tangents.buffer,
+          dynamicBuffer
+        ),
+        size: tangents.stride,
+        stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT,
+        type: bufferGetType(gl, tangents.buffer),
+      })),
+    },
+    material: material ?? defaultMaterial,
+  };
+};
 
 const loadTextureCube = (
   gl: WebGL2RenderingContext,

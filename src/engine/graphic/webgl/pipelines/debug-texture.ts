@@ -174,6 +174,7 @@ class Pipeline implements webgl.GlPipeline {
         {
           matrix: Matrix4.createIdentity(),
           mesh: {
+            materials: new Map(),
             meshes: [
               {
                 children: [],
