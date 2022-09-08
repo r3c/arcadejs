@@ -37,6 +37,11 @@ const enum Interpolation {
   Nearest,
 }
 
+interface Instance {
+  model: Model;
+  transform: Matrix4;
+}
+
 interface Material {
   albedoFactor?: Vector4;
   albedoMap?: Texture;
@@ -106,6 +111,7 @@ export {
   type Attribute,
   type BoundingBox,
   type Filter,
+  type Instance,
   type Material,
   type Mesh,
   type Model,

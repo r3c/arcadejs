@@ -8,6 +8,7 @@ import {
   Material,
   Mesh,
   Model,
+  Instance,
   Polygon,
   Texture,
   TypedArray,
@@ -315,6 +316,19 @@ const loadFromObj = async (url: string, config?: Config): Promise<Model> => {
   return model;
 };
 
+const mergeModels = (instances: Instance[]): Model => {
+  return {
+    materials: new Map(
+      instances.flatMap(({ model }) => Array.from(model.materials.entries()))
+    ),
+    meshes: instances.map(({ model, transform }) => ({
+      children: model.meshes,
+      polygons: [],
+      transform: transform,
+    })),
+  };
+};
+
 const reduceMeshes = <TState>(
   meshes: Mesh[],
   parent: Matrix4,
@@ -386,4 +400,5 @@ export {
   loadFromGltf,
   loadFromJson,
   loadFromObj,
+  mergeModels,
 };
