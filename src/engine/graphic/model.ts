@@ -281,6 +281,190 @@ const finalizeModel = (
   model.meshes.forEach((node) => finalizeMesh(node, config));
 };
 
+const flattenModel = (model: Model): Model => {
+  type Fragment = { polygon: Polygon; transform: Matrix4 };
+
+  // Recursively collect fragments by material name from model
+  const fragmentsByMaterialName = new Map<string | undefined, Fragment[]>();
+  const flattenFragments = (meshes: Mesh[], parentTransform: Matrix4): void => {
+    for (const mesh of meshes) {
+      const transform = Matrix4.createIdentity()
+        .duplicate(parentTransform)
+        .multiply(mesh.transform);
+
+      for (const polygon of mesh.polygons) {
+        const fragments =
+          fragmentsByMaterialName.get(polygon.materialName) ?? [];
+
+        fragmentsByMaterialName.set(polygon.materialName, fragments);
+        fragments.push({ polygon, transform });
+      }
+
+      flattenFragments(mesh.children, transform);
+    }
+  };
+
+  flattenFragments(model.meshes, Matrix4.createIdentity());
+
+  // Merge polygons by material name
+  const polygons: Polygon[] = [];
+  const concatAttributes = (
+    fragments: Fragment[],
+    expectedStride: number,
+    extractor: (polygon: Polygon) => Attribute | undefined,
+    converter: (
+      targetBuffer: TypedArray,
+      targetOffset: number,
+      sourceBuffer: TypedArray,
+      sourceOffset: number,
+      transform: Matrix4
+    ) => void
+  ): Attribute | undefined => {
+    let concatLength = 0;
+
+    for (const { polygon } of fragments) {
+      const attribute = extractor(polygon);
+
+      if (attribute === undefined) {
+        continue;
+      }
+
+      const { buffer, stride } = attribute;
+
+      if (stride !== expectedStride) {
+        throw new Error(`incompatible stride (${stride} != ${expectedStride})`);
+      }
+
+      concatLength += buffer.length;
+    }
+
+    if (concatLength < 1) {
+      return undefined;
+    }
+
+    const concatBuffer = new Float32Array(concatLength);
+    let concatOffset = 0;
+
+    for (const { polygon, transform } of fragments) {
+      const attribute = extractor(polygon);
+
+      if (attribute === undefined) {
+        continue;
+      }
+
+      const { buffer, stride } = attribute;
+
+      for (let offset = 0; offset + stride <= buffer.length; offset += stride) {
+        converter(concatBuffer, concatOffset, buffer, offset, transform);
+
+        concatOffset += stride;
+      }
+    }
+
+    return { buffer: concatBuffer, stride: expectedStride };
+  };
+
+  for (const [materialName, fragments] of fragmentsByMaterialName.entries()) {
+    const concatPoints = concatAttributes(
+      fragments,
+      3,
+      (polygon) => polygon.points,
+      (targetBuffer, targetOffset, sourceBuffer, sourceOffset, transform) => {
+        const point = transform.transform({
+          x: sourceBuffer[sourceOffset + 0],
+          y: sourceBuffer[sourceOffset + 1],
+          z: sourceBuffer[sourceOffset + 2],
+          w: 1,
+        });
+
+        targetBuffer[targetOffset + 0] = point.x;
+        targetBuffer[targetOffset + 1] = point.y;
+        targetBuffer[targetOffset + 2] = point.z;
+      }
+    );
+
+    if (concatPoints === undefined) {
+      throw Error("got undefined attribute when flattening model points");
+    }
+
+    // Build concatenated index buffer
+    let indexLength = 0;
+
+    for (const { polygon } of fragments) {
+      indexLength += polygon.indices.length;
+    }
+
+    const concatIndexBuffer = new Uint32Array(indexLength);
+
+    let concatIndexOffset = 0;
+    let concatIndexShift = 0;
+
+    for (const { polygon } of fragments) {
+      const { indices, points } = polygon;
+
+      for (const index of indices) {
+        concatIndexBuffer[concatIndexOffset++] = index + concatIndexShift;
+      }
+
+      concatIndexShift += points.buffer.length / points.stride;
+    }
+
+    polygons.push({
+      colors: concatAttributes(
+        fragments,
+        4,
+        (polygon) => polygon.colors,
+        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
+          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
+          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
+          targetBuffer[targetOffset + 2] = sourceBuffer[sourceOffset + 2];
+          targetBuffer[targetOffset + 3] = sourceBuffer[sourceOffset + 3];
+        }
+      ),
+      coords: concatAttributes(
+        fragments,
+        2,
+        (polygon) => polygon.coords,
+        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
+          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
+          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
+        }
+      ),
+      indices: concatIndexBuffer,
+      materialName,
+      normals: concatAttributes(
+        fragments,
+        3,
+        (polygon) => polygon.normals,
+        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
+          // FIXME: missing multiplication by normalMatrix
+          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
+          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
+          targetBuffer[targetOffset + 2] = sourceBuffer[sourceOffset + 2];
+        }
+      ),
+      points: concatPoints,
+      tangents: concatAttributes(
+        fragments,
+        3,
+        (polygon) => polygon.tangents,
+        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
+          // FIXME: missing multiplication by normalMatrix
+          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
+          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
+          targetBuffer[targetOffset + 2] = sourceBuffer[sourceOffset + 2];
+        }
+      ),
+    });
+  }
+
+  // Create and return flattened model
+  return {
+    materials: model.materials,
+    meshes: [{ children: [], polygons, transform: Matrix4.createIdentity() }],
+  };
+};
+
 const loadFrom3ds = async (url: string, config?: Config): Promise<Model> => {
   const model = await tdsLoad(url);
 
@@ -396,6 +580,7 @@ export {
   computeBounds,
   defaultColor,
   defaultFilter,
+  flattenModel,
   loadFrom3ds,
   loadFromGltf,
   loadFromJson,
