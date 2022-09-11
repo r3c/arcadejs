@@ -57,63 +57,72 @@ const loadMaterial = async (
   for (const { line, fields } of parseFile(data)) {
     switch (fields[0]) {
       case "Kd": // Diffuse light color
-        if (fields.length < 4 || current === undefined)
+        if (fields.length < 4 || current === undefined) {
           throw invalidLine(fileName, line, "albedo color");
+        }
 
         current.albedoFactor = parseVector4(fields);
 
         break;
 
       case "Ks": // Specular light color
-        if (fields.length < 4 || current === undefined)
+        if (fields.length < 4 || current === undefined) {
           throw invalidLine(fileName, line, "gloss color");
+        }
 
         current.glossFactor = parseVector4(fields);
 
         break;
 
       case "map_bump": // Bump map texture
-        if (fields.length < 2 || current === undefined)
+        if (fields.length < 2 || current === undefined) {
           throw invalidLine(fileName, line, "bump map");
+        }
 
         current.heightMap = await loadTexture(fileName, fields[1]);
 
         break;
 
       case "map_Kd": // Diffuse map texture
-        if (fields.length < 2 || current === undefined)
+        if (fields.length < 2 || current === undefined) {
           throw invalidLine(fileName, line, "albedo map");
+        }
 
         current.albedoMap = await loadTexture(fileName, fields[1]);
 
         break;
 
       case "map_Ks": // Specular map texture
-        if (fields.length < 2 || current === undefined)
+        if (fields.length < 2 || current === undefined) {
           throw invalidLine(fileName, line, "specular map");
+        }
 
         current.glossMap = await loadTexture(fileName, fields[1]);
 
         break;
 
       case "map_normal": // Normal map texture (custom extension)
-        if (fields.length < 2 || current === undefined)
+        if (fields.length < 2 || current === undefined) {
           throw invalidLine(fileName, line, "normal map");
+        }
 
         current.normalMap = await loadTexture(fileName, fields[1]);
 
         break;
 
       case "Ns": // Material shininess
-        if (fields.length < 2 || current === undefined)
+        if (fields.length < 2 || current === undefined) {
           throw invalidLine(fileName, line, "shininess");
+        }
 
         current.shininess = parseFloat(fields[1]);
 
         break;
 
       case "newmtl": // New material declaration
-        if (fields.length < 2) throw invalidLine(fileName, line, "material");
+        if (fields.length < 2) {
+          throw invalidLine(fileName, line, "material");
+        }
 
         const material = {};
 
@@ -145,8 +154,9 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
   for (const { line, fields } of parseFile(data)) {
     switch (fields[0]) {
       case "f":
-        if (fields.length < 4)
+        if (fields.length < 4) {
           throw invalidLine(fileName, line, "face definition");
+        }
 
         if (mustStartNew) {
           current = {
@@ -165,8 +175,9 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
         break;
 
       case "mtllib":
-        if (fields.length < 2)
+        if (fields.length < 2) {
           throw invalidLine(fileName, line, "material library reference");
+        }
 
         const directory = path.directory(fileName);
         const library = path.combine(directory, fields[1]);
@@ -178,8 +189,9 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
         break;
 
       case "usemtl":
-        if (fields.length < 2)
+        if (fields.length < 2) {
           throw invalidLine(fileName, line, "material use");
+        }
 
         mustStartNew = true;
         mustUseMaterial = fields[1];
@@ -187,21 +199,27 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
         break;
 
       case "v":
-        if (fields.length < 4) throw invalidLine(fileName, line, "vertex");
+        if (fields.length < 4) {
+          throw invalidLine(fileName, line, "vertex");
+        }
 
         points.push(parseVector3(fields));
 
         break;
 
       case "vn":
-        if (fields.length < 4) throw invalidLine(fileName, line, "normal");
+        if (fields.length < 4) {
+          throw invalidLine(fileName, line, "normal");
+        }
 
         normals.push(parseVector3(fields));
 
         break;
 
       case "vt":
-        if (fields.length < 3) throw invalidLine(fileName, line, "texture");
+        if (fields.length < 3) {
+          throw invalidLine(fileName, line, "texture");
+        }
 
         coords.push(parseVector2(fields));
 
@@ -279,10 +297,15 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
       }
     }
 
+    const material =
+      group.materialName !== undefined
+        ? materials.get(group.materialName)
+        : undefined;
+
     polygons.push({
       coords: undefined,
       indices: new Uint32Array(groupIndices),
-      materialName: group.materialName,
+      material,
       normals: undefined,
       points: {
         buffer: new Float32Array(groupPoints),
@@ -292,7 +315,6 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
   }
 
   return {
-    materials,
     meshes: [
       {
         children: [],

@@ -285,7 +285,6 @@ class Renderer {
       image,
       model.meshes,
       Matrix4.createIdentity().duplicate(projection).multiply(modelView),
-      model.materials,
       drawMode
     );
 
@@ -296,7 +295,6 @@ class Renderer {
     image: Image,
     meshes: Iterable<Mesh>,
     modelViewProjection: Matrix4,
-    materials: Map<string, Material>,
     drawMode: DrawMode
   ) {
     const halfWidth = image.width * 0.5;
@@ -305,22 +303,13 @@ class Renderer {
       drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
 
     for (const mesh of meshes) {
-      Renderer.drawMeshes(
-        image,
-        mesh.children,
-        modelViewProjection,
-        materials,
-        drawMode
-      );
+      Renderer.drawMeshes(image, mesh.children, modelViewProjection, drawMode);
 
       for (const polygon of mesh.polygons) {
         const colors = polygon.colors || defaultAttribute;
         const coords = polygon.coords || defaultAttribute;
         const indices = polygon.indices;
-        const material =
-          materials !== undefined && polygon.materialName !== undefined
-            ? materials.get(polygon.materialName)
-            : undefined;
+        const material = polygon.material;
         const points = polygon.points;
 
         const vertices: Vertex[] = [];

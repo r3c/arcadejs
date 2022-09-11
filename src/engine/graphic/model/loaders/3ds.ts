@@ -26,7 +26,17 @@ interface Context {
   reader: stream.BinaryReader;
 }
 
-interface RawMesh {
+interface RawMaterial {
+  material: Material;
+  name: string;
+}
+
+interface RawModel {
+  materials: Map<string, Material>;
+  polygons: RawPolygon[];
+}
+
+interface RawPolygon {
   coords: number[];
   indices: number[];
   materialName: string | undefined;
@@ -37,7 +47,7 @@ const invalidChunk = (file: string, chunk: number, description: string) => {
   return Error(`invalid chunk ${chunk} in file ${file}: ${description}`);
 };
 
-const load = async (url: string) => {
+const load = async (url: string): Promise<Model> => {
   const context = {
     codec: asciiCodec,
     directory: path.directory(url),
@@ -48,10 +58,31 @@ const load = async (url: string) => {
     ),
   };
 
-  return scan(context, context.reader.getLength(), readRoot, {
+  const model = await scan(context, context.reader.getLength(), readRoot, {
     materials: new Map(),
-    meshes: [],
+    polygons: [],
   });
+
+  return {
+    meshes: [
+      {
+        children: [],
+        polygons: model.polygons.map((mesh) => ({
+          coords:
+            mesh.coords.length > 0
+              ? { buffer: new Float32Array(mesh.coords), stride: 2 }
+              : undefined,
+          indices: new Uint32Array(mesh.indices),
+          material:
+            mesh.materialName !== undefined
+              ? model.materials.get(mesh.materialName)
+              : undefined,
+          points: { buffer: new Float32Array(mesh.points), stride: 3 },
+        })),
+        transform: Matrix4.createIdentity(),
+      },
+    ],
+  };
 };
 
 const readColor = async (
@@ -87,27 +118,13 @@ const readEdit = async (
   context: Context,
   end: number,
   chunk: number,
-  state: Model
+  state: RawModel
 ) => {
   switch (chunk) {
     case 0x4000: // DIT_OBJECT
       context.reader.readBufferZero(); // Skip object name
 
-      const meshes = await scan(context, end, readObject, []);
-
-      state.meshes.push({
-        children: [],
-        polygons: meshes.map((mesh) => ({
-          coords:
-            mesh.coords.length > 0
-              ? { buffer: new Float32Array(mesh.coords), stride: 2 }
-              : undefined,
-          indices: new Uint32Array(mesh.indices),
-          materialName: mesh.materialName,
-          points: { buffer: new Float32Array(mesh.points), stride: 3 },
-        })),
-        transform: Matrix4.createIdentity(),
-      });
+      await scan(context, end, readObject, state.polygons);
 
       return state;
 
@@ -129,7 +146,7 @@ const readMain = async (
   context: Context,
   end: number,
   chunk: number,
-  state: Model
+  state: RawModel
 ) => {
   switch (chunk) {
     case 0x3d3d: // EDIT3DS
@@ -143,7 +160,7 @@ const readMaterial = async (
   context: Context,
   end: number,
   chunk: number,
-  state: { material: Material; name: string }
+  state: RawMaterial
 ) => {
   switch (chunk) {
     case 0xa000: // Material name
@@ -241,8 +258,8 @@ const readObject = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawMesh[]
-): Promise<RawMesh[]> => {
+  state: RawPolygon[]
+): Promise<RawPolygon[]> => {
   switch (chunk) {
     case 0x4100: // OBJ_TRIMESH
       const mesh = await scan(context, end, readPolygon, {
@@ -264,7 +281,7 @@ const readPolygon = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawMesh
+  state: RawPolygon
 ) => {
   switch (chunk) {
     case 0x4110: // TRI_VERTEXL
@@ -323,7 +340,7 @@ const readRoot = async (
   context: Context,
   end: number,
   chunk: number,
-  state: Model
+  state: RawModel
 ) => {
   switch (chunk) {
     case 0x4d4d: // MAIN3DS

@@ -222,7 +222,11 @@ const expandMaterial = (material: TfMaterial): Material => {
   };
 };
 
-const expandMesh = (url: string, mesh: TfMesh): Polygon[] => {
+const expandMesh = (
+  url: string,
+  mesh: TfMesh,
+  materials: Map<string, Material>
+): Polygon[] => {
   return mesh.primitives.map((primitive) => {
     const indices = expandAccessor(url, primitive.indices, 1, "index");
 
@@ -234,7 +238,10 @@ const expandMesh = (url: string, mesh: TfMesh): Polygon[] => {
         expandAccessor(url, coords, 2, "coords")
       ),
       indices: indices.buffer,
-      materialName: primitive.materialName,
+      material:
+        primitive.materialName !== undefined
+          ? materials.get(primitive.materialName)
+          : undefined,
       normals: map(primitive.normals, (normals) =>
         expandAccessor(url, normals, 3, "normals")
       ),
@@ -246,9 +253,13 @@ const expandMesh = (url: string, mesh: TfMesh): Polygon[] => {
   });
 };
 
-const expandNode = (url: string, node: TfNode): Mesh => ({
-  children: node.children.map((child) => expandNode(url, child)),
-  polygons: map(node.mesh, (mesh) => expandMesh(url, mesh)) ?? [],
+const expandNode = (
+  url: string,
+  node: TfNode,
+  materials: Map<string, Material>
+): Mesh => ({
+  children: node.children.map((child) => expandNode(url, child, materials)),
+  polygons: map(node.mesh, (mesh) => expandMesh(url, mesh, materials)) ?? [],
   transform: node.transform,
 });
 
@@ -737,9 +748,15 @@ const loadRoot = async (
     throw invalidData(url, `default scene #${defaultScene} doesn't exist`);
   }
 
+  // Convert to common types
+  const outputMaterials = new Map(
+    materials.map((m) => [m.name, expandMaterial(m)])
+  );
+
   return {
-    materials: new Map(materials.map((m) => [m.name, expandMaterial(m)])),
-    meshes: scenes[defaultScene].nodes.map((node) => expandNode(url, node)),
+    meshes: scenes[defaultScene].nodes.map((node) =>
+      expandNode(url, node, outputMaterials)
+    ),
   };
 };
 

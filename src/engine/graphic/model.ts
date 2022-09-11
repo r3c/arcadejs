@@ -289,7 +289,7 @@ const flattenModel = (model: Model): Model => {
   type Fragment = { polygon: Polygon; transform: Matrix4 };
 
   // Recursively collect fragments by material name from model
-  const fragmentsByMaterialName = new Map<string | undefined, Fragment[]>();
+  const fragmentsByMaterial = new Map<Material | undefined, Fragment[]>();
   const flattenFragments = (meshes: Mesh[], parentTransform: Matrix4): void => {
     for (const mesh of meshes) {
       const transform = Matrix4.createIdentity()
@@ -297,10 +297,9 @@ const flattenModel = (model: Model): Model => {
         .multiply(mesh.transform);
 
       for (const polygon of mesh.polygons) {
-        const fragments =
-          fragmentsByMaterialName.get(polygon.materialName) ?? [];
+        const fragments = fragmentsByMaterial.get(polygon.material) ?? [];
 
-        fragmentsByMaterialName.set(polygon.materialName, fragments);
+        fragmentsByMaterial.set(polygon.material, fragments);
         fragments.push({ polygon, transform });
       }
 
@@ -368,7 +367,7 @@ const flattenModel = (model: Model): Model => {
     return { buffer: concatBuffer, stride: expectedStride };
   };
 
-  for (const [materialName, fragments] of fragmentsByMaterialName.entries()) {
+  for (const [material, fragments] of fragmentsByMaterial.entries()) {
     const concatPoints = concatAttributes(
       fragments,
       3,
@@ -435,7 +434,7 @@ const flattenModel = (model: Model): Model => {
         }
       ),
       indices: concatIndexBuffer,
-      materialName,
+      material,
       normals: concatAttributes(
         fragments,
         3,
@@ -464,7 +463,6 @@ const flattenModel = (model: Model): Model => {
 
   // Create and return flattened model
   return {
-    materials: model.materials,
     meshes: [{ children: [], polygons, transform: Matrix4.createIdentity() }],
   };
 };
@@ -476,13 +474,10 @@ const loadModelFromObj = createLoadModel(loadFromObj);
 
 const mergeModels = (instances: Instance[]): Model => {
   return {
-    materials: new Map(
-      instances.flatMap(({ model }) => Array.from(model.materials.entries()))
-    ),
     meshes: instances.map(({ model, transform }) => ({
       children: model.meshes,
       polygons: [],
-      transform: transform,
+      transform,
     })),
   };
 };

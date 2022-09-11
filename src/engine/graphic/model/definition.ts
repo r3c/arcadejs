@@ -26,7 +26,7 @@ interface Polygon {
   colors?: Attribute;
   coords?: Attribute;
   indices: TypedArray;
-  materialName?: string;
+  material?: Material;
   normals?: Attribute;
   points: Attribute;
   tangents?: Attribute;
@@ -69,7 +69,6 @@ interface Mesh {
 }
 
 interface Model {
-  materials: Map<string, Material>;
   meshes: Mesh[];
 }
 

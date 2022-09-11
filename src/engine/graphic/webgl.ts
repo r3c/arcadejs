@@ -86,7 +86,7 @@ interface GlMaterial {
 }
 
 interface GlModel {
-  materials: Map<string, GlMaterial>;
+  materials: Map<Material, GlMaterial>;
   meshes: GlMesh[];
 }
 
@@ -187,7 +187,7 @@ const bufferConvert = (
   gl: WebGL2RenderingContext,
   target: number,
   values: TypedArray,
-  dynamicBuffer: boolean
+  isDynamic: boolean
 ) => {
   const buffer = gl.createBuffer();
 
@@ -196,11 +196,7 @@ const bufferConvert = (
   }
 
   gl.bindBuffer(target, buffer);
-  gl.bufferData(
-    target,
-    values,
-    dynamicBuffer ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW
-  );
+  gl.bufferData(target, values, isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
 
   return buffer;
 };
@@ -249,6 +245,18 @@ const formatGetNative = (
     default:
       throw Error(`invalid texture format ${format}`);
   }
+};
+
+const getOrLoadMaterial = (
+  gl: WebGL2RenderingContext,
+  material: Material | undefined,
+  materials: Map<Material | undefined, GlMaterial>
+) => {
+  const output = materials.get(material) ?? loadMaterial(gl, material ?? {});
+
+  materials.set(material, output);
+
+  return output;
 };
 
 const renderbufferConfigure = (
@@ -467,15 +475,14 @@ const loadMaterial = (
 const loadMesh = (
   gl: WebGL2RenderingContext,
   mesh: Mesh,
-  materials: Map<string, GlMaterial>,
-  dynamicBuffer: boolean,
-  defaultMaterial: GlMaterial
+  materials: Map<Material | undefined, GlMaterial>,
+  isDynamic: boolean
 ): GlMesh => ({
   children: mesh.children.map((child) =>
-    loadMesh(gl, child, materials, dynamicBuffer, defaultMaterial)
+    loadMesh(gl, child, materials, isDynamic)
   ),
   primitives: mesh.polygons.map((polygon) =>
-    loadPrimitive(gl, polygon, materials, dynamicBuffer, defaultMaterial)
+    loadPrimitive(gl, polygon, materials, isDynamic)
   ),
   transform: mesh.transform,
 });
@@ -485,18 +492,11 @@ const loadModel = (
   model: Model,
   recycle?: GlModel
 ): GlModel => {
-  const defaultMaterial = loadMaterial(gl, {});
-  const dynamicBuffer = recycle !== undefined;
+  const isDynamic = recycle !== undefined;
   const materials = new Map(recycle !== undefined ? recycle.materials : []);
-  const meshes: GlMesh[] = [];
-
-  for (const [name, material] of model.materials.entries()) {
-    materials.set(name, materials.get(name) ?? loadMaterial(gl, material));
-  }
-
-  for (const mesh of model.meshes) {
-    meshes.push(loadMesh(gl, mesh, materials, dynamicBuffer, defaultMaterial));
-  }
+  const meshes = model.meshes.map((mesh) =>
+    loadMesh(gl, mesh, materials, isDynamic)
+  );
 
   return { materials, meshes };
 };
@@ -504,35 +504,20 @@ const loadModel = (
 const loadPrimitive = (
   gl: WebGL2RenderingContext,
   polygon: Polygon,
-  materials: Map<string, GlMaterial>,
-  dynamicBuffer: boolean,
-  defaultMaterial: GlMaterial
+  materials: Map<Material | undefined, GlMaterial>,
+  isDynamic: boolean
 ): GlPrimitive => {
-  const material =
-    polygon.materialName !== undefined
-      ? materials.get(polygon.materialName)
-      : undefined;
-
   return {
+    material: getOrLoadMaterial(gl, polygon.material, materials),
     polygon: {
       colors: map(polygon.colors, (colors) => ({
-        buffer: bufferConvert(
-          gl,
-          gl.ARRAY_BUFFER,
-          colors.buffer,
-          dynamicBuffer
-        ),
+        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, colors.buffer, isDynamic),
         size: colors.stride,
         stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, colors.buffer),
       })),
       coords: map(polygon.coords, (coords) => ({
-        buffer: bufferConvert(
-          gl,
-          gl.ARRAY_BUFFER,
-          coords.buffer,
-          dynamicBuffer
-        ),
+        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, coords.buffer, isDynamic),
         size: coords.stride,
         stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, coords.buffer),
@@ -542,16 +527,11 @@ const loadPrimitive = (
         gl,
         gl.ELEMENT_ARRAY_BUFFER,
         polygon.indices,
-        dynamicBuffer
+        isDynamic
       ),
       indexType: bufferGetType(gl, polygon.indices),
       normals: map(polygon.normals, (normals) => ({
-        buffer: bufferConvert(
-          gl,
-          gl.ARRAY_BUFFER,
-          normals.buffer,
-          dynamicBuffer
-        ),
+        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, normals.buffer, isDynamic),
         size: normals.stride,
         stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, normals.buffer),
@@ -561,25 +541,19 @@ const loadPrimitive = (
           gl,
           gl.ARRAY_BUFFER,
           polygon.points.buffer,
-          dynamicBuffer
+          isDynamic
         ),
         size: polygon.points.stride,
         stride: polygon.points.stride * polygon.points.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, polygon.points.buffer),
       },
       tangents: map(polygon.tangents, (tangents) => ({
-        buffer: bufferConvert(
-          gl,
-          gl.ARRAY_BUFFER,
-          tangents.buffer,
-          dynamicBuffer
-        ),
+        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, tangents.buffer, isDynamic),
         size: tangents.stride,
         stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, tangents.buffer),
       })),
     },
-    material: material ?? defaultMaterial,
   };
 };
 
@@ -952,8 +926,9 @@ class GlShader<TState> {
       return (source: TSource, textureIndex: number) => {
         const texture = textureGetter(source);
 
-        if (texture === undefined)
+        if (texture === undefined) {
           throw Error(`missing mandatory texture uniform "${samplerName}"`);
+        }
 
         gl.activeTexture(gl.TEXTURE0 + textureIndex);
         gl.bindTexture(target, texture);
