@@ -1,4 +1,4 @@
-import { type Application, declare } from "../../engine/application";
+import { type Application, declare, configure } from "../../engine/application";
 import { Context2DScreen } from "../../engine/graphic/display";
 import * as software from "../../engine/graphic/software";
 
@@ -8,6 +8,8 @@ interface State {
 
 const application: Application<Context2DScreen, State> = {
   async prepare(screen) {
+    configure(undefined); // FIXME: required to clear tweaks, should be called automatically
+
     return {
       renderer: new software.Renderer(screen),
     };

@@ -1,4 +1,4 @@
-import { type Application, declare } from "../../engine/application";
+import { type Application, declare, configure } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -63,6 +63,8 @@ interface ShaderState {
 
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
+    configure(undefined); // FIXME: required to clear tweaks, should be called automatically
+
     const gl = screen.context;
     const shader = new webgl.GlShader<ShaderState>(gl, vsSource, fsSource);
 
@@ -93,7 +95,10 @@ const application: Application<WebGLScreen, SceneState> = {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       gl: gl,
       input: new Input(screen.canvas),
-      mesh: webgl.loadModel(gl, await loadModelFromJson("model/cube/mesh.json")),
+      mesh: webgl.loadModel(
+        gl,
+        await loadModelFromJson("model/cube/mesh.json")
+      ),
       painter: new painter.SingularPainter(shader),
       projectionMatrix: Matrix4.createIdentity(),
       screen: screen,
