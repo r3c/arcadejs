@@ -9,7 +9,7 @@ import { Context2DScreen } from "../../engine/graphic/display";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as model from "../../engine/graphic/model";
-import * as software from "../../engine/graphic/software";
+import { DrawMode, Renderer } from "../../engine/graphic/software";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
 
@@ -31,7 +31,7 @@ interface State {
   cubeWithTexture: model.Model;
   input: Input;
   projection: Matrix4;
-  renderer: software.Renderer;
+  renderer: Renderer;
   tweak: Tweak<Configuration>;
 }
 
@@ -41,7 +41,7 @@ const configuration = {
 
 const application: Application<Context2DScreen, State> = {
   async prepare(screen) {
-    const renderer = new software.Renderer(screen);
+    const renderer = new Renderer(screen);
     const tweak = configure(configuration);
 
     return {
@@ -68,7 +68,7 @@ const application: Application<Context2DScreen, State> = {
       : state.cubeWithColor;
 
     renderer.clear();
-    renderer.draw(model, state.projection, view, software.DrawMode.Default);
+    renderer.draw(model, state.projection, view, DrawMode.Default);
   },
 
   resize(state, screen) {

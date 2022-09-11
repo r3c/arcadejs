@@ -1,6 +1,6 @@
 import { Context2DScreen } from "./display";
 import { Matrix4 } from "../math/matrix";
-import { Material, Model, Mesh } from "../graphic/model";
+import { Attribute, Material, Model, Mesh } from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 
 enum DrawMode {
@@ -26,27 +26,102 @@ const defaultAttribute = {
   stride: 0,
 };
 
-const lerpScalar = (min: number, max: number, ratio: number) => {
-  return min + (max - min) * ratio;
+const drawLine = (image: Image, begin: Vector3, end: Vector3) => {
+  let x0 = ~~begin.x;
+  const x1 = ~~end.x;
+  let y0 = ~~begin.y;
+  const y1 = ~~end.y;
+
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+
+  let err = dx - dy;
+
+  while (x0 !== x1 || y0 !== y1) {
+    if (x0 >= 0 && x0 < image.width && y0 >= 0 && y0 < image.height) {
+      const index = (x0 + y0 * image.width) * 4;
+
+      image.colors[index + 0] = 255;
+      image.colors[index + 1] = 255;
+      image.colors[index + 2] = 255;
+      image.colors[index + 3] = 255;
+    }
+
+    const e2 = err * 2;
+
+    if (e2 > -dy) {
+      err -= dy;
+      x0 += sx;
+    }
+
+    if (e2 < dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
 };
 
-const lerpVector2 = (min: Vector2, max: Vector2, ratio: number) => {
-  return {
-    x: lerpScalar(min.x, max.x, ratio),
-    y: lerpScalar(min.y, max.y, ratio),
-  };
+const drawMeshes = (
+  image: Image,
+  meshes: Iterable<Mesh>,
+  modelViewProjection: Matrix4,
+  drawMode: DrawMode
+) => {
+  const halfWidth = image.width * 0.5;
+  const halfHeight = image.height * 0.5;
+  const drawTriangle =
+    drawMode === DrawMode.Default ? drawTriangleTexture : drawTriangleWireframe;
+
+  for (const mesh of meshes) {
+    drawMeshes(image, mesh.children, modelViewProjection, drawMode);
+
+    for (const polygon of mesh.polygons) {
+      const colors = polygon.colors || defaultAttribute;
+      const coords = polygon.coords || defaultAttribute;
+      const indices = polygon.indices;
+      const material = polygon.material;
+      const points = polygon.points;
+
+      for (let i = 0; i + 3 <= indices.length; i += 3) {
+        const vertex0 = projectVertexToScreen(
+          modelViewProjection,
+          halfWidth,
+          halfHeight,
+          points,
+          colors,
+          coords,
+          indices[i + 0]
+        );
+
+        const vertex1 = projectVertexToScreen(
+          modelViewProjection,
+          halfWidth,
+          halfHeight,
+          points,
+          colors,
+          coords,
+          indices[i + 1]
+        );
+
+        const vertex2 = projectVertexToScreen(
+          modelViewProjection,
+          halfWidth,
+          halfHeight,
+          points,
+          colors,
+          coords,
+          indices[i + 2]
+        );
+
+        drawTriangle(image, vertex0, vertex1, vertex2, material);
+      }
+    }
+  }
 };
 
-const lerpVector4 = (min: Vector4, max: Vector4, ratio: number) => {
-  return {
-    x: lerpScalar(min.x, max.x, ratio),
-    y: lerpScalar(min.y, max.y, ratio),
-    z: lerpScalar(min.z, max.z, ratio),
-    w: lerpScalar(min.w, max.w, ratio),
-  };
-};
-
-const fillScanline = (
+const drawScanline = (
   image: Image,
   y: number,
   va: Vertex,
@@ -55,7 +130,9 @@ const fillScanline = (
   vd: Vertex,
   material: Material | undefined
 ) => {
-  if (y < 0 || y >= image.height) return;
+  if (y < 0 || y >= image.height) {
+    return;
+  }
 
   const ratio1 = (y - va.point.y) / Math.max(vb.point.y - va.point.y, 1);
   const ratio2 = (y - vc.point.y) / Math.max(vd.point.y - vc.point.y, 1);
@@ -74,23 +151,25 @@ const fillScanline = (
     x: lerpScalar(vc.point.x, vd.point.x, ratio2),
   };
 
-  if (begin.x > end.x) [begin, end] = [end, begin];
+  if (begin.x > end.x) {
+    [begin, end] = [end, begin];
+  }
 
   const offset = ~~y * image.width;
   const length = Math.max(end.x - begin.x, 1);
+  const start = Math.max(begin.x, 0);
+  const stop = Math.min(end.x, image.width - 1);
 
-  for (
-    var x = Math.max(begin.x, 0);
-    x <= Math.min(end.x, image.width - 1);
-    ++x
-  ) {
+  for (var x = start; x <= stop; ++x) {
     const ratio = (x - begin.x) / length;
 
     // Vertex depth
     const depth = lerpScalar(begin.depth, end.depth, ratio);
     const depthIndex = offset + ~~x;
 
-    if (depth >= image.depths[depthIndex]) continue;
+    if (depth >= image.depths[depthIndex]) {
+      continue;
+    }
 
     image.depths[depthIndex] = depth;
 
@@ -136,7 +215,7 @@ const fillScanline = (
 /*
  ** From: https://www.davrous.com/2013/06/21/tutorial-part-4-learning-how-to-write-a-3d-software-engine-in-c-ts-or-js-rasterization-z-buffering/
  */
-const fillTriangle = (
+const drawTriangleTexture = (
   image: Image,
   v1: Vertex,
   v2: Vertex,
@@ -144,81 +223,80 @@ const fillTriangle = (
   material: Material | undefined
 ) => {
   // Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
-  if (v1.point.y > v2.point.y) [v1, v2] = [v2, v1];
+  if (v1.point.y > v2.point.y) {
+    [v1, v2] = [v2, v1];
+  }
 
-  if (v2.point.y > v3.point.y) [v2, v3] = [v3, v2];
+  if (v2.point.y > v3.point.y) {
+    [v2, v3] = [v3, v2];
+  }
 
-  if (v1.point.y > v2.point.y) [v1, v2] = [v2, v1];
+  if (v1.point.y > v2.point.y) {
+    [v1, v2] = [v2, v1];
+  }
 
   // Compute p1-p2 and p1-p3 slopes
   const slope12 =
     v2.point.y > v1.point.y
       ? (v2.point.x - v1.point.x) / (v2.point.y - v1.point.y)
       : 0;
+
   const slope13 =
     v3.point.y > v1.point.y
       ? (v3.point.x - v1.point.x) / (v3.point.y - v1.point.y)
       : 0;
 
   if (slope12 > slope13) {
-    for (let y = v1.point.y; y < v2.point.y; ++y)
-      fillScanline(image, y, v1, v3, v1, v2, material);
+    for (let y = v1.point.y; y < v2.point.y; ++y) {
+      drawScanline(image, y, v1, v3, v1, v2, material);
+    }
 
-    for (let y = v2.point.y; y <= v3.point.y; ++y)
-      fillScanline(image, y, v1, v3, v2, v3, material);
+    for (let y = v2.point.y; y <= v3.point.y; ++y) {
+      drawScanline(image, y, v1, v3, v2, v3, material);
+    }
   } else {
-    for (let y = v1.point.y; y < v2.point.y; ++y)
-      fillScanline(image, y, v1, v2, v1, v3, material);
-
-    for (let y = v2.point.y; y <= v3.point.y; ++y)
-      fillScanline(image, y, v2, v3, v1, v3, material);
-  }
-};
-
-const wireLine = (image: Image, begin: Vector3, end: Vector3) => {
-  let x0 = ~~begin.x;
-  const x1 = ~~end.x;
-  let y0 = ~~begin.y;
-  const y1 = ~~end.y;
-
-  const dx = Math.abs(x1 - x0);
-  const dy = Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-
-  let err = dx - dy;
-
-  while (x0 !== x1 || y0 !== y1) {
-    if (x0 >= 0 && x0 < image.width && y0 >= 0 && y0 < image.height) {
-      const index = (x0 + y0 * image.width) * 4;
-
-      image.colors[index + 0] = 255;
-      image.colors[index + 1] = 255;
-      image.colors[index + 2] = 255;
-      image.colors[index + 3] = 255;
+    for (let y = v1.point.y; y < v2.point.y; ++y) {
+      drawScanline(image, y, v1, v2, v1, v3, material);
     }
 
-    const e2 = err * 2;
-
-    if (e2 > -dy) {
-      err -= dy;
-      x0 += sx;
-    }
-
-    if (e2 < dx) {
-      err += dx;
-      y0 += sy;
+    for (let y = v2.point.y; y <= v3.point.y; ++y) {
+      drawScanline(image, y, v2, v3, v1, v3, material);
     }
   }
 };
 
-const wireTriangle = (image: Image, v1: Vertex, v2: Vertex, v3: Vertex) => {
-  wireLine(image, v1.point, v2.point);
-  wireLine(image, v1.point, v3.point);
-  wireLine(image, v2.point, v3.point);
+const drawTriangleWireframe = (
+  image: Image,
+  v1: Vertex,
+  v2: Vertex,
+  v3: Vertex
+) => {
+  drawLine(image, v1.point, v2.point);
+  drawLine(image, v1.point, v3.point);
+  drawLine(image, v2.point, v3.point);
 };
 
-const projectToScreen = (
+const lerpScalar = (min: number, max: number, ratio: number) => {
+  return min + (max - min) * ratio;
+};
+
+const lerpVector2 = (min: Vector2, max: Vector2, ratio: number) => {
+  return {
+    x: lerpScalar(min.x, max.x, ratio),
+    y: lerpScalar(min.y, max.y, ratio),
+  };
+};
+
+const lerpVector4 = (min: Vector4, max: Vector4, ratio: number) => {
+  return {
+    x: lerpScalar(min.x, max.x, ratio),
+    y: lerpScalar(min.y, max.y, ratio),
+    z: lerpScalar(min.z, max.z, ratio),
+    w: lerpScalar(min.w, max.w, ratio),
+  };
+};
+
+const projectPointToScreen = (
   modelViewProjection: Matrix4,
   halfWidth: number,
   halfHeight: number,
@@ -241,6 +319,34 @@ const projectToScreen = (
     x: (point.x / point.w) * halfWidth + halfWidth,
     y: (-point.y / point.w) * halfHeight + halfHeight,
     z: point.z / point.w,
+  };
+};
+
+const projectVertexToScreen = (
+  modelViewProjection: Matrix4,
+  halfWidth: number,
+  halfHeight: number,
+  points: Attribute,
+  colors: Attribute,
+  coords: Attribute,
+  index: number
+) => {
+  return {
+    color: {
+      x: colors.buffer[index * colors.stride + 0],
+      y: colors.buffer[index * colors.stride + 1],
+      z: colors.buffer[index * colors.stride + 2],
+      w: colors.buffer[index * colors.stride + 3],
+    },
+    coord: {
+      x: coords.buffer[index * coords.stride + 0],
+      y: coords.buffer[index * coords.stride + 1],
+    },
+    point: projectPointToScreen(modelViewProjection, halfWidth, halfHeight, {
+      x: points.buffer[index * points.stride + 0],
+      y: points.buffer[index * points.stride + 1],
+      z: points.buffer[index * points.stride + 2],
+    }),
   };
 };
 
@@ -281,7 +387,7 @@ class Renderer {
 
     image.depths.fill(Math.pow(2, 127));
 
-    Renderer.drawMeshes(
+    drawMeshes(
       image,
       model.meshes,
       Matrix4.createIdentity().duplicate(projection).multiply(modelView),
@@ -289,62 +395,6 @@ class Renderer {
     );
 
     screen.context.putImageData(capture, 0, 0);
-  }
-
-  private static drawMeshes(
-    image: Image,
-    meshes: Iterable<Mesh>,
-    modelViewProjection: Matrix4,
-    drawMode: DrawMode
-  ) {
-    const halfWidth = image.width * 0.5;
-    const halfHeight = image.height * 0.5;
-    const triangle =
-      drawMode === DrawMode.Default ? fillTriangle : wireTriangle;
-
-    for (const mesh of meshes) {
-      Renderer.drawMeshes(image, mesh.children, modelViewProjection, drawMode);
-
-      for (const polygon of mesh.polygons) {
-        const colors = polygon.colors || defaultAttribute;
-        const coords = polygon.coords || defaultAttribute;
-        const indices = polygon.indices;
-        const material = polygon.material;
-        const points = polygon.points;
-
-        const vertices: Vertex[] = [];
-
-        let which = 0;
-
-        for (let i = 0; i < indices.length; ++i) {
-          const index = indices[i];
-
-          vertices[which++] = {
-            color: {
-              x: colors.buffer[index * colors.stride + 0],
-              y: colors.buffer[index * colors.stride + 1],
-              z: colors.buffer[index * colors.stride + 2],
-              w: colors.buffer[index * colors.stride + 3],
-            },
-            coord: {
-              x: coords.buffer[index * coords.stride + 0],
-              y: coords.buffer[index * coords.stride + 1],
-            },
-            point: projectToScreen(modelViewProjection, halfWidth, halfHeight, {
-              x: points.buffer[index * points.stride + 0],
-              y: points.buffer[index * points.stride + 1],
-              z: points.buffer[index * points.stride + 2],
-            }),
-          };
-
-          if (which >= 3) {
-            triangle(image, vertices[0], vertices[1], vertices[2], material);
-
-            which = 0;
-          }
-        }
-      }
-    }
   }
 }
 
