@@ -291,10 +291,10 @@ const flattenModel = (model: Model): Model => {
   // Recursively collect fragments by material name from model
   const fragmentsByMaterial = new Map<Material | undefined, Fragment[]>();
   const flattenFragments = (meshes: Mesh[], parentTransform: Matrix4): void => {
+    const transform = Matrix4.createIdentity();
+
     for (const mesh of meshes) {
-      const transform = Matrix4.createIdentity()
-        .duplicate(parentTransform)
-        .multiply(mesh.transform);
+      transform.duplicate(parentTransform).multiply(mesh.transform);
 
       for (const polygon of mesh.polygons) {
         const fragments = fragmentsByMaterial.get(polygon.material) ?? [];

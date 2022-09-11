@@ -65,6 +65,8 @@ interface GlPolygon {
   tangents: GlAttribute | undefined;
 }
 
+type GlPolygonExtractor = (polygon: GlPolygon) => GlAttribute | undefined;
+
 interface GlMaterial {
   albedoFactor: number[];
   albedoMap: WebGLTexture | undefined;
@@ -85,12 +87,19 @@ interface GlMaterial {
   shininess: number;
 }
 
+type GlMaterialExtractor = (material: GlMaterial) => WebGLTexture | undefined;
+
+interface GlMaterialStore {
+  active: Map<Material | undefined, GlMaterial>;
+  stash: Map<Material | undefined, GlMaterial>;
+}
+
 interface GlModel {
   materials: Map<Material, GlMaterial>;
   meshes: GlMesh[];
 }
 
-interface NativeFormat {
+interface GlNativeFormat {
   format: number;
   internal: number;
   type: number;
@@ -183,6 +192,26 @@ type GlUniformValueSetter<T> = (
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
+const materialExtractors: GlMaterialExtractor[] = [
+  (material) => material.albedoMap,
+  (material) => material.emissiveMap,
+  (material) => material.glossMap,
+  (material) => material.emissiveMap,
+  (material) => material.heightMap,
+  (material) => material.metalnessMap,
+  (material) => material.normalMap,
+  (material) => material.occlusionMap,
+  (material) => material.roughnessMap,
+];
+
+const polygonExtractors: GlPolygonExtractor[] = [
+  (polygon) => polygon.colors,
+  (polygon) => polygon.coords,
+  (polygon) => polygon.normals,
+  (polygon) => polygon.points,
+  (polygon) => polygon.tangents,
+];
+
 const bufferConvert = (
   gl: WebGL2RenderingContext,
   target: number,
@@ -217,13 +246,54 @@ const bufferGetType = (gl: WebGL2RenderingContext, array: TypedArray) => {
   throw Error(`unsupported array type for indices`);
 };
 
+const deleteMaterial = (
+  gl: WebGL2RenderingContext,
+  material: GlMaterial
+): void => {
+  for (const extractor of materialExtractors) {
+    const texture = extractor(material);
+
+    if (texture !== undefined) {
+      gl.deleteTexture(texture);
+    }
+  }
+};
+
+const deleteMesh = (gl: WebGL2RenderingContext, mesh: GlMesh): void => {
+  for (const child of mesh.children) {
+    deleteMesh(gl, child);
+  }
+
+  for (const { polygon } of mesh.primitives) {
+    for (const extractor of polygonExtractors) {
+      const attribute = extractor(polygon);
+
+      if (attribute !== undefined) {
+        gl.deleteBuffer(attribute.buffer);
+      }
+    }
+
+    gl.deleteBuffer(polygon.indexBuffer);
+  }
+};
+
+const deleteModel = (gl: WebGL2RenderingContext, model: GlModel): void => {
+  for (const material of model.materials.values()) {
+    deleteMaterial(gl, material);
+  }
+
+  for (const mesh of model.meshes) {
+    deleteMesh(gl, mesh);
+  }
+};
+
 /*
  ** Convert texture format into native WebGL format parameters.
  */
 const formatGetNative = (
   gl: WebGL2RenderingContext,
   format: GlTextureFormat
-): NativeFormat => {
+): GlNativeFormat => {
   switch (format) {
     case GlTextureFormat.Depth16:
       if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
@@ -250,13 +320,31 @@ const formatGetNative = (
 const getOrLoadMaterial = (
   gl: WebGL2RenderingContext,
   material: Material | undefined,
-  materials: Map<Material | undefined, GlMaterial>
-) => {
-  const output = materials.get(material) ?? loadMaterial(gl, material ?? {});
+  store: GlMaterialStore
+): GlMaterial => {
+  // Try to fetch material from current material store
+  const currentMaterial = store.active.get(material);
 
-  materials.set(material, output);
+  if (currentMaterial !== undefined) {
+    return currentMaterial;
+  }
 
-  return output;
+  // Try to recycle material from recycled material store
+  const recycleMaterial = store.stash.get(material);
+
+  if (recycleMaterial !== undefined) {
+    store.active.set(material, recycleMaterial);
+    store.stash.delete(material);
+
+    return recycleMaterial;
+  }
+
+  // Load material and add to current material store
+  const newMaterial = loadMaterial(gl, material ?? {});
+
+  store.active.set(material, newMaterial);
+
+  return newMaterial;
 };
 
 const renderbufferConfigure = (
@@ -475,28 +563,43 @@ const loadMaterial = (
 const loadMesh = (
   gl: WebGL2RenderingContext,
   mesh: Mesh,
-  materials: Map<Material | undefined, GlMaterial>,
+  store: GlMaterialStore,
   isDynamic: boolean
 ): GlMesh => ({
-  children: mesh.children.map((child) =>
-    loadMesh(gl, child, materials, isDynamic)
-  ),
+  children: mesh.children.map((child) => loadMesh(gl, child, store, isDynamic)),
   primitives: mesh.polygons.map((polygon) =>
-    loadPrimitive(gl, polygon, materials, isDynamic)
+    loadPrimitive(gl, polygon, store, isDynamic)
   ),
   transform: mesh.transform,
 });
 
+/**
+ * Load model into given WebGL context. If a previously loaded "recycle" model
+ * is passed, every compatible material it contains will be recycled to avoid
+ * deleting and loading its textures again, then it will be deleted.
+ */
 const loadModel = (
   gl: WebGL2RenderingContext,
   model: Model,
   recycle?: GlModel
 ): GlModel => {
   const isDynamic = recycle !== undefined;
-  const materials = new Map(recycle !== undefined ? recycle.materials : []);
+  const materials = new Map();
+
+  // Store will be modified during mesh loading: any recycled material will be
+  // removed from stash and therefore not deleted with recycled model.
+  const store: GlMaterialStore = {
+    active: materials,
+    stash: recycle !== undefined ? recycle.materials : new Map(),
+  };
+
   const meshes = model.meshes.map((mesh) =>
-    loadMesh(gl, mesh, materials, isDynamic)
+    loadMesh(gl, mesh, store, isDynamic)
   );
+
+  if (recycle !== undefined) {
+    deleteModel(gl, recycle);
+  }
 
   return { materials, meshes };
 };
@@ -504,11 +607,11 @@ const loadModel = (
 const loadPrimitive = (
   gl: WebGL2RenderingContext,
   polygon: Polygon,
-  materials: Map<Material | undefined, GlMaterial>,
+  store: GlMaterialStore,
   isDynamic: boolean
 ): GlPrimitive => {
   return {
-    material: getOrLoadMaterial(gl, polygon.material, materials),
+    material: getOrLoadMaterial(gl, polygon.material, store),
     polygon: {
       colors: map(polygon.colors, (colors) => ({
         buffer: bufferConvert(gl, gl.ARRAY_BUFFER, colors.buffer, isDynamic),
