@@ -17,10 +17,10 @@ import {
   defaultFilter,
 } from "./model/definition";
 import { range } from "../language/functional";
-import { load as gltfLoad } from "./model/loaders/gltf";
-import { load as jsonLoad } from "./model/loaders/json";
-import { load as objLoad } from "./model/loaders/obj";
-import { load as tdsLoad } from "./model/loaders/3ds";
+import { load as loadFrom3ds } from "./model/loaders/3ds";
+import { load as loadFromGltf } from "./model/loaders/gltf";
+import { load as loadFromJson } from "./model/loaders/json";
+import { load as loadFromObj } from "./model/loaders/obj";
 
 type Config = {
   transform?: Matrix4;
@@ -207,6 +207,32 @@ const computeTangents = (
   };
 };
 
+const createLoadModel = <TSource>(
+  loadCallback: (source: TSource) => Promise<Model>
+): ((source: TSource, configOrUndefined?: Config) => Promise<Model>) => {
+  return async (source, configOrUndefined) => {
+    const config = configOrUndefined || {};
+    const model = await loadCallback(source);
+
+    // Transform top-level meshes using provided transform matrix if any
+    const transform = config.transform;
+
+    if (transform !== undefined) {
+      model.meshes.forEach(
+        (node) =>
+          (node.transform = Matrix4.createIdentity()
+            .duplicate(transform)
+            .multiply(node.transform))
+      );
+    }
+
+    // Finalize meshes recursively
+    model.meshes.forEach((mesh) => finalizeMesh(mesh, config));
+
+    return model;
+  };
+};
+
 const finalizeMesh = (mesh: Mesh, config: Config): void => {
   mesh.children.forEach((child) => finalizeMesh(child, config));
   mesh.polygons.forEach((mesh) => finalizePolygon(mesh));
@@ -257,28 +283,6 @@ const finalizePolygon = (polygon: Polygon): void => {
       polygon.normals
     );
   }
-};
-
-const finalizeModel = (
-  model: Model,
-  configOrUndefined: Config | undefined
-): void => {
-  const config = configOrUndefined || {};
-
-  // Transform top-level meshes using provided transform matrix if any
-  const transform = config.transform;
-
-  if (transform !== undefined) {
-    model.meshes.forEach(
-      (node) =>
-        (node.transform = Matrix4.createIdentity()
-          .duplicate(transform)
-          .multiply(node.transform))
-    );
-  }
-
-  // Finalize meshes recursively
-  model.meshes.forEach((node) => finalizeMesh(node, config));
 };
 
 const flattenModel = (model: Model): Model => {
@@ -465,40 +469,10 @@ const flattenModel = (model: Model): Model => {
   };
 };
 
-const loadFrom3ds = async (url: string, config?: Config): Promise<Model> => {
-  const model = await tdsLoad(url);
-
-  finalizeModel(model, config);
-
-  return model;
-};
-
-const loadFromGltf = async (url: string, config?: Config): Promise<Model> => {
-  const model = await gltfLoad(url);
-
-  finalizeModel(model, config);
-
-  return model;
-};
-
-const loadFromJson = async (
-  urlOrData: any,
-  config?: Config
-): Promise<Model> => {
-  const model = await jsonLoad(urlOrData);
-
-  finalizeModel(model, config);
-
-  return model;
-};
-
-const loadFromObj = async (url: string, config?: Config): Promise<Model> => {
-  const model = await objLoad(url);
-
-  finalizeModel(model, config);
-
-  return model;
-};
+const loadModelFrom3ds = createLoadModel(loadFrom3ds);
+const loadModelFromGltf = createLoadModel(loadFromGltf);
+const loadModelFromJson = createLoadModel(loadFromJson);
+const loadModelFromObj = createLoadModel(loadFromObj);
 
 const mergeModels = (instances: Instance[]): Model => {
   return {
@@ -581,9 +555,9 @@ export {
   defaultColor,
   defaultFilter,
   flattenModel,
-  loadFrom3ds,
-  loadFromGltf,
-  loadFromJson,
-  loadFromObj,
+  loadModelFrom3ds,
+  loadModelFromGltf,
+  loadModelFromJson,
+  loadModelFromObj,
   mergeModels,
 };

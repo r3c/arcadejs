@@ -1,7 +1,7 @@
 import { type Application, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import { loadFromJson } from "../../engine/graphic/model";
+import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as painter from "../../engine/graphic/webgl/painters/singular";
 import { Vector3 } from "../../engine/math/vector";
@@ -93,7 +93,7 @@ const application: Application<WebGLScreen, SceneState> = {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       gl: gl,
       input: new Input(screen.canvas),
-      mesh: webgl.loadModel(gl, await loadFromJson("model/cube/mesh.json")),
+      mesh: webgl.loadModel(gl, await loadModelFromJson("model/cube/mesh.json")),
       painter: new painter.SingularPainter(shader),
       projectionMatrix: Matrix4.createIdentity(),
       screen: screen,
