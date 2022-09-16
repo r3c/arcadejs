@@ -472,14 +472,18 @@ const loadModelFromGltf = createLoadModel(loadFromGltf);
 const loadModelFromJson = createLoadModel(loadFromJson);
 const loadModelFromObj = createLoadModel(loadFromObj);
 
-const mergeModels = (instances: Instance[]): Model => {
-  return {
-    meshes: instances.map(({ model, transform }) => ({
+const mergeModels = (instances: Iterable<Instance>): Model => {
+  const meshes: Mesh[] = [];
+
+  for (const { model, transform } of instances) {
+    meshes.push({
       children: model.meshes,
       polygons: [],
       transform,
-    })),
-  };
+    });
+  }
+
+  return { meshes };
 };
 
 const reduceMeshes = <TState>(
