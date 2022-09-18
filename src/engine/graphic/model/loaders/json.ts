@@ -24,7 +24,7 @@ interface JsonState {
 
 const load = async (
   urlOrData: any,
-  configuration: JsonConfiguration
+  configuration: JsonConfiguration | undefined
 ): Promise<Model> => {
   let directory: string;
   let root: any;
@@ -44,7 +44,7 @@ const load = async (
   const state: JsonState = {
     directory,
     materials: new Map<string, Material>(),
-    variables: configuration.variables ?? {},
+    variables: configuration?.variables ?? {},
   };
 
   if (root.materials !== undefined) {

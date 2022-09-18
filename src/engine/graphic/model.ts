@@ -22,7 +22,8 @@ import { load as loadFromGltf } from "./model/loaders/gltf";
 import { load as loadFromJson } from "./model/loaders/json";
 import { load as loadFromObj } from "./model/loaders/obj";
 
-type Configuration = {
+type Configuration<TLoad> = {
+  load?: TLoad;
   transform?: Matrix4;
 };
 
@@ -207,24 +208,22 @@ const computeTangents = (
   };
 };
 
-const createLoadModel = <TConfiguration, TSource>(
+const createLoadModel = <TSource, TLoad>(
   loadCallback: (
     source: TSource,
-    loadConfiguration: TConfiguration
-  ) => Promise<Model>,
-  defaultConfiguration: TConfiguration
+    loadConfiguration: TLoad | undefined
+  ) => Promise<Model>
 ): ((
   source: TSource,
-  configuration?: Configuration & TConfiguration
+  configuration?: Configuration<TLoad>
 ) => Promise<Model>) => {
-  return async (source, configuration) => {
-    const loadConfiguration: TConfiguration =
-      configuration ?? defaultConfiguration;
-    const postConfiguration: Configuration = configuration ?? {};
-    const model = await loadCallback(source, loadConfiguration);
+  return async (source, configurationOrUndefined) => {
+    // Load model using underlying loading callback
+    const configuration = configurationOrUndefined ?? {};
+    const model = await loadCallback(source, configuration.load);
 
     // Transform top-level meshes using provided transform matrix if any
-    const transform = postConfiguration.transform;
+    const transform = configuration.transform;
 
     if (transform !== undefined) {
       model.meshes.forEach(
@@ -236,13 +235,13 @@ const createLoadModel = <TConfiguration, TSource>(
     }
 
     // Finalize meshes recursively
-    model.meshes.forEach((mesh) => finalizeMesh(mesh, loadConfiguration));
+    model.meshes.forEach((mesh) => finalizeMesh(mesh, configuration));
 
     return model;
   };
 };
 
-const finalizeMesh = (mesh: Mesh, config: Configuration): void => {
+const finalizeMesh = (mesh: Mesh, config: Configuration<unknown>): void => {
   mesh.children.forEach((child) => finalizeMesh(child, config));
   mesh.polygons.forEach((mesh) => finalizePolygon(mesh));
 };
@@ -476,10 +475,10 @@ const flattenModel = (model: Model): Model => {
   };
 };
 
-const loadModelFrom3ds = createLoadModel(loadFrom3ds, undefined);
-const loadModelFromGltf = createLoadModel(loadFromGltf, undefined);
-const loadModelFromJson = createLoadModel(loadFromJson, {});
-const loadModelFromObj = createLoadModel(loadFromObj, undefined);
+const loadModelFrom3ds = createLoadModel(loadFrom3ds);
+const loadModelFromGltf = createLoadModel(loadFromGltf);
+const loadModelFromJson = createLoadModel(loadFromJson);
+const loadModelFromObj = createLoadModel(loadFromObj);
 
 const mergeModels = (instances: Iterable<Instance>): Model => {
   const meshes: Mesh[] = [];
