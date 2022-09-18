@@ -50,7 +50,7 @@ interface SceneState {
   camera: view.Camera;
   gl: WebGLRenderingContext;
   input: Input;
-  mesh: webgl.GlModel;
+  model: webgl.GlModel;
   painter: webgl.GlPainter<ShaderState>;
   projectionMatrix: Matrix4;
   target: webgl.GlTarget;
@@ -95,7 +95,7 @@ const application: Application<WebGLScreen, SceneState> = {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       gl: gl,
       input: new Input(screen.canvas),
-      mesh: webgl.loadModel(
+      model: webgl.loadModel(
         gl,
         await loadModelFromJson("model/cube/mesh.json")
       ),
@@ -111,9 +111,7 @@ const application: Application<WebGLScreen, SceneState> = {
   },
 
   render(state) {
-    const camera = state.camera;
-    const gl = state.gl;
-    const target = state.target;
+    const { camera, gl, model, painter, projectionMatrix, target } = state;
 
     const viewMatrix = Matrix4.createIdentity()
       .translate(camera.position)
@@ -122,7 +120,7 @@ const application: Application<WebGLScreen, SceneState> = {
 
     const cube = {
       matrix: Matrix4.createIdentity(),
-      mesh: state.mesh,
+      model,
     };
 
     gl.enable(gl.CULL_FACE);
@@ -132,8 +130,8 @@ const application: Application<WebGLScreen, SceneState> = {
 
     target.clear(0);
 
-    state.painter.paint(target, [cube], viewMatrix, {
-      projectionMatrix: state.projectionMatrix,
+    painter.paint(target, [cube], viewMatrix, {
+      projectionMatrix: projectionMatrix,
       viewMatrix: viewMatrix,
     });
   },

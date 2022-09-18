@@ -56,7 +56,7 @@ class MaterialPainter<TContext> implements webgl.GlPainter<TContext> {
     };
 
     for (const subject of subjects)
-      this.group(batch, subject.mesh.meshes, subject.matrix, state);
+      this.group(batch, subject.model.meshes, subject.matrix, state);
 
     this.draw(target, batch, view, state);
   }

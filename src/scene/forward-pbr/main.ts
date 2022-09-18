@@ -10,7 +10,10 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import * as forwardLighting from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { range } from "../../engine/language/functional";
 import * as image from "../../engine/graphic/image";
-import { loadModelFromGltf, loadModelFromJson } from "../../engine/graphic/model";
+import {
+  loadModelFromGltf,
+  loadModelFromJson,
+} from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import * as webgl from "../../engine/graphic/webgl";
@@ -43,7 +46,7 @@ interface SceneState {
   camera: view.Camera;
   input: Input;
   lights: Light[];
-  meshes: {
+  models: {
     ground: webgl.GlModel;
     helmet: webgl.GlModel;
     light: webgl.GlModel;
@@ -88,8 +91,8 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const groundMesh = await loadModelFromJson("model/ground/mesh.json");
-    const helmetMesh = await loadModelFromGltf(
+    const groundModel = await loadModelFromJson("model/ground/mesh.json");
+    const helmetModel = await loadModelFromGltf(
       "model/damaged-helmet/DamagedHelmet.gltf",
       {
         transform: Matrix4.createIdentity()
@@ -97,7 +100,7 @@ const application: Application<WebGLScreen, SceneState> = {
           .rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5),
       }
     );
-    const lightMesh = await loadModelFromJson("model/sphere/mesh.json", {
+    const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.2,
         y: 0.2,
@@ -138,10 +141,10 @@ const application: Application<WebGLScreen, SceneState> = {
       lights: range(3, () => ({
         position: { x: 0, y: 0, z: 0 },
       })),
-      meshes: {
-        ground: webgl.loadModel(gl, groundMesh),
-        helmet: webgl.loadModel(gl, helmetMesh),
-        light: webgl.loadModel(gl, lightMesh),
+      models: {
+        ground: webgl.loadModel(gl, groundModel),
+        helmet: webgl.loadModel(gl, helmetModel),
+        light: webgl.loadModel(gl, lightModel),
       },
       move: 0,
       pipelines: {
@@ -181,13 +184,19 @@ const application: Application<WebGLScreen, SceneState> = {
   },
 
   render(state) {
-    const camera = state.camera;
+    const {
+      camera,
+      models,
+      pipelines,
+      projectionMatrix,
+      target,
+      textures,
+      tweak,
+    } = state;
+
     const lightPositions = state.lights
-      .slice(0, state.tweak.nbLights)
+      .slice(0, tweak.nbLights)
       .map((light) => light.position);
-    const meshes = state.meshes;
-    const pipelines = state.pipelines;
-    const target = state.target;
 
     const cameraView = Matrix4.createIdentity()
       .translate(camera.position)
@@ -200,25 +209,25 @@ const application: Application<WebGLScreen, SceneState> = {
     // PBR render
     const cube = {
       matrix: Matrix4.createIdentity(),
-      mesh: meshes.helmet,
+      model: models.helmet,
     };
 
     const ground = {
       matrix: Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
-      mesh: meshes.ground,
+      model: models.ground,
     };
 
     const lights = lightPositions.map((position) => ({
       matrix: Matrix4.createIdentity().translate(position),
-      mesh: meshes.light,
+      model: models.light,
     }));
 
     const scene = {
       ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
       environmentLight: {
-        brdf: state.textures.brdf,
-        diffuse: state.textures.diffuse,
-        specular: state.textures.specular,
+        brdf: textures.brdf,
+        diffuse: textures.diffuse,
+        specular: textures.specular,
       },
       pointLights: lightPositions.map((position) => ({
         color: { x: 1, y: 1, z: 1 },
@@ -228,10 +237,10 @@ const application: Application<WebGLScreen, SceneState> = {
       subjects: [cube, ground].concat(lights),
     };
 
-    pipelines.lights[bitfield.index(getOptions(state.tweak))].process(
+    pipelines.lights[bitfield.index(getOptions(tweak))].process(
       target,
       {
-        projectionMatrix: state.projectionMatrix,
+        projectionMatrix: projectionMatrix,
         viewMatrix: cameraView,
       },
       scene

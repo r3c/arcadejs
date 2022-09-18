@@ -14,7 +14,7 @@ import { Matrix4 } from "../../engine/math/matrix";
 import * as move from "../move";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
-import * as webgl from "../../engine/graphic/webgl";
+import { GlModel, GlTarget, loadModel } from "../../engine/graphic/webgl";
 
 /*
  ** What changed?
@@ -31,10 +31,10 @@ interface Configuration {
 interface SceneState {
   camera: view.Camera;
   input: Input;
-  meshes: {
-    cube: webgl.GlModel;
-    ground: webgl.GlModel;
-    light: webgl.GlModel;
+  models: {
+    cube: GlModel;
+    ground: GlModel;
+    light: GlModel;
   };
   move: number;
   pipelines: {
@@ -42,7 +42,7 @@ interface SceneState {
     lights: forwardLighting.ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
-  target: webgl.GlTarget;
+  target: GlTarget;
   tweak: Tweak<Configuration>;
 }
 
@@ -60,9 +60,9 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const cubeMesh = await loadModelFromJson("model/cube/mesh.json");
-    const groundMesh = await loadModelFromJson("model/ground/mesh.json");
-    const lightMesh = await loadModelFromJson("model/sphere/mesh.json", {
+    const cubeModel = await loadModelFromJson("model/cube/mesh.json");
+    const groundModel = await loadModelFromJson("model/ground/mesh.json");
+    const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.5,
         y: 0.5,
@@ -74,10 +74,10 @@ const application: Application<WebGLScreen, SceneState> = {
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
-      meshes: {
-        cube: webgl.loadModel(gl, cubeMesh),
-        ground: webgl.loadModel(gl, groundMesh),
-        light: webgl.loadModel(gl, lightMesh),
+      models: {
+        cube: loadModel(gl, cubeModel),
+        ground: loadModel(gl, groundModel),
+        light: loadModel(gl, lightModel),
       },
       move: 0,
       pipelines: {
@@ -99,16 +99,13 @@ const application: Application<WebGLScreen, SceneState> = {
         ),
       },
       projectionMatrix: Matrix4.createIdentity(),
-      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },
 
   render(state) {
-    const camera = state.camera;
-    const meshes = state.meshes;
-    const pipelines = state.pipelines;
-    const target = state.target;
+    const { camera, models, pipelines, target } = state;
 
     // Setup view matrices
     const transform = {
@@ -138,7 +135,7 @@ const application: Application<WebGLScreen, SceneState> = {
             { x: 0, y: 1, z: 1 },
             state.move * 5
           ),
-          mesh: meshes.cube,
+          model: models.cube,
         },
         {
           matrix: Matrix4.createIdentity().translate({
@@ -146,13 +143,13 @@ const application: Application<WebGLScreen, SceneState> = {
             y: -1.5,
             z: 0,
           }),
-          mesh: meshes.ground,
+          model: models.ground,
         },
         {
           matrix: Matrix4.createIdentity().translate(
             Vector3.scale(Vector3.normalize(lightDirection), 10)
           ),
-          mesh: meshes.light,
+          model: models.light,
           noShadow: true,
         },
       ],

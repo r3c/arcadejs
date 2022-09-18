@@ -14,7 +14,13 @@ import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import * as webgl from "../../engine/graphic/webgl";
+import {
+  GlDirectionalLight,
+  GlModel,
+  GlPointLight,
+  GlTarget,
+  loadModel,
+} from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import * as view from "../view";
 
@@ -34,22 +40,22 @@ interface Configuration {
 
 interface SceneState {
   camera: view.Camera;
-  directionalLights: webgl.GlDirectionalLight[];
+  directionalLights: GlDirectionalLight[];
   input: Input;
-  meshes: {
-    cube: webgl.GlModel;
-    directionalLight: webgl.GlModel;
-    ground: webgl.GlModel;
-    pointLight: webgl.GlModel;
+  models: {
+    cube: GlModel;
+    directionalLight: GlModel;
+    ground: GlModel;
+    pointLight: GlModel;
   };
   move: number;
   pipelines: {
     debug: debugTexture.Pipeline[];
     scene: deferredLighting.Pipeline[];
   };
-  pointLights: webgl.GlPointLight[];
+  pointLights: GlPointLight[];
   projectionMatrix: Matrix4;
-  target: webgl.GlTarget;
+  target: GlTarget;
   tweak: Tweak<Configuration>;
 }
 
@@ -83,22 +89,25 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const cubeMesh = await loadModelFromJson("model/cube/mesh.json", {
+    const cubeModel = await loadModelFromJson("model/cube/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.4,
         y: 0.4,
         z: 0.4,
       }),
     });
-    const directionalLightMesh = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.5,
-        y: 0.5,
-        z: 0.5,
-      }),
-    });
-    const groundMesh = await loadModelFromJson("model/ground/mesh.json");
-    const pointLightMesh = await loadModelFromJson("model/sphere/mesh.json", {
+    const directionalLightModel = await loadModelFromJson(
+      "model/sphere/mesh.json",
+      {
+        transform: Matrix4.createIdentity().scale({
+          x: 0.5,
+          y: 0.5,
+          z: 0.5,
+        }),
+      }
+    );
+    const groundModel = await loadModelFromJson("model/ground/mesh.json");
+    const pointLightModel = await loadModelFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.1,
         y: 0.1,
@@ -115,11 +124,11 @@ const application: Application<WebGLScreen, SceneState> = {
         shadow: false,
       })),
       input: new Input(screen.canvas),
-      meshes: {
-        cube: webgl.loadModel(gl, cubeMesh),
-        directionalLight: webgl.loadModel(gl, directionalLightMesh),
-        ground: webgl.loadModel(gl, groundMesh),
-        pointLight: webgl.loadModel(gl, pointLightMesh),
+      models: {
+        cube: loadModel(gl, cubeModel),
+        directionalLight: loadModel(gl, directionalLightModel),
+        ground: loadModel(gl, groundModel),
+        pointLight: loadModel(gl, pointLightModel),
       },
       move: 0,
       pipelines: {
@@ -175,17 +184,13 @@ const application: Application<WebGLScreen, SceneState> = {
         radius: 2,
       })),
       projectionMatrix: Matrix4.createIdentity(),
-      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak: tweak,
     };
   },
 
   render(state) {
-    const camera = state.camera;
-    const meshes = state.meshes;
-    const pipelines = state.pipelines;
-    const target = state.target;
-    const tweak = state.tweak;
+    const { camera, models, pipelines, target, tweak } = state;
 
     const transform = {
       projectionMatrix: state.projectionMatrix,
@@ -218,7 +223,7 @@ const application: Application<WebGLScreen, SceneState> = {
             y: -1.5,
             z: 0,
           }),
-          mesh: meshes.ground,
+          model: models.ground,
         },
       ]
         .concat(
@@ -228,7 +233,7 @@ const application: Application<WebGLScreen, SceneState> = {
               y: 0,
               z: (Math.floor(i / 4) - 1.5) * 2,
             }),
-            mesh: meshes.cube,
+            model: models.cube,
           }))
         )
         .concat(
@@ -236,13 +241,13 @@ const application: Application<WebGLScreen, SceneState> = {
             matrix: Matrix4.createIdentity().translate(
               Vector3.scale(Vector3.normalize(light.direction), 10)
             ),
-            mesh: meshes.directionalLight,
+            model: models.directionalLight,
           }))
         )
         .concat(
           pointLights.map((light) => ({
             matrix: Matrix4.createIdentity().translate(light.position),
-            mesh: meshes.pointLight,
+            model: models.pointLight,
           }))
         ),
     };

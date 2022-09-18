@@ -56,19 +56,24 @@ const application: Application<Context2DScreen, State> = {
   },
 
   render(state) {
-    const camera = state.camera;
-    const renderer = state.renderer;
+    const {
+      camera,
+      cubeWithColor,
+      cubeWithTexture,
+      projection,
+      renderer,
+      tweak,
+    } = state;
+
     const view = Matrix4.createIdentity()
       .translate(camera.position)
       .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
       .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
 
-    const model = state.tweak.useTexture
-      ? state.cubeWithTexture
-      : state.cubeWithColor;
+    const model = tweak.useTexture ? cubeWithTexture : cubeWithColor;
 
     renderer.clear();
-    renderer.draw(model, state.projection, view, DrawMode.Default);
+    renderer.draw(model, projection, view, DrawMode.Default);
   },
 
   resize(state, screen) {

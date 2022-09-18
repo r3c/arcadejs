@@ -1,7 +1,17 @@
 import { Matrix4 } from "../../../math/matrix";
 import { SingularPainter } from "../painters/singular";
-import * as quad from "./resources/quad";
-import * as webgl from "../../webgl";
+import { mesh } from "./resources/quad";
+import {
+  GlModel,
+  GlPainter,
+  GlPipeline,
+  GlScene,
+  GlShader,
+  GlTarget,
+  GlTextureType,
+  GlTransform,
+  loadModel,
+} from "../../webgl";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -135,7 +145,7 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
     { name: "ZNEAR", value: configuration.zNear },
   ];
 
-  const shader = new webgl.GlShader<State>(
+  const shader = new GlShader<State>(
     gl,
     vertexSource,
     fragmentSource,
@@ -148,7 +158,7 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
   shader.setupTexturePerTarget(
     "source",
     undefined,
-    webgl.GlTextureType.Quad,
+    GlTextureType.Quad,
     (state) => state.source
   );
 
@@ -157,10 +167,10 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
   return shader;
 };
 
-class Pipeline implements webgl.GlPipeline {
+class Pipeline implements GlPipeline {
   private readonly gl: WebGLRenderingContext;
-  private readonly painter: webgl.GlPainter<State>;
-  private readonly quad: webgl.GlModel;
+  private readonly painter: GlPainter<State>;
+  private readonly quad: GlModel;
   private readonly scale: number;
 
   /*
@@ -168,13 +178,13 @@ class Pipeline implements webgl.GlPipeline {
    ** given texture. It allows easy construction of "scene" parameter expected
    ** by "process" method easily.
    */
-  public static createScene(source: WebGLTexture): webgl.GlScene {
+  public static createScene(source: WebGLTexture): GlScene {
     return {
       subjects: [
         {
           matrix: Matrix4.createIdentity(),
-          mesh: {
-            materials: new Map(),
+          model: {
+            materials: [],
             meshes: [
               {
                 children: [],
@@ -198,15 +208,11 @@ class Pipeline implements webgl.GlPipeline {
   public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
     this.gl = gl;
     this.painter = new SingularPainter(load(gl, configuration));
-    this.quad = webgl.loadModel(gl, quad.mesh);
+    this.quad = loadModel(gl, mesh);
     this.scale = configuration.scale ?? 0.4;
   }
 
-  public process(
-    target: webgl.GlTarget,
-    _transform: webgl.GlTransform,
-    scene: webgl.GlScene
-  ) {
+  public process(target: GlTarget, _transform: GlTransform, scene: GlScene) {
     const gl = this.gl;
 
     gl.disable(gl.BLEND);
@@ -220,13 +226,13 @@ class Pipeline implements webgl.GlPipeline {
         matrix: Matrix4.createIdentity()
           .translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 })
           .scale({ x: this.scale, y: this.scale, z: 0 }),
-        mesh: this.quad,
+        model: this.quad,
       },
     ];
 
     // Hack: find first defined albedo map from subject models and use it as debug source
     for (const subject of scene.subjects) {
-      for (const node of subject.mesh.meshes) {
+      for (const node of subject.model.meshes) {
         for (const primitive of node.primitives) {
           if (primitive.material.albedoMap !== undefined) {
             this.painter.paint(target, subjects, Matrix4.createIdentity(), {

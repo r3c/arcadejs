@@ -40,7 +40,7 @@ interface SceneState {
   camera: view.Camera;
   input: Input;
   lightPositions: Vector3[];
-  meshes: {
+  models: {
     cube: webgl.GlModel;
     ground: webgl.GlModel;
     light: webgl.GlModel;
@@ -78,9 +78,9 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     // Load models
-    const cubeMesh = await loadModelFromJson("model/cube/mesh.json");
-    const groundMesh = await loadModelFromJson("model/ground/mesh.json");
-    const lightMesh = await loadModelFromJson("model/sphere/mesh.json", {
+    const cubeModel = await loadModelFromJson("model/cube/mesh.json");
+    const groundModel = await loadModelFromJson("model/ground/mesh.json");
+    const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
       transform: Matrix4.createIdentity().scale({
         x: 0.2,
         y: 0.2,
@@ -93,10 +93,10 @@ const application: Application<WebGLScreen, SceneState> = {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
       lightPositions: range(3, () => Vector3.zero),
-      meshes: {
-        cube: webgl.loadModel(gl, cubeMesh),
-        ground: webgl.loadModel(gl, groundMesh),
-        light: webgl.loadModel(gl, lightMesh),
+      models: {
+        cube: webgl.loadModel(gl, cubeModel),
+        ground: webgl.loadModel(gl, groundModel),
+        light: webgl.loadModel(gl, lightModel),
       },
       move: 0,
       pipelines: {
@@ -125,13 +125,18 @@ const application: Application<WebGLScreen, SceneState> = {
   },
 
   render(state) {
-    const camera = state.camera;
-    const meshes = state.meshes;
-    const pipelines = state.pipelines;
-    const target = state.target;
+    const {
+      camera,
+      lightPositions,
+      models,
+      pipelines,
+      projectionMatrix,
+      target,
+      tweak,
+    } = state;
 
     const transform = {
-      projectionMatrix: state.projectionMatrix,
+      projectionMatrix: projectionMatrix,
       viewMatrix: Matrix4.createIdentity()
         .translate(camera.position)
         .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
@@ -142,21 +147,18 @@ const application: Application<WebGLScreen, SceneState> = {
     target.clear(0);
 
     // Forward pass
-    const lightPipeline =
-      pipelines.lights[bitfield.index(getOptions(state.tweak))];
+    const lightPipeline = pipelines.lights[bitfield.index(getOptions(tweak))];
     const lightScene = {
       ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-      pointLights: state.lightPositions
-        .slice(0, state.tweak.nbLights)
-        .map((position) => ({
-          color: { x: 0.8, y: 0.8, z: 0.8 },
-          position: position,
-          radius: 5,
-        })),
+      pointLights: lightPositions.slice(0, tweak.nbLights).map((position) => ({
+        color: { x: 0.8, y: 0.8, z: 0.8 },
+        position: position,
+        radius: 5,
+      })),
       subjects: [
         {
           matrix: Matrix4.createIdentity(),
-          mesh: meshes.cube,
+          model: models.cube,
         },
         {
           matrix: Matrix4.createIdentity().translate({
@@ -164,12 +166,12 @@ const application: Application<WebGLScreen, SceneState> = {
             y: -1.5,
             z: 0,
           }),
-          mesh: meshes.ground,
+          model: models.ground,
         },
       ].concat(
-        state.lightPositions.slice(0, state.tweak.nbLights).map((position) => ({
+        lightPositions.slice(0, tweak.nbLights).map((position) => ({
           matrix: Matrix4.createIdentity().translate(position),
-          mesh: meshes.light,
+          model: models.light,
         }))
       ),
     };

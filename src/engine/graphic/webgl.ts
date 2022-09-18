@@ -43,6 +43,8 @@ interface GlAttribute {
 
 type AttributeBinding<TSource> = (source: TSource) => void;
 
+type GlContext = WebGL2RenderingContext;
+
 interface GlDirectionalLight {
   color: Vector3;
   direction: Vector3;
@@ -54,18 +56,10 @@ interface GlDirective {
   value: number;
 }
 
-interface GlPolygon {
-  colors: GlAttribute | undefined;
-  coords: GlAttribute | undefined;
-  indexCount: number;
-  indexBuffer: WebGLBuffer;
-  indexType: number;
-  normals: GlAttribute | undefined;
-  points: GlAttribute;
-  tangents: GlAttribute | undefined;
+interface GlLibrary {
+  defaultMaterial: GlMaterial;
+  materials: Map<Material, GlMaterial>;
 }
-
-type GlPolygonExtractor = (polygon: GlPolygon) => GlAttribute | undefined;
 
 interface GlMaterial {
   albedoFactor: number[];
@@ -89,20 +83,14 @@ interface GlMaterial {
 
 type GlMaterialExtractor = (material: GlMaterial) => WebGLTexture | undefined;
 
-interface GlMaterialStore {
-  active: Map<Material | undefined, GlMaterial>;
-  stash: Map<Material | undefined, GlMaterial>;
-}
-
 interface GlModel {
-  materials: Map<Material, GlMaterial>;
+  materials: GlMaterial[];
   meshes: GlMesh[];
 }
 
-interface GlNativeFormat {
-  format: number;
-  internal: number;
-  type: number;
+interface GlModelConfiguration {
+  isDynamic?: boolean;
+  library?: GlLibrary;
 }
 
 interface GlMesh {
@@ -114,6 +102,12 @@ interface GlMesh {
 interface GlMeshState {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
+}
+
+interface GlNativeFormat {
+  format: number;
+  internal: number;
+  type: number;
 }
 
 interface GlPainter<T> {
@@ -136,6 +130,19 @@ interface GlPointLight {
   radius: number;
 }
 
+interface GlPolygon {
+  colors: GlAttribute | undefined;
+  coords: GlAttribute | undefined;
+  indexCount: number;
+  indexBuffer: WebGLBuffer;
+  indexType: number;
+  normals: GlAttribute | undefined;
+  points: GlAttribute;
+  tangents: GlAttribute | undefined;
+}
+
+type GlPolygonExtractor = (polygon: GlPolygon) => GlAttribute | undefined;
+
 interface GlPrimitive {
   material: GlMaterial;
   polygon: GlPolygon;
@@ -157,7 +164,7 @@ interface GlScene {
 
 interface GlSubject {
   matrix: Matrix4;
-  mesh: GlModel;
+  model: GlModel;
   noShadow?: boolean;
 }
 
@@ -213,7 +220,7 @@ const polygonExtractors: GlPolygonExtractor[] = [
 ];
 
 const bufferConvert = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
   target: number,
   values: TypedArray,
   isDynamic: boolean
@@ -234,7 +241,7 @@ const bufferConvert = (
  ** Find OpenGL type from associated array type.
  ** See: https://developer.mozilla.org/docs/Web/API/WebGL2RenderingContext/vertexAttribPointer
  */
-const bufferGetType = (gl: WebGL2RenderingContext, array: TypedArray) => {
+const bufferGetType = (gl: GlContext, array: TypedArray) => {
   if (array instanceof Float32Array) return gl.FLOAT;
   else if (array instanceof Int32Array) return gl.INT;
   else if (array instanceof Uint32Array) return gl.UNSIGNED_INT;
@@ -246,10 +253,13 @@ const bufferGetType = (gl: WebGL2RenderingContext, array: TypedArray) => {
   throw Error(`unsupported array type for indices`);
 };
 
-const deleteMaterial = (
-  gl: WebGL2RenderingContext,
-  material: GlMaterial
-): void => {
+const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
+  for (const material of library.materials.values()) {
+    deleteMaterial(gl, material);
+  }
+};
+
+const deleteMaterial = (gl: GlContext, material: GlMaterial): void => {
   for (const extractor of materialExtractors) {
     const texture = extractor(material);
 
@@ -259,7 +269,7 @@ const deleteMaterial = (
   }
 };
 
-const deleteMesh = (gl: WebGL2RenderingContext, mesh: GlMesh): void => {
+const deleteMesh = (gl: GlContext, mesh: GlMesh): void => {
   for (const child of mesh.children) {
     deleteMesh(gl, child);
   }
@@ -277,8 +287,8 @@ const deleteMesh = (gl: WebGL2RenderingContext, mesh: GlMesh): void => {
   }
 };
 
-const deleteModel = (gl: WebGL2RenderingContext, model: GlModel): void => {
-  for (const material of model.materials.values()) {
+const deleteModel = (gl: GlContext, model: GlModel): void => {
+  for (const material of model.materials) {
     deleteMaterial(gl, material);
   }
 
@@ -291,7 +301,7 @@ const deleteModel = (gl: WebGL2RenderingContext, model: GlModel): void => {
  ** Convert texture format into native WebGL format parameters.
  */
 const formatGetNative = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
   format: GlTextureFormat
 ): GlNativeFormat => {
   switch (format) {
@@ -317,38 +327,8 @@ const formatGetNative = (
   }
 };
 
-const getOrLoadMaterial = (
-  gl: WebGL2RenderingContext,
-  material: Material | undefined,
-  store: GlMaterialStore
-): GlMaterial => {
-  // Try to fetch material from current material store
-  const currentMaterial = store.active.get(material);
-
-  if (currentMaterial !== undefined) {
-    return currentMaterial;
-  }
-
-  // Try to recycle material from recycled material store
-  const recycleMaterial = store.stash.get(material);
-
-  if (recycleMaterial !== undefined) {
-    store.active.set(material, recycleMaterial);
-    store.stash.delete(material);
-
-    return recycleMaterial;
-  }
-
-  // Load material and add to current material store
-  const newMaterial = loadMaterial(gl, material ?? {});
-
-  store.active.set(material, newMaterial);
-
-  return newMaterial;
-};
-
 const renderbufferConfigure = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
   renderbuffer: WebGLRenderbuffer,
   width: number,
   height: number,
@@ -381,7 +361,7 @@ const renderbufferConfigure = (
   return renderbuffer;
 };
 
-const renderbufferCreate = (gl: WebGL2RenderingContext) => {
+const renderbufferCreate = (gl: GlContext) => {
   const renderbuffer = gl.createRenderbuffer();
 
   if (renderbuffer === null) {
@@ -392,7 +372,7 @@ const renderbufferCreate = (gl: WebGL2RenderingContext) => {
 };
 
 const textureConfigure = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
   texture: WebGLTexture,
   type: GlTextureType,
   width: number,
@@ -482,7 +462,7 @@ const textureConfigure = (
   return texture;
 };
 
-const textureCreate = (gl: WebGL2RenderingContext) => {
+const textureCreate = (gl: GlContext) => {
   const texture = gl.createTexture();
 
   if (texture === null) {
@@ -492,7 +472,7 @@ const textureCreate = (gl: WebGL2RenderingContext) => {
   return texture;
 };
 
-const textureGetTarget = (gl: WebGL2RenderingContext, type: GlTextureType) => {
+const textureGetTarget = (gl: GlContext, type: GlTextureType) => {
   switch (type) {
     case GlTextureType.Cube:
       return gl.TEXTURE_CUBE_MAP;
@@ -505,7 +485,7 @@ const textureGetTarget = (gl: WebGL2RenderingContext, type: GlTextureType) => {
   }
 };
 
-const textureGetWrap = (gl: WebGL2RenderingContext, wrap: Wrap) => {
+const textureGetWrap = (gl: GlContext, wrap: Wrap) => {
   switch (wrap) {
     case Wrap.Clamp:
       return gl.CLAMP_TO_EDGE;
@@ -521,10 +501,32 @@ const textureGetWrap = (gl: WebGL2RenderingContext, wrap: Wrap) => {
   }
 };
 
-const loadMaterial = (
-  gl: WebGL2RenderingContext,
-  material: Material
-): GlMaterial => {
+const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
+  const defaultMaterial = loadMaterial(gl, {}); // TODO: share across multiple models
+  const materials = new Map<Material, GlMaterial>();
+
+  const loadMesh = (mesh: Mesh): void => {
+    for (const child of mesh.children) {
+      loadMesh(child);
+    }
+
+    for (const { material } of mesh.polygons) {
+      if (material === undefined) {
+        continue;
+      }
+
+      materials.set(material, loadMaterial(gl, material));
+    }
+  };
+
+  for (const mesh of model.meshes) {
+    loadMesh(mesh);
+  }
+
+  return { defaultMaterial, materials };
+};
+
+const loadMaterial = (gl: GlContext, material: Material): GlMaterial => {
   const toColorMap = (texture: Texture) =>
     textureConfigure(
       gl,
@@ -560,58 +562,54 @@ const loadMaterial = (
   };
 };
 
-const loadMesh = (
-  gl: WebGL2RenderingContext,
-  mesh: Mesh,
-  store: GlMaterialStore,
-  isDynamic: boolean
-): GlMesh => ({
-  children: mesh.children.map((child) => loadMesh(gl, child, store, isDynamic)),
-  primitives: mesh.polygons.map((polygon) =>
-    loadPrimitive(gl, polygon, store, isDynamic)
-  ),
-  transform: mesh.transform,
-});
-
 /**
  * Load model into given WebGL context. If a previously loaded "recycle" model
  * is passed, every compatible material it contains will be recycled to avoid
  * deleting and loading its textures again, then it will be deleted.
  */
 const loadModel = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
   model: Model,
-  recycle?: GlModel
+  config?: GlModelConfiguration
 ): GlModel => {
-  const isDynamic = recycle !== undefined;
-  const materials = new Map();
+  const loadMesh = (mesh: Mesh): GlMesh => ({
+    children: mesh.children.map((child) => loadMesh(child)),
+    primitives: mesh.polygons.map((polygon) =>
+      loadPrimitive(gl, library, polygon, isDynamic)
+    ),
+    transform: mesh.transform,
+  });
 
-  // Store will be modified during mesh loading: any recycled material will be
-  // removed from stash and therefore not deleted with recycled model.
-  const store: GlMaterialStore = {
-    active: materials,
-    stash: recycle !== undefined ? recycle.materials : new Map(),
-  };
+  let library: GlLibrary;
+  let materials: GlMaterial[];
 
-  const meshes = model.meshes.map((mesh) =>
-    loadMesh(gl, mesh, store, isDynamic)
-  );
-
-  if (recycle !== undefined) {
-    deleteModel(gl, recycle);
+  if (config?.library !== undefined) {
+    library = config?.library;
+    materials = [];
+  } else {
+    library = loadLibrary(gl, model);
+    materials = [...library.materials.values(), library.defaultMaterial];
   }
+
+  const isDynamic = config?.isDynamic ?? false;
+  const meshes = model.meshes.map(loadMesh);
 
   return { materials, meshes };
 };
 
 const loadPrimitive = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
+  library: GlLibrary,
   polygon: Polygon,
-  store: GlMaterialStore,
   isDynamic: boolean
 ): GlPrimitive => {
+  const { defaultMaterial, materials } = library;
+
   return {
-    material: getOrLoadMaterial(gl, polygon.material, store),
+    material:
+      polygon.material !== undefined
+        ? materials.get(polygon.material) ?? defaultMaterial
+        : defaultMaterial,
     polygon: {
       colors: map(polygon.colors, (colors) => ({
         buffer: bufferConvert(gl, gl.ARRAY_BUFFER, colors.buffer, isDynamic),
@@ -661,7 +659,7 @@ const loadPrimitive = (
 };
 
 const loadTextureCube = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
   facePositiveX: ImageData,
   faceNegativeX: ImageData,
   facePositiveY: ImageData,
@@ -690,7 +688,7 @@ const loadTextureCube = (
 };
 
 const loadTextureQuad = (
-  gl: WebGL2RenderingContext,
+  gl: GlContext,
   image: ImageData,
   filter?: Filter
 ): WebGLTexture => {
@@ -708,7 +706,7 @@ const loadTextureQuad = (
 
 class GlShader<TState> {
   private readonly attributePerGeometryBindings: AttributeBinding<GlPolygon>[];
-  private readonly gl: WebGL2RenderingContext;
+  private readonly gl: GlContext;
   private readonly program: WebGLProgram;
   private readonly propertyPerMaterialBindings: PropertyBinding<GlMaterial>[];
   private readonly propertyPerNodeBindings: PropertyBinding<GlMeshState>[];
@@ -717,7 +715,7 @@ class GlShader<TState> {
   private readonly texturePerTargetBindings: GlTextureBinding<TState>[];
 
   public constructor(
-    gl: WebGL2RenderingContext,
+    gl: GlContext,
     vsSource: string,
     fsSource: string,
     directives: GlDirective[] = []
@@ -911,7 +909,7 @@ class GlShader<TState> {
   public setupPropertyPerMaterial<TValue>(
     name: string,
     getter: (state: GlMaterial) => TValue,
-    assign: (gl: WebGL2RenderingContext) => GlUniformValueSetter<TValue>
+    assign: (gl: GlContext) => GlUniformValueSetter<TValue>
   ) {
     this.propertyPerMaterialBindings.push(
       this.declareProperty(name, getter, assign)
@@ -921,7 +919,7 @@ class GlShader<TState> {
   public setupPropertyPerTarget<TValue>(
     name: string,
     getter: (state: TState) => TValue,
-    assign: (gl: WebGL2RenderingContext) => GlUniformValueSetter<TValue>
+    assign: (gl: GlContext) => GlUniformValueSetter<TValue>
   ) {
     this.propertyPerTargetBindings.push(
       this.declareProperty(name, getter, assign)
@@ -967,9 +965,7 @@ class GlShader<TState> {
     name: string,
     length: number,
     copyToBuffer: (state: TSource, buffer: Float32Array) => void,
-    setUniformGetter: (
-      gl: WebGL2RenderingContext
-    ) => GlUniformMatrixSetter<Float32Array>
+    setUniformGetter: (gl: GlContext) => GlUniformMatrixSetter<Float32Array>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
@@ -985,9 +981,7 @@ class GlShader<TState> {
   private declareProperty<TSource, TValue>(
     name: string,
     propertyGetter: (source: TSource) => TValue,
-    setUniformGetter: (
-      gl: WebGL2RenderingContext
-    ) => GlUniformValueSetter<TValue>
+    setUniformGetter: (gl: GlContext) => GlUniformValueSetter<TValue>
   ) {
     const gl = this.gl;
     const location = this.findUniform(name);
@@ -1062,11 +1056,7 @@ class GlShader<TState> {
     return location;
   }
 
-  private static compile(
-    gl: WebGL2RenderingContext,
-    shaderType: number,
-    source: string
-  ) {
+  private static compile(gl: GlContext, shaderType: number, source: string) {
     const shader = gl.createShader(shaderType);
 
     if (shader === null) {
@@ -1112,7 +1102,7 @@ class GlShader<TState> {
 }
 
 class GlTarget {
-  private readonly gl: WebGL2RenderingContext;
+  private readonly gl: GlContext;
 
   private colorAttachment: GlAttachment;
   private colorClear: Vector4;
@@ -1122,11 +1112,7 @@ class GlTarget {
   private viewHeight: number;
   private viewWidth: number;
 
-  public constructor(
-    gl: WebGL2RenderingContext,
-    width: number,
-    height: number
-  ) {
+  public constructor(gl: GlContext, width: number, height: number) {
     this.colorAttachment = { renderbuffer: undefined, textures: [] };
     this.colorClear = colorBlack;
     this.depthAttachment = { renderbuffer: undefined, textures: [] };
@@ -1285,7 +1271,7 @@ class GlTarget {
   }
 
   private static clearRenderbufferAttachments(
-    gl: WebGL2RenderingContext,
+    gl: GlContext,
     attachment: GlAttachment
   ) {
     if (attachment.renderbuffer !== undefined) {
@@ -1296,7 +1282,7 @@ class GlTarget {
   }
 
   private static clearTextureAttachments(
-    gl: WebGL2RenderingContext,
+    gl: GlContext,
     attachment: GlAttachment
   ) {
     if (attachment.textures !== undefined) {
@@ -1307,7 +1293,7 @@ class GlTarget {
     }
   }
 
-  private static checkFramebuffer(gl: WebGL2RenderingContext) {
+  private static checkFramebuffer(gl: GlContext) {
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
       throw Error("invalid framebuffer operation");
   }
@@ -1485,6 +1471,9 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
+  deleteLibrary,
+  deleteModel,
+  loadLibrary,
   loadModel,
   loadTextureCube,
   loadTextureQuad,

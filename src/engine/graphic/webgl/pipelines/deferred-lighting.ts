@@ -4,12 +4,25 @@ import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
-import * as quad from "./resources/quad";
+import { mesh as quadModel } from "./resources/quad";
 import * as rgb from "./snippets/rgb";
 import * as shininess from "./snippets/shininess";
-import * as sphere from "./resources/sphere";
+import { mesh as sphereModel } from "./resources/sphere";
 import { Vector2, Vector3 } from "../../../math/vector";
-import * as webgl from "../../webgl";
+import {
+  GlDirectionalLight,
+  GlModel,
+  GlPainter,
+  GlPipeline,
+  GlPointLight,
+  GlScene,
+  GlShader,
+  GlTarget,
+  GlTextureFormat,
+  GlTextureType,
+  GlTransform,
+  loadModel,
+} from "../../webgl";
 
 const enum LightModel {
   None,
@@ -334,7 +347,7 @@ const loadGeometry = (
   ];
 
   // Setup geometry shader
-  const shader = new webgl.GlShader<State>(
+  const shader = new GlShader<State>(
     gl,
     geometryVertexShader,
     geometryFragmentShader,
@@ -358,7 +371,7 @@ const loadGeometry = (
     shader.setupTexturePerMaterial(
       "glossinessMap",
       undefined,
-      webgl.GlTextureType.Quad,
+      GlTextureType.Quad,
       (material) => material.glossMap
     );
     shader.setupPropertyPerMaterial(
@@ -372,7 +385,7 @@ const loadGeometry = (
     shader.setupTexturePerMaterial(
       "heightMap",
       undefined,
-      webgl.GlTextureType.Quad,
+      GlTextureType.Quad,
       (material) => material.heightMap
     );
     shader.setupPropertyPerMaterial(
@@ -391,7 +404,7 @@ const loadGeometry = (
     shader.setupTexturePerMaterial(
       "normalMap",
       undefined,
-      webgl.GlTextureType.Quad,
+      GlTextureType.Quad,
       (material) => material.normalMap
     );
 
@@ -406,7 +419,7 @@ const loadLight = <TState>(
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
-  const shader = new webgl.GlShader<LightState<TState>>(
+  const shader = new GlShader<LightState<TState>>(
     gl,
     lightVertexShader,
     lightFragmentShader,
@@ -433,13 +446,13 @@ const loadLight = <TState>(
   shader.setupTexturePerTarget(
     "depthBuffer",
     undefined,
-    webgl.GlTextureType.Quad,
+    GlTextureType.Quad,
     (state) => state.depthBuffer
   );
   shader.setupTexturePerTarget(
     "normalAndGlossinessBuffer",
     undefined,
-    webgl.GlTextureType.Quad,
+    GlTextureType.Quad,
     (state) => state.normalAndGlossinessBuffer
   );
 
@@ -450,7 +463,7 @@ const loadLightDirectional = (
   gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
-  const shader = loadLight<webgl.GlDirectionalLight>(
+  const shader = loadLight<GlDirectionalLight>(
     gl,
     configuration,
     LightType.Directional
@@ -474,11 +487,7 @@ const loadLightPoint = (
   gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
-  const shader = loadLight<webgl.GlPointLight>(
-    gl,
-    configuration,
-    LightType.Point
-  );
+  const shader = loadLight<GlPointLight>(gl, configuration, LightType.Point);
 
   shader.setupPropertyPerTarget(
     "pointLight.color",
@@ -530,7 +539,7 @@ const loadMaterial = (
   });
 
   // Setup material shader
-  const shader = new webgl.GlShader<MaterialState>(
+  const shader = new GlShader<MaterialState>(
     gl,
     materialVertexShader,
     materialFragmentShader,
@@ -558,7 +567,7 @@ const loadMaterial = (
   shader.setupTexturePerTarget(
     "lightBuffer",
     undefined,
-    webgl.GlTextureType.Quad,
+    GlTextureType.Quad,
     (state) => state.lightBuffer
   );
 
@@ -570,7 +579,7 @@ const loadMaterial = (
   shader.setupTexturePerMaterial(
     "albedoMap",
     undefined,
-    webgl.GlTextureType.Quad,
+    GlTextureType.Quad,
     (material) => material.albedoMap
   );
 
@@ -583,7 +592,7 @@ const loadMaterial = (
     shader.setupTexturePerMaterial(
       "glossinessMap",
       undefined,
-      webgl.GlTextureType.Quad,
+      GlTextureType.Quad,
       (material) => material.glossMap
     );
   }
@@ -592,7 +601,7 @@ const loadMaterial = (
     shader.setupTexturePerMaterial(
       "heightMap",
       undefined,
-      webgl.GlTextureType.Quad,
+      GlTextureType.Quad,
       (material) => material.heightMap
     );
     shader.setupPropertyPerMaterial(
@@ -610,53 +619,51 @@ const loadMaterial = (
   return shader;
 };
 
-class Pipeline implements webgl.GlPipeline {
+class Pipeline implements GlPipeline {
   public readonly depthBuffer: WebGLTexture;
   public readonly lightBuffer: WebGLTexture;
   public readonly normalAndGlossinessBuffer: WebGLTexture;
 
-  private readonly directionalLightPainter: webgl.GlPainter<
-    LightState<webgl.GlDirectionalLight>
+  private readonly directionalLightPainter: GlPainter<
+    LightState<GlDirectionalLight>
   >;
-  private readonly fullscreenMesh: webgl.GlModel;
+  private readonly fullscreenModel: GlModel;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: webgl.GlPainter<State>;
-  private readonly geometryTarget: webgl.GlTarget;
+  private readonly geometryPainter: GlPainter<State>;
+  private readonly geometryTarget: GlTarget;
   private readonly gl: WebGL2RenderingContext;
-  private readonly lightTarget: webgl.GlTarget;
-  private readonly materialPainter: webgl.GlPainter<MaterialState>;
-  private readonly pointLightPainter: webgl.GlPainter<
-    LightState<webgl.GlPointLight>
-  >;
-  private readonly sphereMesh: webgl.GlModel;
+  private readonly lightTarget: GlTarget;
+  private readonly materialPainter: GlPainter<MaterialState>;
+  private readonly pointLightPainter: GlPainter<LightState<GlPointLight>>;
+  private readonly sphereModel: GlModel;
 
   public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
-    const geometry = new webgl.GlTarget(
+    const geometry = new GlTarget(
       gl,
       gl.canvas.clientWidth,
       gl.canvas.clientHeight
     );
-    const light = new webgl.GlTarget(
+    const light = new GlTarget(
       gl,
       gl.canvas.clientWidth,
       gl.canvas.clientHeight
     );
 
     this.depthBuffer = geometry.setupDepthTexture(
-      webgl.GlTextureFormat.Depth16,
-      webgl.GlTextureType.Quad
+      GlTextureFormat.Depth16,
+      GlTextureType.Quad
     );
     this.directionalLightPainter = new SingularPainter(
       loadLightDirectional(gl, configuration)
     );
-    this.fullscreenMesh = webgl.loadModel(gl, quad.mesh);
+    this.fullscreenModel = loadModel(gl, quadModel);
     this.fullscreenProjection = Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = new SingularPainter(loadGeometry(gl, configuration));
     this.geometryTarget = geometry;
     this.gl = gl;
     this.lightBuffer = light.setupColorTexture(
-      webgl.GlTextureFormat.RGBA8,
-      webgl.GlTextureType.Quad
+      GlTextureFormat.RGBA8,
+      GlTextureType.Quad
     );
     this.lightTarget = light;
     this.materialPainter = new SingularPainter(loadMaterial(gl, configuration));
@@ -664,17 +671,13 @@ class Pipeline implements webgl.GlPipeline {
       loadLightPoint(gl, configuration)
     );
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
-      webgl.GlTextureFormat.RGBA8,
-      webgl.GlTextureType.Quad
+      GlTextureFormat.RGBA8,
+      GlTextureType.Quad
     );
-    this.sphereMesh = webgl.loadModel(gl, sphere.mesh);
+    this.sphereModel = loadModel(gl, sphereModel);
   }
 
-  public process(
-    target: webgl.GlTarget,
-    transform: webgl.GlTransform,
-    scene: webgl.GlScene
-  ) {
+  public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
     const gl = this.gl;
     const viewportSize = {
       x: gl.canvas.clientWidth,
@@ -718,7 +721,7 @@ class Pipeline implements webgl.GlPipeline {
           matrix: Matrix4.createIdentity()
             .duplicate(transform.viewMatrix)
             .invert(),
-          mesh: this.fullscreenMesh,
+          model: this.fullscreenModel,
         },
       ];
 
@@ -743,7 +746,7 @@ class Pipeline implements webgl.GlPipeline {
       const subjects = [
         {
           matrix: Matrix4.createIdentity(),
-          mesh: this.sphereMesh,
+          model: this.sphereModel,
         },
       ];
 

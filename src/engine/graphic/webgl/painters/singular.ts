@@ -21,7 +21,7 @@ class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
     const textureIndex = shader.bindTarget(state);
 
     for (const subject of subjects) {
-      this.draw(target, subject.mesh.meshes, subject.matrix, view, textureIndex);
+      this.draw(target, subject.model.meshes, subject.matrix, view, textureIndex);
     }
   }
 
