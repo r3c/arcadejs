@@ -12,11 +12,20 @@ import * as path from "../../../fs/path";
 import * as stream from "../../../io/stream";
 import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
-interface State {
-  materials: Map<string, Material>;
+interface JsonConfiguration {
+  variables?: Record<string, string>;
 }
 
-const load = async (urlOrData: any): Promise<Model> => {
+interface JsonState {
+  directory: string;
+  materials: Map<string, Material>;
+  variables: Record<string, string>;
+}
+
+const load = async (
+  urlOrData: any,
+  configuration: JsonConfiguration
+): Promise<Model> => {
   let directory: string;
   let root: any;
 
@@ -32,12 +41,24 @@ const load = async (urlOrData: any): Promise<Model> => {
     throw invalid(urlOrData, root, "model");
   }
 
-  const state = {
-    materials:
-      root.materials !== undefined
-        ? await toMapOf("materials", root.materials, toMaterial, directory)
-        : new Map<string, Material>(),
+  const state: JsonState = {
+    directory,
+    materials: new Map<string, Material>(),
+    variables: configuration.variables ?? {},
   };
+
+  if (root.materials !== undefined) {
+    const materials = await toMapOf(
+      "materials",
+      root.materials,
+      toMaterial,
+      state
+    );
+
+    for (const [name, material] of materials.entries()) {
+      state.materials.set(name, material);
+    }
+  }
 
   return {
     meshes: [
@@ -59,8 +80,8 @@ const invalid = (name: string, instance: unknown, expected: string) => {
 const toArrayOf = <TValue>(
   name: string,
   instance: unknown,
-  converter: (name: string, item: unknown, state: State) => TValue,
-  state: State
+  converter: (name: string, item: unknown, state: JsonState) => TValue,
+  state: JsonState
 ) => {
   if (!(instance instanceof Array)) {
     throw invalid(name, instance, "array");
@@ -117,7 +138,139 @@ const toDecimal = (name: string, instance: unknown) => {
   return <number>instance;
 };
 
-const toPolygon = (name: string, instance: unknown, state: State): Polygon => {
+const toInteger = (name: string, instance: unknown): number => {
+  if (typeof instance !== "number" || ~~instance !== instance) {
+    throw invalid(name, instance, "integer number");
+  }
+
+  return instance;
+};
+
+const toMapOf = async <TValue>(
+  name: string,
+  instance: unknown,
+  converter: (name: string, item: unknown, state: JsonState) => Promise<TValue>,
+  state: JsonState
+): Promise<Map<string, TValue>> => {
+  if (instance === null || typeof instance !== "object") {
+    throw invalid(name, instance, "map");
+  }
+
+  const map = new Map<string, TValue>();
+
+  for (const [key, value] of Object.entries(instance)) {
+    map.set(key, await converter(`${name}.${key}`, value, state));
+  }
+
+  return map;
+};
+
+const toMaterial = async (
+  name: string,
+  instance: unknown,
+  state: JsonState
+): Promise<Material> => {
+  if (instance === null || typeof instance !== "object") {
+    throw invalid(name, instance, "material");
+  }
+
+  const material = instance as any;
+
+  return {
+    albedoFactor: toOptional(
+      `${name}.albedoFactor`,
+      material.albedoFactor,
+      toColor
+    ),
+    albedoMap: await toTexture(`${name}.albedoMap`, material.albedoMap, state),
+    emissiveFactor: toOptional(
+      `${name}.emissiveFactor`,
+      material.emissiveFactor,
+      toColor
+    ),
+    emissiveMap: await toTexture(
+      `${name}.emissiveMap`,
+      material.emissiveMap,
+      state
+    ),
+    glossFactor: toOptional(
+      `${name}.glossFactor`,
+      material.glossFactor,
+      toColor
+    ),
+    glossMap: await toTexture(`${name}.glossMap`, material.glossMap, state),
+    heightMap: await toTexture(`${name}.heightMap`, material.heightMap, state),
+    heightParallaxBias: toOptional(
+      `${name}.heightParallaxBias`,
+      material.heightParallaxBias,
+      toDecimal
+    ),
+    heightParallaxScale: toOptional(
+      `${name}.heightParallaxScale`,
+      material.heightParallaxScale,
+      toDecimal
+    ),
+    metalnessMap: await toTexture(
+      `${name}.metalnessMap`,
+      material.metalnessMap,
+      state
+    ),
+    metalnessStrength: toOptional(
+      `${name}.metalnessStrength`,
+      material.metalnessStrength,
+      toDecimal
+    ),
+    normalMap: await toTexture(`${name}.normalMap`, material.normalMap, state),
+    occlusionMap: await toTexture(
+      `${name}.occlusionMap`,
+      material.occlusionMap,
+      state
+    ),
+    occlusionStrength: toOptional(
+      `${name}.occlusionStrength`,
+      material.occlusionStrength,
+      toDecimal
+    ),
+    roughnessMap: await toTexture(
+      `${name}.roughnessMap`,
+      material.roughnessMap,
+      state
+    ),
+    roughnessStrength: toOptional(
+      `${name}.roughnessStrength`,
+      material.roughnessStrength,
+      toDecimal
+    ),
+    shininess: toOptional(`${name}.shininess`, material.shininess, toInteger),
+  };
+};
+
+const toOptional = <TValue>(
+  name: string,
+  instance: unknown,
+  converter: (name: string, source: unknown) => TValue
+): TValue | undefined => {
+  return instance !== undefined ? converter(name, instance) : undefined;
+};
+
+const toPath = (name: string, instance: unknown, state: JsonState): string => {
+  if (typeof instance !== "string") {
+    throw invalid(name, instance, "path");
+  }
+
+  const tail = Object.entries(state.variables).reduce(
+    (tail, [name, value]) => tail.replaceAll(`{${name}}`, value),
+    instance
+  );
+
+  return path.combine(state.directory, tail);
+};
+
+const toPolygon = (
+  name: string,
+  instance: unknown,
+  state: JsonState
+): Polygon => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "polygon");
   }
@@ -173,137 +326,6 @@ const toPolygon = (name: string, instance: unknown, state: State): Polygon => {
   };
 };
 
-const toInteger = (name: string, instance: unknown): number => {
-  if (typeof instance !== "number" || ~~instance !== instance) {
-    throw invalid(name, instance, "integer number");
-  }
-
-  return instance;
-};
-
-const toMapOf = async <TValue>(
-  name: string,
-  instance: unknown,
-  converter: (
-    name: string,
-    item: unknown,
-    directory: string
-  ) => Promise<TValue>,
-  directory: string
-): Promise<Map<string, TValue>> => {
-  if (instance === null || typeof instance !== "object") {
-    throw invalid(name, instance, "map");
-  }
-
-  const map = new Map<string, TValue>();
-
-  for (const [key, value] of Object.entries(instance)) {
-    map.set(key, await converter(`${name}.${key}`, value, directory));
-  }
-
-  return map;
-};
-
-const toMaterial = async (
-  name: string,
-  instance: unknown,
-  directory: string
-): Promise<Material> => {
-  if (instance === null || typeof instance !== "object") {
-    throw invalid(name, instance, "material");
-  }
-
-  const material = instance as any;
-
-  return {
-    albedoFactor: toOptional(
-      `${name}.albedoFactor`,
-      material.albedoFactor,
-      toColor
-    ),
-    albedoMap: await toTexture(
-      `${name}.albedoMap`,
-      material.albedoMap,
-      directory
-    ),
-    emissiveFactor: toOptional(
-      `${name}.emissiveFactor`,
-      material.emissiveFactor,
-      toColor
-    ),
-    emissiveMap: await toTexture(
-      `${name}.emissiveMap`,
-      material.emissiveMap,
-      directory
-    ),
-    glossFactor: toOptional(
-      `${name}.glossFactor`,
-      material.glossFactor,
-      toColor
-    ),
-    glossMap: await toTexture(`${name}.glossMap`, material.glossMap, directory),
-    heightMap: await toTexture(
-      `${name}.heightMap`,
-      material.heightMap,
-      directory
-    ),
-    heightParallaxBias: toOptional(
-      `${name}.heightParallaxBias`,
-      material.heightParallaxBias,
-      toDecimal
-    ),
-    heightParallaxScale: toOptional(
-      `${name}.heightParallaxScale`,
-      material.heightParallaxScale,
-      toDecimal
-    ),
-    metalnessMap: await toTexture(
-      `${name}.metalnessMap`,
-      material.metalnessMap,
-      directory
-    ),
-    metalnessStrength: toOptional(
-      `${name}.metalnessStrength`,
-      material.metalnessStrength,
-      toDecimal
-    ),
-    normalMap: await toTexture(
-      `${name}.normalMap`,
-      material.normalMap,
-      directory
-    ),
-    occlusionMap: await toTexture(
-      `${name}.occlusionMap`,
-      material.occlusionMap,
-      directory
-    ),
-    occlusionStrength: toOptional(
-      `${name}.occlusionStrength`,
-      material.occlusionStrength,
-      toDecimal
-    ),
-    roughnessMap: await toTexture(
-      `${name}.roughnessMap`,
-      material.roughnessMap,
-      directory
-    ),
-    roughnessStrength: toOptional(
-      `${name}.roughnessStrength`,
-      material.roughnessStrength,
-      toDecimal
-    ),
-    shininess: toOptional(`${name}.shininess`, material.shininess, toInteger),
-  };
-};
-
-const toOptional = <TValue>(
-  name: string,
-  instance: unknown,
-  converter: (name: string, source: unknown) => TValue
-): TValue | undefined => {
-  return instance !== undefined ? converter(name, instance) : undefined;
-};
-
 const toString = (name: string, instance: unknown): string => {
   if (typeof instance !== "string") {
     throw invalid(name, instance, "string");
@@ -315,7 +337,7 @@ const toString = (name: string, instance: unknown): string => {
 const toTexture = async (
   name: string,
   instance: unknown,
-  directory: string
+  state: JsonState
 ): Promise<Texture | undefined> =>
   typeof instance === "string"
     ? {
@@ -325,9 +347,7 @@ const toTexture = async (
           mipmap: true,
           wrap: Wrap.Repeat,
         },
-        image: await image.loadFromURL(
-          toString(name, path.combine(directory, instance))
-        ),
+        image: await image.loadFromURL(toPath(name, instance, state)),
       }
     : undefined;
 
