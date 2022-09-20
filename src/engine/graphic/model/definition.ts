@@ -15,11 +15,20 @@ interface BoundingBox {
   zMin: number;
 }
 
+const enum Interpolation {
+  Linear,
+  Nearest,
+}
+
 interface Filter {
   magnifier: Interpolation;
   minifier: Interpolation;
   mipmap: boolean;
   wrap: Wrap;
+}
+
+interface Library {
+  textures: Map<string, Texture>;
 }
 
 interface Polygon {
@@ -30,11 +39,6 @@ interface Polygon {
   normals?: Attribute;
   points: Attribute;
   tangents?: Attribute;
-}
-
-const enum Interpolation {
-  Linear,
-  Nearest,
 }
 
 interface Instance {
@@ -111,6 +115,7 @@ export {
   type BoundingBox,
   type Filter,
   type Instance,
+  type Library,
   type Material,
   type Mesh,
   type Model,

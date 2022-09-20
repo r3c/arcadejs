@@ -31,7 +31,7 @@ enum GlAttachementTarget {
 
 interface GlAttachmentTexture {
   format: GlTextureFormat;
-  handle: WebGLTexture;
+  handle: GlTexture;
 }
 
 interface GlAttribute {
@@ -63,28 +63,28 @@ interface GlLibrary {
 
 interface GlMaterial {
   albedoFactor: number[];
-  albedoMap: WebGLTexture | undefined;
+  albedoMap: GlTexture | undefined;
   emissiveFactor: number[];
-  emissiveMap: WebGLTexture | undefined;
+  emissiveMap: GlTexture | undefined;
   glossFactor: number[];
-  glossMap: WebGLTexture | undefined;
-  heightMap: WebGLTexture | undefined;
+  glossMap: GlTexture | undefined;
+  heightMap: GlTexture | undefined;
   heightParallaxBias: number;
   heightParallaxScale: number;
-  metalnessMap: WebGLTexture | undefined;
+  metalnessMap: GlTexture | undefined;
   metalnessStrength: number;
-  normalMap: WebGLTexture | undefined;
-  occlusionMap: WebGLTexture | undefined;
+  normalMap: GlTexture | undefined;
+  occlusionMap: GlTexture | undefined;
   occlusionStrength: number;
-  roughnessMap: WebGLTexture | undefined;
+  roughnessMap: GlTexture | undefined;
   roughnessStrength: number;
   shininess: number;
 }
 
-type GlMaterialExtractor = (material: GlMaterial) => WebGLTexture | undefined;
+type GlMaterialExtractor = (material: GlMaterial) => GlTexture | undefined;
 
 interface GlModel {
-  materials: GlMaterial[];
+  library: GlLibrary | undefined;
   meshes: GlMesh[];
 }
 
@@ -154,9 +154,9 @@ interface GlScene {
   ambientLightColor?: Vector3;
   directionalLights?: GlDirectionalLight[];
   environmentLight?: {
-    brdf: WebGLTexture;
-    diffuse: WebGLTexture;
-    specular: WebGLTexture;
+    brdf: GlTexture;
+    diffuse: GlTexture;
+    specular: GlTexture;
   };
   pointLights?: GlPointLight[];
   subjects: GlSubject[];
@@ -167,6 +167,8 @@ interface GlSubject {
   model: GlModel;
   noShadow?: boolean;
 }
+
+type GlTexture = WebGLTexture;
 
 type GlTextureBinding<T> = (source: T, textureIndex: number) => number;
 
@@ -288,8 +290,12 @@ const deleteMesh = (gl: GlContext, mesh: GlMesh): void => {
 };
 
 const deleteModel = (gl: GlContext, model: GlModel): void => {
-  for (const material of model.materials) {
-    deleteMaterial(gl, material);
+  if (model.library !== undefined) {
+    for (const material of model.library.materials.values()) {
+      deleteMaterial(gl, material);
+    }
+
+    deleteMaterial(gl, model.library.defaultMaterial);
   }
 
   for (const mesh of model.meshes) {
@@ -373,14 +379,14 @@ const renderbufferCreate = (gl: GlContext) => {
 
 const textureConfigure = (
   gl: GlContext,
-  texture: WebGLTexture,
+  texture: GlTexture,
   type: GlTextureType,
   width: number,
   height: number,
   format: GlTextureFormat,
   filter: Filter,
   image: ImageData | ImageData[] | undefined
-) => {
+): GlTexture => {
   const isPowerOfTwo =
     ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
   const target = textureGetTarget(gl, type);
@@ -502,8 +508,8 @@ const textureGetWrap = (gl: GlContext, wrap: Wrap) => {
 };
 
 const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
-  const defaultMaterial = loadMaterial(gl, {}); // TODO: share across multiple models
   const materials = new Map<Material, GlMaterial>();
+  const textures = new Map<Texture, GlTexture>();
 
   const loadMesh = (mesh: Mesh): void => {
     for (const child of mesh.children) {
@@ -511,13 +517,15 @@ const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
     }
 
     for (const { material } of mesh.polygons) {
-      if (material === undefined) {
+      if (material === undefined || materials.has(material)) {
         continue;
       }
 
-      materials.set(material, loadMaterial(gl, material));
+      materials.set(material, loadMaterial(gl, textures, material));
     }
   };
+
+  const defaultMaterial = loadMaterial(gl, textures, {}); // TODO: share across multiple models
 
   for (const mesh of model.meshes) {
     loadMesh(mesh);
@@ -526,18 +534,31 @@ const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
   return { defaultMaterial, materials };
 };
 
-const loadMaterial = (gl: GlContext, material: Material): GlMaterial => {
-  const toColorMap = (texture: Texture) =>
-    textureConfigure(
-      gl,
-      textureCreate(gl),
-      GlTextureType.Quad,
-      texture.image.width,
-      texture.image.height,
-      GlTextureFormat.RGBA8,
-      texture.filter,
-      texture.image
-    );
+const loadMaterial = (
+  gl: GlContext,
+  textures: Map<Texture, GlTexture>,
+  material: Material
+): GlMaterial => {
+  const toColorMap = (texture: Texture) => {
+    let glTexture = textures.get(texture);
+
+    if (glTexture === undefined) {
+      glTexture = textureConfigure(
+        gl,
+        textureCreate(gl),
+        GlTextureType.Quad,
+        texture.image.width,
+        texture.image.height,
+        GlTextureFormat.RGBA8,
+        texture.filter,
+        texture.image
+      );
+
+      textures.set(texture, glTexture);
+    }
+
+    return glTexture;
+  };
 
   return {
     albedoFactor: Vector4.toArray(material.albedoFactor || colorWhite),
@@ -572,29 +593,29 @@ const loadModel = (
   model: Model,
   config?: GlModelConfiguration
 ): GlModel => {
+  let ownedLibrary: GlLibrary | undefined;
+  let usedLibrary: GlLibrary;
+
+  if (config?.library !== undefined) {
+    ownedLibrary = undefined;
+    usedLibrary = config?.library;
+  } else {
+    ownedLibrary = loadLibrary(gl, model);
+    usedLibrary = ownedLibrary;
+  }
+
   const loadMesh = (mesh: Mesh): GlMesh => ({
     children: mesh.children.map((child) => loadMesh(child)),
     primitives: mesh.polygons.map((polygon) =>
-      loadPrimitive(gl, library, polygon, isDynamic)
+      loadPrimitive(gl, usedLibrary, polygon, isDynamic)
     ),
     transform: mesh.transform,
   });
 
-  let library: GlLibrary;
-  let materials: GlMaterial[];
-
-  if (config?.library !== undefined) {
-    library = config?.library;
-    materials = [];
-  } else {
-    library = loadLibrary(gl, model);
-    materials = [...library.materials.values(), library.defaultMaterial];
-  }
-
   const isDynamic = config?.isDynamic ?? false;
   const meshes = model.meshes.map(loadMesh);
 
-  return { materials, meshes };
+  return { library: ownedLibrary, meshes };
 };
 
 const loadPrimitive = (
@@ -667,7 +688,7 @@ const loadTextureCube = (
   facePositiveZ: ImageData,
   faceNegativeZ: ImageData,
   filter?: Filter
-): WebGLTexture => {
+): GlTexture => {
   return textureConfigure(
     gl,
     textureCreate(gl),
@@ -691,7 +712,7 @@ const loadTextureQuad = (
   gl: GlContext,
   image: ImageData,
   filter?: Filter
-): WebGLTexture => {
+): GlTexture => {
   return textureConfigure(
     gl,
     textureCreate(gl),
@@ -938,7 +959,7 @@ class GlShader<TState> {
     samplerName: string,
     enabledName: string | undefined,
     type: GlTextureType,
-    getter: (state: GlMaterial) => WebGLTexture | undefined
+    getter: (state: GlMaterial) => GlTexture | undefined
   ) {
     this.texturePerMaterialBindings.push(
       this.declareTexture(samplerName, enabledName, type, getter)
@@ -954,7 +975,7 @@ class GlShader<TState> {
     samplerName: string,
     enabledName: string | undefined,
     type: GlTextureType,
-    getter: (state: TState) => WebGLTexture | undefined
+    getter: (state: TState) => GlTexture | undefined
   ) {
     this.texturePerTargetBindings.push(
       this.declareTexture(samplerName, enabledName, type, getter)
@@ -995,7 +1016,7 @@ class GlShader<TState> {
     samplerName: string,
     enabledName: string | undefined,
     type: GlTextureType,
-    textureGetter: (source: TSource) => WebGLTexture | undefined
+    textureGetter: (source: TSource) => GlTexture | undefined
   ) {
     const enabledLocation = map(enabledName, (name) => this.findUniform(name));
     const gl = this.gl;

@@ -2,6 +2,7 @@ import * as image from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
   Interpolation,
+  Library,
   Material,
   Model,
   Polygon,
@@ -16,24 +17,27 @@ interface JsonConfiguration {
   variables?: Record<string, string>;
 }
 
-interface JsonState {
+interface JsonMaterialState {
   directory: string;
-  materials: Map<string, Material>;
+  textures: Map<string, Texture>;
   variables: Record<string, string>;
+}
+
+interface JsonPolygonState {
+  materials: Map<string, Material>;
 }
 
 const load = async (
   urlOrData: any,
+  library: Library,
   configuration: JsonConfiguration | undefined
 ): Promise<Model> => {
   let directory: string;
   let root: any;
 
   if (typeof urlOrData === "string") {
-    const url = <string>urlOrData;
-
-    directory = path.directory(url);
-    root = await stream.readURL(stream.JSONFormat, url);
+    directory = path.directory(urlOrData);
+    root = await stream.readURL(stream.JSONFormat, urlOrData);
   } else if (typeof urlOrData === "object") {
     directory = "";
     root = urlOrData;
@@ -41,30 +45,26 @@ const load = async (
     throw invalid(urlOrData, root, "model");
   }
 
-  const state: JsonState = {
-    directory,
-    materials: new Map<string, Material>(),
-    variables: configuration?.variables ?? {},
-  };
-
-  if (root.materials !== undefined) {
-    const materials = await toMapOf(
-      "materials",
-      root.materials,
-      toMaterial,
-      state
-    );
-
-    for (const [name, material] of materials.entries()) {
-      state.materials.set(name, material);
-    }
+  if (typeof root !== "object") {
+    throw invalid(urlOrData, root, "object");
   }
+
+  const materials =
+    root.materials !== undefined
+      ? await toMapOf("materials", root.materials, toMaterial, {
+          directory,
+          textures: library.textures,
+          variables: configuration?.variables ?? {},
+        })
+      : new Map<string, Material>();
 
   return {
     meshes: [
       {
         children: [],
-        polygons: toArrayOf("polygons", root.polygons, toPolygon, state),
+        polygons: toArrayOf("polygons", root.polygons, toPolygon, {
+          materials,
+        }),
         transform: Matrix4.createIdentity(),
       },
     ],
@@ -77,11 +77,11 @@ const invalid = (name: string, instance: unknown, expected: string) => {
   );
 };
 
-const toArrayOf = <TValue>(
+const toArrayOf = <TValue, TState>(
   name: string,
   instance: unknown,
-  converter: (name: string, item: unknown, state: JsonState) => TValue,
-  state: JsonState
+  converter: (name: string, item: unknown, state: TState) => TValue,
+  state: TState
 ) => {
   if (!(instance instanceof Array)) {
     throw invalid(name, instance, "array");
@@ -146,11 +146,11 @@ const toInteger = (name: string, instance: unknown): number => {
   return instance;
 };
 
-const toMapOf = async <TValue>(
+const toMapOf = async <TValue, TState>(
   name: string,
   instance: unknown,
-  converter: (name: string, item: unknown, state: JsonState) => Promise<TValue>,
-  state: JsonState
+  converter: (name: string, item: unknown, state: TState) => Promise<TValue>,
+  state: TState
 ): Promise<Map<string, TValue>> => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "map");
@@ -168,7 +168,7 @@ const toMapOf = async <TValue>(
 const toMaterial = async (
   name: string,
   instance: unknown,
-  state: JsonState
+  state: JsonMaterialState
 ): Promise<Material> => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "material");
@@ -253,7 +253,11 @@ const toOptional = <TValue>(
   return instance !== undefined ? converter(name, instance) : undefined;
 };
 
-const toPath = (name: string, instance: unknown, state: JsonState): string => {
+const toPath = (
+  name: string,
+  instance: unknown,
+  state: JsonMaterialState
+): string => {
   if (typeof instance !== "string") {
     throw invalid(name, instance, "path");
   }
@@ -269,7 +273,7 @@ const toPath = (name: string, instance: unknown, state: JsonState): string => {
 const toPolygon = (
   name: string,
   instance: unknown,
-  state: JsonState
+  state: JsonPolygonState
 ): Polygon => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "polygon");
@@ -337,19 +341,32 @@ const toString = (name: string, instance: unknown): string => {
 const toTexture = async (
   name: string,
   instance: unknown,
-  state: JsonState
-): Promise<Texture | undefined> =>
-  typeof instance === "string"
-    ? {
-        filter: {
-          magnifier: Interpolation.Linear,
-          minifier: Interpolation.Linear,
-          mipmap: true,
-          wrap: Wrap.Repeat,
-        },
-        image: await image.loadFromURL(toPath(name, instance, state)),
-      }
-    : undefined;
+  state: JsonMaterialState
+): Promise<Texture | undefined> => {
+  if (typeof instance !== "string") {
+    return undefined;
+  }
+
+  const path = toPath(name, instance, state);
+
+  let texture = state.textures.get(path);
+
+  if (texture === undefined) {
+    texture = {
+      filter: {
+        magnifier: Interpolation.Linear,
+        minifier: Interpolation.Linear,
+        mipmap: true,
+        wrap: Wrap.Repeat,
+      },
+      image: await image.loadFromURL(path),
+    };
+
+    state.textures.set(path, texture);
+  }
+
+  return texture;
+};
 
 const toTuple3 = <TValue>(
   name: string,

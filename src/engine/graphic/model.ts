@@ -4,11 +4,12 @@ import {
   Attribute,
   BoundingBox,
   Filter,
+  Instance,
   Interpolation,
+  Library,
   Material,
   Mesh,
   Model,
-  Instance,
   Polygon,
   Texture,
   TypedArray,
@@ -23,6 +24,7 @@ import { load as loadFromJson } from "./model/loaders/json";
 import { load as loadFromObj } from "./model/loaders/obj";
 
 type Configuration<TLoad> = {
+  library?: Library;
   load?: TLoad;
   transform?: Matrix4;
 };
@@ -211,6 +213,7 @@ const computeTangents = (
 const createLoadModel = <TSource, TLoad>(
   loadCallback: (
     source: TSource,
+    library: Library,
     loadConfiguration: TLoad | undefined
   ) => Promise<Model>
 ): ((
@@ -220,7 +223,8 @@ const createLoadModel = <TSource, TLoad>(
   return async (source, configurationOrUndefined) => {
     // Load model using underlying loading callback
     const configuration = configurationOrUndefined ?? {};
-    const model = await loadCallback(source, configuration.load);
+    const library = configuration.library ?? { textures: new Map() };
+    const model = await loadCallback(source, library, configuration.load);
 
     // Transform top-level meshes using provided transform matrix if any
     const transform = configuration.transform;

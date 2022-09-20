@@ -184,7 +184,7 @@ class Pipeline implements GlPipeline {
         {
           matrix: Matrix4.createIdentity(),
           model: {
-            materials: [],
+            library: undefined,
             meshes: [
               {
                 children: [],
