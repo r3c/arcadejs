@@ -28,7 +28,7 @@ interface Filter {
 }
 
 interface Library {
-  textures: Map<string, Texture>;
+  textures: Map<string, Promise<Texture>>;
 }
 
 interface Polygon {

@@ -1,4 +1,4 @@
-import * as image from "../../image";
+import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
   Interpolation,
@@ -19,7 +19,7 @@ interface JsonConfiguration {
 
 interface JsonMaterialState {
   directory: string;
-  textures: Map<string, Texture>;
+  textures: Map<string, Promise<Texture>>;
   variables: Record<string, string>;
 }
 
@@ -352,15 +352,19 @@ const toTexture = async (
   let texture = state.textures.get(path);
 
   if (texture === undefined) {
-    texture = {
-      filter: {
-        magnifier: Interpolation.Linear,
-        minifier: Interpolation.Linear,
-        mipmap: true,
-        wrap: Wrap.Repeat,
-      },
-      image: await image.loadFromURL(path),
-    };
+    texture = new Promise<Texture>(async (resolve) => {
+      const image = await loadFromURL(path);
+
+      resolve({
+        filter: {
+          magnifier: Interpolation.Linear,
+          minifier: Interpolation.Linear,
+          mipmap: true,
+          wrap: Wrap.Repeat,
+        },
+        image,
+      });
+    });
 
     state.textures.set(path, texture);
   }
