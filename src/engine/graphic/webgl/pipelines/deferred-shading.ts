@@ -562,8 +562,8 @@ class Pipeline implements GlPipeline {
   public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
     const geometry = new GlTarget(
       gl,
-      gl.canvas.clientWidth,
-      gl.canvas.clientHeight
+      gl.drawingBufferWidth,
+      gl.drawingBufferHeight
     );
 
     this.albedoAndShininessBuffer = geometry.setupColorTexture(
@@ -598,8 +598,8 @@ class Pipeline implements GlPipeline {
   public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
     const gl = this.gl;
     const viewportSize = {
-      x: gl.canvas.clientWidth,
-      y: gl.canvas.clientHeight,
+      x: gl.drawingBufferWidth,
+      y: gl.drawingBufferHeight,
     };
 
     // Draw scene geometries
