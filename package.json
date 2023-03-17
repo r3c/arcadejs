@@ -6,7 +6,7 @@
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.1",
-    "typescript": "^4.5.4",
+    "typescript": "^5.0.2",
     "vite": "^4.0.1"
   },
   "scripts": {
