@@ -5,9 +5,9 @@
   "repository": "github:r3c/arcadejs",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.1",
-    "typescript": "^5.0.2",
-    "vite": "^4.0.1"
+    "express": "^4.18.2",
+    "typescript": "^5.1.6",
+    "vite": "^4.4.7"
   },
   "scripts": {
     "check": "tsc --noEmit",
