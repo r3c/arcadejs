@@ -1,5 +1,5 @@
 import {
-  type Application,
+  type Runtime,
   type Tweak,
   configure,
   declare,
@@ -85,7 +85,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.useNormalMap !== 0,
 ];
 
-const application: Application<WebGLScreen, SceneState> = {
+const runtime: Runtime<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
     const tweak = configure(configuration);
@@ -275,6 +275,6 @@ const application: Application<WebGLScreen, SceneState> = {
   },
 };
 
-const process = declare("Forward PBR lighting", WebGLScreen, application);
+const application = declare("Forward PBR lighting", WebGLScreen, runtime);
 
-export { process };
+export { application };

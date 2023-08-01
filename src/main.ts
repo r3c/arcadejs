@@ -1,13 +1,13 @@
 import "./style/style.css";
 import { run } from "./engine/application";
-import { process as blank } from "./scene/blank/main";
-import { process as software } from "./scene/software/main";
-import { process as hardware } from "./scene/hardware/main";
-import { process as forwardPhong } from "./scene/forward-phong/main";
-import { process as forwardPbr } from "./scene/forward-pbr/main";
-import { process as directionalShadow } from "./scene/directional-shadow/main";
-import { process as deferredLighting } from "./scene/deferred-lighting/main";
-import { process as deferredShading } from "./scene/deferred-shading/main";
+import { application as blank } from "./scene/blank/main";
+import { application as software } from "./scene/software/main";
+import { application as hardware } from "./scene/hardware/main";
+import { application as forwardPhong } from "./scene/forward-phong/main";
+import { application as forwardPbr } from "./scene/forward-pbr/main";
+import { application as directionalShadow } from "./scene/directional-shadow/main";
+import { application as deferredLighting } from "./scene/deferred-lighting/main";
+import { application as deferredShading } from "./scene/deferred-shading/main";
 
 run([
   blank,

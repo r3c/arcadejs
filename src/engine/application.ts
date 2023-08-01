@@ -1,18 +1,18 @@
 import { Screen } from "./graphic/display";
 
-interface Application<TScreen extends Screen, TState> {
-  prepare: (screen: TScreen) => Promise<TState>;
-  render: (state: TState) => void;
-  resize?: (state: TState, screen: TScreen) => void;
-  update: (state: TState, dt: number) => void;
-}
-
-interface Process {
+interface Application {
   change: (callback: (screen: Screen) => void) => void;
   start: () => Promise<void>;
   step: (dt: number) => void;
   stop: () => void;
   title: string;
+}
+
+interface Runtime<TScreen extends Screen, TState> {
+  prepare: (screen: TScreen) => Promise<TState>;
+  render: (state: TState) => void;
+  resize: (state: TState, screen: TScreen) => void;
+  update: (state: TState, dt: number) => void;
 }
 
 interface ScreenConstructor<TScreen extends Screen> {
@@ -21,6 +21,10 @@ interface ScreenConstructor<TScreen extends Screen> {
 
 type Tweak<T> = {
   [P in keyof T]: number;
+};
+
+const canonicalize = (name: string): string => {
+  return name.toLowerCase().replaceAll(/[^-0-9a-z]/g, "-");
 };
 
 const configure = <T>(configuration: T) => {
@@ -148,17 +152,17 @@ const createSelect = (
 const declare = <TScreen extends Screen, TState>(
   title: string,
   screenConstructor: ScreenConstructor<TScreen>,
-  application: Application<TScreen, TState>
-): Process => {
-  let runtime:
+  runtime: Runtime<TScreen, TState>
+): Application => {
+  let memory:
     | { screen: TScreen; state: TState; x: number; y: number }
     | undefined = undefined;
 
   return {
     title,
     change: (callback: (screen: Screen) => void) => {
-      if (runtime !== undefined) {
-        callback(runtime.screen);
+      if (memory !== undefined) {
+        callback(memory.screen);
       }
     },
     start: async () => {
@@ -173,24 +177,24 @@ const declare = <TScreen extends Screen, TState>(
       }
 
       const screen = new screenConstructor(container);
-      const state = await application.prepare(screen);
+      const state = await runtime.prepare(screen);
 
-      runtime = { screen, state, x: 0, y: 0 };
+      memory = { screen, state, x: 0, y: 0 };
     },
     step: (dt: number) => {
-      if (runtime === undefined) {
+      if (memory === undefined) {
         return;
       }
 
-      const { screen, state, x, y } = runtime;
-      const { render, resize, update } = application;
+      const { screen, state, x, y } = memory;
+      const { render, resize, update } = runtime;
 
       // FIXME: detect canvas resize [canvas-resize]
       if (screen.getWidth() !== x || screen.getHeight() !== y) {
         resize?.(state, screen);
 
-        runtime.x = screen.getWidth();
-        runtime.y = screen.getHeight();
+        memory.x = screen.getWidth();
+        memory.y = screen.getHeight();
       }
 
       update(state, dt);
@@ -198,12 +202,12 @@ const declare = <TScreen extends Screen, TState>(
       setTimeout(() => render(state), 0);
     },
     stop: () => {
-      runtime = undefined;
+      memory = undefined;
     },
   };
 };
 
-const run = (processes: Process[]) => {
+const run = (applications: Application[]) => {
   const frameContainer = document.getElementById("frames");
 
   if (frameContainer === null) {
@@ -216,7 +220,7 @@ const run = (processes: Process[]) => {
     throw Error("missing scene container");
   }
 
-  let current: Process | undefined;
+  let current: Application | undefined;
   let elapsed = 0;
   let frames = 0;
   let time = new Date().getTime();
@@ -230,24 +234,24 @@ const run = (processes: Process[]) => {
   };
 
   const select = async (value: number) => {
-    const process = processes[value];
+    const application = applications[value];
 
     if (current !== undefined) {
       current.stop();
       current = undefined;
     }
 
-    if (process === undefined) {
+    if (application === undefined) {
       location.hash = "";
 
       return;
     }
 
-    location.hash = `#${encodeURIComponent(process.title)}`;
+    location.hash = `#${encodeURIComponent(canonicalize(application.title))}`;
 
-    await process.start();
+    await application.start();
 
-    current = process;
+    current = application;
   };
 
   const tick = () => {
@@ -273,9 +277,9 @@ const run = (processes: Process[]) => {
     window.requestAnimationFrame(tick);
   };
 
-  const hashName = decodeURIComponent(location.hash.substring(1));
+  const hashTitle = decodeURIComponent(location.hash.substring(1));
   const hashValue = Math.max(
-    processes.findIndex((process) => process.title === hashName),
+    applications.findIndex(({ title }) => canonicalize(title) === hashTitle),
     0
   );
 
@@ -283,7 +287,7 @@ const run = (processes: Process[]) => {
   sceneContainer.appendChild(
     createSelect(
       "",
-      processes.map((process) => process.title),
+      applications.map(({ title }) => title),
       hashValue,
       select
     )
@@ -292,4 +296,4 @@ const run = (processes: Process[]) => {
   tick();
 };
 
-export { type Application, type Tweak, configure, declare, run };
+export { type Runtime, type Tweak, configure, declare, run };
