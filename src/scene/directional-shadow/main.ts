@@ -120,6 +120,12 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     const lightDirection = move.rotateDirection(-state.move * 10, 0);
     const lightPipeline =
       pipelines.lights[bitfield.index(getOptions(state.tweak))];
+
+    const modelLightDirection = Vector3.fromObject(lightDirection);
+
+    modelLightDirection.normalize();
+    modelLightDirection.scale(10);
+
     const lightScene = {
       ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
       directionalLights: [
@@ -146,9 +152,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
           model: models.ground,
         },
         {
-          matrix: Matrix4.createIdentity().translate(
-            Vector3.scale(Vector3.normalize(lightDirection), 10)
-          ),
+          matrix: Matrix4.createIdentity().translate(modelLightDirection),
           model: models.light,
           noShadow: true,
         },

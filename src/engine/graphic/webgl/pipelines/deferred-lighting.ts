@@ -439,7 +439,7 @@ const loadLight = <TState>(
 
   shader.setupPropertyPerTarget(
     "viewportSize",
-    (state) => Vector2.toArray(state.viewportSize),
+    ({ viewportSize }) => [viewportSize.x, viewportSize.y],
     (gl) => gl.uniform2fv
   );
 
@@ -471,12 +471,12 @@ const loadLightDirectional = (
 
   shader.setupPropertyPerTarget(
     "directionalLight.color",
-    (state) => Vector3.toArray(state.light.color),
+    ({ light }) => [light.color.x, light.color.y, light.color.y],
     (gl) => gl.uniform3fv
   );
   shader.setupPropertyPerTarget(
     "directionalLight.direction",
-    (state) => Vector3.toArray(state.light.direction),
+    ({ light }) => [light.direction.x, light.direction.y, light.direction.z],
     (gl) => gl.uniform3fv
   );
 
@@ -491,12 +491,12 @@ const loadLightPoint = (
 
   shader.setupPropertyPerTarget(
     "pointLight.color",
-    (state) => Vector3.toArray(state.light.color),
+    ({ light }) => [light.color.x, light.color.y, light.color.y],
     (gl) => gl.uniform3fv
   );
   shader.setupPropertyPerTarget(
     "pointLight.position",
-    (state) => Vector3.toArray(state.light.position),
+    ({ light }) => [light.position.x, light.position.y, light.position.z],
     (gl) => gl.uniform3fv
   );
   shader.setupPropertyPerTarget(
@@ -561,7 +561,11 @@ const loadMaterial = (
 
   shader.setupPropertyPerTarget(
     "ambientLightColor",
-    (state) => Vector3.toArray(state.ambientLightColor),
+    ({ ambientLightColor }) => [
+      ambientLightColor.x,
+      ambientLightColor.y,
+      ambientLightColor.z,
+    ],
     (gl) => gl.uniform3fv
   );
   shader.setupTexturePerTarget(
@@ -787,7 +791,7 @@ class Pipeline implements GlPipeline {
     gl.depthMask(true);
 
     this.materialPainter.paint(target, scene.subjects, transform.viewMatrix, {
-      ambientLightColor: scene.ambientLightColor || Vector3.zero,
+      ambientLightColor: scene.ambientLightColor ?? Vector3.zero,
       lightBuffer: this.lightBuffer,
       projectionMatrix: transform.projectionMatrix,
       viewMatrix: transform.viewMatrix,

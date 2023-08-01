@@ -1,12 +1,12 @@
 import { Input } from "../engine/io/controller";
-import { Vector3 } from "../engine/math/vector";
+import { MutableVector3, Vector3 } from "../engine/math/vector";
 
-const ease = (from: Vector3, to: Vector3, speed: number) => {
-  return {
-    x: from.x + (to.x - from.x) * speed,
-    y: from.y + (to.y - from.y) * speed,
-    z: from.z + (to.z - from.z) * speed,
-  };
+const ease = (from: MutableVector3, to: Vector3, speed: number) => {
+  from.add({
+    x: (to.x - from.x) * speed,
+    y: (to.y - from.y) * speed,
+    z: (to.z - from.z) * speed,
+  });
 };
 
 const positionEasing = 0.5;
@@ -15,17 +15,17 @@ const rotationEasing = 0.5;
 const rotationSpeed = 1 / 64;
 
 class Camera {
-  public position: Vector3;
-  public rotation: Vector3;
+  public position: MutableVector3;
+  public rotation: MutableVector3;
 
-  private nextPosition: Vector3;
-  private nextRotation: Vector3;
+  private nextPosition: MutableVector3;
+  private nextRotation: MutableVector3;
 
   public constructor(position: Vector3, rotation: Vector3) {
-    this.nextPosition = position;
-    this.nextRotation = rotation;
-    this.position = position;
-    this.rotation = rotation;
+    this.nextPosition = Vector3.fromObject(position);
+    this.nextRotation = Vector3.fromObject(rotation);
+    this.position = Vector3.fromObject(position);
+    this.rotation = Vector3.fromObject(rotation);
   }
 
   public move(input: Input) {
@@ -44,11 +44,11 @@ class Camera {
       z: 0,
     };
 
-    this.nextPosition = Vector3.add(this.nextPosition, deltaPosition);
-    this.nextRotation = Vector3.add(this.nextRotation, deltaRotation);
+    this.nextPosition.add(deltaPosition);
+    this.nextRotation.add(deltaRotation);
 
-    this.position = ease(this.position, this.nextPosition, positionEasing);
-    this.rotation = ease(this.rotation, this.nextRotation, rotationEasing);
+    ease(this.position, this.nextPosition, positionEasing);
+    ease(this.rotation, this.nextRotation, rotationEasing);
   }
 }
 

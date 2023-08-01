@@ -1,8 +1,10 @@
 import { Vector3, Vector4 } from "./vector";
 
-type Matrix3Data = Pick<
-  Matrix3,
-  "v00" | "v01" | "v02" | "v10" | "v11" | "v12" | "v20" | "v21" | "v22"
+type Matrix3Data = Readonly<
+  Pick<
+    Matrix3,
+    "v00" | "v01" | "v02" | "v10" | "v11" | "v12" | "v20" | "v21" | "v22"
+  >
 >;
 
 class Matrix3 {
@@ -58,7 +60,7 @@ class Matrix3 {
     target[8] = this.v22;
   }
 
-  public duplicate(source: Matrix4Data): Matrix3 {
+  public duplicate(source: Matrix3Data): Matrix3 {
     this.v00 = source.v00;
     this.v01 = source.v01;
     this.v02 = source.v02;
@@ -131,24 +133,26 @@ class Matrix3 {
   }
 }
 
-type Matrix4Data = Pick<
-  Matrix4,
-  | "v00"
-  | "v01"
-  | "v02"
-  | "v03"
-  | "v10"
-  | "v11"
-  | "v12"
-  | "v13"
-  | "v20"
-  | "v21"
-  | "v22"
-  | "v23"
-  | "v30"
-  | "v31"
-  | "v32"
-  | "v33"
+type Matrix4Data = Readonly<
+  Pick<
+    Matrix4,
+    | "v00"
+    | "v01"
+    | "v02"
+    | "v03"
+    | "v10"
+    | "v11"
+    | "v12"
+    | "v13"
+    | "v20"
+    | "v21"
+    | "v22"
+    | "v23"
+    | "v30"
+    | "v31"
+    | "v32"
+    | "v33"
+  >
 >;
 
 class Matrix4 {
@@ -174,9 +178,20 @@ class Matrix4 {
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
    */
   public static createDirection(direction: Vector3, up: Vector3): Matrix4 {
-    const f = Vector3.normalize(direction);
-    const s = Vector3.cross(f, Vector3.normalize(up));
-    const u = Vector3.cross(Vector3.normalize(s), f);
+    const f = Vector3.fromObject(direction);
+
+    f.normalize();
+
+    const s = Vector3.fromObject(f);
+    const upVector = Vector3.fromObject(up);
+
+    upVector.normalize();
+    s.cross(upVector);
+
+    const u = Vector3.fromObject(s);
+
+    u.normalize();
+    u.cross(f);
 
     return new Matrix4({
       v00: s.x,

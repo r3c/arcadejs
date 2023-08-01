@@ -3,10 +3,124 @@ interface Vector2 {
   readonly y: number;
 }
 
+class MutableVector2 implements Vector2 {
+  public x: number;
+  public y: number;
+
+  public constructor(x: number, y: number) {
+    this.x = x;
+    this.y = y;
+  }
+
+  public sub(rhs: Vector2): void {
+    this.x -= rhs.x;
+    this.y -= rhs.y;
+  }
+
+  public toArray(): [number, number] {
+    return [this.x, this.y];
+  }
+}
+
+class Vector2 {
+  public static createZero(): MutableVector2 {
+    return new MutableVector2(0, 0);
+  }
+
+  public static fromObject(data: Vector2): MutableVector2 {
+    return new MutableVector2(data.x, data.y);
+  }
+
+  public static readonly zero: Vector2 = { x: 0, y: 0 };
+}
+
 interface Vector3 {
   readonly x: number;
   readonly y: number;
   readonly z: number;
+}
+
+class MutableVector3 implements Vector3 {
+  public x: number;
+  public y: number;
+  public z: number;
+
+  public constructor(x: number, y: number, z: number) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+
+  public add(rhs: Vector3): void {
+    this.x += rhs.x;
+    this.y += rhs.y;
+    this.z += rhs.z;
+  }
+
+  public cross(rhs: Vector3): void {
+    const { x: lx, y: ly, z: lz } = this;
+    const { x: rx, y: ry, z: rz } = rhs;
+
+    this.x = ly * rz - lz * ry;
+    this.y = lz * rx - lx * rz;
+    this.z = lx * ry - ly * rx;
+  }
+
+  public dot(rhs: Vector3): number {
+    return this.x * rhs.x + this.y * rhs.y + this.z * rhs.z;
+  }
+
+  public len(): number {
+    const { x, y, z } = this;
+
+    return Math.sqrt(x * x + y * y + z * z);
+  }
+
+  public map(callback: (v: number) => number): void {
+    this.x = callback(this.x);
+    this.y = callback(this.y);
+    this.z = callback(this.z);
+  }
+
+  public normalize(): void {
+    const length = this.len();
+
+    if (length !== 0) {
+      const lengthInverse = 1 / length;
+
+      this.x *= lengthInverse;
+      this.y *= lengthInverse;
+      this.z *= lengthInverse;
+    }
+  }
+
+  public scale(factor: number): void {
+    this.x *= factor;
+    this.y *= factor;
+    this.z *= factor;
+  }
+
+  public sub(rhs: Vector3): void {
+    this.x -= rhs.x;
+    this.y -= rhs.y;
+    this.z -= rhs.z;
+  }
+
+  public toArray(): [number, number, number] {
+    return [this.x, this.y, this.z];
+  }
+}
+
+class Vector3 {
+  public static createZero(): MutableVector3 {
+    return new MutableVector3(0, 0, 0);
+  }
+
+  public static fromObject(data: Vector3): MutableVector3 {
+    return new MutableVector3(data.x, data.y, data.z);
+  }
+
+  public static readonly zero: Vector3 = { x: 0, y: 0, z: 0 };
 }
 
 interface Vector4 {
@@ -16,105 +130,41 @@ interface Vector4 {
   readonly w: number;
 }
 
-class Vector2 {
-  public static readonly zero: Vector2 = { x: 0, y: 0 };
+class MutableVector4 implements Vector4 {
+  public x: number;
+  public y: number;
+  public z: number;
+  public w: number;
 
-  public static sub(lhs: Vector2, rhs: Vector2): Vector2 {
-    return {
-      x: lhs.x - rhs.x,
-      y: lhs.y - rhs.y,
-    };
+  public constructor(x: number, y: number, z: number, w: number) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.w = w;
   }
 
-  public static toArray(vector: Vector2): number[] {
-    return [vector.x, vector.y];
-  }
-}
-
-class Vector3 {
-  public static readonly zero: Vector3 = { x: 0, y: 0, z: 0 };
-
-  public static add(lhs: Vector3, rhs: Vector3): Vector3 {
-    return {
-      x: lhs.x + rhs.x,
-      y: lhs.y + rhs.y,
-      z: lhs.z + rhs.z,
-    };
-  }
-
-  public static cross(lhs: Vector3, rhs: Vector3): Vector3 {
-    const { x: lx, y: ly, z: lz } = lhs;
-    const { x: rx, y: ry, z: rz } = rhs;
-
-    return {
-      x: ly * rz - lz * ry,
-      y: lz * rx - lx * rz,
-      z: lx * ry - ly * rx,
-    };
-  }
-
-  public static dot(lhs: Vector3, rhs: Vector3): number {
-    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
-  }
-
-  public static len(vector: Vector3): number {
-    const { x, y, z } = vector;
-
-    return Math.sqrt(x * x + y * y + z * z);
-  }
-
-  public static map(vector: Vector3, callback: (v: number) => number): Vector3 {
-    return {
-      x: callback(vector.x),
-      y: callback(vector.y),
-      z: callback(vector.z),
-    };
-  }
-
-  public static normalize(vector: Vector3): Vector3 {
-    const length = Vector3.len(vector);
-
-    if (length === 0) {
-      return vector;
-    }
-
-    const lengthInverse = 1 / length;
-
-    return {
-      x: vector.x * lengthInverse,
-      y: vector.y * lengthInverse,
-      z: vector.z * lengthInverse,
-    };
-  }
-
-  public static scale(vector: Vector3, factor: number): Vector3 {
-    return {
-      x: vector.x * factor,
-      y: vector.y * factor,
-      z: vector.z * factor,
-    };
-  }
-
-  public static sub(lhs: Vector3, rhs: Vector3): Vector3 {
-    return {
-      x: lhs.x - rhs.x,
-      y: lhs.y - rhs.y,
-      z: lhs.z - rhs.z,
-    };
-  }
-
-  public static toArray(vector: Vector3): number[] {
-    return [vector.x, vector.y, vector.z];
+  public toArray(): [number, number, number, number] {
+    return [this.x, this.y, this.z, this.w];
   }
 }
 
 class Vector4 {
-  public static readonly one: Vector4 = { x: 1, y: 1, z: 1, w: 1 };
-  public static readonly zero: Vector4 = { x: 0, y: 0, z: 0, w: 0 };
-
-  public static toArray(vector: Vector4): number[] {
-    return [vector.x, vector.y, vector.z, vector.w];
+  public static createZero(): MutableVector4 {
+    return new MutableVector4(0, 0, 0, 0);
   }
+
+  public static fromObject(data: Vector4): MutableVector4 {
+    return new MutableVector4(data.x, data.y, data.z, data.w);
+  }
+
+  public static readonly zero: Vector4 = { x: 0, y: 0, z: 0, w: 0 };
 }
 
-export { Vector2, Vector3, Vector4 };
+export {
+  MutableVector2,
+  MutableVector3,
+  MutableVector4,
+  Vector2,
+  Vector3,
+  Vector4,
+};

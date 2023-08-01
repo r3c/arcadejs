@@ -17,8 +17,8 @@ import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
-import { Vector3 } from "../../../math/vector";
 import * as webgl from "../../webgl";
+import { Vector3 } from "../../../math/vector";
 
 type ForwardLightingConfiguration = {
   light?: LightConfiguration;
@@ -678,7 +678,11 @@ const loadLight = (
 
   shader.setupPropertyPerTarget(
     "ambientLightColor",
-    (state) => Vector3.toArray(state.ambientLightColor),
+    ({ ambientLightColor }) => [
+      ambientLightColor.x,
+      ambientLightColor.y,
+      ambientLightColor.z,
+    ],
     (gl) => gl.uniform3fv
   );
 
@@ -712,17 +716,25 @@ const loadLight = (
 
     shader.setupPropertyPerTarget(
       `directionalLights[${i}].color`,
-      (state) =>
-        index < state.directionalLights.length
-          ? Vector3.toArray(state.directionalLights[index].color)
+      ({ directionalLights }) =>
+        index < directionalLights.length
+          ? [
+              directionalLights[index].color.x,
+              directionalLights[index].color.y,
+              directionalLights[index].color.z,
+            ]
           : defaultColor,
       (gl) => gl.uniform3fv
     );
     shader.setupPropertyPerTarget(
       `directionalLights[${i}].direction`,
-      (state) =>
-        index < state.directionalLights.length
-          ? Vector3.toArray(state.directionalLights[index].direction)
+      ({ directionalLights }) =>
+        index < directionalLights.length
+          ? [
+              directionalLights[index].direction.x,
+              directionalLights[index].direction.y,
+              directionalLights[index].direction.z,
+            ]
           : defaultDirection,
       (gl) => gl.uniform3fv
     );
@@ -733,24 +745,32 @@ const loadLight = (
 
     shader.setupPropertyPerTarget(
       `pointLights[${i}].color`,
-      (state) =>
-        index < state.pointLights.length
-          ? Vector3.toArray(state.pointLights[index].color)
+      ({ pointLights }) =>
+        index < pointLights.length
+          ? [
+              pointLights[index].color.x,
+              pointLights[index].color.y,
+              pointLights[index].color.z,
+            ]
           : defaultColor,
       (gl) => gl.uniform3fv
     );
     shader.setupPropertyPerTarget(
       `pointLights[${i}].position`,
-      (state) =>
-        index < state.pointLights.length
-          ? Vector3.toArray(state.pointLights[index].position)
+      ({ pointLights }) =>
+        index < pointLights.length
+          ? [
+              pointLights[index].position.x,
+              pointLights[index].position.y,
+              pointLights[index].position.z,
+            ]
           : defaultPosition,
       (gl) => gl.uniform3fv
     );
     shader.setupPropertyPerTarget(
       `pointLights[${i}].radius`,
-      (state) =>
-        index < state.pointLights.length ? state.pointLights[index].radius : 0,
+      ({ pointLights }) =>
+        index < pointLights.length ? pointLights[index].radius : 0,
       (gl) => gl.uniform1f
     );
   }
@@ -974,7 +994,7 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
     gl.cullFace(gl.BACK);
 
     this.lightPainter.paint(target, scene.subjects, transform.viewMatrix, {
-      ambientLightColor: scene.ambientLightColor || Vector3.zero,
+      ambientLightColor: scene.ambientLightColor ?? Vector3.zero,
       directionalLights: directionalLightStates,
       environmentLight: scene.environmentLight,
       pointLights: pointLights,

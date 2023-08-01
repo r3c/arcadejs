@@ -237,12 +237,17 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
           }))
         )
         .concat(
-          directionalLights.map((light) => ({
-            matrix: Matrix4.createIdentity().translate(
-              Vector3.scale(Vector3.normalize(light.direction), 10)
-            ),
-            model: models.directionalLight,
-          }))
+          directionalLights.map((light) => {
+            const direction = Vector3.fromObject(light.direction);
+
+            direction.normalize();
+            direction.scale(10);
+
+            return {
+              matrix: Matrix4.createIdentity().translate(direction),
+              model: models.directionalLight,
+            };
+          })
         )
         .concat(
           pointLights.map((light) => ({
