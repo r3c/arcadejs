@@ -111,7 +111,7 @@ const application: Application<WebGLScreen, SceneState> = {
     // Load textures
     const brdf = webgl.loadTextureQuad(
       gl,
-      await image.loadFromURL("model/ibl/ibl_brdf_lut.png")
+      await image.loadFromURL("model/ibl/ibl_brdf_lut.webp")
     );
 
     const diffuse = webgl.loadTextureCube(

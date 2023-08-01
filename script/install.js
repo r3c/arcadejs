@@ -99,6 +99,10 @@ downloadFiles([
     url: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/fb85803eaeb9208d1b6f04e3f3769ebc8aa706f6/2.0/DamagedHelmet/glTF/Default_normal.jpg"
   },
   {
+	destination: "public/model/ibl/ibl_brdf_lut.webp",
+	url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/ibl/ibl_brdf_lut.webp"
+  },
+  {
     destination: "public/model/papermill/diffuse_right_0.jpg",
     url: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Environments/4eace30f795fa77f6e059e3b31aa640c08a82133/papermill/diffuse/diffuse_right_0.jpg"
   },
