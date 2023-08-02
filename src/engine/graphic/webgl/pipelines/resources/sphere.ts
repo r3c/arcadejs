@@ -145,7 +145,7 @@ const mesh = {
           },
         },
       ],
-      transform: Matrix4.createIdentity(),
+      transform: Matrix4.fromIdentity(),
     },
   ],
 };

@@ -65,7 +65,7 @@ const load = async (
         polygons: toArrayOf("polygons", root.polygons, toPolygon, {
           materials,
         }),
-        transform: Matrix4.createIdentity(),
+        transform: Matrix4.fromIdentity(),
       },
     ],
   };

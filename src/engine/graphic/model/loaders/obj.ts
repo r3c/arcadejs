@@ -319,7 +319,7 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
       {
         children: [],
         polygons,
-        transform: Matrix4.createIdentity(),
+        transform: Matrix4.fromIdentity(),
       },
     ],
   };

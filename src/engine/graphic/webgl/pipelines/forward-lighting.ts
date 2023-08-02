@@ -704,7 +704,7 @@ const loadLight = (
         (state) =>
           index < state.directionalLights.length
             ? state.directionalLights[index].shadowViewMatrix
-            : Matrix4.createIdentity()
+            : Matrix4.fromIdentity()
       );
       shader.setupTexturePerTarget(
         `directionalLightShadowMaps[${index}]`,
@@ -881,7 +881,7 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
     this.directionalShadowPainter = new SingularPainter(
       loadShadowDirectional(gl)
     );
-    this.directionalShadowProjectionMatrix = Matrix4.createOrthographic(
+    this.directionalShadowProjectionMatrix = Matrix4.fromOrthographic(
       -10,
       10,
       -10,
@@ -911,7 +911,7 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
       )
     );
     this.pointShadowPainter = new SingularPainter(loadShadowPoint(gl));
-    this.pointShadowProjectionMatrix = Matrix4.createPerspective(
+    this.pointShadowProjectionMatrix = Matrix4.fromPerspective(
       Math.PI * 0.5,
       targetWidth / targetHeight,
       0.1,
@@ -952,10 +952,10 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
         z: -light.direction.z,
       };
 
-      const viewMatrix = Matrix4.createModify((matrix) => {
+      const viewMatrix = Matrix4.fromCustom((matrix) => {
         matrix.translate({ x: 0, y: 0, z: -10 });
         matrix.multiply(
-          Matrix4.createDirection(shadowDirection, { x: 0, y: 1, z: 0 })
+          Matrix4.fromDirection(shadowDirection, { x: 0, y: 1, z: 0 })
         );
       });
 

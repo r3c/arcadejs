@@ -81,7 +81,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     const cubeModel = await loadModelFromJson("model/cube/mesh.json");
     const groundModel = await loadModelFromJson("model/ground/mesh.json");
     const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.createModify((matrix) =>
+      transform: Matrix4.fromCustom((matrix) =>
         matrix.scale({
           x: 0.2,
           y: 0.2,
@@ -120,7 +120,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
             })
         ),
       },
-      projectionMatrix: Matrix4.createIdentity(),
+      projectionMatrix: Matrix4.fromIdentity(),
       target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
@@ -139,7 +139,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
 
     const transform = {
       projectionMatrix: projectionMatrix,
-      viewMatrix: Matrix4.createModify((matrix) => {
+      viewMatrix: Matrix4.fromCustom((matrix) => {
         matrix.translate(camera.position);
         matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
         matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
@@ -160,11 +160,11 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
       })),
       subjects: [
         {
-          matrix: Matrix4.createIdentity(),
+          matrix: Matrix4.fromIdentity(),
           model: models.cube,
         },
         {
-          matrix: Matrix4.createModify((matrix) =>
+          matrix: Matrix4.fromCustom((matrix) =>
             matrix.translate({
               x: 0,
               y: -1.5,
@@ -175,7 +175,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
         },
       ].concat(
         lightPositions.slice(0, tweak.nbLights).map((position) => ({
-          matrix: Matrix4.createModify((matrix) => matrix.translate(position)),
+          matrix: Matrix4.fromCustom((matrix) => matrix.translate(position)),
           model: models.light,
         }))
       ),
@@ -188,7 +188,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     for (const pipeline of state.pipelines.lights)
       pipeline.resize(screen.getWidth(), screen.getHeight());
 
-    state.projectionMatrix = Matrix4.createPerspective(
+    state.projectionMatrix = Matrix4.fromPerspective(
       45,
       screen.getRatio(),
       0.1,

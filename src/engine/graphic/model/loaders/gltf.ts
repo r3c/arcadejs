@@ -546,7 +546,7 @@ const loadNode = (
       node.scale !== undefined &&
       node.translation !== undefined
     ) {
-      transform = Matrix4.createModify((matrix) => {
+      transform = Matrix4.fromCustom((matrix) => {
         matrix.translate({
           x: node.translation[0],
           y: node.translation[1],
@@ -565,7 +565,7 @@ const loadNode = (
         });
       });
     } else {
-      transform = Matrix4.createIdentity();
+      transform = Matrix4.fromIdentity();
     }
 
     const childrenIndices = convertArrayOf(

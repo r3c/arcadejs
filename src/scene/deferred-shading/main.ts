@@ -82,7 +82,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
 
     // Load meshes
     const cubeModel = await loadModelFromJson("model/cube/mesh.json", {
-      transform: Matrix4.createModify((matrix) =>
+      transform: Matrix4.fromCustom((matrix) =>
         matrix.scale({
           x: 0.4,
           y: 0.4,
@@ -93,7 +93,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     const directionalLightModel = await loadModelFromJson(
       "model/sphere/mesh.json",
       {
-        transform: Matrix4.createModify((matrix) =>
+        transform: Matrix4.fromCustom((matrix) =>
           matrix.scale({
             x: 0.5,
             y: 0.5,
@@ -104,7 +104,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     );
     const groundModel = await loadModelFromJson("model/ground/mesh.json");
     const pointLightModel = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.createModify((matrix) =>
+      transform: Matrix4.fromCustom((matrix) =>
         matrix.scale({
           x: 0.1,
           y: 0.1,
@@ -177,7 +177,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
         position: Vector3.zero,
         radius: 2,
       })),
-      projectionMatrix: Matrix4.createIdentity(),
+      projectionMatrix: Matrix4.fromIdentity(),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
@@ -188,7 +188,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
 
     const transform = {
       projectionMatrix: state.projectionMatrix,
-      viewMatrix: Matrix4.createModify((matrix) => {
+      viewMatrix: Matrix4.fromCustom((matrix) => {
         matrix.translate(camera.position);
         matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
         matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
@@ -213,7 +213,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
       pointLights: pointLights,
       subjects: [
         {
-          matrix: Matrix4.createModify((matrix) =>
+          matrix: Matrix4.fromCustom((matrix) =>
             matrix.translate({
               x: 0,
               y: -1.5,
@@ -225,7 +225,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
       ]
         .concat(
           range(16, (i) => ({
-            matrix: Matrix4.createModify((matrix) =>
+            matrix: Matrix4.fromCustom((matrix) =>
               matrix.translate({
                 x: ((i % 4) - 1.5) * 2,
                 y: 0,
@@ -243,7 +243,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
             direction.scale(10);
 
             return {
-              matrix: Matrix4.createModify((matrix) =>
+              matrix: Matrix4.fromCustom((matrix) =>
                 matrix.translate(direction)
               ),
               model: models.directionalLight,
@@ -252,7 +252,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
         )
         .concat(
           pointLights.map((light) => ({
-            matrix: Matrix4.createModify((matrix) =>
+            matrix: Matrix4.fromCustom((matrix) =>
               matrix.translate(light.position)
             ),
             model: models.pointLight,
@@ -288,7 +288,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     for (const pipeline of state.pipelines.scene)
       pipeline.resize(screen.getWidth(), screen.getHeight());
 
-    state.projectionMatrix = Matrix4.createPerspective(
+    state.projectionMatrix = Matrix4.fromPerspective(
       45,
       screen.getRatio(),
       0.1,

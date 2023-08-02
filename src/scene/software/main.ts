@@ -49,7 +49,7 @@ const runtime: Runtime<Context2DScreen, State> = {
       cubeWithColor: await loadModelFromJson("model/cube-color/mesh.json"),
       cubeWithTexture: await loadModelFromJson("model/cube/mesh.json"),
       input: new Input(screen.canvas),
-      projection: Matrix4.createIdentity(),
+      projection: Matrix4.fromIdentity(),
       renderer: renderer,
       tweak: tweak,
     };
@@ -65,7 +65,7 @@ const runtime: Runtime<Context2DScreen, State> = {
       tweak,
     } = state;
 
-    const viewMatrix = Matrix4.createModify((matrix) => {
+    const viewMatrix = Matrix4.fromCustom((matrix) => {
       matrix.translate(camera.position);
       matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
       matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
@@ -78,12 +78,7 @@ const runtime: Runtime<Context2DScreen, State> = {
   },
 
   resize(state, screen) {
-    state.projection = Matrix4.createPerspective(
-      45,
-      screen.getRatio(),
-      0.1,
-      100
-    );
+    state.projection = Matrix4.fromPerspective(45, screen.getRatio(), 0.1, 100);
   },
 
   update(state) {

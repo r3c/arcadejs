@@ -100,7 +100,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
         await loadModelFromJson("model/cube/mesh.json")
       ),
       painter: new painter.SingularPainter(shader),
-      projectionMatrix: Matrix4.createIdentity(),
+      projectionMatrix: Matrix4.fromIdentity(),
       screen: screen,
       target: new webgl.GlTarget(
         screen.context,
@@ -113,14 +113,14 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
   render(state) {
     const { camera, gl, model, painter, projectionMatrix, target } = state;
 
-    const viewMatrix = Matrix4.createModify((matrix) => {
+    const viewMatrix = Matrix4.fromCustom((matrix) => {
       matrix.translate(camera.position);
       matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
       matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
     });
 
     const cube = {
-      matrix: Matrix4.createIdentity(),
+      matrix: Matrix4.fromIdentity(),
       model,
     };
 
@@ -138,7 +138,7 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
   },
 
   resize(state, screen) {
-    state.projectionMatrix = Matrix4.createPerspective(
+    state.projectionMatrix = Matrix4.fromPerspective(
       45,
       screen.getRatio(),
       0.1,

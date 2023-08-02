@@ -32,7 +32,7 @@ type Configuration<TLoad> = {
 const computeBounds = (model: Model): BoundingBox => {
   return reduceMeshPoints<BoundingBox>(
     model.meshes,
-    Matrix4.createIdentity(),
+    Matrix4.fromIdentity(),
     {
       xMax: Number.MIN_VALUE,
       xMin: Number.MAX_VALUE,
@@ -61,7 +61,7 @@ const computeNormals = (indices: TypedArray, points: Attribute): Attribute => {
   const pointsStride = points.stride;
   const normals = range(
     Math.floor(pointsBuffer.length / pointsStride),
-    Vector3.createZero
+    Vector3.fromZero
   );
 
   for (let i = 0; i + 2 < indices.length; i += 3) {
@@ -134,7 +134,7 @@ const computeTangents = (
   const pointsStride = points.stride;
   const tangents = range(
     Math.floor(pointsBuffer.length / pointsStride),
-    Vector3.createZero
+    Vector3.fromZero
   );
 
   for (let i = 0; i + 2 < indices.length; i += 3) {
@@ -314,7 +314,7 @@ const flattenModel = (model: Model): Model => {
   // Recursively collect fragments by material name from model
   const fragmentsByMaterial = new Map<Material | undefined, Fragment[]>();
   const flattenFragments = (meshes: Mesh[], parentTransform: Matrix4): void => {
-    const transform = Matrix4.createIdentity();
+    const transform = Matrix4.fromIdentity();
 
     for (const mesh of meshes) {
       transform.set(parentTransform);
@@ -331,7 +331,7 @@ const flattenModel = (model: Model): Model => {
     }
   };
 
-  flattenFragments(model.meshes, Matrix4.createIdentity());
+  flattenFragments(model.meshes, Matrix4.fromIdentity());
 
   // Merge polygons by material name
   const polygons: Polygon[] = [];
@@ -487,7 +487,7 @@ const flattenModel = (model: Model): Model => {
 
   // Create and return flattened model
   return {
-    meshes: [{ children: [], polygons, transform: Matrix4.createIdentity() }],
+    meshes: [{ children: [], polygons, transform: Matrix4.fromIdentity() }],
   };
 };
 

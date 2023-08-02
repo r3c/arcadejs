@@ -182,7 +182,7 @@ class Pipeline implements GlPipeline {
     return {
       subjects: [
         {
-          matrix: Matrix4.createIdentity(),
+          matrix: Matrix4.fromIdentity(),
           model: {
             library: undefined,
             meshes: [
@@ -196,7 +196,7 @@ class Pipeline implements GlPipeline {
                     } as any,
                   },
                 ],
-                transform: Matrix4.createIdentity(),
+                transform: Matrix4.fromIdentity(),
               },
             ],
           },
@@ -223,7 +223,7 @@ class Pipeline implements GlPipeline {
 
     const subjects = [
       {
-        matrix: Matrix4.createModify((matrix) => {
+        matrix: Matrix4.fromCustom((matrix) => {
           matrix.translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 });
           matrix.scale({ x: this.scale, y: this.scale, z: 0 });
         }),
@@ -236,7 +236,7 @@ class Pipeline implements GlPipeline {
       for (const node of subject.model.meshes) {
         for (const primitive of node.primitives) {
           if (primitive.material.albedoMap !== undefined) {
-            this.painter.paint(target, subjects, Matrix4.createIdentity(), {
+            this.painter.paint(target, subjects, Matrix4.fromIdentity(), {
               source: primitive.material.albedoMap,
             });
 

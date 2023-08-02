@@ -38,8 +38,8 @@ class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
     viewMatrix: Matrix4,
     textureIndex: number
   ): void {
-    const modelMatrix = Matrix4.createIdentity();
-    const normalMatrix = Matrix3.createIdentity();
+    const modelMatrix = Matrix4.fromIdentity();
+    const normalMatrix = Matrix3.fromIdentity();
     const shader = this.shader;
 
     for (const node of nodes) {

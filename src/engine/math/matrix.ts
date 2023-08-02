@@ -127,18 +127,18 @@ class MutableMatrix3 implements Matrix3 {
 }
 
 class Matrix3 {
-  public static createIdentity(): MutableMatrix3 {
-    return new MutableMatrix3(Matrix3.identity);
-  }
-
-  public static createModify(
+  public static fromCustom(
     modify: (matrix: MutableMatrix3) => void
   ): MutableMatrix3 {
-    const matrix = Matrix3.createIdentity();
+    const matrix = Matrix3.fromIdentity();
 
     modify(matrix);
 
     return matrix;
+  }
+
+  public static fromIdentity(): MutableMatrix3 {
+    return new MutableMatrix3(Matrix3.identity);
   }
 
   public static fromObject(source: Matrix3): MutableMatrix3 {
@@ -583,14 +583,46 @@ class MutableMatrix4 implements Matrix4 {
 }
 
 class Matrix4 {
+  public static fromArray(values: ArrayLike<number>): MutableMatrix4 {
+    if (values.length !== 16) {
+      throw Error("4x4 matrix must contain 16 elements");
+    }
+
+    return new MutableMatrix4({
+      v00: values[0],
+      v01: values[1],
+      v02: values[2],
+      v03: values[3],
+      v10: values[4],
+      v11: values[5],
+      v12: values[6],
+      v13: values[7],
+      v20: values[8],
+      v21: values[9],
+      v22: values[10],
+      v23: values[11],
+      v30: values[12],
+      v31: values[13],
+      v32: values[14],
+      v33: values[15],
+    });
+  }
+
+  public static fromCustom(
+    modify: (matrix: MutableMatrix4) => void
+  ): MutableMatrix4 {
+    const matrix = Matrix4.fromIdentity();
+
+    modify(matrix);
+
+    return matrix;
+  }
+
   /*
    ** Create new matrix for "looking to given direction" transformation.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
    */
-  public static createDirection(
-    direction: Vector3,
-    up: Vector3
-  ): MutableMatrix4 {
+  public static fromDirection(direction: Vector3, up: Vector3): MutableMatrix4 {
     const f = Vector3.fromObject(direction);
 
     f.normalize();
@@ -626,25 +658,19 @@ class Matrix4 {
     });
   }
 
-  public static createIdentity(): MutableMatrix4 {
+  public static fromIdentity(): MutableMatrix4 {
     return new MutableMatrix4(Matrix4.identity);
   }
 
-  public static createModify(
-    modify: (matrix: MutableMatrix4) => void
-  ): MutableMatrix4 {
-    const matrix = Matrix4.createIdentity();
-
-    modify(matrix);
-
-    return matrix;
+  public static fromObject(source: Matrix4): MutableMatrix4 {
+    return new MutableMatrix4(source);
   }
 
   /*
    ** Create new orthographic projection matrix.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml
    */
-  public static createOrthographic(
+  public static fromOrthographic(
     xMin: number,
     xMax: number,
     yMin: number,
@@ -680,7 +706,7 @@ class Matrix4 {
    ** Create new perspective projection matrix.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
    */
-  public static createPerspective(
+  public static fromPerspective(
     angle: number,
     ratio: number,
     zMin: number,
@@ -707,35 +733,6 @@ class Matrix4 {
       v32: 2 * zMax * zMin * q,
       v33: 0,
     });
-  }
-
-  public static fromArray(values: ArrayLike<number>): MutableMatrix4 {
-    if (values.length !== 16) {
-      throw Error("4x4 matrix must contain 16 elements");
-    }
-
-    return new MutableMatrix4({
-      v00: values[0],
-      v01: values[1],
-      v02: values[2],
-      v03: values[3],
-      v10: values[4],
-      v11: values[5],
-      v12: values[6],
-      v13: values[7],
-      v20: values[8],
-      v21: values[9],
-      v22: values[10],
-      v23: values[11],
-      v30: values[12],
-      v31: values[13],
-      v32: values[14],
-      v33: values[15],
-    });
-  }
-
-  public static fromObject(source: Matrix4): MutableMatrix4 {
-    return new MutableMatrix4(source);
   }
 
   public static transform(source: Matrix4, vertex: Vector4): Vector4 {

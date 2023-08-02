@@ -589,7 +589,7 @@ class Pipeline implements GlPipeline {
       loadLightDirectional(gl, configuration)
     );
     this.fullscreenModel = loadModel(gl, quadModel);
-    this.fullscreenProjection = Matrix4.createOrthographic(-1, 1, -1, 1, -1, 1);
+    this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = new SingularPainter(loadGeometry(gl, configuration));
     this.geometryTarget = geometry;
     this.gl = gl;
@@ -638,7 +638,7 @@ class Pipeline implements GlPipeline {
     if (scene.ambientLightColor !== undefined) {
       const subjects = [
         {
-          matrix: Matrix4.createIdentity(),
+          matrix: Matrix4.fromIdentity(),
           model: this.fullscreenModel,
         },
       ];
@@ -647,7 +647,7 @@ class Pipeline implements GlPipeline {
         albedoAndShininessBuffer: this.albedoAndShininessBuffer,
         ambientLightColor: scene.ambientLightColor,
         projectionMatrix: this.fullscreenProjection,
-        viewMatrix: Matrix4.createIdentity(),
+        viewMatrix: Matrix4.fromIdentity(),
       });
     }
 
@@ -690,7 +690,7 @@ class Pipeline implements GlPipeline {
     if (scene.pointLights !== undefined) {
       const subjects = [
         {
-          matrix: Matrix4.createIdentity(),
+          matrix: Matrix4.fromIdentity(),
           model: this.sphereModel,
         },
       ];
@@ -698,7 +698,7 @@ class Pipeline implements GlPipeline {
       gl.cullFace(gl.FRONT);
 
       for (const pointLight of scene.pointLights) {
-        subjects[0].matrix = Matrix4.createModify((matrix) => {
+        subjects[0].matrix = Matrix4.fromCustom((matrix) => {
           matrix.translate(pointLight.position);
           matrix.scale({
             x: pointLight.radius,

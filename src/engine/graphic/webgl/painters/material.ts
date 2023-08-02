@@ -75,7 +75,7 @@ class MaterialPainter<TContext> implements webgl.GlPainter<TContext> {
     viewMatrix: Matrix4,
     state: TContext
   ): void {
-    const normalMatrix = Matrix3.createIdentity();
+    const normalMatrix = Matrix3.fromIdentity();
 
     // Process batch shaders
     for (const { materials, shader } of batch.shaders.values()) {
@@ -116,7 +116,7 @@ class MaterialPainter<TContext> implements webgl.GlPainter<TContext> {
     parent: Matrix4,
     state: TContext
   ): void {
-    const modelMatrix = Matrix4.createIdentity();
+    const modelMatrix = Matrix4.fromIdentity();
 
     for (const node of nodes) {
       modelMatrix.set(parent);
