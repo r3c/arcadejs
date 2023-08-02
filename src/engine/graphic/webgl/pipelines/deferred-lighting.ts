@@ -428,9 +428,13 @@ const loadLight = <TState>(
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
   shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
-  shader.setupMatrix4PerTarget("inverseProjectionMatrix", (state) =>
-    Matrix4.createIdentity().duplicate(state.projectionMatrix).invert()
-  );
+  shader.setupMatrix4PerTarget("inverseProjectionMatrix", (state) => {
+    const inverseProjectionMatrix = Matrix4.fromObject(state.projectionMatrix);
+
+    inverseProjectionMatrix.invert();
+
+    return inverseProjectionMatrix;
+  });
   shader.setupMatrix4PerTarget(
     "projectionMatrix",
     (state) => state.projectionMatrix
@@ -720,11 +724,13 @@ class Pipeline implements GlPipeline {
       // passing 2 distinct "view" matrices to light shader:
       // - One for projecting our quad to fullscreen
       // - One for computing light directions in camera space
+      const subjectMatrix = Matrix4.fromObject(transform.viewMatrix);
+
+      subjectMatrix.invert();
+
       const subjects = [
         {
-          matrix: Matrix4.createIdentity()
-            .duplicate(transform.viewMatrix)
-            .invert(),
+          matrix: subjectMatrix,
           model: this.fullscreenModel,
         },
       ];
@@ -757,13 +763,14 @@ class Pipeline implements GlPipeline {
       gl.cullFace(gl.FRONT);
 
       for (const pointLight of scene.pointLights) {
-        subjects[0].matrix = Matrix4.createIdentity()
-          .translate(pointLight.position)
-          .scale({
+        subjects[0].matrix = Matrix4.createModify((matrix) => {
+          matrix.translate(pointLight.position);
+          matrix.scale({
             x: pointLight.radius,
             y: pointLight.radius,
             z: pointLight.radius,
           });
+        });
 
         this.pointLightPainter.paint(
           this.lightTarget,

@@ -81,11 +81,13 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     const cubeModel = await loadModelFromJson("model/cube/mesh.json");
     const groundModel = await loadModelFromJson("model/ground/mesh.json");
     const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.2,
-        y: 0.2,
-        z: 0.2,
-      }),
+      transform: Matrix4.createModify((matrix) =>
+        matrix.scale({
+          x: 0.2,
+          y: 0.2,
+          z: 0.2,
+        })
+      ),
     });
 
     // Create state
@@ -137,10 +139,11 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
 
     const transform = {
       projectionMatrix: projectionMatrix,
-      viewMatrix: Matrix4.createIdentity()
-        .translate(camera.position)
-        .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-        .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
+      viewMatrix: Matrix4.createModify((matrix) => {
+        matrix.translate(camera.position);
+        matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
+        matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+      }),
     };
 
     // Clear screen
@@ -161,16 +164,18 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
           model: models.cube,
         },
         {
-          matrix: Matrix4.createIdentity().translate({
-            x: 0,
-            y: -1.5,
-            z: 0,
-          }),
+          matrix: Matrix4.createModify((matrix) =>
+            matrix.translate({
+              x: 0,
+              y: -1.5,
+              z: 0,
+            })
+          ),
           model: models.ground,
         },
       ].concat(
         lightPositions.slice(0, tweak.nbLights).map((position) => ({
-          matrix: Matrix4.createIdentity().translate(position),
+          matrix: Matrix4.createModify((matrix) => matrix.translate(position)),
           model: models.light,
         }))
       ),

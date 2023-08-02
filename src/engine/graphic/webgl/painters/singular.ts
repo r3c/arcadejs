@@ -43,8 +43,11 @@ class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
     const shader = this.shader;
 
     for (const node of nodes) {
-      modelMatrix.duplicate(parentTransform).multiply(node.transform);
-      normalMatrix.duplicate(viewMatrix).multiply(modelMatrix).invert();
+      modelMatrix.set(parentTransform);
+      modelMatrix.multiply(node.transform);
+      normalMatrix.set(viewMatrix);
+      normalMatrix.multiply(modelMatrix);
+      normalMatrix.invert();
 
       this.draw(target, node.children, modelMatrix, viewMatrix, textureIndex);
 

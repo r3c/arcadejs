@@ -236,12 +236,13 @@ const createLoadModel = <TSource, TLoad>(
     const transform = configuration.transform;
 
     if (transform !== undefined) {
-      model.meshes.forEach(
-        (node) =>
-          (node.transform = Matrix4.createIdentity()
-            .duplicate(transform)
-            .multiply(node.transform))
-      );
+      model.meshes.forEach((node) => {
+        const matrix = Matrix4.fromObject(transform);
+
+        matrix.multiply(node.transform);
+
+        node.transform = matrix;
+      });
     }
 
     // Finalize meshes recursively
@@ -316,7 +317,8 @@ const flattenModel = (model: Model): Model => {
     const transform = Matrix4.createIdentity();
 
     for (const mesh of meshes) {
-      transform.duplicate(parentTransform).multiply(mesh.transform);
+      transform.set(parentTransform);
+      transform.multiply(mesh.transform);
 
       for (const polygon of mesh.polygons) {
         const fragments = fragmentsByMaterial.get(polygon.material) ?? [];
@@ -515,9 +517,9 @@ const reduceMeshes = <TState>(
   reduce: (previous: TState, geometry: Polygon, transform: Matrix4) => TState
 ): TState => {
   for (const mesh of meshes) {
-    const transform = Matrix4.createIdentity()
-      .duplicate(parent)
-      .multiply(mesh.transform);
+    const transform = Matrix4.fromObject(parent);
+
+    transform.multiply(mesh.transform);
 
     for (const polygon of mesh.polygons) {
       state = reduce(state, polygon, transform);

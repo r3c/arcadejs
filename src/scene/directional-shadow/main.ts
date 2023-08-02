@@ -63,11 +63,13 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     const cubeModel = await loadModelFromJson("model/cube/mesh.json");
     const groundModel = await loadModelFromJson("model/ground/mesh.json");
     const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.5,
-        y: 0.5,
-        z: 0.5,
-      }),
+      transform: Matrix4.createModify((matrix) =>
+        matrix.scale({
+          x: 0.5,
+          y: 0.5,
+          z: 0.5,
+        })
+      ),
     });
 
     // Create state
@@ -110,10 +112,11 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     // Setup view matrices
     const transform = {
       projectionMatrix: state.projectionMatrix,
-      viewMatrix: Matrix4.createIdentity()
-        .translate(camera.position)
-        .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-        .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
+      viewMatrix: Matrix4.createModify((matrix) => {
+        matrix.translate(camera.position);
+        matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
+        matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+      }),
     };
 
     // Draw scene
@@ -137,22 +140,25 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
       ],
       subjects: [
         {
-          matrix: Matrix4.createIdentity().rotate(
-            { x: 0, y: 1, z: 1 },
-            state.move * 5
+          matrix: Matrix4.createModify((matrix) =>
+            matrix.rotate({ x: 0, y: 1, z: 1 }, state.move * 5)
           ),
           model: models.cube,
         },
         {
-          matrix: Matrix4.createIdentity().translate({
-            x: 0,
-            y: -1.5,
-            z: 0,
-          }),
+          matrix: Matrix4.createModify((matrix) =>
+            matrix.translate({
+              x: 0,
+              y: -1.5,
+              z: 0,
+            })
+          ),
           model: models.ground,
         },
         {
-          matrix: Matrix4.createIdentity().translate(modelLightDirection),
+          matrix: Matrix4.createModify((matrix) =>
+            matrix.translate(modelLightDirection)
+          ),
           model: models.light,
           noShadow: true,
         },

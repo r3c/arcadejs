@@ -82,29 +82,35 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
 
     // Load meshes
     const cubeModel = await loadModelFromJson("model/cube/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.4,
-        y: 0.4,
-        z: 0.4,
-      }),
+      transform: Matrix4.createModify((matrix) =>
+        matrix.scale({
+          x: 0.4,
+          y: 0.4,
+          z: 0.4,
+        })
+      ),
     });
     const directionalLightModel = await loadModelFromJson(
       "model/sphere/mesh.json",
       {
-        transform: Matrix4.createIdentity().scale({
-          x: 0.5,
-          y: 0.5,
-          z: 0.5,
-        }),
+        transform: Matrix4.createModify((matrix) =>
+          matrix.scale({
+            x: 0.5,
+            y: 0.5,
+            z: 0.5,
+          })
+        ),
       }
     );
     const groundModel = await loadModelFromJson("model/ground/mesh.json");
     const pointLightModel = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.1,
-        y: 0.1,
-        z: 0.1,
-      }),
+      transform: Matrix4.createModify((matrix) =>
+        matrix.scale({
+          x: 0.1,
+          y: 0.1,
+          z: 0.1,
+        })
+      ),
     });
 
     // Create state
@@ -182,10 +188,11 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
 
     const transform = {
       projectionMatrix: state.projectionMatrix,
-      viewMatrix: Matrix4.createIdentity()
-        .translate(camera.position)
-        .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-        .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y),
+      viewMatrix: Matrix4.createModify((matrix) => {
+        matrix.translate(camera.position);
+        matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
+        matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+      }),
     };
 
     // Pick active lights
@@ -206,21 +213,25 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
       pointLights: pointLights,
       subjects: [
         {
-          matrix: Matrix4.createIdentity().translate({
-            x: 0,
-            y: -1.5,
-            z: 0,
-          }),
+          matrix: Matrix4.createModify((matrix) =>
+            matrix.translate({
+              x: 0,
+              y: -1.5,
+              z: 0,
+            })
+          ),
           model: models.ground,
         },
       ]
         .concat(
           range(16, (i) => ({
-            matrix: Matrix4.createIdentity().translate({
-              x: ((i % 4) - 1.5) * 2,
-              y: 0,
-              z: (Math.floor(i / 4) - 1.5) * 2,
-            }),
+            matrix: Matrix4.createModify((matrix) =>
+              matrix.translate({
+                x: ((i % 4) - 1.5) * 2,
+                y: 0,
+                z: (Math.floor(i / 4) - 1.5) * 2,
+              })
+            ),
             model: models.cube,
           }))
         )
@@ -232,14 +243,18 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
             direction.scale(10);
 
             return {
-              matrix: Matrix4.createIdentity().translate(direction),
+              matrix: Matrix4.createModify((matrix) =>
+                matrix.translate(direction)
+              ),
               model: models.directionalLight,
             };
           })
         )
         .concat(
           pointLights.map((light) => ({
-            matrix: Matrix4.createIdentity().translate(light.position),
+            matrix: Matrix4.createModify((matrix) =>
+              matrix.translate(light.position)
+            ),
             model: models.pointLight,
           }))
         ),

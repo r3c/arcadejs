@@ -92,7 +92,9 @@ class MaterialPainter<TContext> implements webgl.GlPainter<TContext> {
           shader.bindGeometry(geometry);
 
           for (const { modelMatrix } of instances) {
-            normalMatrix.duplicate(viewMatrix).multiply(modelMatrix).invert();
+            normalMatrix.set(viewMatrix);
+            normalMatrix.multiply(modelMatrix);
+            normalMatrix.invert();
 
             shader.bindNode({ modelMatrix, normalMatrix });
 
@@ -117,7 +119,8 @@ class MaterialPainter<TContext> implements webgl.GlPainter<TContext> {
     const modelMatrix = Matrix4.createIdentity();
 
     for (const node of nodes) {
-      modelMatrix.duplicate(parent).multiply(node.transform);
+      modelMatrix.set(parent);
+      modelMatrix.multiply(node.transform);
 
       this.group(batch, node.children, modelMatrix, state);
 

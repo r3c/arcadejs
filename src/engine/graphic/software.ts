@@ -387,12 +387,11 @@ class Renderer {
 
     image.depths.fill(Math.pow(2, 127));
 
-    drawMeshes(
-      image,
-      model.meshes,
-      Matrix4.createIdentity().duplicate(projection).multiply(modelView),
-      drawMode
-    );
+    const viewModelProjection = Matrix4.fromObject(projection);
+
+    viewModelProjection.multiply(modelView);
+
+    drawMeshes(image, model.meshes, viewModelProjection, drawMode);
 
     screen.context.putImageData(capture, 0, 0);
   }

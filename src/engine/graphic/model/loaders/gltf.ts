@@ -546,18 +546,27 @@ const loadNode = (
       node.scale !== undefined &&
       node.translation !== undefined
     ) {
-      transform = Matrix4.createIdentity()
-        .translate({
+      transform = Matrix4.createModify((matrix) => {
+        matrix.translate({
           x: node.translation[0],
           y: node.translation[1],
           z: node.translation[2],
-        })
-        .rotate(
+        });
+
+        matrix.rotate(
           { x: node.rotation[0], y: node.rotation[1], z: node.rotation[2] },
           node.rotation[3]
-        )
-        .scale({ x: node.scale[0], y: node.scale[1], z: node.scale[2] });
-    } else transform = Matrix4.createIdentity();
+        );
+
+        matrix.scale({
+          x: node.scale[0],
+          y: node.scale[1],
+          z: node.scale[2],
+        });
+      });
+    } else {
+      transform = Matrix4.createIdentity();
+    }
 
     const childrenIndices = convertArrayOf(
       url,

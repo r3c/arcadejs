@@ -113,10 +113,11 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
   render(state) {
     const { camera, gl, model, painter, projectionMatrix, target } = state;
 
-    const viewMatrix = Matrix4.createIdentity()
-      .translate(camera.position)
-      .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-      .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+    const viewMatrix = Matrix4.createModify((matrix) => {
+      matrix.translate(camera.position);
+      matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
+      matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+    });
 
     const cube = {
       matrix: Matrix4.createIdentity(),

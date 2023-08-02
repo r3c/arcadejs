@@ -95,17 +95,20 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     const helmetModel = await loadModelFromGltf(
       "model/damaged-helmet/DamagedHelmet.gltf",
       {
-        transform: Matrix4.createIdentity()
-          .rotate({ x: 0, y: 1, z: 0 }, Math.PI)
-          .rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5),
+        transform: Matrix4.createModify((matrix) => {
+          matrix.rotate({ x: 0, y: 1, z: 0 }, Math.PI);
+          matrix.rotate({ x: 1, y: 0, z: 0 }, -Math.PI * 0.5);
+        }),
       }
     );
     const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.createIdentity().scale({
-        x: 0.2,
-        y: 0.2,
-        z: 0.2,
-      }),
+      transform: Matrix4.createModify((matrix) =>
+        matrix.scale({
+          x: 0.2,
+          y: 0.2,
+          z: 0.2,
+        })
+      ),
     });
 
     // Load textures
@@ -198,10 +201,11 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
       .slice(0, tweak.nbLights)
       .map((light) => light.position);
 
-    const cameraView = Matrix4.createIdentity()
-      .translate(camera.position)
-      .rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x)
-      .rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+    const cameraView = Matrix4.createModify((matrix) => {
+      matrix.translate(camera.position);
+      matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
+      matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
+    });
 
     // Draw scene
     target.clear(0);
@@ -213,16 +217,18 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     };
 
     const ground = {
-      matrix: Matrix4.createIdentity().translate({
-        x: 0,
-        y: -1.5,
-        z: 0,
-      }),
+      matrix: Matrix4.createModify((matrix) =>
+        matrix.translate({
+          x: 0,
+          y: -1.5,
+          z: 0,
+        })
+      ),
       model: models.ground,
     };
 
     const lights = lightPositions.map((position) => ({
-      matrix: Matrix4.createIdentity().translate(position),
+      matrix: Matrix4.createModify((matrix) => matrix.translate(position)),
       model: models.light,
     }));
 

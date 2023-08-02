@@ -23,19 +23,7 @@ class MutableMatrix3 implements Matrix3 {
   public v21: number;
   public v22: number;
 
-  public constructor(obj: Matrix3) {
-    this.v00 = obj.v00;
-    this.v01 = obj.v01;
-    this.v02 = obj.v02;
-    this.v10 = obj.v10;
-    this.v11 = obj.v11;
-    this.v12 = obj.v12;
-    this.v20 = obj.v20;
-    this.v21 = obj.v21;
-    this.v22 = obj.v22;
-  }
-
-  public duplicate(source: Matrix3): MutableMatrix3 {
+  public constructor(source: Matrix3) {
     this.v00 = source.v00;
     this.v01 = source.v01;
     this.v02 = source.v02;
@@ -45,14 +33,12 @@ class MutableMatrix3 implements Matrix3 {
     this.v20 = source.v20;
     this.v21 = source.v21;
     this.v22 = source.v22;
-
-    return this;
   }
 
   /*
    ** From: https://github.com/willnode/N-Matrix-Programmer/blob/master/Info/Matrix_3x3.txt
    */
-  public invert(): MutableMatrix3 {
+  public invert(): void {
     const v00 = this.v11 * this.v22 - this.v12 * this.v21;
     const v01 = this.v10 * this.v22 - this.v12 * this.v20;
     const v02 = this.v10 * this.v21 - this.v11 * this.v20;
@@ -79,53 +65,97 @@ class MutableMatrix3 implements Matrix3 {
       this.v21 = v21 * -determinantInverse;
       this.v22 = v22 * determinantInverse;
     }
-
-    return this;
   }
 
-  public multiply(rhs: Matrix3): MutableMatrix3 {
-    const v00 = this.v00 * rhs.v00 + this.v10 * rhs.v01 + this.v20 * rhs.v02;
-    const v01 = this.v01 * rhs.v00 + this.v11 * rhs.v01 + this.v21 * rhs.v02;
-    const v02 = this.v02 * rhs.v00 + this.v12 * rhs.v01 + this.v22 * rhs.v02;
-    const v10 = this.v00 * rhs.v10 + this.v10 * rhs.v11 + this.v20 * rhs.v12;
-    const v11 = this.v01 * rhs.v10 + this.v11 * rhs.v11 + this.v21 * rhs.v12;
-    const v12 = this.v02 * rhs.v10 + this.v12 * rhs.v11 + this.v22 * rhs.v12;
-    const v20 = this.v00 * rhs.v20 + this.v10 * rhs.v21 + this.v20 * rhs.v22;
-    const v21 = this.v01 * rhs.v20 + this.v11 * rhs.v21 + this.v21 * rhs.v22;
-    const v22 = this.v02 * rhs.v20 + this.v12 * rhs.v21 + this.v22 * rhs.v22;
+  public multiply(rhs: Matrix3): void {
+    this.compose(
+      rhs.v00,
+      rhs.v01,
+      rhs.v02,
+      rhs.v10,
+      rhs.v11,
+      rhs.v12,
+      rhs.v20,
+      rhs.v21,
+      rhs.v22
+    );
+  }
 
-    this.v00 = v00;
-    this.v01 = v01;
-    this.v02 = v02;
-    this.v10 = v10;
-    this.v11 = v11;
-    this.v12 = v12;
-    this.v20 = v20;
-    this.v21 = v21;
-    this.v22 = v22;
+  public set(source: Matrix3): void {
+    this.v00 = source.v00;
+    this.v01 = source.v01;
+    this.v02 = source.v02;
+    this.v10 = source.v10;
+    this.v11 = source.v11;
+    this.v12 = source.v12;
+    this.v20 = source.v20;
+    this.v21 = source.v21;
+    this.v22 = source.v22;
+  }
 
-    return this;
+  private compose(
+    v00: number,
+    v01: number,
+    v02: number,
+    v10: number,
+    v11: number,
+    v12: number,
+    v20: number,
+    v21: number,
+    v22: number
+  ): void {
+    const t00 = this.v00 * v00 + this.v10 * v01 + this.v20 * v02;
+    const t01 = this.v01 * v00 + this.v11 * v01 + this.v21 * v02;
+    const t02 = this.v02 * v00 + this.v12 * v01 + this.v22 * v02;
+    const t10 = this.v00 * v10 + this.v10 * v11 + this.v20 * v12;
+    const t11 = this.v01 * v10 + this.v11 * v11 + this.v21 * v12;
+    const t12 = this.v02 * v10 + this.v12 * v11 + this.v22 * v12;
+    const t20 = this.v00 * v20 + this.v10 * v21 + this.v20 * v22;
+    const t21 = this.v01 * v20 + this.v11 * v21 + this.v21 * v22;
+    const t22 = this.v02 * v20 + this.v12 * v21 + this.v22 * v22;
+
+    this.v00 = t00;
+    this.v01 = t01;
+    this.v02 = t02;
+    this.v10 = t10;
+    this.v11 = t11;
+    this.v12 = t12;
+    this.v20 = t20;
+    this.v21 = t21;
+    this.v22 = t22;
   }
 }
 
 class Matrix3 {
   public static createIdentity(): MutableMatrix3 {
-    return new MutableMatrix3({
-      v00: 1,
-      v01: 0,
-      v02: 0,
-      v10: 0,
-      v11: 1,
-      v12: 0,
-      v20: 0,
-      v21: 0,
-      v22: 1,
-    });
+    return new MutableMatrix3(Matrix3.identity);
   }
 
-  public static fromObject(obj: Matrix3): MutableMatrix3 {
-    return new MutableMatrix3(obj);
+  public static createModify(
+    modify: (matrix: MutableMatrix3) => void
+  ): MutableMatrix3 {
+    const matrix = Matrix3.createIdentity();
+
+    modify(matrix);
+
+    return matrix;
   }
+
+  public static fromObject(source: Matrix3): MutableMatrix3 {
+    return new MutableMatrix3(source);
+  }
+
+  public static readonly identity: Matrix3 = {
+    v00: 1,
+    v01: 0,
+    v02: 0,
+    v10: 0,
+    v11: 1,
+    v12: 0,
+    v20: 0,
+    v21: 0,
+    v22: 1,
+  };
 }
 
 interface Matrix4 {
@@ -165,26 +195,7 @@ class MutableMatrix4 implements Matrix4 {
   public v32: number;
   public v33: number;
 
-  public constructor(obj: Matrix4) {
-    this.v00 = obj.v00;
-    this.v01 = obj.v01;
-    this.v02 = obj.v02;
-    this.v03 = obj.v03;
-    this.v10 = obj.v10;
-    this.v11 = obj.v11;
-    this.v12 = obj.v12;
-    this.v13 = obj.v13;
-    this.v20 = obj.v20;
-    this.v21 = obj.v21;
-    this.v22 = obj.v22;
-    this.v23 = obj.v23;
-    this.v30 = obj.v30;
-    this.v31 = obj.v31;
-    this.v32 = obj.v32;
-    this.v33 = obj.v33;
-  }
-
-  public duplicate(source: Matrix4): MutableMatrix4 {
+  public constructor(source: Matrix4) {
     this.v00 = source.v00;
     this.v01 = source.v01;
     this.v02 = source.v02;
@@ -201,14 +212,12 @@ class MutableMatrix4 implements Matrix4 {
     this.v31 = source.v31;
     this.v32 = source.v32;
     this.v33 = source.v33;
-
-    return this;
   }
 
   /*
    ** From: https://github.com/jlyharia/Computer_GraphicsII/blob/master/gluInvertMatrix.h
    */
-  public invert(): MutableMatrix4 {
+  public invert(): void {
     const v00 =
       this.v11 * this.v22 * this.v33 -
       this.v11 * this.v23 * this.v32 -
@@ -360,132 +369,34 @@ class MutableMatrix4 implements Matrix4 {
       this.v32 = v32 * determinantInverse;
       this.v33 = v33 * determinantInverse;
     }
-
-    return this;
   }
 
-  public multiply(rhs: Matrix4): MutableMatrix4 {
-    const v00 =
-      this.v00 * rhs.v00 +
-      this.v10 * rhs.v01 +
-      this.v20 * rhs.v02 +
-      this.v30 * rhs.v03;
-
-    const v01 =
-      this.v01 * rhs.v00 +
-      this.v11 * rhs.v01 +
-      this.v21 * rhs.v02 +
-      this.v31 * rhs.v03;
-
-    const v02 =
-      this.v02 * rhs.v00 +
-      this.v12 * rhs.v01 +
-      this.v22 * rhs.v02 +
-      this.v32 * rhs.v03;
-
-    const v03 =
-      this.v03 * rhs.v00 +
-      this.v13 * rhs.v01 +
-      this.v23 * rhs.v02 +
-      this.v33 * rhs.v03;
-
-    const v10 =
-      this.v00 * rhs.v10 +
-      this.v10 * rhs.v11 +
-      this.v20 * rhs.v12 +
-      this.v30 * rhs.v13;
-
-    const v11 =
-      this.v01 * rhs.v10 +
-      this.v11 * rhs.v11 +
-      this.v21 * rhs.v12 +
-      this.v31 * rhs.v13;
-
-    const v12 =
-      this.v02 * rhs.v10 +
-      this.v12 * rhs.v11 +
-      this.v22 * rhs.v12 +
-      this.v32 * rhs.v13;
-
-    const v13 =
-      this.v03 * rhs.v10 +
-      this.v13 * rhs.v11 +
-      this.v23 * rhs.v12 +
-      this.v33 * rhs.v13;
-
-    const v20 =
-      this.v00 * rhs.v20 +
-      this.v10 * rhs.v21 +
-      this.v20 * rhs.v22 +
-      this.v30 * rhs.v23;
-
-    const v21 =
-      this.v01 * rhs.v20 +
-      this.v11 * rhs.v21 +
-      this.v21 * rhs.v22 +
-      this.v31 * rhs.v23;
-
-    const v22 =
-      this.v02 * rhs.v20 +
-      this.v12 * rhs.v21 +
-      this.v22 * rhs.v22 +
-      this.v32 * rhs.v23;
-
-    const v23 =
-      this.v03 * rhs.v20 +
-      this.v13 * rhs.v21 +
-      this.v23 * rhs.v22 +
-      this.v33 * rhs.v23;
-
-    const v30 =
-      this.v00 * rhs.v30 +
-      this.v10 * rhs.v31 +
-      this.v20 * rhs.v32 +
-      this.v30 * rhs.v33;
-
-    const v31 =
-      this.v01 * rhs.v30 +
-      this.v11 * rhs.v31 +
-      this.v21 * rhs.v32 +
-      this.v31 * rhs.v33;
-
-    const v32 =
-      this.v02 * rhs.v30 +
-      this.v12 * rhs.v31 +
-      this.v22 * rhs.v32 +
-      this.v32 * rhs.v33;
-
-    const v33 =
-      this.v03 * rhs.v30 +
-      this.v13 * rhs.v31 +
-      this.v23 * rhs.v32 +
-      this.v33 * rhs.v33;
-
-    this.v00 = v00;
-    this.v01 = v01;
-    this.v02 = v02;
-    this.v03 = v03;
-    this.v10 = v10;
-    this.v11 = v11;
-    this.v12 = v12;
-    this.v13 = v13;
-    this.v20 = v20;
-    this.v21 = v21;
-    this.v22 = v22;
-    this.v23 = v23;
-    this.v30 = v30;
-    this.v31 = v31;
-    this.v32 = v32;
-    this.v33 = v33;
-
-    return this;
+  public multiply(rhs: Matrix4): void {
+    this.compose(
+      rhs.v00,
+      rhs.v01,
+      rhs.v02,
+      rhs.v03,
+      rhs.v10,
+      rhs.v11,
+      rhs.v12,
+      rhs.v13,
+      rhs.v20,
+      rhs.v21,
+      rhs.v22,
+      rhs.v23,
+      rhs.v30,
+      rhs.v31,
+      rhs.v32,
+      rhs.v33
+    );
   }
 
   /*
    ** Rotate matrix around an arbitrary axis
    ** From: https://fr.wikipedia.org/wiki/Matrice_de_rotation#Matrices_de_rotation_dans_le_cas_g%C3%A9n%C3%A9ral
    */
-  public rotate(axis: Vector3, angle: number) {
+  public rotate(axis: Vector3, angle: number): void {
     // Normalized axis
     const modInverse =
       1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
@@ -505,66 +416,169 @@ class MutableMatrix4 implements Matrix4 {
     const ySin = y * sin;
     const zSin = z * sin;
 
-    return this.multiply({
-      v00: xCos * x + cos,
-      v01: xCos * y - zSin,
-      v02: xCos * z + ySin,
-      v03: 0,
-      v10: xCos * y + zSin,
-      v11: yCos * y + cos,
-      v12: yCos * z - xSin,
-      v13: 0,
-      v20: xCos * z - ySin,
-      v21: yCos * z + xSin,
-      v22: zCos * z + cos,
-      v23: 0,
-      v30: 0,
-      v31: 0,
-      v32: 0,
-      v33: 1,
-    });
+    this.compose(
+      xCos * x + cos,
+      xCos * y - zSin,
+      xCos * z + ySin,
+      0,
+      xCos * y + zSin,
+      yCos * y + cos,
+      yCos * z - xSin,
+      0,
+      xCos * z - ySin,
+      yCos * z + xSin,
+      zCos * z + cos,
+      0,
+      0,
+      0,
+      0,
+      1
+    );
   }
 
-  public scale(vector: Vector3) {
-    return this.multiply({
-      v00: vector.x,
-      v01: 0,
-      v02: 0,
-      v03: 0,
-      v10: 0,
-      v11: vector.y,
-      v12: 0,
-      v13: 0,
-      v20: 0,
-      v21: 0,
-      v22: vector.z,
-      v23: 0,
-      v30: 0,
-      v31: 0,
-      v32: 0,
-      v33: 1,
-    });
+  public scale(vector: Vector3): void {
+    this.compose(
+      vector.x,
+      0,
+      0,
+      0,
+      0,
+      vector.y,
+      0,
+      0,
+      0,
+      0,
+      vector.z,
+      0,
+      0,
+      0,
+      0,
+      1
+    );
   }
 
-  public translate(vector: Vector3): MutableMatrix4 {
-    return this.multiply({
-      v00: 1,
-      v01: 0,
-      v02: 0,
-      v03: 0,
-      v10: 0,
-      v11: 1,
-      v12: 0,
-      v13: 0,
-      v20: 0,
-      v21: 0,
-      v22: 1,
-      v23: 0,
-      v30: vector.x,
-      v31: vector.y,
-      v32: vector.z,
-      v33: 1,
-    });
+  public set(source: Matrix4): void {
+    this.v00 = source.v00;
+    this.v01 = source.v01;
+    this.v02 = source.v02;
+    this.v03 = source.v03;
+    this.v10 = source.v10;
+    this.v11 = source.v11;
+    this.v12 = source.v12;
+    this.v13 = source.v13;
+    this.v20 = source.v20;
+    this.v21 = source.v21;
+    this.v22 = source.v22;
+    this.v23 = source.v23;
+    this.v30 = source.v30;
+    this.v31 = source.v31;
+    this.v32 = source.v32;
+    this.v33 = source.v33;
+  }
+
+  public translate(vector: Vector3): void {
+    this.compose(
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      vector.x,
+      vector.y,
+      vector.z,
+      1
+    );
+  }
+
+  private compose(
+    v00: number,
+    v01: number,
+    v02: number,
+    v03: number,
+    v10: number,
+    v11: number,
+    v12: number,
+    v13: number,
+    v20: number,
+    v21: number,
+    v22: number,
+    v23: number,
+    v30: number,
+    v31: number,
+    v32: number,
+    v33: number
+  ): void {
+    const t00 =
+      this.v00 * v00 + this.v10 * v01 + this.v20 * v02 + this.v30 * v03;
+
+    const t01 =
+      this.v01 * v00 + this.v11 * v01 + this.v21 * v02 + this.v31 * v03;
+
+    const t02 =
+      this.v02 * v00 + this.v12 * v01 + this.v22 * v02 + this.v32 * v03;
+
+    const t03 =
+      this.v03 * v00 + this.v13 * v01 + this.v23 * v02 + this.v33 * v03;
+
+    const t10 =
+      this.v00 * v10 + this.v10 * v11 + this.v20 * v12 + this.v30 * v13;
+
+    const t11 =
+      this.v01 * v10 + this.v11 * v11 + this.v21 * v12 + this.v31 * v13;
+
+    const t12 =
+      this.v02 * v10 + this.v12 * v11 + this.v22 * v12 + this.v32 * v13;
+
+    const t13 =
+      this.v03 * v10 + this.v13 * v11 + this.v23 * v12 + this.v33 * v13;
+
+    const t20 =
+      this.v00 * v20 + this.v10 * v21 + this.v20 * v22 + this.v30 * v23;
+
+    const t21 =
+      this.v01 * v20 + this.v11 * v21 + this.v21 * v22 + this.v31 * v23;
+
+    const t22 =
+      this.v02 * v20 + this.v12 * v21 + this.v22 * v22 + this.v32 * v23;
+
+    const t23 =
+      this.v03 * v20 + this.v13 * v21 + this.v23 * v22 + this.v33 * v23;
+
+    const t30 =
+      this.v00 * v30 + this.v10 * v31 + this.v20 * v32 + this.v30 * v33;
+
+    const t31 =
+      this.v01 * v30 + this.v11 * v31 + this.v21 * v32 + this.v31 * v33;
+
+    const t32 =
+      this.v02 * v30 + this.v12 * v31 + this.v22 * v32 + this.v32 * v33;
+
+    const t33 =
+      this.v03 * v30 + this.v13 * v31 + this.v23 * v32 + this.v33 * v33;
+
+    this.v00 = t00;
+    this.v01 = t01;
+    this.v02 = t02;
+    this.v03 = t03;
+    this.v10 = t10;
+    this.v11 = t11;
+    this.v12 = t12;
+    this.v13 = t13;
+    this.v20 = t20;
+    this.v21 = t21;
+    this.v22 = t22;
+    this.v23 = t23;
+    this.v30 = t30;
+    this.v31 = t31;
+    this.v32 = t32;
+    this.v33 = t33;
   }
 }
 
@@ -613,24 +627,17 @@ class Matrix4 {
   }
 
   public static createIdentity(): MutableMatrix4 {
-    return new MutableMatrix4({
-      v00: 1,
-      v01: 0,
-      v02: 0,
-      v03: 0,
-      v10: 0,
-      v11: 1,
-      v12: 0,
-      v13: 0,
-      v20: 0,
-      v21: 0,
-      v22: 1,
-      v23: 0,
-      v30: 0,
-      v31: 0,
-      v32: 0,
-      v33: 1,
-    });
+    return new MutableMatrix4(Matrix4.identity);
+  }
+
+  public static createModify(
+    modify: (matrix: MutableMatrix4) => void
+  ): MutableMatrix4 {
+    const matrix = Matrix4.createIdentity();
+
+    modify(matrix);
+
+    return matrix;
   }
 
   /*
@@ -727,34 +734,53 @@ class Matrix4 {
     });
   }
 
-  public static fromObject(obj: Matrix4): MutableMatrix4 {
-    return new MutableMatrix4(obj);
+  public static fromObject(source: Matrix4): MutableMatrix4 {
+    return new MutableMatrix4(source);
   }
 
-  public static transform(obj: Matrix4, vertex: Vector4): Vector4 {
+  public static transform(source: Matrix4, vertex: Vector4): Vector4 {
     return {
       x:
-        vertex.x * obj.v00 +
-        vertex.y * obj.v10 +
-        vertex.z * obj.v20 +
-        vertex.w * obj.v30,
+        vertex.x * source.v00 +
+        vertex.y * source.v10 +
+        vertex.z * source.v20 +
+        vertex.w * source.v30,
       y:
-        vertex.x * obj.v01 +
-        vertex.y * obj.v11 +
-        vertex.z * obj.v21 +
-        vertex.w * obj.v31,
+        vertex.x * source.v01 +
+        vertex.y * source.v11 +
+        vertex.z * source.v21 +
+        vertex.w * source.v31,
       z:
-        vertex.x * obj.v02 +
-        vertex.y * obj.v12 +
-        vertex.z * obj.v22 +
-        vertex.w * obj.v32,
+        vertex.x * source.v02 +
+        vertex.y * source.v12 +
+        vertex.z * source.v22 +
+        vertex.w * source.v32,
       w:
-        vertex.x * obj.v03 +
-        vertex.y * obj.v13 +
-        vertex.z * obj.v23 +
-        vertex.w * obj.v33,
+        vertex.x * source.v03 +
+        vertex.y * source.v13 +
+        vertex.z * source.v23 +
+        vertex.w * source.v33,
     };
   }
+
+  public static readonly identity: Matrix4 = {
+    v00: 1,
+    v01: 0,
+    v02: 0,
+    v03: 0,
+    v10: 0,
+    v11: 1,
+    v12: 0,
+    v13: 0,
+    v20: 0,
+    v21: 0,
+    v22: 1,
+    v23: 0,
+    v30: 0,
+    v31: 0,
+    v32: 0,
+    v33: 1,
+  };
 }
 
 export { Matrix3, Matrix4, MutableMatrix3, MutableMatrix4 };
