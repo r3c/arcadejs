@@ -290,7 +290,7 @@ const toPolygon = (
       polygon.colors !== undefined
         ? toAttribute(
             toArrayOf(`${name}.colors`, polygon.colors, toColor, state),
-            (object) => Vector4.fromObject(object).toArray(),
+            (object) => Vector4.toArray(object),
             4
           )
         : undefined,
@@ -298,7 +298,7 @@ const toPolygon = (
       polygon.coords !== undefined
         ? toAttribute(
             toArrayOf(`${name}.coords`, polygon.coords, toCoord, state),
-            (object) => Vector2.fromObject(object).toArray(),
+            (object) => Vector2.toArray(object),
             2
           )
         : undefined,
@@ -318,13 +318,13 @@ const toPolygon = (
       polygon.normals !== undefined
         ? toAttribute(
             toArrayOf(`${name}.normals`, polygon.normals, toVertex, state),
-            (object) => Vector3.fromObject(object).toArray(),
+            (object) => Vector3.toArray(object),
             3
           )
         : undefined,
     points: toAttribute(
       toArrayOf(`${name}.points`, polygon.points, toVertex, state),
-      (object) => Vector3.fromObject(object).toArray(),
+      (object) => Vector3.toArray(object),
       3
     ),
   };

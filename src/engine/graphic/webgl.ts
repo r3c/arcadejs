@@ -592,17 +592,13 @@ const loadMaterial = (
   };
 
   return {
-    albedoFactor: Vector4.fromObject(
-      material.albedoFactor ?? colorWhite
-    ).toArray(),
+    albedoFactor: Vector4.toArray(material.albedoFactor ?? colorWhite),
     albedoMap: map(material.albedoMap, toColorMap),
-    emissiveFactor: Vector4.fromObject(
-      material.emissiveFactor ?? colorBlack
-    ).toArray(),
+    emissiveFactor: Vector4.toArray(material.emissiveFactor ?? colorBlack),
     emissiveMap: map(material.emissiveMap, toColorMap),
-    glossFactor: Vector4.fromObject(
+    glossFactor: Vector4.toArray(
       material.glossFactor ?? material.albedoFactor ?? colorWhite
-    ).toArray(),
+    ),
     glossMap: map(material.glossMap, toColorMap),
     heightMap: map(material.heightMap, toColorMap),
     heightParallaxBias: material.heightParallaxBias ?? 0,

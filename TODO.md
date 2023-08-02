@@ -15,6 +15,8 @@
 - Extract model textures out of materials to factorize bitmaps
 - Split scene update and draw to perform batch sorting only on change
 - Support animated models and load animations from glTF files
+- Provide `VectorN.fromXYZ(x, y, z)` and replace compatible usages of `VectorN.fromObject(o)`
+- Change signature of `{MatrixVector}N.fromCustom(["method1", arg1, arg2], ["method2", arg1])`
 
 ## Done
 

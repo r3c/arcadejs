@@ -21,10 +21,6 @@ class MutableVector2 implements Vector2 {
     this.x -= rhs.x;
     this.y -= rhs.y;
   }
-
-  public toArray(): [number, number] {
-    return [this.x, this.y];
-  }
 }
 
 class Vector2 {
@@ -38,12 +34,16 @@ class Vector2 {
     return vector;
   }
 
-  public static fromObject(data: Vector2): MutableVector2 {
-    return new MutableVector2(data.x, data.y);
+  public static fromObject(vector: Vector2): MutableVector2 {
+    return new MutableVector2(vector.x, vector.y);
   }
 
   public static fromZero(): MutableVector2 {
     return new MutableVector2(0, 0);
+  }
+
+  public static toArray(vector: Vector2): [number, number] {
+    return [vector.x, vector.y];
   }
 
   public static readonly zero: Vector2 = { x: 0, y: 0 };
@@ -126,10 +126,6 @@ class MutableVector3 implements Vector3 {
     this.y -= rhs.y;
     this.z -= rhs.z;
   }
-
-  public toArray(): [number, number, number] {
-    return [this.x, this.y, this.z];
-  }
 }
 
 class Vector3 {
@@ -143,12 +139,16 @@ class Vector3 {
     return vector;
   }
 
-  public static fromObject(data: Vector3): MutableVector3 {
-    return new MutableVector3(data.x, data.y, data.z);
+  public static fromObject(vector: Vector3): MutableVector3 {
+    return new MutableVector3(vector.x, vector.y, vector.z);
   }
 
   public static fromZero(): MutableVector3 {
     return new MutableVector3(0, 0, 0);
+  }
+
+  public static toArray(vector: Vector3): [number, number, number] {
+    return [vector.x, vector.y, vector.z];
   }
 
   public static readonly zero: Vector3 = { x: 0, y: 0, z: 0 };
@@ -180,10 +180,6 @@ class MutableVector4 implements Vector4 {
     this.z = source.z;
     this.w = source.w;
   }
-
-  public toArray(): [number, number, number, number] {
-    return [this.x, this.y, this.z, this.w];
-  }
 }
 
 class Vector4 {
@@ -197,12 +193,16 @@ class Vector4 {
     return vector;
   }
 
-  public static fromObject(data: Vector4): MutableVector4 {
-    return new MutableVector4(data.x, data.y, data.z, data.w);
+  public static fromObject(vector: Vector4): MutableVector4 {
+    return new MutableVector4(vector.x, vector.y, vector.z, vector.w);
   }
 
   public static fromZero(): MutableVector4 {
     return new MutableVector4(0, 0, 0, 0);
+  }
+
+  public static toArray(vector: Vector4): [number, number, number, number] {
+    return [vector.x, vector.y, vector.z, vector.w];
   }
 
   public static readonly zero: Vector4 = { x: 0, y: 0, z: 0, w: 0 };
