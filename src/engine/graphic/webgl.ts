@@ -255,6 +255,37 @@ const bufferGetType = (gl: GlContext, array: TypedArray) => {
   throw Error(`unsupported array type for indices`);
 };
 
+const copyMatrix3ToArray = (target: Float32Array, source: Matrix3): void => {
+  target[0] = source.v00;
+  target[1] = source.v01;
+  target[2] = source.v02;
+  target[3] = source.v10;
+  target[4] = source.v11;
+  target[5] = source.v12;
+  target[6] = source.v20;
+  target[7] = source.v21;
+  target[8] = source.v22;
+};
+
+const copyMatrix4ToArray = (target: Float32Array, source: Matrix4): void => {
+  target[0] = source.v00;
+  target[1] = source.v01;
+  target[2] = source.v02;
+  target[3] = source.v03;
+  target[4] = source.v10;
+  target[5] = source.v11;
+  target[6] = source.v12;
+  target[7] = source.v13;
+  target[8] = source.v20;
+  target[9] = source.v21;
+  target[10] = source.v22;
+  target[11] = source.v23;
+  target[12] = source.v30;
+  target[13] = source.v31;
+  target[14] = source.v32;
+  target[15] = source.v33;
+};
+
 const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
   for (const material of library.materials.values()) {
     deleteMaterial(gl, material);
@@ -883,7 +914,7 @@ class GlShader<TState> {
       this.declareMatrix(
         name,
         9,
-        (state, buffer) => getter(state).copyToArray(buffer),
+        (state, buffer) => copyMatrix3ToArray(buffer, getter(state)),
         (gl) => gl.uniformMatrix3fv
       )
     );
@@ -897,7 +928,7 @@ class GlShader<TState> {
       this.declareMatrix(
         name,
         9,
-        (state, buffer) => getter(state).copyToArray(buffer),
+        (state, buffer) => copyMatrix3ToArray(buffer, getter(state)),
         (gl) => gl.uniformMatrix3fv
       )
     );
@@ -911,7 +942,7 @@ class GlShader<TState> {
       this.declareMatrix(
         name,
         16,
-        (state, buffer) => getter(state).copyToArray(buffer),
+        (state, buffer) => copyMatrix4ToArray(buffer, getter(state)),
         (gl) => gl.uniformMatrix4fv
       )
     );
@@ -925,7 +956,7 @@ class GlShader<TState> {
       this.declareMatrix(
         name,
         16,
-        (state, buffer) => getter(state).copyToArray(buffer),
+        (state, buffer) => copyMatrix4ToArray(buffer, getter(state)),
         (gl) => gl.uniformMatrix4fv
       )
     );

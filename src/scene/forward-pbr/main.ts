@@ -213,7 +213,11 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
     };
 
     const ground = {
-      matrix: Matrix4.createIdentity().translate({ x: 0, y: -1.5, z: 0 }),
+      matrix: Matrix4.createIdentity().translate({
+        x: 0,
+        y: -1.5,
+        z: 0,
+      }),
       model: models.ground,
     };
 

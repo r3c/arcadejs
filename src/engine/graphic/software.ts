@@ -302,7 +302,7 @@ const projectPointToScreen = (
   halfHeight: number,
   position: Vector3
 ) => {
-  const point = modelViewProjection.transform({
+  const point = Matrix4.transform(modelViewProjection, {
     x: position.x,
     y: position.y,
     z: position.z,

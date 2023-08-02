@@ -395,7 +395,7 @@ const flattenModel = (model: Model): Model => {
       3,
       (polygon) => polygon.points,
       (targetBuffer, targetOffset, sourceBuffer, sourceOffset, transform) => {
-        const point = transform.transform({
+        const point = Matrix4.transform(transform, {
           x: sourceBuffer[sourceOffset + 0],
           y: sourceBuffer[sourceOffset + 1],
           z: sourceBuffer[sourceOffset + 2],
@@ -547,7 +547,7 @@ const reduceMeshPoints = <TState>(
       for (let i = 0; i + count - 1 < buffer.length; i += count) {
         state = reduce(
           previous,
-          transform.transform({
+          Matrix4.transform(transform, {
             x: buffer[i + 0],
             y: buffer[i + 1],
             z: buffer[i + 2],
