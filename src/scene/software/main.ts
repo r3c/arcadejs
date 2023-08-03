@@ -1,5 +1,5 @@
 import {
-  type Runtime,
+  type Application,
   type Tweak,
   configure,
   declare,
@@ -39,7 +39,7 @@ const configuration = {
   useTexture: false,
 };
 
-const runtime: Runtime<Context2DScreen, State> = {
+const application: Application<Context2DScreen, State> = {
   async prepare(screen) {
     const renderer = new Renderer(screen);
     const tweak = configure(configuration);
@@ -86,6 +86,6 @@ const runtime: Runtime<Context2DScreen, State> = {
   },
 };
 
-const application = declare("Software rendering", Context2DScreen, runtime);
+const process = declare("Software rendering", Context2DScreen, application);
 
-export { application };
+export { process };

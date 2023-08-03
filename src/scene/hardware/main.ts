@@ -1,4 +1,4 @@
-import { type Runtime, declare, configure } from "../../engine/application";
+import { type Application, declare, configure } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -61,7 +61,7 @@ interface ShaderState {
   viewMatrix: Matrix4;
 }
 
-const runtime: Runtime<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     configure(undefined); // FIXME: required to clear tweaks, should be called automatically
 
@@ -153,6 +153,6 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
   },
 };
 
-const application = declare("Basic hardware rendering", WebGLScreen, runtime);
+const process = declare("Basic hardware rendering", WebGLScreen, application);
 
-export { application };
+export { process };

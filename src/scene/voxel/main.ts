@@ -1,6 +1,6 @@
 import {
   type Tweak,
-  Runtime,
+  Application,
   configure,
   declare,
 } from "../../engine/application";
@@ -63,7 +63,7 @@ const worldChunkSize = { x: 16, y: 16, z: 16 };
 const worldScale = { x: 0.1, y: 0.1, z: 0.1 };
 const timeFactor = 20;
 
-const runtime: Runtime<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
     const tweak = configure(configuration);
@@ -369,6 +369,6 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
   },
 };
 
-const application = declare("Voxel Simulation", WebGLScreen, runtime);
+const process = declare("Voxel Simulation", WebGLScreen, application);
 
-export { application };
+export { process };

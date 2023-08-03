@@ -1,5 +1,5 @@
 import {
-  type Runtime,
+  type Application,
   type Tweak,
   configure,
   declare,
@@ -83,7 +83,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.specular !== 0,
 ];
 
-const runtime: Runtime<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
     const tweak = configure(configuration);
@@ -309,6 +309,6 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
   },
 };
 
-const application = declare("Deferred lighting", WebGLScreen, runtime);
+const process = declare("Deferred lighting", WebGLScreen, application);
 
-export { application };
+export { process };

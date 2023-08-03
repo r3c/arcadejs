@@ -1,18 +1,18 @@
 import { Screen } from "./graphic/display";
 
-interface Application {
-  change: (callback: (screen: Screen) => void) => void;
-  start: () => Promise<void>;
-  step: (dt: number) => void;
-  stop: () => void;
-  title: string;
-}
-
-interface Runtime<TScreen extends Screen, TState> {
+interface Application<TScreen extends Screen, TState> {
   prepare: (screen: TScreen) => Promise<TState>;
   render: (state: TState) => void;
   resize: (state: TState, screen: TScreen) => void;
   update: (state: TState, dt: number) => void;
+}
+
+interface Process {
+  requestFullscreen: () => void;
+  start: () => Promise<void>;
+  step: (dt: number) => void;
+  stop: () => void;
+  title: string;
 }
 
 interface ScreenConstructor<TScreen extends Screen> {
@@ -152,19 +152,14 @@ const createSelect = (
 const declare = <TScreen extends Screen, TState>(
   title: string,
   screenConstructor: ScreenConstructor<TScreen>,
-  runtime: Runtime<TScreen, TState>
-): Application => {
-  let memory:
-    | { screen: TScreen; state: TState; x: number; y: number }
-    | undefined = undefined;
+  application: Application<TScreen, TState>
+): Process => {
+  let runtime: { screen: TScreen; state: TState } | undefined = undefined;
+
+  const { prepare, render, resize, update } = application;
 
   return {
-    title,
-    change: (callback: (screen: Screen) => void) => {
-      if (memory !== undefined) {
-        callback(memory.screen);
-      }
-    },
+    requestFullscreen: () => runtime?.screen.requestFullscreen(),
     start: async () => {
       const container = document.getElementById("screens");
 
@@ -177,37 +172,32 @@ const declare = <TScreen extends Screen, TState>(
       }
 
       const screen = new screenConstructor(container);
-      const state = await runtime.prepare(screen);
+      const state = await prepare(screen);
 
-      memory = { screen, state, x: 0, y: 0 };
+      if (resize !== undefined) {
+        screen.addResizeHandler(() => resize(state, screen));
+      }
+
+      runtime = { screen, state };
     },
     step: (dt: number) => {
-      if (memory === undefined) {
+      if (runtime === undefined) {
         return;
       }
 
-      const { screen, state, x, y } = memory;
-      const { render, resize, update } = runtime;
-
-      // FIXME: detect canvas resize [canvas-resize]
-      if (screen.getWidth() !== x || screen.getHeight() !== y) {
-        resize?.(state, screen);
-
-        memory.x = screen.getWidth();
-        memory.y = screen.getHeight();
-      }
+      const { state } = runtime;
 
       update(state, dt);
-
-      setTimeout(() => render(state), 0);
+      requestAnimationFrame(() => render(state));
     },
     stop: () => {
-      memory = undefined;
+      runtime = undefined;
     },
+    title,
   };
 };
 
-const run = (applications: Application[]) => {
+const run = (applications: Process[]) => {
   const frameContainer = document.getElementById("frames");
 
   if (frameContainer === null) {
@@ -220,18 +210,10 @@ const run = (applications: Application[]) => {
     throw Error("missing scene container");
   }
 
-  let current: Application | undefined;
+  let current: Process | undefined;
   let elapsed = 0;
   let frames = 0;
   let time = new Date().getTime();
-
-  const fullscreen = () => {
-    if (current === undefined) {
-      return;
-    }
-
-    current.change((screen) => screen.goFullscreen());
-  };
 
   const select = async (value: number) => {
     const application = applications[value];
@@ -283,7 +265,10 @@ const run = (applications: Application[]) => {
     0
   );
 
-  sceneContainer.appendChild(createButton("Fullscreen", fullscreen));
+  sceneContainer.appendChild(
+    createButton("Fullscreen", () => current?.requestFullscreen())
+  );
+
   sceneContainer.appendChild(
     createSelect(
       "",
@@ -296,4 +281,4 @@ const run = (applications: Application[]) => {
   tick();
 };
 
-export { type Runtime, type Tweak, configure, declare, run };
+export { type Application, type Tweak, configure, declare, run };

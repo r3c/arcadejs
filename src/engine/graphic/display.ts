@@ -1,24 +1,39 @@
-const resizeCanvas = (canvas: HTMLCanvasElement) => {
-  canvas.width = canvas.clientWidth;
-  canvas.height = canvas.clientHeight;
-};
+type ResizeHandler = (screen: Screen) => void;
 
 class Screen {
   public readonly canvas: HTMLCanvasElement;
+  public readonly resizeHandlers: Set<ResizeHandler>;
 
   protected constructor(container: HTMLElement) {
     const canvas = document.createElement("canvas");
+    const resizeHandlers = new Set<ResizeHandler>();
+
+    const onResize = () => {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+
+      for (const resizeHandler of resizeHandlers) {
+        resizeHandler(this);
+      }
+    };
 
     container.appendChild(canvas);
 
     canvas.tabIndex = 1;
-    canvas.addEventListener("fullscreenchange", () => resizeCanvas(canvas));
-    canvas.addEventListener("resize", () => resizeCanvas(canvas));
+    canvas.addEventListener("fullscreenchange", onResize);
+    canvas.addEventListener("resize", onResize);
     canvas.focus();
 
-    resizeCanvas(canvas);
+    onResize();
 
     this.canvas = canvas;
+    this.resizeHandlers = resizeHandlers;
+  }
+
+  public addResizeHandler(resizeHandler: ResizeHandler): void {
+    this.resizeHandlers.add(resizeHandler);
+
+    resizeHandler(this);
   }
 
   public getHeight() {
@@ -33,10 +48,12 @@ class Screen {
     return this.canvas.clientWidth;
   }
 
-  public goFullscreen() {
-    if (this.canvas.requestFullscreen !== undefined) {
-      this.canvas.requestFullscreen();
-    }
+  public removeResizeHandler(resizeHandler: ResizeHandler): void {
+    this.resizeHandlers.delete(resizeHandler);
+  }
+
+  public requestFullscreen() {
+    this.canvas.requestFullscreen?.();
   }
 }
 

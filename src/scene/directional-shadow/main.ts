@@ -1,5 +1,5 @@
 import {
-  type Runtime,
+  type Application,
   type Tweak,
   configure,
   declare,
@@ -54,7 +54,7 @@ const configuration = {
 
 const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
 
-const runtime: Runtime<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
     const tweak = configure(configuration);
@@ -191,6 +191,6 @@ const runtime: Runtime<WebGLScreen, SceneState> = {
   },
 };
 
-const application = declare("Directional shadow", WebGLScreen, runtime);
+const process = declare("Directional shadow", WebGLScreen, application);
 
-export { application };
+export { process };
