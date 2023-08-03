@@ -24,7 +24,10 @@ type Tweak<T> = {
 };
 
 const canonicalize = (name: string): string => {
-  return name.toLowerCase().replaceAll(/[^-0-9a-z]/g, "-");
+  return name
+    .toLowerCase()
+    .replaceAll(/[^-0-9a-z]/g, "-")
+    .replaceAll(/^-+|-+$/g, "");
 };
 
 const configure = <T>(configuration: T) => {

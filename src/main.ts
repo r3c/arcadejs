@@ -8,6 +8,7 @@ import { process as forwardPbr } from "./scene/forward-pbr/main";
 import { process as directionalShadow } from "./scene/directional-shadow/main";
 import { process as deferredLighting } from "./scene/deferred-lighting/main";
 import { process as deferredShading } from "./scene/deferred-shading/main";
+import { process as venus } from "./scene/venus/main";
 import { process as voxel } from "./scene/voxel/main";
 
 run([
@@ -19,5 +20,6 @@ run([
   directionalShadow,
   deferredLighting,
   deferredShading,
+  venus,
   voxel,
 ]);
