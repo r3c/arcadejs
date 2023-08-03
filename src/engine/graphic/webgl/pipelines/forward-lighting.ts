@@ -952,12 +952,13 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
         z: -light.direction.z,
       };
 
-      const viewMatrix = Matrix4.fromCustom((matrix) => {
-        matrix.translate({ x: 0, y: 0, z: -10 });
-        matrix.multiply(
-          Matrix4.fromDirection(shadowDirection, { x: 0, y: 1, z: 0 })
-        );
-      });
+      const viewMatrix = Matrix4.fromCustom(
+        ["translate", { x: 0, y: 0, z: -10 }],
+        [
+          "multiply",
+          Matrix4.fromDirection(shadowDirection, { x: 0, y: 1, z: 0 }),
+        ]
+      );
 
       gl.colorMask(false, false, false, false);
       gl.cullFace(gl.FRONT);

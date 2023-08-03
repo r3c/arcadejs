@@ -1,3 +1,5 @@
+import { InvokeOf, invokeOnObject } from "../language/dynamic";
+
 interface Vector2 {
   readonly x: number;
   readonly y: number;
@@ -25,13 +27,9 @@ class MutableVector2 implements Vector2 {
 
 class Vector2 {
   public static fromCustom(
-    modify: (vector: MutableVector2) => void
+    ...invokes: InvokeOf<MutableVector2>[]
   ): MutableVector2 {
-    const vector = Vector2.fromZero();
-
-    modify(vector);
-
-    return vector;
+    return invokeOnObject(Vector2.fromZero(), invokes);
   }
 
   public static fromObject(vector: Vector2): MutableVector2 {
@@ -130,13 +128,9 @@ class MutableVector3 implements Vector3 {
 
 class Vector3 {
   public static fromCustom(
-    modify: (vector: MutableVector3) => void
+    ...invokes: InvokeOf<MutableVector3>[]
   ): MutableVector3 {
-    const vector = Vector3.fromZero();
-
-    modify(vector);
-
-    return vector;
+    return invokeOnObject(Vector3.fromZero(), invokes);
   }
 
   public static fromObject(vector: Vector3): MutableVector3 {
@@ -184,13 +178,9 @@ class MutableVector4 implements Vector4 {
 
 class Vector4 {
   public static fromCustom(
-    modify: (vector: MutableVector4) => void
+    ...invokes: InvokeOf<MutableVector4>[]
   ): MutableVector4 {
-    const vector = Vector4.fromZero();
-
-    modify(vector);
-
-    return vector;
+    return invokeOnObject(Vector4.fromZero(), invokes);
   }
 
   public static fromObject(vector: Vector4): MutableVector4 {

@@ -223,10 +223,10 @@ class Pipeline implements GlPipeline {
 
     const subjects = [
       {
-        matrix: Matrix4.fromCustom((matrix) => {
-          matrix.translate({ x: 1 - this.scale, y: this.scale - 1, z: 0 });
-          matrix.scale({ x: this.scale, y: this.scale, z: 0 });
-        }),
+        matrix: Matrix4.fromCustom(
+          ["translate", { x: 1 - this.scale, y: this.scale - 1, z: 0 }],
+          ["scale", { x: this.scale, y: this.scale, z: 0 }]
+        ),
         model: this.quad,
       },
     ];

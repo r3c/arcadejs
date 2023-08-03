@@ -546,24 +546,29 @@ const loadNode = (
       node.scale !== undefined &&
       node.translation !== undefined
     ) {
-      transform = Matrix4.fromCustom((matrix) => {
-        matrix.translate({
-          x: node.translation[0],
-          y: node.translation[1],
-          z: node.translation[2],
-        });
-
-        matrix.rotate(
+      transform = Matrix4.fromCustom(
+        [
+          "translate",
+          {
+            x: node.translation[0],
+            y: node.translation[1],
+            z: node.translation[2],
+          },
+        ],
+        [
+          "rotate",
           { x: node.rotation[0], y: node.rotation[1], z: node.rotation[2] },
-          node.rotation[3]
-        );
-
-        matrix.scale({
-          x: node.scale[0],
-          y: node.scale[1],
-          z: node.scale[2],
-        });
-      });
+          node.rotation[3],
+        ],
+        [
+          "scale",
+          {
+            x: node.scale[0],
+            y: node.scale[1],
+            z: node.scale[2],
+          },
+        ]
+      );
     } else {
       transform = Matrix4.fromIdentity();
     }

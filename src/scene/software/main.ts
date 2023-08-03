@@ -65,11 +65,11 @@ const runtime: Runtime<Context2DScreen, State> = {
       tweak,
     } = state;
 
-    const viewMatrix = Matrix4.fromCustom((matrix) => {
-      matrix.translate(camera.position);
-      matrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
-      matrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
-    });
+    const viewMatrix = Matrix4.fromCustom(
+      ["translate", camera.position],
+      ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
+      ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
+    );
 
     const model = tweak.useTexture ? cubeWithTexture : cubeWithColor;
 

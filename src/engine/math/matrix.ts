@@ -1,3 +1,4 @@
+import { InvokeOf, invokeOnObject } from "../language/dynamic";
 import { Vector3, Vector4 } from "./vector";
 
 interface Matrix3 {
@@ -128,13 +129,9 @@ class MutableMatrix3 implements Matrix3 {
 
 class Matrix3 {
   public static fromCustom(
-    modify: (matrix: MutableMatrix3) => void
+    ...invokes: InvokeOf<MutableMatrix3>[]
   ): MutableMatrix3 {
-    const matrix = Matrix3.fromIdentity();
-
-    modify(matrix);
-
-    return matrix;
+    return invokeOnObject(Matrix3.fromIdentity(), invokes);
   }
 
   public static fromIdentity(): MutableMatrix3 {
@@ -609,13 +606,9 @@ class Matrix4 {
   }
 
   public static fromCustom(
-    modify: (matrix: MutableMatrix4) => void
+    ...invokes: InvokeOf<MutableMatrix4>[]
   ): MutableMatrix4 {
-    const matrix = Matrix4.fromIdentity();
-
-    modify(matrix);
-
-    return matrix;
+    return invokeOnObject(Matrix4.fromIdentity(), invokes);
   }
 
   /*

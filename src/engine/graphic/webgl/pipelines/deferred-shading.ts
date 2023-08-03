@@ -698,14 +698,17 @@ class Pipeline implements GlPipeline {
       gl.cullFace(gl.FRONT);
 
       for (const pointLight of scene.pointLights) {
-        subjects[0].matrix = Matrix4.fromCustom((matrix) => {
-          matrix.translate(pointLight.position);
-          matrix.scale({
-            x: pointLight.radius,
-            y: pointLight.radius,
-            z: pointLight.radius,
-          });
-        });
+        subjects[0].matrix = Matrix4.fromCustom(
+          ["translate", pointLight.position],
+          [
+            "scale",
+            {
+              x: pointLight.radius,
+              y: pointLight.radius,
+              z: pointLight.radius,
+            },
+          ]
+        );
 
         this.pointLightPainter.paint(target, subjects, transform.viewMatrix, {
           albedoAndShininessBuffer: this.albedoAndShininessBuffer,
