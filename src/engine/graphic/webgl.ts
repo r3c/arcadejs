@@ -186,13 +186,23 @@ interface GlTransform {
 }
 
 type GlUniformAccessor<TState, TValue> = {
+  allocateTexture: boolean;
   createValue: (gl: GlContext) => TValue;
-  readValue: (value: TValue, state: TState) => TValue;
+  readValue: (
+    state: TState,
+    currentValue: TValue,
+    defaultValue: GlUniformDefault
+  ) => TValue;
   setUniform: (
     gl: GlContext,
     location: WebGLUniformLocation,
-    value: TValue
+    value: TValue,
+    textureIndex: number
   ) => void;
+};
+
+type GlUniformDefault = {
+  whiteTexture: GlTexture;
 };
 
 type GlUniform<TState> = (state: TState) => void;
@@ -257,16 +267,18 @@ const bufferGetType = (gl: GlContext, array: TypedArray) => {
 const booleanScalarUniform = <TState>(
   getter: (state: TState) => boolean
 ): GlUniformAccessor<TState, number> => ({
+  allocateTexture: false,
   createValue: () => 0,
-  readValue: (_, state) => (getter(state) ? 1 : 0),
+  readValue: (state) => (getter(state) ? 1 : 0),
   setUniform: (g, l, v) => g.uniform1i(l, v),
 });
 
 const numberArray4Uniform = <TState>(
   getter: (state: TState) => number[]
 ): GlUniformAccessor<TState, number[]> => ({
+  allocateTexture: false,
   createValue: () => [],
-  readValue: (_, state) => getter(state),
+  readValue: (state) => getter(state),
   setUniform: (g, l, v) => g.uniform4fv(l, v),
 });
 
@@ -274,8 +286,9 @@ const numberMatrix3Uniform = <TState>(
   getter: (state: TState) => Matrix3
 ): GlUniformAccessor<TState, Float32Array> => {
   return {
+    allocateTexture: false,
     createValue: () => new Float32Array(9),
-    readValue: (value, state) => {
+    readValue: (state, value) => {
       const matrix = getter(state);
 
       value[0] = matrix.v00;
@@ -297,8 +310,9 @@ const numberMatrix3Uniform = <TState>(
 const numberMatrix4Uniform = <TState>(
   getter: (state: TState) => Matrix4
 ): GlUniformAccessor<TState, Float32Array> => ({
+  allocateTexture: false,
   createValue: () => new Float32Array(16),
-  readValue: (value, state) => {
+  readValue: (state, value) => {
     const matrix = getter(state);
 
     value[0] = matrix.v00;
@@ -326,16 +340,18 @@ const numberMatrix4Uniform = <TState>(
 const numberScalarUniform = <TState>(
   getter: (state: TState) => number
 ): GlUniformAccessor<TState, number> => ({
+  allocateTexture: false,
   createValue: () => 0,
-  readValue: (_, state) => getter(state),
+  readValue: (state) => getter(state),
   setUniform: (g, l, v) => g.uniform1f(l, v),
 });
 
 const numberVector2Uniform = <TState>(
   getter: (state: TState) => Vector2
 ): GlUniformAccessor<TState, Float32Array> => ({
+  allocateTexture: false,
   createValue: () => new Float32Array(2),
-  readValue: (value, state) => {
+  readValue: (state, value) => {
     const vector = getter(state);
 
     value[0] = vector.x;
@@ -349,8 +365,9 @@ const numberVector2Uniform = <TState>(
 const numberVector3Uniform = <TState>(
   getter: (state: TState) => Vector3
 ): GlUniformAccessor<TState, Float32Array> => ({
+  allocateTexture: false,
   createValue: () => new Float32Array(3),
-  readValue: (value, state) => {
+  readValue: (state, value) => {
     const vector = getter(state);
 
     value[0] = vector.x;
@@ -361,6 +378,46 @@ const numberVector3Uniform = <TState>(
   },
   setUniform: (g, l, v) => g.uniform3fv(l, v),
 });
+
+const textureUniform = <TState>(
+  primaryGetter: (state: TState) => GlTexture | undefined,
+  defaultGetter: (defaultValue: GlUniformDefault) => GlTexture,
+  target:
+    | WebGL2RenderingContext["TEXTURE_2D"]
+    | WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
+): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
+  allocateTexture: true,
+  createValue: () => ({ target, texture: {} }),
+  readValue: (state, { target }, defaultValue) => ({
+    target,
+    texture: primaryGetter(state) ?? defaultGetter(defaultValue),
+  }),
+  setUniform: (gl, location, { target, texture }, textureIndex) => {
+    gl.activeTexture(gl.TEXTURE0 + textureIndex);
+    gl.bindTexture(target, texture);
+    gl.uniform1i(location, textureIndex);
+  },
+});
+
+const cubeTextureUniform = <TState>(
+  getter: (state: TState) => GlTexture | undefined
+) =>
+  textureUniform(
+    getter,
+    () => {
+      throw new Error("undefined cube texture");
+    },
+    WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
+  );
+
+const quadTextureUniform = <TState>(
+  getter: (state: TState) => GlTexture | undefined
+) =>
+  textureUniform(
+    getter,
+    ({ whiteTexture }) => whiteTexture,
+    WebGL2RenderingContext["TEXTURE_2D"]
+  );
 
 const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
   for (const material of library.materials.values()) {
@@ -484,9 +541,9 @@ const renderbufferCreate = (gl: GlContext) => {
   return renderbuffer;
 };
 
-const textureConfigure = (
+const textureCreate = (
   gl: GlContext,
-  texture: GlTexture,
+  previousTexture: GlTexture | undefined,
   type: GlTextureType,
   width: number,
   height: number,
@@ -494,9 +551,21 @@ const textureConfigure = (
   filter: Filter,
   image: ImageData | ImageData[] | undefined
 ): GlTexture => {
-  const isPowerOfTwo =
-    ((height - 1) & height) === 0 && ((width - 1) & width) === 0;
   const target = textureGetTarget(gl, type);
+
+  let texture: GlTexture;
+
+  if (previousTexture === undefined) {
+    const newTexture = gl.createTexture();
+
+    if (newTexture === null) {
+      throw Error("could not create texture");
+    }
+
+    texture = newTexture;
+  } else {
+    texture = previousTexture;
+  }
 
   gl.bindTexture(target, texture);
 
@@ -516,9 +585,7 @@ const textureConfigure = (
   gl.texParameteri(
     target,
     gl.TEXTURE_MIN_FILTER,
-    filter !== undefined && filter.mipmap && isPowerOfTwo
-      ? mipmapFilter
-      : minifierFilter
+    filter !== undefined && filter.mipmap ? mipmapFilter : minifierFilter
   );
   gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
   gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
@@ -536,7 +603,6 @@ const textureConfigure = (
       null
     );
   } else if ((<ImageData>image).data) {
-    // TODO: remove unwanted wrapping of "pixels" array when https://github.com/KhronosGroup/WebGL/issues/1533 is fixed
     gl.texImage2D(
       target,
       0,
@@ -546,7 +612,7 @@ const textureConfigure = (
       0,
       nativeFormat.format,
       nativeFormat.type,
-      new Uint8Array((<ImageData>image).data)
+      (<ImageData>image).data
     );
   } else if ((<ImageData[]>image).length !== undefined) {
     const images = <ImageData[]>image;
@@ -566,21 +632,11 @@ const textureConfigure = (
     }
   }
 
-  if (filter.mipmap && isPowerOfTwo) {
+  if (filter.mipmap) {
     gl.generateMipmap(target);
   }
 
   gl.bindTexture(target, null);
-
-  return texture;
-};
-
-const textureCreate = (gl: GlContext) => {
-  const texture = gl.createTexture();
-
-  if (texture === null) {
-    throw Error("could not create texture");
-  }
 
   return texture;
 };
@@ -650,9 +706,9 @@ const loadMaterial = (
     let glTexture = textures.get(texture);
 
     if (glTexture === undefined) {
-      glTexture = textureConfigure(
+      glTexture = textureCreate(
         gl,
-        textureCreate(gl),
+        undefined,
         GlTextureType.Quad,
         texture.image.width,
         texture.image.height,
@@ -796,9 +852,9 @@ const loadTextureCube = (
   faceNegativeZ: ImageData,
   filter?: Filter
 ): GlTexture => {
-  return textureConfigure(
+  return textureCreate(
     gl,
-    textureCreate(gl),
+    undefined,
     GlTextureType.Cube,
     facePositiveX.width,
     facePositiveX.height,
@@ -820,9 +876,9 @@ const loadTextureQuad = (
   image: ImageData,
   filter?: Filter
 ): GlTexture => {
-  return textureConfigure(
+  return textureCreate(
     gl,
-    textureCreate(gl),
+    undefined,
     GlTextureType.Quad,
     image.width,
     image.height,
@@ -834,6 +890,7 @@ const loadTextureQuad = (
 
 class GlShader<TState> {
   private readonly attributePerGeometryBindings: AttributeBinding<GlPolygon>[];
+  private readonly defaultUniformValue: GlUniformDefault;
   private readonly gl: GlContext;
   private readonly program: WebGLProgram;
   private readonly texturePerMaterialBindings: GlTextureBinding<GlMaterial>[];
@@ -841,6 +898,8 @@ class GlShader<TState> {
   private readonly uniformPerMaterial: Map<string, GlUniform<GlMaterial>>;
   private readonly uniformPerMesh: Map<string, GlUniform<GlMeshState>>;
   private readonly uniformPerTarget: Map<string, GlUniform<TState>>;
+
+  private textureIndex: number;
 
   public constructor(
     gl: GlContext,
@@ -882,7 +941,20 @@ class GlShader<TState> {
     }
 
     this.attributePerGeometryBindings = [];
+    this.defaultUniformValue = {
+      whiteTexture: textureCreate(
+        gl,
+        undefined,
+        GlTextureType.Quad,
+        1,
+        1,
+        GlTextureFormat.RGBA8,
+        defaultFilter,
+        new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
+      ),
+    };
     this.gl = gl;
+    this.textureIndex = 0;
     this.uniformPerMaterial = new Map();
     this.uniformPerMesh = new Map();
     this.uniformPerTarget = new Map();
@@ -1001,41 +1073,6 @@ class GlShader<TState> {
     this.setUniform(this.uniformPerTarget, name, accessor);
   }
 
-  /*
-   ** Declare sampler on shader and bind it to texture on current material. An
-   ** optional second boolean uniform can be specified to allow texture to be
-   ** left undefined on some materials. In that case this second uniform will
-   ** be set to "true" or "false" depending on whether texture is defined or
-   ** not. If second uniform is undefined, texture is assumed to be always
-   ** defined.
-   */
-  public setupTexturePerMaterial(
-    samplerName: string,
-    enabledName: string | undefined,
-    type: GlTextureType,
-    getter: (state: GlMaterial) => GlTexture | undefined
-  ) {
-    this.texturePerMaterialBindings.push(
-      this.declareTexture(samplerName, enabledName, type, getter)
-    );
-  }
-
-  /*
-   ** Declare sampler on shader and bind it to texture on current target. See
-   ** method "bindTexturePerMaterial" for details about the optional second
-   ** uniform.
-   */
-  public setupTexturePerTarget(
-    samplerName: string,
-    enabledName: string | undefined,
-    type: GlTextureType,
-    getter: (state: TState) => GlTexture | undefined
-  ) {
-    this.texturePerTargetBindings.push(
-      this.declareTexture(samplerName, enabledName, type, getter)
-    );
-  }
-
   private setUniform<TState, TValue>(
     target: Map<string, GlUniform<TState>>,
     name: string,
@@ -1045,61 +1082,27 @@ class GlShader<TState> {
       throw new Error(`cannot set uniform "${name}" twice`);
     }
 
-    const { createValue, readValue, setUniform } = accessor;
+    const { allocateTexture, createValue, readValue, setUniform } = accessor;
     const gl = this.gl;
-    const location = this.findUniform(name);
-    const value = createValue(gl);
+    const currentValue = createValue(gl);
+    const defaultValue = this.defaultUniformValue;
+    const textureIndex = this.textureIndex;
+
+    if (allocateTexture) {
+      ++this.textureIndex;
+    }
+
+    const location = gl.getUniformLocation(this.program, name);
+
+    if (location === null) {
+      throw Error(`cound not find location of uniform "${name}"`);
+    }
 
     target.set(name, (state: TState) => {
-      const uniform = readValue(value, state);
+      const uniform = readValue(state, currentValue, defaultValue);
 
-      setUniform(gl, location, uniform);
+      setUniform(gl, location, uniform, textureIndex);
     });
-  }
-
-  private declareTexture<TSource>(
-    samplerName: string,
-    enabledName: string | undefined,
-    type: GlTextureType,
-    textureGetter: (source: TSource) => GlTexture | undefined
-  ) {
-    const enabledLocation = map(enabledName, (name) => this.findUniform(name));
-    const gl = this.gl;
-    const samplerLocation = this.findUniform(samplerName);
-    const target = textureGetTarget(gl, type);
-
-    if (enabledLocation !== undefined) {
-      return (source: TSource, textureIndex: number) => {
-        const texture = textureGetter(source);
-
-        if (texture === undefined) {
-          gl.uniform1i(enabledLocation, 0);
-
-          return 0;
-        }
-
-        gl.activeTexture(gl.TEXTURE0 + textureIndex);
-        gl.bindTexture(target, texture);
-        gl.uniform1i(enabledLocation, 1);
-        gl.uniform1i(samplerLocation, textureIndex);
-
-        return 1;
-      };
-    } else {
-      return (source: TSource, textureIndex: number) => {
-        const texture = textureGetter(source);
-
-        if (texture === undefined) {
-          throw Error(`missing mandatory texture uniform "${samplerName}"`);
-        }
-
-        gl.activeTexture(gl.TEXTURE0 + textureIndex);
-        gl.bindTexture(target, texture);
-        gl.uniform1i(samplerLocation, textureIndex);
-
-        return 1;
-      };
-    }
   }
 
   private findAttribute(name: string) {
@@ -1107,16 +1110,6 @@ class GlShader<TState> {
 
     if (location === -1) {
       throw Error(`cound not find location of attribute "${name}"`);
-    }
-
-    return location;
-  }
-
-  private findUniform(name: string) {
-    const location = this.gl.getUniformLocation(this.program, name);
-
-    if (location === null) {
-      throw Error(`cound not find location of uniform "${name}"`);
     }
 
     return location;
@@ -1255,7 +1248,7 @@ class GlTarget {
 
       // Resize previously existing texture attachments if any
       for (const texture of attachment.textures) {
-        textureConfigure(
+        textureCreate(
           gl,
           texture.handle,
           GlTextureType.Quad,
@@ -1463,9 +1456,9 @@ class GlTarget {
       wrap: Wrap.Clamp,
     };
 
-    const texture = textureConfigure(
+    const texture = textureCreate(
       gl,
-      textureCreate(gl),
+      undefined,
       type,
       this.viewWidth,
       this.viewHeight,
@@ -1538,6 +1531,7 @@ export {
   GlTextureFormat,
   GlTextureType,
   booleanScalarUniform,
+  cubeTextureUniform,
   deleteLibrary,
   deleteModel,
   loadLibrary,
@@ -1550,4 +1544,5 @@ export {
   numberScalarUniform,
   numberVector2Uniform,
   numberVector3Uniform,
+  quadTextureUniform,
 };

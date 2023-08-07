@@ -27,6 +27,7 @@ import {
   numberScalarUniform,
   numberVector2Uniform,
   numberVector3Uniform,
+  quadTextureUniform,
 } from "../../webgl";
 
 const enum LightModel {
@@ -333,11 +334,9 @@ const loadAmbient = (
     numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
   );
 
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "albedoAndShininess",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.albedoAndShininessBuffer
+    quadTextureUniform((state) => state.albedoAndShininessBuffer)
   );
   shader.setUniformPerTarget(
     "ambientLightColor",
@@ -391,19 +390,15 @@ const loadGeometry = (
     "albedoFactor",
     numberArray4Uniform(({ albedoFactor }) => albedoFactor)
   );
-  shader.setupTexturePerMaterial(
+  shader.setUniformPerMaterial(
     "albedoMap",
-    undefined,
-    GlTextureType.Quad,
-    (material) => material.albedoMap
+    quadTextureUniform(({ albedoMap }) => albedoMap)
   );
 
   if (configuration.lightModel === LightModel.Phong) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "glossinessMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.glossMap
+      quadTextureUniform(({ glossMap }) => glossMap)
     );
     shader.setUniformPerMaterial(
       "shininess",
@@ -412,11 +407,9 @@ const loadGeometry = (
   }
 
   if (configuration.useHeightMap) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "heightMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.heightMap
+      quadTextureUniform(({ heightMap }) => heightMap)
     );
     shader.setUniformPerMaterial(
       "heightParallaxBias",
@@ -429,11 +422,9 @@ const loadGeometry = (
   }
 
   if (configuration.useNormalMap)
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "normalMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.normalMap
+      quadTextureUniform(({ normalMap }) => normalMap)
     );
 
   return shader;
@@ -499,23 +490,17 @@ const loadLight = <TState>(
     numberVector2Uniform(({ viewportSize }) => viewportSize)
   );
 
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "albedoAndShininess",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.albedoAndShininessBuffer
+    quadTextureUniform((state) => state.albedoAndShininessBuffer)
   );
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "depth",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.depthBuffer
+    quadTextureUniform(({ depthBuffer }) => depthBuffer)
   );
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "normalAndGlossiness",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.normalAndGlossinessBuffer
+    quadTextureUniform((state) => state.normalAndGlossinessBuffer)
   );
 
   return shader;

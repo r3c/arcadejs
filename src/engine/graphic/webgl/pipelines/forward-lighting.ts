@@ -513,13 +513,9 @@ const loadLight = (
 
   // Bind material uniforms
   if (materialConfiguration.forceAlbedoMap !== false) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "albedoMap",
-      materialConfiguration.forceAlbedoMap !== true
-        ? "albedoMapEnabled"
-        : undefined,
-      webgl.GlTextureType.Quad,
-      (material) => material.albedoMap
+      webgl.quadTextureUniform(({ albedoMap }) => albedoMap)
     );
   }
 
@@ -531,13 +527,9 @@ const loadLight = (
   switch (lightConfiguration.model) {
     case ForwardLightingModel.Phong:
       if (materialConfiguration.forceGlossMap !== false) {
-        shader.setupTexturePerMaterial(
+        shader.setUniformPerMaterial(
           "glossinessMap",
-          materialConfiguration.forceGlossMap !== true
-            ? "glossinessMapEnabled"
-            : undefined,
-          webgl.GlTextureType.Quad,
-          (material) => material.glossMap
+          webgl.quadTextureUniform(({ glossMap }) => glossMap)
         );
       }
 
@@ -554,54 +546,37 @@ const loadLight = (
 
     case ForwardLightingModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
-        shader.setupTexturePerTarget(
+        shader.setUniformPerTarget(
           "environmentBrdfMap",
-          undefined,
-          webgl.GlTextureType.Quad,
-          (state) =>
-            state.environmentLight !== undefined
-              ? state.environmentLight.brdf
-              : undefined
+          webgl.quadTextureUniform(
+            ({ environmentLight }) => environmentLight?.brdf
+          )
         );
-        shader.setupTexturePerTarget(
+        shader.setUniformPerTarget(
           "environmentDiffuseMap",
-          undefined,
-          webgl.GlTextureType.Cube,
-          (state) =>
-            state.environmentLight !== undefined
-              ? state.environmentLight.diffuse
-              : undefined
+          webgl.cubeTextureUniform(
+            ({ environmentLight }) => environmentLight?.diffuse
+          )
         );
-        shader.setupTexturePerTarget(
+        shader.setUniformPerTarget(
           "environmentSpecularMap",
-          undefined,
-          webgl.GlTextureType.Cube,
-          (state) =>
-            state.environmentLight !== undefined
-              ? state.environmentLight.specular
-              : undefined
+          webgl.cubeTextureUniform(
+            ({ environmentLight }) => environmentLight?.specular
+          )
         );
       }
 
       if (materialConfiguration.forceMetalnessMap !== false) {
-        shader.setupTexturePerMaterial(
+        shader.setUniformPerMaterial(
           "metalnessMap",
-          materialConfiguration.forceMetalnessMap !== true
-            ? "metalnessMapEnabled"
-            : undefined,
-          webgl.GlTextureType.Quad,
-          (material) => material.metalnessMap
+          webgl.quadTextureUniform(({ metalnessMap }) => metalnessMap)
         );
       }
 
       if (materialConfiguration.forceRoughnessMap !== false) {
-        shader.setupTexturePerMaterial(
+        shader.setUniformPerMaterial(
           "roughnessMap",
-          materialConfiguration.forceRoughnessMap !== true
-            ? "roughnessMapEnabled"
-            : undefined,
-          webgl.GlTextureType.Quad,
-          (material) => material.roughnessMap
+          webgl.quadTextureUniform(({ roughnessMap }) => roughnessMap)
         );
       }
 
@@ -618,13 +593,9 @@ const loadLight = (
   }
 
   if (materialConfiguration.forceEmissiveMap !== false) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "emissiveMap",
-      materialConfiguration.forceEmissiveMap !== true
-        ? "emissiveMapEnabled"
-        : undefined,
-      webgl.GlTextureType.Quad,
-      (material) => material.emissiveMap
+      webgl.quadTextureUniform(({ emissiveMap }) => emissiveMap)
     );
     shader.setUniformPerMaterial(
       "emissiveFactor",
@@ -633,13 +604,9 @@ const loadLight = (
   }
 
   if (materialConfiguration.forceHeightMap !== false) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "heightMap",
-      materialConfiguration.forceHeightMap !== true
-        ? "heightMapEnabled"
-        : undefined,
-      webgl.GlTextureType.Quad,
-      (material) => material.heightMap
+      webgl.quadTextureUniform(({ heightMap }) => heightMap)
     );
 
     shader.setUniformPerMaterial(
@@ -655,23 +622,15 @@ const loadLight = (
   }
 
   if (materialConfiguration.forceNormalMap !== false)
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "normalMap",
-      materialConfiguration.forceNormalMap !== true
-        ? "normalMapEnabled"
-        : undefined,
-      webgl.GlTextureType.Quad,
-      (material) => material.normalMap
+      webgl.quadTextureUniform(({ normalMap }) => normalMap)
     );
 
   if (materialConfiguration.forceOcclusionMap !== false) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "occlusionMap",
-      materialConfiguration.forceOcclusionMap !== true
-        ? "occlusionMapEnabled"
-        : undefined,
-      webgl.GlTextureType.Quad,
-      (material) => material.occlusionMap
+      webgl.quadTextureUniform(({ occlusionMap }) => occlusionMap)
     );
 
     shader.setUniformPerMaterial(
@@ -710,11 +669,11 @@ const loadLight = (
             : Matrix4.fromIdentity()
         )
       );
-      shader.setupTexturePerTarget(
+      shader.setUniformPerTarget(
         `directionalLightShadowMaps[${index}]`,
-        undefined,
-        webgl.GlTextureType.Quad,
-        (state) => state.directionalLights[index].shadowMap
+        webgl.quadTextureUniform(
+          ({ directionalLights }) => directionalLights[index].shadowMap
+        )
       );
     }
 

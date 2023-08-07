@@ -61,9 +61,13 @@ interface ShaderState {
   viewMatrix: Matrix4;
 }
 
+const configuration = {
+  useTexture: true,
+};
+
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
-    configure(undefined); // FIXME: required to clear tweaks, should be called automatically
+    const tweak = configure(configuration);
 
     const gl = screen.context;
     const shader = new webgl.GlShader<ShaderState>(gl, vsSource, fsSource);
@@ -76,13 +80,12 @@ const application: Application<WebGLScreen, SceneState> = {
       "albedoFactor",
       webgl.numberArray4Uniform(({ albedoFactor }) => albedoFactor)
     );
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "albedoMap",
-      undefined,
-      webgl.GlTextureType.Quad,
-      (material) => material.albedoMap
+      webgl.quadTextureUniform(({ albedoMap }) =>
+        tweak.useTexture ? albedoMap : undefined
+      )
     );
-
     shader.setUniformPerMesh(
       "modelMatrix",
       webgl.numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)

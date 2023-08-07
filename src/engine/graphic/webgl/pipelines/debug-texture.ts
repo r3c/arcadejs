@@ -8,10 +8,10 @@ import {
   GlScene,
   GlShader,
   GlTarget,
-  GlTextureType,
   GlTransform,
   loadModel,
   numberMatrix4Uniform,
+  quadTextureUniform,
 } from "../../webgl";
 
 const vertexSource = `
@@ -156,11 +156,9 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
   shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "source",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.source
+    quadTextureUniform(({ source }) => source)
   );
 
   shader.setUniformPerMesh(

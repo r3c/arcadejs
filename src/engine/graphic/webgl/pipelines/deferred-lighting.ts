@@ -28,6 +28,7 @@ import {
   numberScalarUniform,
   numberVector2Uniform,
   numberVector3Uniform,
+  quadTextureUniform,
 } from "../../webgl";
 
 const enum LightModel {
@@ -383,11 +384,9 @@ const loadGeometry = (
   );
 
   if (configuration.lightModel === LightModel.Phong) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "glossinessMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.glossMap
+      quadTextureUniform(({ glossMap }) => glossMap)
     );
     shader.setUniformPerMaterial(
       "shininess",
@@ -396,11 +395,9 @@ const loadGeometry = (
   }
 
   if (configuration.useHeightMap) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "heightMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.heightMap
+      quadTextureUniform(({ heightMap }) => heightMap)
     );
     shader.setUniformPerMaterial(
       "heightParallaxBias",
@@ -413,11 +410,9 @@ const loadGeometry = (
   }
 
   if (configuration.useNormalMap)
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "normalMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.normalMap
+      quadTextureUniform(({ normalMap }) => normalMap)
     );
 
   return shader;
@@ -467,17 +462,13 @@ const loadLight = <TState>(
     numberVector2Uniform(({ viewportSize }) => viewportSize)
   );
 
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "depthBuffer",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.depthBuffer
+    quadTextureUniform(({ depthBuffer }) => depthBuffer)
   );
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "normalAndGlossinessBuffer",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.normalAndGlossinessBuffer
+    quadTextureUniform((state) => state.normalAndGlossinessBuffer)
   );
 
   return shader;
@@ -591,22 +582,18 @@ const loadMaterial = (
     "ambientLightColor",
     numberVector3Uniform(({ ambientLightColor }) => ambientLightColor)
   );
-  shader.setupTexturePerTarget(
+  shader.setUniformPerTarget(
     "lightBuffer",
-    undefined,
-    GlTextureType.Quad,
-    (state) => state.lightBuffer
+    quadTextureUniform(({ lightBuffer }) => lightBuffer)
   );
 
   shader.setUniformPerMaterial(
     "albedoFactor",
     numberArray4Uniform(({ albedoFactor }) => albedoFactor)
   );
-  shader.setupTexturePerMaterial(
+  shader.setUniformPerMaterial(
     "albedoMap",
-    undefined,
-    GlTextureType.Quad,
-    (material) => material.albedoMap
+    quadTextureUniform(({ albedoMap }) => albedoMap)
   );
 
   if (configuration.lightModel >= LightModel.Phong) {
@@ -614,20 +601,16 @@ const loadMaterial = (
       "glossinessFactor",
       numberScalarUniform(({ glossFactor }) => glossFactor[0])
     );
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "glossinessMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.glossMap
+      quadTextureUniform(({ glossMap }) => glossMap)
     );
   }
 
   if (configuration.useHeightMap) {
-    shader.setupTexturePerMaterial(
+    shader.setUniformPerMaterial(
       "heightMap",
-      undefined,
-      GlTextureType.Quad,
-      (material) => material.heightMap
+      quadTextureUniform(({ heightMap }) => heightMap)
     );
     shader.setUniformPerMaterial(
       "heightParallaxBias",
