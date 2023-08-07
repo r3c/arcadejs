@@ -57,7 +57,7 @@ class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
 
         shader.bindGeometry(geometry);
         shader.bindMaterial(material, textureIndex);
-        shader.bindNode({ normalMatrix, modelMatrix });
+        shader.bindMesh({ normalMatrix, modelMatrix });
 
         target.draw(
           0,

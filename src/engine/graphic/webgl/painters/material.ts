@@ -96,7 +96,7 @@ class MaterialPainter<TContext> implements webgl.GlPainter<TContext> {
             normalMatrix.multiply(modelMatrix);
             normalMatrix.invert();
 
-            shader.bindNode({ modelMatrix, normalMatrix });
+            shader.bindMesh({ modelMatrix, normalMatrix });
 
             target.draw(
               0,

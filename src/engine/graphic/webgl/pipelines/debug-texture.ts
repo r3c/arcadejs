@@ -11,6 +11,7 @@ import {
   GlTextureType,
   GlTransform,
   loadModel,
+  numberMatrix4Uniform,
 } from "../../webgl";
 
 const vertexSource = `
@@ -162,7 +163,10 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
     (state) => state.source
   );
 
-  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
+  shader.setUniformPerMesh(
+    "modelMatrix",
+    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+  );
 
   return shader;
 };

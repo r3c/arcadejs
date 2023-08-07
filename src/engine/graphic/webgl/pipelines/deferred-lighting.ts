@@ -22,6 +22,12 @@ import {
   GlTextureType,
   GlTransform,
   loadModel,
+  numberArray4Uniform,
+  numberMatrix3Uniform,
+  numberMatrix4Uniform,
+  numberScalarUniform,
+  numberVector2Uniform,
+  numberVector3Uniform,
 } from "../../webgl";
 
 const enum LightModel {
@@ -359,13 +365,22 @@ const loadGeometry = (
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
   shader.setupAttributePerGeometry("tangents", (geometry) => geometry.tangents);
 
-  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
-  shader.setupMatrix3PerNode("normalMatrix", (state) => state.normalMatrix);
-  shader.setupMatrix4PerTarget(
-    "projectionMatrix",
-    (state) => state.projectionMatrix
+  shader.setUniformPerMesh(
+    "modelMatrix",
+    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
   );
-  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
+  shader.setUniformPerMesh(
+    "normalMatrix",
+    numberMatrix3Uniform(({ normalMatrix }) => normalMatrix)
+  );
+  shader.setUniformPerTarget(
+    "projectionMatrix",
+    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+  );
+  shader.setUniformPerTarget(
+    "viewMatrix",
+    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+  );
 
   if (configuration.lightModel === LightModel.Phong) {
     shader.setupTexturePerMaterial(
@@ -374,10 +389,9 @@ const loadGeometry = (
       GlTextureType.Quad,
       (material) => material.glossMap
     );
-    shader.setupPropertyPerMaterial(
+    shader.setUniformPerMaterial(
       "shininess",
-      (material) => material.shininess,
-      (gl) => gl.uniform1f
+      numberScalarUniform(({ shininess }) => shininess)
     );
   }
 
@@ -388,15 +402,13 @@ const loadGeometry = (
       GlTextureType.Quad,
       (material) => material.heightMap
     );
-    shader.setupPropertyPerMaterial(
+    shader.setUniformPerMaterial(
       "heightParallaxBias",
-      (material) => material.heightParallaxBias,
-      (gl) => gl.uniform1f
+      numberScalarUniform(({ heightParallaxBias }) => heightParallaxBias)
     );
-    shader.setupPropertyPerMaterial(
+    shader.setUniformPerMaterial(
       "heightParallaxScale",
-      (material) => material.heightParallaxScale,
-      (gl) => gl.uniform1f
+      numberScalarUniform(({ heightParallaxScale }) => heightParallaxScale)
     );
   }
 
@@ -427,24 +439,32 @@ const loadLight = <TState>(
   );
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
-  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
-  shader.setupMatrix4PerTarget("inverseProjectionMatrix", (state) => {
-    const inverseProjectionMatrix = Matrix4.fromObject(state.projectionMatrix);
-
-    inverseProjectionMatrix.invert();
-
-    return inverseProjectionMatrix;
-  });
-  shader.setupMatrix4PerTarget(
-    "projectionMatrix",
-    (state) => state.projectionMatrix
+  shader.setUniformPerMesh(
+    "modelMatrix",
+    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
   );
-  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
+  shader.setUniformPerTarget(
+    "inverseProjectionMatrix",
+    numberMatrix4Uniform(({ projectionMatrix }) => {
+      const inverseProjectionMatrix = Matrix4.fromObject(projectionMatrix);
 
-  shader.setupPropertyPerTarget(
+      inverseProjectionMatrix.invert();
+
+      return inverseProjectionMatrix;
+    })
+  );
+  shader.setUniformPerTarget(
+    "projectionMatrix",
+    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+  );
+  shader.setUniformPerTarget(
+    "viewMatrix",
+    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+  );
+
+  shader.setUniformPerTarget(
     "viewportSize",
-    ({ viewportSize }) => [viewportSize.x, viewportSize.y],
-    (gl) => gl.uniform2fv
+    numberVector2Uniform(({ viewportSize }) => viewportSize)
   );
 
   shader.setupTexturePerTarget(
@@ -473,15 +493,13 @@ const loadLightDirectional = (
     LightType.Directional
   );
 
-  shader.setupPropertyPerTarget(
+  shader.setUniformPerTarget(
     "directionalLight.color",
-    ({ light }) => [light.color.x, light.color.y, light.color.y],
-    (gl) => gl.uniform3fv
+    numberVector3Uniform(({ light }) => light.color)
   );
-  shader.setupPropertyPerTarget(
+  shader.setUniformPerTarget(
     "directionalLight.direction",
-    ({ light }) => [light.direction.x, light.direction.y, light.direction.z],
-    (gl) => gl.uniform3fv
+    numberVector3Uniform(({ light }) => light.direction)
   );
 
   return shader;
@@ -493,20 +511,17 @@ const loadLightPoint = (
 ) => {
   const shader = loadLight<GlPointLight>(gl, configuration, LightType.Point);
 
-  shader.setupPropertyPerTarget(
+  shader.setUniformPerTarget(
     "pointLight.color",
-    ({ light }) => [light.color.x, light.color.y, light.color.y],
-    (gl) => gl.uniform3fv
+    numberVector3Uniform(({ light }) => light.color)
   );
-  shader.setupPropertyPerTarget(
+  shader.setUniformPerTarget(
     "pointLight.position",
-    ({ light }) => [light.position.x, light.position.y, light.position.z],
-    (gl) => gl.uniform3fv
+    numberVector3Uniform(({ light }) => light.position)
   );
-  shader.setupPropertyPerTarget(
+  shader.setUniformPerTarget(
     "pointLight.radius",
-    (state) => state.light.radius,
-    (gl) => gl.uniform1f
+    numberScalarUniform(({ light }) => light.radius)
   );
 
   return shader;
@@ -555,22 +570,26 @@ const loadMaterial = (
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
   shader.setupAttributePerGeometry("tangents", (geometry) => geometry.tangents);
 
-  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
-  shader.setupMatrix3PerNode("normalMatrix", (state) => state.normalMatrix);
-  shader.setupMatrix4PerTarget(
-    "projectionMatrix",
-    (state) => state.projectionMatrix
+  shader.setUniformPerMesh(
+    "modelMatrix",
+    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
   );
-  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
+  shader.setUniformPerMesh(
+    "normalMatrix",
+    numberMatrix3Uniform(({ normalMatrix }) => normalMatrix)
+  );
+  shader.setUniformPerTarget(
+    "projectionMatrix",
+    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+  );
+  shader.setUniformPerTarget(
+    "viewMatrix",
+    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+  );
 
-  shader.setupPropertyPerTarget(
+  shader.setUniformPerTarget(
     "ambientLightColor",
-    ({ ambientLightColor }) => [
-      ambientLightColor.x,
-      ambientLightColor.y,
-      ambientLightColor.z,
-    ],
-    (gl) => gl.uniform3fv
+    numberVector3Uniform(({ ambientLightColor }) => ambientLightColor)
   );
   shader.setupTexturePerTarget(
     "lightBuffer",
@@ -579,10 +598,9 @@ const loadMaterial = (
     (state) => state.lightBuffer
   );
 
-  shader.setupPropertyPerMaterial(
+  shader.setUniformPerMaterial(
     "albedoFactor",
-    (material) => material.albedoFactor,
-    (gl) => gl.uniform4fv
+    numberArray4Uniform(({ albedoFactor }) => albedoFactor)
   );
   shader.setupTexturePerMaterial(
     "albedoMap",
@@ -592,10 +610,9 @@ const loadMaterial = (
   );
 
   if (configuration.lightModel >= LightModel.Phong) {
-    shader.setupPropertyPerMaterial(
+    shader.setUniformPerMaterial(
       "glossinessFactor",
-      (material) => material.glossFactor[0],
-      (gl) => gl.uniform1f
+      numberScalarUniform(({ glossFactor }) => glossFactor[0])
     );
     shader.setupTexturePerMaterial(
       "glossinessMap",
@@ -612,15 +629,13 @@ const loadMaterial = (
       GlTextureType.Quad,
       (material) => material.heightMap
     );
-    shader.setupPropertyPerMaterial(
+    shader.setUniformPerMaterial(
       "heightParallaxBias",
-      (material) => material.heightParallaxBias,
-      (gl) => gl.uniform1f
+      numberScalarUniform(({ heightParallaxBias }) => heightParallaxBias)
     );
-    shader.setupPropertyPerMaterial(
+    shader.setUniformPerMaterial(
       "heightParallaxScale",
-      (material) => material.heightParallaxScale,
-      (gl) => gl.uniform1f
+      numberScalarUniform(({ heightParallaxScale }) => heightParallaxScale)
     );
   }
 

@@ -12,7 +12,7 @@ import {
   TypedArray,
   Wrap,
 } from "./model";
-import { Vector3, Vector4 } from "../math/vector";
+import { Vector2, Vector3, Vector4 } from "../math/vector";
 
 interface GlAttachment {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -148,8 +148,6 @@ interface GlPrimitive {
   polygon: GlPolygon;
 }
 
-type PropertyBinding<T> = (source: T) => void;
-
 interface GlScene {
   ambientLightColor?: Vector3;
   directionalLights?: GlDirectionalLight[];
@@ -187,16 +185,17 @@ interface GlTransform {
   viewMatrix: Matrix4;
 }
 
-type GlUniformMatrixSetter<T> = (
-  location: WebGLUniformLocation,
-  transpose: boolean,
-  value: T
-) => void;
+type GlUniformAccessor<TState, TValue> = {
+  createValue: (gl: GlContext) => TValue;
+  readValue: (value: TValue, state: TState) => TValue;
+  setUniform: (
+    gl: GlContext,
+    location: WebGLUniformLocation,
+    value: TValue
+  ) => void;
+};
 
-type GlUniformValueSetter<T> = (
-  location: WebGLUniformLocation,
-  value: T
-) => void;
+type GlUniform<TState> = (state: TState) => void;
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
@@ -255,36 +254,113 @@ const bufferGetType = (gl: GlContext, array: TypedArray) => {
   throw Error(`unsupported array type for indices`);
 };
 
-const copyMatrix3ToArray = (target: Float32Array, source: Matrix3): void => {
-  target[0] = source.v00;
-  target[1] = source.v01;
-  target[2] = source.v02;
-  target[3] = source.v10;
-  target[4] = source.v11;
-  target[5] = source.v12;
-  target[6] = source.v20;
-  target[7] = source.v21;
-  target[8] = source.v22;
+const booleanScalarUniform = <TState>(
+  getter: (state: TState) => boolean
+): GlUniformAccessor<TState, number> => ({
+  createValue: () => 0,
+  readValue: (_, state) => (getter(state) ? 1 : 0),
+  setUniform: (g, l, v) => g.uniform1i(l, v),
+});
+
+const numberArray4Uniform = <TState>(
+  getter: (state: TState) => number[]
+): GlUniformAccessor<TState, number[]> => ({
+  createValue: () => [],
+  readValue: (_, state) => getter(state),
+  setUniform: (g, l, v) => g.uniform4fv(l, v),
+});
+
+const numberMatrix3Uniform = <TState>(
+  getter: (state: TState) => Matrix3
+): GlUniformAccessor<TState, Float32Array> => {
+  return {
+    createValue: () => new Float32Array(9),
+    readValue: (value, state) => {
+      const matrix = getter(state);
+
+      value[0] = matrix.v00;
+      value[1] = matrix.v01;
+      value[2] = matrix.v02;
+      value[3] = matrix.v10;
+      value[4] = matrix.v11;
+      value[5] = matrix.v12;
+      value[6] = matrix.v20;
+      value[7] = matrix.v21;
+      value[8] = matrix.v22;
+
+      return value;
+    },
+    setUniform: (g, l, v) => g.uniformMatrix3fv(l, false, v),
+  };
 };
 
-const copyMatrix4ToArray = (target: Float32Array, source: Matrix4): void => {
-  target[0] = source.v00;
-  target[1] = source.v01;
-  target[2] = source.v02;
-  target[3] = source.v03;
-  target[4] = source.v10;
-  target[5] = source.v11;
-  target[6] = source.v12;
-  target[7] = source.v13;
-  target[8] = source.v20;
-  target[9] = source.v21;
-  target[10] = source.v22;
-  target[11] = source.v23;
-  target[12] = source.v30;
-  target[13] = source.v31;
-  target[14] = source.v32;
-  target[15] = source.v33;
-};
+const numberMatrix4Uniform = <TState>(
+  getter: (state: TState) => Matrix4
+): GlUniformAccessor<TState, Float32Array> => ({
+  createValue: () => new Float32Array(16),
+  readValue: (value, state) => {
+    const matrix = getter(state);
+
+    value[0] = matrix.v00;
+    value[1] = matrix.v01;
+    value[2] = matrix.v02;
+    value[3] = matrix.v03;
+    value[4] = matrix.v10;
+    value[5] = matrix.v11;
+    value[6] = matrix.v12;
+    value[7] = matrix.v13;
+    value[8] = matrix.v20;
+    value[9] = matrix.v21;
+    value[10] = matrix.v22;
+    value[11] = matrix.v23;
+    value[12] = matrix.v30;
+    value[13] = matrix.v31;
+    value[14] = matrix.v32;
+    value[15] = matrix.v33;
+
+    return value;
+  },
+  setUniform: (g, l, v) => g.uniformMatrix4fv(l, false, v),
+});
+
+const numberScalarUniform = <TState>(
+  getter: (state: TState) => number
+): GlUniformAccessor<TState, number> => ({
+  createValue: () => 0,
+  readValue: (_, state) => getter(state),
+  setUniform: (g, l, v) => g.uniform1f(l, v),
+});
+
+const numberVector2Uniform = <TState>(
+  getter: (state: TState) => Vector2
+): GlUniformAccessor<TState, Float32Array> => ({
+  createValue: () => new Float32Array(2),
+  readValue: (value, state) => {
+    const vector = getter(state);
+
+    value[0] = vector.x;
+    value[1] = vector.y;
+
+    return value;
+  },
+  setUniform: (g, l, v) => g.uniform2fv(l, v),
+});
+
+const numberVector3Uniform = <TState>(
+  getter: (state: TState) => Vector3
+): GlUniformAccessor<TState, Float32Array> => ({
+  createValue: () => new Float32Array(3),
+  readValue: (value, state) => {
+    const vector = getter(state);
+
+    value[0] = vector.x;
+    value[1] = vector.y;
+    value[2] = vector.z;
+
+    return value;
+  },
+  setUniform: (g, l, v) => g.uniform3fv(l, v),
+});
 
 const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
   for (const material of library.materials.values()) {
@@ -760,11 +836,11 @@ class GlShader<TState> {
   private readonly attributePerGeometryBindings: AttributeBinding<GlPolygon>[];
   private readonly gl: GlContext;
   private readonly program: WebGLProgram;
-  private readonly propertyPerMaterialBindings: PropertyBinding<GlMaterial>[];
-  private readonly propertyPerNodeBindings: PropertyBinding<GlMeshState>[];
-  private readonly propertyPerTargetBindings: PropertyBinding<TState>[];
   private readonly texturePerMaterialBindings: GlTextureBinding<GlMaterial>[];
   private readonly texturePerTargetBindings: GlTextureBinding<TState>[];
+  private readonly uniformPerMaterial: Map<string, GlUniform<GlMaterial>>;
+  private readonly uniformPerMesh: Map<string, GlUniform<GlMeshState>>;
+  private readonly uniformPerTarget: Map<string, GlUniform<TState>>;
 
   public constructor(
     gl: GlContext,
@@ -774,7 +850,9 @@ class GlShader<TState> {
   ) {
     const program = gl.createProgram();
 
-    if (program === null) throw Error("could not create program");
+    if (program === null) {
+      throw Error("could not create program");
+    }
 
     const header =
       "#version 300 es\n" +
@@ -805,9 +883,9 @@ class GlShader<TState> {
 
     this.attributePerGeometryBindings = [];
     this.gl = gl;
-    this.propertyPerMaterialBindings = [];
-    this.propertyPerNodeBindings = [];
-    this.propertyPerTargetBindings = [];
+    this.uniformPerMaterial = new Map();
+    this.uniformPerMesh = new Map();
+    this.uniformPerTarget = new Map();
     this.texturePerMaterialBindings = [];
     this.texturePerTargetBindings = [];
     this.program = program;
@@ -830,7 +908,7 @@ class GlShader<TState> {
    ** Assign per-material uniforms.
    */
   public bindMaterial(material: GlMaterial, textureIndex: number) {
-    for (const binding of this.propertyPerMaterialBindings) {
+    for (const binding of this.uniformPerMaterial.values()) {
       binding(material);
     }
 
@@ -842,11 +920,11 @@ class GlShader<TState> {
   }
 
   /*
-   ** Assign per-node uniforms.
+   ** Assign per-mesh uniforms.
    */
-  public bindNode(nodeState: GlMeshState) {
-    for (const binding of this.propertyPerNodeBindings) {
-      binding(nodeState);
+  public bindMesh(meshState: GlMeshState) {
+    for (const binding of this.uniformPerMesh.values()) {
+      binding(meshState);
     }
   }
 
@@ -856,7 +934,7 @@ class GlShader<TState> {
   public bindTarget(state: TState) {
     let textureIndex = 0;
 
-    for (const binding of this.propertyPerTargetBindings) {
+    for (const binding of this.uniformPerTarget.values()) {
       binding(state);
     }
 
@@ -902,80 +980,25 @@ class GlShader<TState> {
     });
   }
 
-  public setupMatrix3PerNode(
+  public setUniformPerMaterial<TValue>(
     name: string,
-    getter: (state: GlMeshState) => Matrix3
+    accessor: GlUniformAccessor<GlMaterial, TValue>
   ) {
-    this.propertyPerNodeBindings.push(
-      this.declareMatrix(
-        name,
-        9,
-        (state, buffer) => copyMatrix3ToArray(buffer, getter(state)),
-        (gl) => gl.uniformMatrix3fv
-      )
-    );
+    this.setUniform(this.uniformPerMaterial, name, accessor);
   }
 
-  public setupMatrix3PerTarget(
+  public setUniformPerMesh<TValue>(
     name: string,
-    getter: (state: TState) => Matrix3
+    accessor: GlUniformAccessor<GlMeshState, TValue>
   ) {
-    this.propertyPerTargetBindings.push(
-      this.declareMatrix(
-        name,
-        9,
-        (state, buffer) => copyMatrix3ToArray(buffer, getter(state)),
-        (gl) => gl.uniformMatrix3fv
-      )
-    );
+    this.setUniform(this.uniformPerMesh, name, accessor);
   }
 
-  public setupMatrix4PerNode(
+  public setUniformPerTarget<TValue>(
     name: string,
-    getter: (state: GlMeshState) => Matrix4
+    accessor: GlUniformAccessor<TState, TValue>
   ) {
-    this.propertyPerNodeBindings.push(
-      this.declareMatrix(
-        name,
-        16,
-        (state, buffer) => copyMatrix4ToArray(buffer, getter(state)),
-        (gl) => gl.uniformMatrix4fv
-      )
-    );
-  }
-
-  public setupMatrix4PerTarget(
-    name: string,
-    getter: (state: TState) => Matrix4
-  ) {
-    this.propertyPerTargetBindings.push(
-      this.declareMatrix(
-        name,
-        16,
-        (state, buffer) => copyMatrix4ToArray(buffer, getter(state)),
-        (gl) => gl.uniformMatrix4fv
-      )
-    );
-  }
-
-  public setupPropertyPerMaterial<TValue>(
-    name: string,
-    getter: (state: GlMaterial) => TValue,
-    assign: (gl: GlContext) => GlUniformValueSetter<TValue>
-  ) {
-    this.propertyPerMaterialBindings.push(
-      this.declareProperty(name, getter, assign)
-    );
-  }
-
-  public setupPropertyPerTarget<TValue>(
-    name: string,
-    getter: (state: TState) => TValue,
-    assign: (gl: GlContext) => GlUniformValueSetter<TValue>
-  ) {
-    this.propertyPerTargetBindings.push(
-      this.declareProperty(name, getter, assign)
-    );
+    this.setUniform(this.uniformPerTarget, name, accessor);
   }
 
   /*
@@ -1013,34 +1036,25 @@ class GlShader<TState> {
     );
   }
 
-  private declareMatrix<TSource>(
+  private setUniform<TState, TValue>(
+    target: Map<string, GlUniform<TState>>,
     name: string,
-    length: number,
-    copyToBuffer: (state: TSource, buffer: Float32Array) => void,
-    setUniformGetter: (gl: GlContext) => GlUniformMatrixSetter<Float32Array>
-  ) {
+    accessor: GlUniformAccessor<TState, TValue>
+  ): void {
+    if (target.has(name)) {
+      throw new Error(`cannot set uniform "${name}" twice`);
+    }
+
+    const { createValue, readValue, setUniform } = accessor;
     const gl = this.gl;
     const location = this.findUniform(name);
-    const setUniform = setUniformGetter(gl);
-    const buffer = new Float32Array(length);
+    const value = createValue(gl);
 
-    return (state: TSource) => {
-      copyToBuffer(state, buffer);
-      setUniform.call(gl, location, false, buffer);
-    };
-  }
+    target.set(name, (state: TState) => {
+      const uniform = readValue(value, state);
 
-  private declareProperty<TSource, TValue>(
-    name: string,
-    propertyGetter: (source: TSource) => TValue,
-    setUniformGetter: (gl: GlContext) => GlUniformValueSetter<TValue>
-  ) {
-    const gl = this.gl;
-    const location = this.findUniform(name);
-    const setUniform = setUniformGetter(gl);
-
-    return (source: TSource) =>
-      setUniform.call(gl, location, propertyGetter(source));
+      setUniform(gl, location, uniform);
+    });
   }
 
   private declareTexture<TSource>(
@@ -1523,10 +1537,17 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
+  booleanScalarUniform,
   deleteLibrary,
   deleteModel,
   loadLibrary,
   loadModel,
   loadTextureCube,
   loadTextureQuad,
+  numberArray4Uniform,
+  numberMatrix3Uniform,
+  numberMatrix4Uniform,
+  numberScalarUniform,
+  numberVector2Uniform,
+  numberVector3Uniform,
 };

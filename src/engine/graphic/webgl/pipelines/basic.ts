@@ -30,12 +30,18 @@ const load = (gl: WebGL2RenderingContext) => {
 
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-  shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
-  shader.setupMatrix4PerTarget(
-    "projectionMatrix",
-    (state) => state.projectionMatrix
+  shader.setUniformPerMesh(
+    "modelMatrix",
+    webgl.numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
   );
-  shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
+  shader.setUniformPerTarget(
+    "projectionMatrix",
+    webgl.numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+  );
+  shader.setUniformPerTarget(
+    "viewMatrix",
+    webgl.numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+  );
 
   return shader;
 };

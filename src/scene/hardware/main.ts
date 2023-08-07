@@ -72,10 +72,9 @@ const application: Application<WebGLScreen, SceneState> = {
     shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
     shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
 
-    shader.setupPropertyPerMaterial(
+    shader.setUniformPerMaterial(
       "albedoFactor",
-      (material) => material.albedoFactor,
-      (gl) => gl.uniform4fv
+      webgl.numberArray4Uniform(({ albedoFactor }) => albedoFactor)
     );
     shader.setupTexturePerMaterial(
       "albedoMap",
@@ -84,12 +83,18 @@ const application: Application<WebGLScreen, SceneState> = {
       (material) => material.albedoMap
     );
 
-    shader.setupMatrix4PerNode("modelMatrix", (state) => state.modelMatrix);
-    shader.setupMatrix4PerTarget(
-      "projectionMatrix",
-      (state) => state.projectionMatrix
+    shader.setUniformPerMesh(
+      "modelMatrix",
+      webgl.numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
     );
-    shader.setupMatrix4PerTarget("viewMatrix", (state) => state.viewMatrix);
+    shader.setUniformPerTarget(
+      "projectionMatrix",
+      webgl.numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    );
+    shader.setUniformPerTarget(
+      "viewMatrix",
+      webgl.numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    );
 
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
