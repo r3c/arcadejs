@@ -43,11 +43,11 @@ const load = (renderer: GlRenderer) => {
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );

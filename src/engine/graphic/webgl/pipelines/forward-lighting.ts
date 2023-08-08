@@ -416,17 +416,17 @@ const loadLight = (
     "normalMatrix",
     uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   if (!lightConfiguration.noShadow) {
-    shader.setUniformPerTarget(
+    shader.setUniformPerState(
       "shadowProjectionMatrix",
       uniform.numberMatrix4(
         ({ shadowProjectionMatrix }) => shadowProjectionMatrix
@@ -467,19 +467,19 @@ const loadLight = (
 
     case ForwardLightingModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
-        shader.setUniformPerTarget(
+        shader.setUniformPerState(
           "environmentBrdfMap",
           uniform.blackQuadTexture(
             ({ environmentLight }) => environmentLight?.brdf
           )
         );
-        shader.setUniformPerTarget(
+        shader.setUniformPerState(
           "environmentDiffuseMap",
           uniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.diffuse
           )
         );
-        shader.setUniformPerTarget(
+        shader.setUniformPerState(
           "environmentSpecularMap",
           uniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.specular
@@ -556,7 +556,7 @@ const loadLight = (
   const defaultDirection = { x: 1, y: 0, z: 0 };
   const defaultPosition = Vector3.zero;
 
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "ambientLightColor",
     uniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
   );
@@ -565,7 +565,7 @@ const loadLight = (
     const index = i;
 
     if (!lightConfiguration.noShadow) {
-      shader.setUniformPerTarget(
+      shader.setUniformPerState(
         `directionalLights[${index}].castShadow`,
         uniform.booleanScalar(
           (state) =>
@@ -573,7 +573,7 @@ const loadLight = (
             state.directionalLights[index].shadow
         )
       );
-      shader.setUniformPerTarget(
+      shader.setUniformPerState(
         `directionalLights[${index}].shadowViewMatrix`,
         uniform.numberMatrix4(({ directionalLights }) =>
           index < directionalLights.length
@@ -581,7 +581,7 @@ const loadLight = (
             : Matrix4.fromIdentity()
         )
       );
-      shader.setUniformPerTarget(
+      shader.setUniformPerState(
         `directionalLightShadowMaps[${index}]`,
         uniform.blackQuadTexture(
           ({ directionalLights }) => directionalLights[index].shadowMap
@@ -589,7 +589,7 @@ const loadLight = (
       );
     }
 
-    shader.setUniformPerTarget(
+    shader.setUniformPerState(
       `directionalLights[${i}].color`,
       uniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
@@ -597,7 +597,7 @@ const loadLight = (
           : defaultColor
       )
     );
-    shader.setUniformPerTarget(
+    shader.setUniformPerState(
       `directionalLights[${i}].direction`,
       uniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
@@ -610,13 +610,13 @@ const loadLight = (
   for (let i = 0; i < maxPointLights; ++i) {
     const index = i;
 
-    shader.setUniformPerTarget(
+    shader.setUniformPerState(
       `pointLights[${i}].color`,
       uniform.numberVector3(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].color : defaultColor
       )
     );
-    shader.setUniformPerTarget(
+    shader.setUniformPerState(
       `pointLights[${i}].position`,
       uniform.numberVector3(({ pointLights }) =>
         index < pointLights.length
@@ -624,7 +624,7 @@ const loadLight = (
           : defaultPosition
       )
     );
-    shader.setUniformPerTarget(
+    shader.setUniformPerState(
       `pointLights[${i}].radius`,
       uniform.numberScalar(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].radius : 0
@@ -647,11 +647,11 @@ const loadShadowDirectional = (renderer: GlRenderer) => {
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );

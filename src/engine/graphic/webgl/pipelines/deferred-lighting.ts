@@ -360,11 +360,11 @@ const loadGeometry = (renderer: GlRenderer, configuration: Configuration) => {
     "normalMatrix",
     uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
@@ -425,7 +425,7 @@ const loadLight = <TState>(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "inverseProjectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => {
       const inverseProjectionMatrix = Matrix4.fromObject(projectionMatrix);
@@ -435,25 +435,25 @@ const loadLight = <TState>(
       return inverseProjectionMatrix;
     })
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "viewportSize",
     uniform.numberVector2(({ viewportSize }) => viewportSize)
   );
 
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "depthBuffer",
     uniform.blackQuadTexture(({ depthBuffer }) => depthBuffer)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "normalAndGlossinessBuffer",
     uniform.blackQuadTexture((state) => state.normalAndGlossinessBuffer)
   );
@@ -471,11 +471,11 @@ const loadLightDirectional = (
     LightType.Directional
   );
 
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "directionalLight.color",
     uniform.numberVector3(({ light }) => light.color)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "directionalLight.direction",
     uniform.numberVector3(({ light }) => light.direction)
   );
@@ -490,15 +490,15 @@ const loadLightPoint = (renderer: GlRenderer, configuration: Configuration) => {
     LightType.Point
   );
 
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "pointLight.color",
     uniform.numberVector3(({ light }) => light.color)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "pointLight.position",
     uniform.numberVector3(({ light }) => light.position)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "pointLight.radius",
     uniform.numberScalar(({ light }) => light.radius)
   );
@@ -549,20 +549,20 @@ const loadMaterial = (renderer: GlRenderer, configuration: Configuration) => {
     "normalMatrix",
     uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "ambientLightColor",
     uniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
   );
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "lightBuffer",
     uniform.blackQuadTexture(({ lightBuffer }) => lightBuffer)
   );

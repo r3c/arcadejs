@@ -121,7 +121,7 @@ type GlPainter<T> = {
   paint(
     target: GlTarget,
     subjects: Iterable<GlSubject>,
-    view: Matrix4,
+    viewMatrix: Matrix4,
     state: T
   ): void;
 };
@@ -787,7 +787,7 @@ class GlShader<TState> {
   private readonly renderer: GlRenderer;
   private readonly uniformPerMaterial: Map<string, GlBinder<GlMaterial>>;
   private readonly uniformPerMesh: Map<string, GlBinder<GlMeshState>>;
-  private readonly uniformPerTarget: Map<string, GlBinder<TState>>;
+  private readonly uniformPerState: Map<string, GlBinder<TState>>;
 
   private textureIndex: number;
 
@@ -837,20 +837,11 @@ class GlShader<TState> {
     this.textureIndex = 0;
     this.uniformPerMaterial = new Map();
     this.uniformPerMesh = new Map();
-    this.uniformPerTarget = new Map();
+    this.uniformPerState = new Map();
   }
 
   public activate() {
     this.renderer.context.useProgram(this.program);
-  }
-
-  /*
-   ** Assign per-geometry attributes.
-   */
-  public bindGeometry(geometry: GlPolygon) {
-    for (const binding of this.attributePerPolygon.values()) {
-      binding(geometry);
-    }
   }
 
   /*
@@ -872,10 +863,19 @@ class GlShader<TState> {
   }
 
   /*
-   ** Assign per-target uniforms.
+   ** Assign per-polygon attributes.
    */
-  public bindTarget(state: TState) {
-    for (const binding of this.uniformPerTarget.values()) {
+  public bindPolygon(polygon: GlPolygon) {
+    for (const binding of this.attributePerPolygon.values()) {
+      binding(polygon);
+    }
+  }
+
+  /*
+   ** Assign per-state uniforms.
+   */
+  public bindState(state: TState) {
+    for (const binding of this.uniformPerState.values()) {
       binding(state);
     }
   }
@@ -901,17 +901,17 @@ class GlShader<TState> {
     this.setUniform(this.uniformPerMesh, name, accessor);
   }
 
-  public setUniformPerTarget<TValue>(
+  public setUniformPerState<TValue>(
     name: string,
     accessor: GlUniformAccessor<TState, TValue>
   ) {
-    this.setUniform(this.uniformPerTarget, name, accessor);
+    this.setUniform(this.uniformPerState, name, accessor);
   }
 
-  private setAttribute<TState>(
-    target: Map<string, GlBinder<TState>>,
+  private setAttribute<TInput>(
+    target: Map<string, GlBinder<TInput>>,
     name: string,
-    accessor: GlAttributeAccessor<TState>
+    accessor: GlAttributeAccessor<TInput>
   ) {
     if (target.has(name)) {
       throw new Error(`cannot set attribute "${name}" twice`);
@@ -924,7 +924,7 @@ class GlShader<TState> {
       throw Error(`cound not find location of attribute "${name}"`);
     }
 
-    target.set(name, (state: TState) => {
+    target.set(name, (state: TInput) => {
       const attribute = accessor(state);
 
       if (attribute === undefined) {
@@ -939,10 +939,10 @@ class GlShader<TState> {
     });
   }
 
-  private setUniform<TState, TValue>(
-    target: Map<string, GlBinder<TState>>,
+  private setUniform<TInput, TValue>(
+    target: Map<string, GlBinder<TInput>>,
     name: string,
-    accessor: GlUniformAccessor<TState, TValue>
+    accessor: GlUniformAccessor<TInput, TValue>
   ): void {
     if (target.has(name)) {
       throw new Error(`cannot set uniform "${name}" twice`);
@@ -964,7 +964,7 @@ class GlShader<TState> {
       throw Error(`cound not find location of uniform "${name}"`);
     }
 
-    target.set(name, (state: TState) => {
+    target.set(name, (state: TInput) => {
       const uniform = readValue(state, currentValue, defaultValue);
 
       setUniform(gl, location, uniform, textureIndex);
@@ -1148,21 +1148,19 @@ class GlTarget {
     // Configure draw buffers
     const gl = this.gl;
 
-    if (this.colorAttachment.textures !== undefined) {
-      for (const framebuffer of this.framebuffers) {
-        if (framebuffer === undefined) {
-          continue;
-        }
-
-        const buffers = range(
-          this.colorAttachment.textures.length,
-          (i) => gl.COLOR_ATTACHMENT0 + i
-        );
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        gl.drawBuffers(buffers);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    for (const framebuffer of this.framebuffers) {
+      if (framebuffer === undefined) {
+        continue;
       }
+
+      const buffers = range(
+        this.colorAttachment.textures.length,
+        (i) => gl.COLOR_ATTACHMENT0 + i
+      );
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.drawBuffers(buffers);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
     return texture;
@@ -1200,25 +1198,26 @@ class GlTarget {
     gl: GlContext,
     attachment: GlAttachment
   ) {
-    if (attachment.textures !== undefined) {
-      for (const texture of attachment.textures)
-        gl.deleteTexture(texture.handle);
-
-      attachment.textures = [];
+    for (const texture of attachment.textures) {
+      gl.deleteTexture(texture.handle);
     }
+
+    attachment.textures = [];
   }
 
   private static checkFramebuffer(gl: GlContext) {
-    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
       throw Error("invalid framebuffer operation");
+    }
   }
 
   private configureFramebuffer(framebufferIndex: number) {
     if (
       this.framebuffers.length > framebufferIndex &&
       this.framebuffers[framebufferIndex] !== undefined
-    )
+    ) {
       return this.framebuffers[framebufferIndex];
+    }
 
     this.framebuffers.length = Math.max(
       this.framebuffers.length,
@@ -1227,7 +1226,9 @@ class GlTarget {
 
     const framebuffer = this.gl.createFramebuffer();
 
-    if (framebuffer === null) throw Error("could not create framebuffer");
+    if (framebuffer === null) {
+      throw Error("could not create framebuffer");
+    }
 
     this.framebuffers[framebufferIndex] = framebuffer;
 

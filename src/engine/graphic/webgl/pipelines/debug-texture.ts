@@ -156,7 +156,7 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
   shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
   shader.setAttributePerPolygon("points", (geometry) => geometry.points);
 
-  shader.setUniformPerTarget(
+  shader.setUniformPerState(
     "source",
     uniform.blackQuadTexture(({ source }) => source)
   );
