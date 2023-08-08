@@ -78,6 +78,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
+    const renderer = webgl.createRenderer(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -93,13 +94,13 @@ const application: Application<WebGLScreen, SceneState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
-        star: webgl.loadModel(gl, starModel),
+        star: webgl.loadModel(renderer, starModel),
       },
       move: 0,
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new forwardLighting.ForwardLightingPipeline(gl, {
+            new forwardLighting.ForwardLightingPipeline(renderer, {
               light: {
                 model: forwardLighting.ForwardLightingModel.Phong,
                 maxPointLights: 3,

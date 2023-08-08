@@ -15,6 +15,7 @@ import {
   GlPainter,
   GlPipeline,
   GlPointLight,
+  GlRenderer,
   GlScene,
   GlShader,
   GlTarget,
@@ -337,13 +338,10 @@ interface State {
   viewMatrix: Matrix4;
 }
 
-const loadGeometry = (
-  gl: WebGL2RenderingContext,
-  configuration: Configuration
-) => {
+const loadGeometry = (renderer: GlRenderer, configuration: Configuration) => {
   // Setup geometry shader
   const shader = new GlShader<State>(
-    gl,
+    renderer,
     geometryVertexShader,
     geometryFragmentShader,
     []
@@ -408,15 +406,15 @@ const loadGeometry = (
 };
 
 const loadLight = <TState>(
-  gl: WebGL2RenderingContext,
-  _configuration: Configuration,
+  renderer: GlRenderer,
+  _: Configuration,
   type: LightType
 ) => {
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
   const shader = new GlShader<LightState<TState>>(
-    gl,
+    renderer,
     lightVertexShader,
     lightFragmentShader,
     directives
@@ -464,11 +462,11 @@ const loadLight = <TState>(
 };
 
 const loadLightDirectional = (
-  gl: WebGL2RenderingContext,
+  renderer: GlRenderer,
   configuration: Configuration
 ) => {
   const shader = loadLight<GlDirectionalLight>(
-    gl,
+    renderer,
     configuration,
     LightType.Directional
   );
@@ -485,11 +483,12 @@ const loadLightDirectional = (
   return shader;
 };
 
-const loadLightPoint = (
-  gl: WebGL2RenderingContext,
-  configuration: Configuration
-) => {
-  const shader = loadLight<GlPointLight>(gl, configuration, LightType.Point);
+const loadLightPoint = (renderer: GlRenderer, configuration: Configuration) => {
+  const shader = loadLight<GlPointLight>(
+    renderer,
+    configuration,
+    LightType.Point
+  );
 
   shader.setUniformPerTarget(
     "pointLight.color",
@@ -507,10 +506,7 @@ const loadLightPoint = (
   return shader;
 };
 
-const loadMaterial = (
-  gl: WebGL2RenderingContext,
-  configuration: Configuration
-) => {
+const loadMaterial = (renderer: GlRenderer, configuration: Configuration) => {
   // Build directives from configuration
   const directives = [];
 
@@ -534,7 +530,7 @@ const loadMaterial = (
 
   // Setup material shader
   const shader = new GlShader<MaterialState>(
-    gl,
+    renderer,
     materialVertexShader,
     materialFragmentShader,
     directives
@@ -621,13 +617,14 @@ class Pipeline implements GlPipeline {
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: GlPainter<State>;
   private readonly geometryTarget: GlTarget;
-  private readonly gl: WebGL2RenderingContext;
   private readonly lightTarget: GlTarget;
   private readonly materialPainter: GlPainter<MaterialState>;
   private readonly pointLightPainter: GlPainter<LightState<GlPointLight>>;
+  private readonly renderer: GlRenderer;
   private readonly sphereModel: GlModel;
 
-  public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
+  public constructor(renderer: GlRenderer, configuration: Configuration) {
+    const gl = renderer.context;
     const geometry = new GlTarget(
       gl,
       gl.drawingBufferWidth,
@@ -644,31 +641,35 @@ class Pipeline implements GlPipeline {
       GlTextureType.Quad
     );
     this.directionalLightPainter = new SingularPainter(
-      loadLightDirectional(gl, configuration)
+      loadLightDirectional(renderer, configuration)
     );
-    this.fullscreenModel = loadModel(gl, quadModel);
+    this.fullscreenModel = loadModel(renderer, quadModel);
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
-    this.geometryPainter = new SingularPainter(loadGeometry(gl, configuration));
+    this.geometryPainter = new SingularPainter(
+      loadGeometry(renderer, configuration)
+    );
     this.geometryTarget = geometry;
-    this.gl = gl;
     this.lightBuffer = light.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
     this.lightTarget = light;
-    this.materialPainter = new SingularPainter(loadMaterial(gl, configuration));
+    this.materialPainter = new SingularPainter(
+      loadMaterial(renderer, configuration)
+    );
     this.pointLightPainter = new SingularPainter(
-      loadLightPoint(gl, configuration)
+      loadLightPoint(renderer, configuration)
     );
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
-    this.sphereModel = loadModel(gl, sphereModel);
+    this.renderer = renderer;
+    this.sphereModel = loadModel(renderer, sphereModel);
   }
 
   public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
-    const gl = this.gl;
+    const gl = this.renderer.context;
     const viewportSize = {
       x: gl.drawingBufferWidth,
       y: gl.drawingBufferHeight,

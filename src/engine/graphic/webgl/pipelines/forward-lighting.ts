@@ -21,6 +21,7 @@ import {
   GlPainter,
   GlPipeline,
   GlPointLight,
+  GlRenderer,
   GlScene,
   GlShader,
   GlTarget,
@@ -346,7 +347,7 @@ void main(void) {
 }`;
 
 const loadLight = (
-  gl: WebGL2RenderingContext,
+  renderer: GlRenderer,
   materialConfiguration: MaterialConfiguration,
   lightConfiguration: LightConfiguration
 ) => {
@@ -394,7 +395,7 @@ const loadLight = (
   }
 
   const shader = new GlShader<LightState>(
-    gl,
+    renderer,
     lightVertexShader,
     lightFragmentShader,
     directives
@@ -634,9 +635,9 @@ const loadLight = (
   return shader;
 };
 
-const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
+const loadShadowDirectional = (renderer: GlRenderer) => {
   const shader = new GlShader<ShadowState>(
-    gl,
+    renderer,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
   );
@@ -658,10 +659,10 @@ const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
   return shader;
 };
 
-const loadShadowPoint = (gl: WebGL2RenderingContext) => {
+const loadShadowPoint = (renderer: GlRenderer) => {
   // Not implemented
   return new GlShader<ShadowState>(
-    gl,
+    renderer,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
   );
@@ -674,18 +675,19 @@ class ForwardLightingPipeline implements GlPipeline {
   private readonly directionalShadowPainter: GlPainter<ShadowState>;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: GlTarget[];
-  private readonly gl: WebGL2RenderingContext;
   private readonly lightPainter: GlPainter<LightState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
   private readonly pointShadowPainter: GlPainter<ShadowState>;
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
+  private readonly renderer: GlRenderer;
 
   public constructor(
-    gl: WebGL2RenderingContext,
+    renderer: GlRenderer,
     configuration: ForwardLightingConfiguration
   ) {
+    const gl = renderer.context;
     const lightConfiguration = configuration.light ?? {};
     const materialConfiguration = configuration.material ?? {};
     const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
@@ -706,7 +708,7 @@ class ForwardLightingPipeline implements GlPipeline {
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
     this.directionalShadowPainter = new SingularPainter(
-      loadShadowDirectional(gl)
+      loadShadowDirectional(renderer)
     );
     this.directionalShadowProjectionMatrix = Matrix4.fromOrthographic(
       -10,
@@ -717,16 +719,15 @@ class ForwardLightingPipeline implements GlPipeline {
       20
     );
     this.directionalShadowTargets = directionalShadowTargets;
-    this.gl = gl;
     this.lightPainter = new SingularPainter(
-      loadLight(gl, materialConfiguration, lightConfiguration)
+      loadLight(renderer, materialConfiguration, lightConfiguration)
     );
     this.maxDirectionalLights = maxDirectionalLights;
     this.maxPointLights = maxPointLights;
     this.pointShadowBuffers = pointShadowTargets.map((target) =>
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
-    this.pointShadowPainter = new SingularPainter(loadShadowPoint(gl));
+    this.pointShadowPainter = new SingularPainter(loadShadowPoint(renderer));
     this.pointShadowProjectionMatrix = Matrix4.fromPerspective(
       Math.PI * 0.5,
       targetWidth / targetHeight,
@@ -734,11 +735,12 @@ class ForwardLightingPipeline implements GlPipeline {
       100
     );
     this.pointShadowTargets = pointShadowTargets;
+    this.renderer = renderer;
   }
 
   public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
     const directionalLights = scene.directionalLights || [];
-    const gl = this.gl;
+    const gl = this.renderer.context;
     const pointLights = scene.pointLights || [];
 
     gl.disable(gl.BLEND);

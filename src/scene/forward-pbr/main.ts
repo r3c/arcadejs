@@ -88,6 +88,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
+    const renderer = webgl.createRenderer(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -139,15 +140,15 @@ const application: Application<WebGLScreen, SceneState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
-        ground: webgl.loadModel(gl, groundModel),
-        helmet: webgl.loadModel(gl, helmetModel),
-        light: webgl.loadModel(gl, lightModel),
+        ground: webgl.loadModel(renderer, groundModel),
+        helmet: webgl.loadModel(renderer, helmetModel),
+        light: webgl.loadModel(renderer, lightModel),
       },
       move: 0,
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new forwardLighting.ForwardLightingPipeline(gl, {
+            new forwardLighting.ForwardLightingPipeline(renderer, {
               light: {
                 model: forwardLighting.ForwardLightingModel.Physical,
                 modelPhysicalNoAmbient: !flags[0],

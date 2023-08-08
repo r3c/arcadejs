@@ -26,6 +26,7 @@ import {
   GlModel,
   GlTarget,
   GlTransform,
+  createRenderer,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
@@ -66,6 +67,7 @@ const timeFactor = 20;
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
+    const renderer = createRenderer(gl);
     const tweak = configure(configuration);
 
     // Load models
@@ -98,7 +100,7 @@ const application: Application<WebGLScreen, SceneState> = {
       transform: Matrix4.fromCustom(["scale", worldScaleVector]),
     });
 
-    const select = loadModel(gl, selectModel);
+    const select = loadModel(renderer, selectModel);
 
     const getModelIndex = (height: number): number => {
       const value = Math.pow(height, 0.5) / (1 / levelModels.length);
@@ -108,7 +110,7 @@ const application: Application<WebGLScreen, SceneState> = {
 
     // Create world
     const worldGraphic = createWorldGraphic(
-      gl,
+      renderer,
       worldChunkCount,
       worldChunkSize,
       worldScale,
@@ -172,7 +174,7 @@ const application: Application<WebGLScreen, SceneState> = {
       },
       move: 0,
       pipelines: {
-        forwardLighting: new ForwardLightingPipeline(gl, {
+        forwardLighting: new ForwardLightingPipeline(renderer, {
           light: {
             maxPointLights: maxLights,
             model: ForwardLightingModel.Phong,

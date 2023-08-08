@@ -75,6 +75,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
+    const renderer = webgl.createRenderer(screen.context);
     const tweak = configure(configuration);
 
     // Load models
@@ -90,15 +91,15 @@ const application: Application<WebGLScreen, SceneState> = {
       input: new Input(screen.canvas),
       lightPositions: range(3, () => Vector3.zero),
       models: {
-        cube: webgl.loadModel(gl, cubeModel),
-        ground: webgl.loadModel(gl, groundModel),
-        light: webgl.loadModel(gl, lightModel),
+        cube: webgl.loadModel(renderer, cubeModel),
+        ground: webgl.loadModel(renderer, groundModel),
+        light: webgl.loadModel(renderer, lightModel),
       },
       move: 0,
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new ForwardLightingPipeline(gl, {
+            new ForwardLightingPipeline(renderer, {
               light: {
                 maxPointLights: 3,
                 model: ForwardLightingModel.Phong,

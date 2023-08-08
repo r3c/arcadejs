@@ -5,6 +5,7 @@ import {
   GlModel,
   GlPainter,
   GlPipeline,
+  GlRenderer,
   GlScene,
   GlShader,
   GlTarget,
@@ -137,7 +138,7 @@ interface State {
   source: WebGLTexture;
 }
 
-const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
+const load = (renderer: GlRenderer, configuration: Configuration) => {
   const directives = [
     { name: "FORMAT", value: configuration.format },
     { name: "SELECT", value: configuration.select },
@@ -146,7 +147,7 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
   ];
 
   const shader = new GlShader<State>(
-    gl,
+    renderer,
     vertexSource,
     fragmentSource,
     directives
@@ -169,9 +170,9 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
 };
 
 class Pipeline implements GlPipeline {
-  private readonly gl: WebGLRenderingContext;
   private readonly painter: GlPainter<State>;
   private readonly quad: GlModel;
+  private readonly renderer: GlRenderer;
   private readonly scale: number;
 
   /*
@@ -206,15 +207,15 @@ class Pipeline implements GlPipeline {
     };
   }
 
-  public constructor(gl: WebGL2RenderingContext, configuration: Configuration) {
-    this.gl = gl;
-    this.painter = new SingularPainter(load(gl, configuration));
-    this.quad = loadModel(gl, mesh);
+  public constructor(renderer: GlRenderer, configuration: Configuration) {
+    this.painter = new SingularPainter(load(renderer, configuration));
+    this.quad = loadModel(renderer, mesh);
+    this.renderer = renderer;
     this.scale = configuration.scale ?? 0.4;
   }
 
   public process(target: GlTarget, _transform: GlTransform, scene: GlScene) {
-    const gl = this.gl;
+    const gl = this.renderer.context;
 
     gl.disable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);

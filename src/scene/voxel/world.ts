@@ -2,6 +2,7 @@ import { flattenModel, mergeModels } from "../../engine/graphic/model";
 import { Instance, Model } from "../../engine/graphic/model/definition";
 import {
   deleteModel,
+  GlRenderer,
   GlSubject,
   loadLibrary,
   loadModel,
@@ -99,7 +100,7 @@ const cubeFaces: WorldCubeFace[] = [
 ];
 
 const createWorldGraphic = (
-  gl: WebGL2RenderingContext,
+  renderer: GlRenderer,
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,
@@ -178,7 +179,7 @@ const createWorldGraphic = (
   };
 
   const library = loadLibrary(
-    gl,
+    renderer.context,
     mergeModels(
       models.flatMap((faces) =>
         faces.map((face) => ({
@@ -213,7 +214,7 @@ const createWorldGraphic = (
         for (const chunkIndex of chunkUpdates) {
           const chunk = chunks[chunkIndex];
 
-          deleteModel(gl, chunkSubjects[chunkIndex].model);
+          deleteModel(renderer.context, chunkSubjects[chunkIndex].model);
 
           const instances: Instance[] = [];
           const nextOffset = Vector3.fromZero();
@@ -240,7 +241,7 @@ const createWorldGraphic = (
 
           const mergedModel = mergeModels(instances);
           const flattenedModel = flattenModel(mergedModel);
-          const model = loadModel(gl, flattenedModel, { library });
+          const model = loadModel(renderer, flattenedModel, { library });
 
           chunkSubjects[chunkIndex].model = model;
         }

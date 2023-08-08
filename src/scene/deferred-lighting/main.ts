@@ -19,6 +19,7 @@ import {
   GlModel,
   GlPointLight,
   GlTarget,
+  createRenderer,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
@@ -86,6 +87,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
+    const renderer = createRenderer(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -113,10 +115,10 @@ const application: Application<WebGLScreen, SceneState> = {
       })),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(gl, cubeModel),
-        directionalLight: loadModel(gl, directionalLightModel),
-        ground: loadModel(gl, groundModel),
-        pointLight: loadModel(gl, pointLightModel),
+        cube: loadModel(renderer, cubeModel),
+        directionalLight: loadModel(renderer, directionalLightModel),
+        ground: loadModel(renderer, groundModel),
+        pointLight: loadModel(renderer, pointLightModel),
       },
       move: 0,
       pipelines: {
@@ -147,7 +149,7 @@ const application: Application<WebGLScreen, SceneState> = {
           },
         ].map(
           (configuration) =>
-            new debugTexture.Pipeline(gl, {
+            new debugTexture.Pipeline(renderer, {
               format: configuration.format,
               select: configuration.select,
               zNear: 0.1,
@@ -156,7 +158,7 @@ const application: Application<WebGLScreen, SceneState> = {
         ),
         scene: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new deferredLighting.Pipeline(gl, {
+            new deferredLighting.Pipeline(renderer, {
               lightModel: deferredLighting.LightModel.Phong,
               lightModelPhongNoAmbient: !flags[0],
               lightModelPhongNoDiffuse: !flags[1],

@@ -14,7 +14,12 @@ import { Matrix4 } from "../../engine/math/matrix";
 import * as move from "../move";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
-import { GlModel, GlTarget, loadModel } from "../../engine/graphic/webgl";
+import {
+  GlModel,
+  GlTarget,
+  createRenderer,
+  loadModel,
+} from "../../engine/graphic/webgl";
 
 /*
  ** What changed?
@@ -57,6 +62,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
 const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const gl = screen.context;
+    const renderer = createRenderer(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -71,13 +77,13 @@ const application: Application<WebGLScreen, SceneState> = {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(gl, cubeModel),
-        ground: loadModel(gl, groundModel),
-        light: loadModel(gl, lightModel),
+        cube: loadModel(renderer, cubeModel),
+        ground: loadModel(renderer, groundModel),
+        light: loadModel(renderer, lightModel),
       },
       move: 0,
       pipelines: {
-        debug: new debugTexture.Pipeline(gl, {
+        debug: new debugTexture.Pipeline(renderer, {
           format: debugTexture.Format.Monochrome,
           select: debugTexture.Select.Red,
           zNear: 0.1,
@@ -85,7 +91,7 @@ const application: Application<WebGLScreen, SceneState> = {
         }),
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new forwardLighting.ForwardLightingPipeline(gl, {
+            new forwardLighting.ForwardLightingPipeline(renderer, {
               light: {
                 model: forwardLighting.ForwardLightingModel.Phong,
                 maxDirectionalLights: 1,

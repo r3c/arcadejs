@@ -1,6 +1,15 @@
 import { Matrix4 } from "../../../math/matrix";
+import {
+  GlPainter,
+  GlPipeline,
+  GlRenderer,
+  GlScene,
+  GlShader,
+  GlTarget,
+  GlTransform,
+  uniform,
+} from "../../webgl";
 import { SingularPainter } from "../painters/singular";
-import * as webgl from "../../webgl";
 
 const vertexShader = `
 uniform mat4 modelMatrix;
@@ -25,42 +34,38 @@ interface State {
   viewMatrix: Matrix4;
 }
 
-const load = (gl: WebGL2RenderingContext) => {
-  const shader = new webgl.GlShader<State>(gl, vertexShader, fragmentShader);
+const load = (renderer: GlRenderer) => {
+  const shader = new GlShader<State>(renderer, vertexShader, fragmentShader);
 
   shader.setAttributePerPolygon("points", (geometry) => geometry.points);
 
   shader.setUniformPerMesh(
     "modelMatrix",
-    webgl.uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
   shader.setUniformPerTarget(
     "projectionMatrix",
-    webgl.uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    webgl.uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   return shader;
 };
 
-class Pipeline implements webgl.GlPipeline {
-  private readonly gl: WebGL2RenderingContext;
-  private readonly painter: webgl.GlPainter<State>;
+class Pipeline implements GlPipeline {
+  private readonly painter: GlPainter<State>;
+  private readonly renderer: GlRenderer;
 
-  public constructor(gl: WebGL2RenderingContext) {
-    this.gl = gl;
-    this.painter = new SingularPainter(load(gl));
+  public constructor(renderer: GlRenderer) {
+    this.painter = new SingularPainter(load(renderer));
+    this.renderer = renderer;
   }
 
-  public process(
-    target: webgl.GlTarget,
-    transform: webgl.GlTransform,
-    scene: webgl.GlScene
-  ) {
-    const gl = this.gl;
+  public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
+    const gl = this.renderer.context;
 
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);

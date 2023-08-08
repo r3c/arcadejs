@@ -47,6 +47,11 @@ type GlBinder<TState> = (state: TState) => void;
 
 type GlContext = WebGL2RenderingContext;
 
+type GlDefault = {
+  blackTexture: GlTexture;
+  whiteTexture: GlTexture;
+};
+
 type GlDirectionalLight = {
   color: Vector3;
   direction: Vector3;
@@ -150,6 +155,11 @@ type GlPrimitive = {
   polygon: GlPolygon;
 };
 
+type GlRenderer = {
+  context: GlContext;
+  default: GlDefault;
+};
+
 type GlScene = {
   ambientLightColor?: Vector3;
   directionalLights?: GlDirectionalLight[];
@@ -191,7 +201,7 @@ type GlUniformAccessor<TState, TValue> = {
   readValue: (
     state: TState,
     currentValue: TValue,
-    defaultValue: GlUniformDefault
+    defaultValue: GlDefault
   ) => TValue;
   setUniform: (
     gl: GlContext,
@@ -199,11 +209,6 @@ type GlUniformAccessor<TState, TValue> = {
     value: TValue,
     textureIndex: number
   ) => void;
-};
-
-type GlUniformDefault = {
-  blackTexture: GlTexture;
-  whiteTexture: GlTexture;
 };
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
@@ -260,6 +265,34 @@ const bufferGetType = (gl: GlContext, array: TypedArray) => {
   else if (array instanceof Uint8Array) return gl.UNSIGNED_BYTE;
 
   throw Error(`unsupported array type for indices`);
+};
+
+const createRenderer = (context: GlContext): GlRenderer => {
+  return {
+    context,
+    default: {
+      blackTexture: textureCreate(
+        context,
+        undefined,
+        GlTextureType.Quad,
+        1,
+        1,
+        GlTextureFormat.RGBA8,
+        defaultFilter,
+        new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
+      ),
+      whiteTexture: textureCreate(
+        context,
+        undefined,
+        GlTextureType.Quad,
+        1,
+        1,
+        GlTextureFormat.RGBA8,
+        defaultFilter,
+        new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
+      ),
+    },
+  };
 };
 
 const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
@@ -592,10 +625,12 @@ const loadMaterial = (
  * deleting and loading its textures again, then it will be deleted.
  */
 const loadModel = (
-  gl: GlContext,
+  renderer: GlRenderer,
   model: Model,
   config?: GlModelConfiguration
 ): GlModel => {
+  const gl = renderer.context;
+
   let ownedLibrary: GlLibrary | undefined;
   let usedLibrary: GlLibrary;
 
@@ -730,10 +765,8 @@ const loadTextureQuad = (
 
 const textureUniform = <TState>(
   primaryGetter: (state: TState) => GlTexture | undefined,
-  defaultGetter: (defaultValue: GlUniformDefault) => GlTexture,
-  target:
-    | WebGL2RenderingContext["TEXTURE_2D"]
-    | WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
+  defaultGetter: (defaultValue: GlDefault) => GlTexture,
+  target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"]
 ): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
   allocateTexture: true,
   createValue: () => ({ target, texture: {} }),
@@ -750,9 +783,8 @@ const textureUniform = <TState>(
 
 class GlShader<TState> {
   private readonly attributePerPolygon: Map<string, GlBinder<GlPolygon>>;
-  private readonly defaultUniformValue: GlUniformDefault;
-  private readonly gl: GlContext;
   private readonly program: WebGLProgram;
+  private readonly renderer: GlRenderer;
   private readonly uniformPerMaterial: Map<string, GlBinder<GlMaterial>>;
   private readonly uniformPerMesh: Map<string, GlBinder<GlMeshState>>;
   private readonly uniformPerTarget: Map<string, GlBinder<TState>>;
@@ -760,11 +792,12 @@ class GlShader<TState> {
   private textureIndex: number;
 
   public constructor(
-    gl: GlContext,
+    renderer: GlRenderer,
     vsSource: string,
     fsSource: string,
     directives: GlDirective[] = []
   ) {
+    const gl = renderer.context;
     const program = gl.createProgram();
 
     if (program === null) {
@@ -799,38 +832,16 @@ class GlShader<TState> {
     }
 
     this.attributePerPolygon = new Map();
-    this.defaultUniformValue = {
-      blackTexture: textureCreate(
-        gl,
-        undefined,
-        GlTextureType.Quad,
-        1,
-        1,
-        GlTextureFormat.RGBA8,
-        defaultFilter,
-        new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
-      ),
-      whiteTexture: textureCreate(
-        gl,
-        undefined,
-        GlTextureType.Quad,
-        1,
-        1,
-        GlTextureFormat.RGBA8,
-        defaultFilter,
-        new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
-      ),
-    };
-    this.gl = gl;
+    this.program = program;
+    this.renderer = renderer;
     this.textureIndex = 0;
     this.uniformPerMaterial = new Map();
     this.uniformPerMesh = new Map();
     this.uniformPerTarget = new Map();
-    this.program = program;
   }
 
   public activate() {
-    this.gl.useProgram(this.program);
+    this.renderer.context.useProgram(this.program);
   }
 
   /*
@@ -906,7 +917,7 @@ class GlShader<TState> {
       throw new Error(`cannot set attribute "${name}" twice`);
     }
 
-    const gl = this.gl;
+    const gl = this.renderer.context;
     const location = gl.getAttribLocation(this.program, name);
 
     if (location === -1) {
@@ -938,9 +949,9 @@ class GlShader<TState> {
     }
 
     const { allocateTexture, createValue, readValue, setUniform } = accessor;
-    const gl = this.gl;
+    const gl = this.renderer.context;
     const currentValue = createValue(gl);
-    const defaultValue = this.defaultUniformValue;
+    const defaultValue = this.renderer.default;
     const textureIndex = this.textureIndex;
 
     if (allocateTexture) {
@@ -1273,14 +1284,13 @@ class GlTarget {
     framebufferTarget: GlAttachementTarget
   ) {
     const gl = this.gl;
-    const cubeTextureBase = gl.TEXTURE_CUBE_MAP_POSITIVE_X;
 
     // Generate texture targets
     let textureTargets: number[];
 
     switch (type) {
       case GlTextureType.Cube:
-        textureTargets = range(6, (i) => cubeTextureBase + i);
+        textureTargets = range(6, (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i);
 
         break;
 
@@ -1502,7 +1512,7 @@ const uniform = {
 };
 
 export {
-  type GlAttribute as GlAttribute,
+  type GlAttribute,
   type GlDirectionalLight,
   type GlDirective,
   type GlMaterial,
@@ -1512,6 +1522,7 @@ export {
   type GlPipeline,
   type GlPointLight,
   type GlPolygon,
+  type GlRenderer,
   type GlScene,
   type GlSubject,
   type GlTransform,
@@ -1519,6 +1530,7 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
+  createRenderer,
   deleteLibrary,
   deleteModel,
   loadLibrary,

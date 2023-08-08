@@ -69,8 +69,12 @@ const application: Application<WebGLScreen, SceneState> = {
   async prepare(screen) {
     const tweak = configure(configuration);
 
-    const gl = screen.context;
-    const shader = new webgl.GlShader<ShaderState>(gl, vsSource, fsSource);
+    const renderer = webgl.createRenderer(screen.context);
+    const shader = new webgl.GlShader<ShaderState>(
+      renderer,
+      vsSource,
+      fsSource
+    );
 
     shader.setAttributePerPolygon("colors", (geometry) => geometry.colors);
     shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
@@ -101,10 +105,10 @@ const application: Application<WebGLScreen, SceneState> = {
 
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      gl: gl,
+      gl: renderer.context,
       input: new Input(screen.canvas),
       model: webgl.loadModel(
-        gl,
+        renderer,
         await loadModelFromJson("model/cube/mesh.json")
       ),
       painter: new painter.SingularPainter(shader),
