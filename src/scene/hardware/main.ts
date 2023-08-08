@@ -72,9 +72,9 @@ const application: Application<WebGLScreen, SceneState> = {
     const gl = screen.context;
     const shader = new webgl.GlShader<ShaderState>(gl, vsSource, fsSource);
 
-    shader.setupAttributePerGeometry("colors", (geometry) => geometry.colors);
-    shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
-    shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
+    shader.setAttributePerPolygon("colors", (geometry) => geometry.colors);
+    shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
+    shader.setAttributePerPolygon("points", (geometry) => geometry.points);
 
     shader.setUniformPerMaterial(
       "albedoFactor",

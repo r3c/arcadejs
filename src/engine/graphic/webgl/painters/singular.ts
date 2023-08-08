@@ -17,17 +17,10 @@ class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
     const shader = this.shader;
 
     shader.activate();
-
-    const textureIndex = shader.bindTarget(state);
+    shader.bindTarget(state);
 
     for (const subject of subjects) {
-      this.draw(
-        target,
-        subject.model.meshes,
-        subject.matrix,
-        view,
-        textureIndex
-      );
+      this.draw(target, subject.model.meshes, subject.matrix, view);
     }
   }
 
@@ -35,8 +28,7 @@ class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
     target: webgl.GlTarget,
     nodes: Iterable<webgl.GlMesh>,
     parentTransform: Matrix4,
-    viewMatrix: Matrix4,
-    textureIndex: number
+    viewMatrix: Matrix4
   ): void {
     const modelMatrix = Matrix4.fromIdentity();
     const normalMatrix = Matrix3.fromIdentity();
@@ -49,14 +41,14 @@ class SingularPainter<TContext> implements webgl.GlPainter<TContext> {
       normalMatrix.multiply(modelMatrix);
       normalMatrix.invert();
 
-      this.draw(target, node.children, modelMatrix, viewMatrix, textureIndex);
+      this.draw(target, node.children, modelMatrix, viewMatrix);
 
       for (const primitive of node.primitives) {
         const geometry = primitive.polygon;
         const material = primitive.material;
 
         shader.bindGeometry(geometry);
-        shader.bindMaterial(material, textureIndex);
+        shader.bindMaterial(material);
         shader.bindMesh({ normalMatrix, modelMatrix });
 
         target.draw(

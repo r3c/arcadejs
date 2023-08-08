@@ -401,10 +401,10 @@ const loadLight = (
   );
 
   // Bind geometry attributes
-  shader.setupAttributePerGeometry("coords", ({ coords }) => coords);
-  shader.setupAttributePerGeometry("normals", ({ normals }) => normals);
-  shader.setupAttributePerGeometry("points", ({ points }) => points);
-  shader.setupAttributePerGeometry("tangents", ({ tangents }) => tangents);
+  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
+  shader.setAttributePerPolygon("normals", ({ normals }) => normals);
+  shader.setAttributePerPolygon("points", ({ points }) => points);
+  shader.setAttributePerPolygon("tangents", ({ tangents }) => tangents);
 
   // Bind matrix uniforms
   shader.setUniformPerMesh(
@@ -641,7 +641,7 @@ const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
     shadowDirectionalFragmentShader
   );
 
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
   shader.setUniformPerMesh(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)

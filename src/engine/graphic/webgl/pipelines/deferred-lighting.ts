@@ -349,10 +349,10 @@ const loadGeometry = (
     []
   );
 
-  shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
-  shader.setupAttributePerGeometry("normals", (geometry) => geometry.normals);
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
-  shader.setupAttributePerGeometry("tangents", (geometry) => geometry.tangents);
+  shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
+  shader.setAttributePerPolygon("normals", (geometry) => geometry.normals);
+  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("tangents", (geometry) => geometry.tangents);
 
   shader.setUniformPerMesh(
     "modelMatrix",
@@ -422,7 +422,7 @@ const loadLight = <TState>(
     directives
   );
 
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
   shader.setUniformPerMesh(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
@@ -540,10 +540,10 @@ const loadMaterial = (
     directives
   );
 
-  shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
-  shader.setupAttributePerGeometry("normals", (geometry) => geometry.normals);
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
-  shader.setupAttributePerGeometry("tangents", (geometry) => geometry.tangents);
+  shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
+  shader.setAttributePerPolygon("normals", (geometry) => geometry.normals);
+  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("tangents", (geometry) => geometry.tangents);
 
   shader.setUniformPerMesh(
     "modelMatrix",

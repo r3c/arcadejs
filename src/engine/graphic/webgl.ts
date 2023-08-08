@@ -14,54 +14,56 @@ import {
 } from "./model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 
-interface GlAttachment {
+type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
   textures: GlAttachmentTexture[];
-}
+};
 
-interface GlAttachmentRenderbuffer {
+type GlAttachmentRenderbuffer = {
   format: GlTextureFormat;
   handle: WebGLRenderbuffer;
-}
+};
 
 enum GlAttachementTarget {
   Color,
   Depth,
 }
 
-interface GlAttachmentTexture {
+type GlAttachmentTexture = {
   format: GlTextureFormat;
   handle: GlTexture;
-}
+};
 
-interface GlAttribute {
+type GlAttribute = {
   buffer: WebGLBuffer;
   size: number;
   stride: number;
   type: number;
-}
+};
 
-type AttributeBinding<TSource> = (source: TSource) => void;
+type GlAttributeAccessor<TState> = (state: TState) => GlAttribute | undefined;
+
+type GlBinder<TState> = (state: TState) => void;
 
 type GlContext = WebGL2RenderingContext;
 
-interface GlDirectionalLight {
+type GlDirectionalLight = {
   color: Vector3;
   direction: Vector3;
   shadow: boolean;
-}
+};
 
-interface GlDirective {
+type GlDirective = {
   name: string;
   value: number;
-}
+};
 
-interface GlLibrary {
+type GlLibrary = {
   defaultMaterial: GlMaterial;
   materials: Map<Material, GlMaterial>;
-}
+};
 
-interface GlMaterial {
+type GlMaterial = {
   albedoFactor: number[];
   albedoMap: GlTexture | undefined;
   emissiveFactor: number[];
@@ -79,58 +81,58 @@ interface GlMaterial {
   roughnessMap: GlTexture | undefined;
   roughnessStrength: number;
   shininess: number;
-}
+};
 
 type GlMaterialExtractor = (material: GlMaterial) => GlTexture | undefined;
 
-interface GlModel {
+type GlModel = {
   library: GlLibrary | undefined;
   meshes: GlMesh[];
-}
+};
 
-interface GlModelConfiguration {
+type GlModelConfiguration = {
   isDynamic?: boolean;
   library?: GlLibrary;
-}
+};
 
-interface GlMesh {
+type GlMesh = {
   children: GlMesh[];
   primitives: GlPrimitive[];
   transform: Matrix4;
-}
+};
 
-interface GlMeshState {
+type GlMeshState = {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
-}
+};
 
-interface GlNativeFormat {
+type GlNativeFormat = {
   format: number;
   internal: number;
   type: number;
-}
+};
 
-interface GlPainter<T> {
+type GlPainter<T> = {
   paint(
     target: GlTarget,
     subjects: Iterable<GlSubject>,
     view: Matrix4,
     state: T
   ): void;
-}
+};
 
-interface GlPipeline {
+type GlPipeline = {
   process(target: GlTarget, transform: GlTransform, scene: GlScene): void;
   resize(width: number, height: number): void;
-}
+};
 
-interface GlPointLight {
+type GlPointLight = {
   color: Vector3;
   position: Vector3;
   radius: number;
-}
+};
 
-interface GlPolygon {
+type GlPolygon = {
   colors: GlAttribute | undefined;
   coords: GlAttribute | undefined;
   indexCount: number;
@@ -139,16 +141,16 @@ interface GlPolygon {
   normals: GlAttribute | undefined;
   points: GlAttribute;
   tangents: GlAttribute | undefined;
-}
+};
 
 type GlPolygonExtractor = (polygon: GlPolygon) => GlAttribute | undefined;
 
-interface GlPrimitive {
+type GlPrimitive = {
   material: GlMaterial;
   polygon: GlPolygon;
-}
+};
 
-interface GlScene {
+type GlScene = {
   ambientLightColor?: Vector3;
   directionalLights?: GlDirectionalLight[];
   environmentLight?: {
@@ -158,17 +160,15 @@ interface GlScene {
   };
   pointLights?: GlPointLight[];
   subjects: GlSubject[];
-}
+};
 
-interface GlSubject {
+type GlSubject = {
   matrix: Matrix4;
   model: GlModel;
   noShadow?: boolean;
-}
+};
 
 type GlTexture = WebGLTexture;
-
-type GlTextureBinding<T> = (source: T, textureIndex: number) => number;
 
 const enum GlTextureFormat {
   Depth16,
@@ -180,10 +180,10 @@ const enum GlTextureType {
   Cube,
 }
 
-interface GlTransform {
+type GlTransform = {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
-}
+};
 
 type GlUniformAccessor<TState, TValue> = {
   allocateTexture: boolean;
@@ -205,8 +205,6 @@ type GlUniformDefault = {
   blackTexture: GlTexture;
   whiteTexture: GlTexture;
 };
-
-type GlUniform<TState> = (state: TState) => void;
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
@@ -512,26 +510,6 @@ const textureGetWrap = (gl: GlContext, wrap: Wrap) => {
   }
 };
 
-const textureUniform = <TState>(
-  primaryGetter: (state: TState) => GlTexture | undefined,
-  defaultGetter: (defaultValue: GlUniformDefault) => GlTexture,
-  target:
-    | WebGL2RenderingContext["TEXTURE_2D"]
-    | WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
-): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
-  allocateTexture: true,
-  createValue: () => ({ target, texture: {} }),
-  readValue: (state, { target }, defaultValue) => ({
-    target,
-    texture: primaryGetter(state) ?? defaultGetter(defaultValue),
-  }),
-  setUniform: (gl, location, { target, texture }, textureIndex) => {
-    gl.activeTexture(gl.TEXTURE0 + textureIndex);
-    gl.bindTexture(target, texture);
-    gl.uniform1i(location, textureIndex);
-  },
-});
-
 const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
   const materials = new Map<Material, GlMaterial>();
   const textures = new Map<Texture, GlTexture>();
@@ -750,16 +728,34 @@ const loadTextureQuad = (
   );
 };
 
+const textureUniform = <TState>(
+  primaryGetter: (state: TState) => GlTexture | undefined,
+  defaultGetter: (defaultValue: GlUniformDefault) => GlTexture,
+  target:
+    | WebGL2RenderingContext["TEXTURE_2D"]
+    | WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
+): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
+  allocateTexture: true,
+  createValue: () => ({ target, texture: {} }),
+  readValue: (state, { target }, defaultValue) => ({
+    target,
+    texture: primaryGetter(state) ?? defaultGetter(defaultValue),
+  }),
+  setUniform: (gl, location, { target, texture }, textureIndex) => {
+    gl.activeTexture(gl.TEXTURE0 + textureIndex);
+    gl.bindTexture(target, texture);
+    gl.uniform1i(location, textureIndex);
+  },
+});
+
 class GlShader<TState> {
-  private readonly attributePerGeometryBindings: AttributeBinding<GlPolygon>[];
+  private readonly attributePerPolygon: Map<string, GlBinder<GlPolygon>>;
   private readonly defaultUniformValue: GlUniformDefault;
   private readonly gl: GlContext;
   private readonly program: WebGLProgram;
-  private readonly texturePerMaterialBindings: GlTextureBinding<GlMaterial>[];
-  private readonly texturePerTargetBindings: GlTextureBinding<TState>[];
-  private readonly uniformPerMaterial: Map<string, GlUniform<GlMaterial>>;
-  private readonly uniformPerMesh: Map<string, GlUniform<GlMeshState>>;
-  private readonly uniformPerTarget: Map<string, GlUniform<TState>>;
+  private readonly uniformPerMaterial: Map<string, GlBinder<GlMaterial>>;
+  private readonly uniformPerMesh: Map<string, GlBinder<GlMeshState>>;
+  private readonly uniformPerTarget: Map<string, GlBinder<TState>>;
 
   private textureIndex: number;
 
@@ -802,7 +798,7 @@ class GlShader<TState> {
       throw Error(`could not link program: ${error}`);
     }
 
-    this.attributePerGeometryBindings = [];
+    this.attributePerPolygon = new Map();
     this.defaultUniformValue = {
       blackTexture: textureCreate(
         gl,
@@ -830,8 +826,6 @@ class GlShader<TState> {
     this.uniformPerMaterial = new Map();
     this.uniformPerMesh = new Map();
     this.uniformPerTarget = new Map();
-    this.texturePerMaterialBindings = [];
-    this.texturePerTargetBindings = [];
     this.program = program;
   }
 
@@ -843,7 +837,7 @@ class GlShader<TState> {
    ** Assign per-geometry attributes.
    */
   public bindGeometry(geometry: GlPolygon) {
-    for (const binding of this.attributePerGeometryBindings) {
+    for (const binding of this.attributePerPolygon.values()) {
       binding(geometry);
     }
   }
@@ -851,16 +845,10 @@ class GlShader<TState> {
   /*
    ** Assign per-material uniforms.
    */
-  public bindMaterial(material: GlMaterial, textureIndex: number) {
+  public bindMaterial(material: GlMaterial) {
     for (const binding of this.uniformPerMaterial.values()) {
       binding(material);
     }
-
-    for (const binding of this.texturePerMaterialBindings) {
-      textureIndex += binding(material, textureIndex);
-    }
-
-    return textureIndex;
   }
 
   /*
@@ -876,52 +864,16 @@ class GlShader<TState> {
    ** Assign per-target uniforms.
    */
   public bindTarget(state: TState) {
-    let textureIndex = 0;
-
     for (const binding of this.uniformPerTarget.values()) {
       binding(state);
     }
-
-    for (const binding of this.texturePerTargetBindings) {
-      textureIndex += binding(state, textureIndex);
-    }
-
-    return textureIndex;
   }
 
-  public clearAttributePerGeometry(name: string) {
-    const gl = this.gl;
-    const location = this.findAttribute(name);
-
-    this.attributePerGeometryBindings.push(() => {
-      gl.disableVertexAttribArray(location);
-    });
-  }
-
-  public setupAttributePerGeometry(
+  public setAttributePerPolygon(
     name: string,
     getter: (state: GlPolygon) => GlAttribute | undefined
   ) {
-    const gl = this.gl;
-    const location = this.findAttribute(name);
-
-    this.attributePerGeometryBindings.push((geometry: GlPolygon) => {
-      const attribute = getter(geometry);
-
-      if (attribute === undefined)
-        throw Error(`undefined geometry attribute "${name}"`);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer);
-      gl.vertexAttribPointer(
-        location,
-        attribute.size,
-        attribute.type,
-        false,
-        attribute.stride,
-        0
-      );
-      gl.enableVertexAttribArray(location);
-    });
+    this.setAttribute(this.attributePerPolygon, name, getter);
   }
 
   public setUniformPerMaterial<TValue>(
@@ -945,8 +897,39 @@ class GlShader<TState> {
     this.setUniform(this.uniformPerTarget, name, accessor);
   }
 
+  private setAttribute<TState>(
+    target: Map<string, GlBinder<TState>>,
+    name: string,
+    accessor: GlAttributeAccessor<TState>
+  ) {
+    if (target.has(name)) {
+      throw new Error(`cannot set attribute "${name}" twice`);
+    }
+
+    const gl = this.gl;
+    const location = gl.getAttribLocation(this.program, name);
+
+    if (location === -1) {
+      throw Error(`cound not find location of attribute "${name}"`);
+    }
+
+    target.set(name, (state: TState) => {
+      const attribute = accessor(state);
+
+      if (attribute === undefined) {
+        throw Error(`undefined geometry attribute "${name}"`);
+      }
+
+      const { buffer, size, stride, type } = attribute;
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.vertexAttribPointer(location, size, type, false, stride, 0);
+      gl.enableVertexAttribArray(location);
+    });
+  }
+
   private setUniform<TState, TValue>(
-    target: Map<string, GlUniform<TState>>,
+    target: Map<string, GlBinder<TState>>,
     name: string,
     accessor: GlUniformAccessor<TState, TValue>
   ): void {
@@ -975,16 +958,6 @@ class GlShader<TState> {
 
       setUniform(gl, location, uniform, textureIndex);
     });
-  }
-
-  private findAttribute(name: string) {
-    const location = this.gl.getAttribLocation(this.program, name);
-
-    if (location === -1) {
-      throw Error(`cound not find location of attribute "${name}"`);
-    }
-
-    return location;
   }
 
   private static compile(gl: GlContext, shaderType: number, source: string) {
@@ -1529,7 +1502,7 @@ const uniform = {
 };
 
 export {
-  type GlAttribute,
+  type GlAttribute as GlAttribute,
   type GlDirectionalLight,
   type GlDirective,
   type GlMaterial,

@@ -28,7 +28,7 @@ interface State {
 const load = (gl: WebGL2RenderingContext) => {
   const shader = new webgl.GlShader<State>(gl, vertexShader, fragmentShader);
 
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
 
   shader.setUniformPerMesh(
     "modelMatrix",

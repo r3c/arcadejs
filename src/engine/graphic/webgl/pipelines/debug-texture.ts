@@ -152,8 +152,8 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
     directives
   );
 
-  shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
+  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
 
   shader.setUniformPerTarget(
     "source",
