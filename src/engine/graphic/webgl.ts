@@ -264,170 +264,6 @@ const bufferGetType = (gl: GlContext, array: TypedArray) => {
   throw Error(`unsupported array type for indices`);
 };
 
-const booleanScalarUniform = <TState>(
-  getter: (state: TState) => boolean
-): GlUniformAccessor<TState, number> => ({
-  allocateTexture: false,
-  createValue: () => 0,
-  readValue: (state) => (getter(state) ? 1 : 0),
-  setUniform: (g, l, v) => g.uniform1i(l, v),
-});
-
-const numberArray4Uniform = <TState>(
-  getter: (state: TState) => number[]
-): GlUniformAccessor<TState, number[]> => ({
-  allocateTexture: false,
-  createValue: () => [],
-  readValue: (state) => getter(state),
-  setUniform: (g, l, v) => g.uniform4fv(l, v),
-});
-
-const numberMatrix3Uniform = <TState>(
-  getter: (state: TState) => Matrix3
-): GlUniformAccessor<TState, Float32Array> => {
-  return {
-    allocateTexture: false,
-    createValue: () => new Float32Array(9),
-    readValue: (state, value) => {
-      const matrix = getter(state);
-
-      value[0] = matrix.v00;
-      value[1] = matrix.v01;
-      value[2] = matrix.v02;
-      value[3] = matrix.v10;
-      value[4] = matrix.v11;
-      value[5] = matrix.v12;
-      value[6] = matrix.v20;
-      value[7] = matrix.v21;
-      value[8] = matrix.v22;
-
-      return value;
-    },
-    setUniform: (g, l, v) => g.uniformMatrix3fv(l, false, v),
-  };
-};
-
-const numberMatrix4Uniform = <TState>(
-  getter: (state: TState) => Matrix4
-): GlUniformAccessor<TState, Float32Array> => ({
-  allocateTexture: false,
-  createValue: () => new Float32Array(16),
-  readValue: (state, value) => {
-    const matrix = getter(state);
-
-    value[0] = matrix.v00;
-    value[1] = matrix.v01;
-    value[2] = matrix.v02;
-    value[3] = matrix.v03;
-    value[4] = matrix.v10;
-    value[5] = matrix.v11;
-    value[6] = matrix.v12;
-    value[7] = matrix.v13;
-    value[8] = matrix.v20;
-    value[9] = matrix.v21;
-    value[10] = matrix.v22;
-    value[11] = matrix.v23;
-    value[12] = matrix.v30;
-    value[13] = matrix.v31;
-    value[14] = matrix.v32;
-    value[15] = matrix.v33;
-
-    return value;
-  },
-  setUniform: (g, l, v) => g.uniformMatrix4fv(l, false, v),
-});
-
-const numberScalarUniform = <TState>(
-  getter: (state: TState) => number
-): GlUniformAccessor<TState, number> => ({
-  allocateTexture: false,
-  createValue: () => 0,
-  readValue: (state) => getter(state),
-  setUniform: (g, l, v) => g.uniform1f(l, v),
-});
-
-const numberVector2Uniform = <TState>(
-  getter: (state: TState) => Vector2
-): GlUniformAccessor<TState, Float32Array> => ({
-  allocateTexture: false,
-  createValue: () => new Float32Array(2),
-  readValue: (state, value) => {
-    const vector = getter(state);
-
-    value[0] = vector.x;
-    value[1] = vector.y;
-
-    return value;
-  },
-  setUniform: (g, l, v) => g.uniform2fv(l, v),
-});
-
-const numberVector3Uniform = <TState>(
-  getter: (state: TState) => Vector3
-): GlUniformAccessor<TState, Float32Array> => ({
-  allocateTexture: false,
-  createValue: () => new Float32Array(3),
-  readValue: (state, value) => {
-    const vector = getter(state);
-
-    value[0] = vector.x;
-    value[1] = vector.y;
-    value[2] = vector.z;
-
-    return value;
-  },
-  setUniform: (g, l, v) => g.uniform3fv(l, v),
-});
-
-const textureUniform = <TState>(
-  primaryGetter: (state: TState) => GlTexture | undefined,
-  defaultGetter: (defaultValue: GlUniformDefault) => GlTexture,
-  target:
-    | WebGL2RenderingContext["TEXTURE_2D"]
-    | WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
-): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
-  allocateTexture: true,
-  createValue: () => ({ target, texture: {} }),
-  readValue: (state, { target }, defaultValue) => ({
-    target,
-    texture: primaryGetter(state) ?? defaultGetter(defaultValue),
-  }),
-  setUniform: (gl, location, { target, texture }, textureIndex) => {
-    gl.activeTexture(gl.TEXTURE0 + textureIndex);
-    gl.bindTexture(target, texture);
-    gl.uniform1i(location, textureIndex);
-  },
-});
-
-const cubeTextureUniform = <TState>(
-  getter: (state: TState) => GlTexture | undefined
-) =>
-  textureUniform(
-    getter,
-    () => {
-      throw new Error("undefined cube texture");
-    },
-    WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
-  );
-
-const blackQuadTextureUniform = <TState>(
-  getter: (state: TState) => GlTexture | undefined
-) =>
-  textureUniform(
-    getter,
-    ({ blackTexture }) => blackTexture,
-    WebGL2RenderingContext["TEXTURE_2D"]
-  );
-
-const whiteQuadTextureUniform = <TState>(
-  getter: (state: TState) => GlTexture | undefined
-) =>
-  textureUniform(
-    getter,
-    ({ whiteTexture }) => whiteTexture,
-    WebGL2RenderingContext["TEXTURE_2D"]
-  );
-
 const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
   for (const material of library.materials.values()) {
     deleteMaterial(gl, material);
@@ -485,9 +321,6 @@ const formatGetNative = (
 ): GlNativeFormat => {
   switch (format) {
     case GlTextureFormat.Depth16:
-      if (gl.VERSION < 2 && !gl.getExtension("WEBGL_depth_texture"))
-        throw Error("depth texture WebGL extension is not available");
-
       return {
         format: gl.DEPTH_COMPONENT,
         internal: gl.DEPTH_COMPONENT16,
@@ -678,6 +511,26 @@ const textureGetWrap = (gl: GlContext, wrap: Wrap) => {
       throw Error(`unknown texture wrap mode ${wrap}`);
   }
 };
+
+const textureUniform = <TState>(
+  primaryGetter: (state: TState) => GlTexture | undefined,
+  defaultGetter: (defaultValue: GlUniformDefault) => GlTexture,
+  target:
+    | WebGL2RenderingContext["TEXTURE_2D"]
+    | WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
+): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
+  allocateTexture: true,
+  createValue: () => ({ target, texture: {} }),
+  readValue: (state, { target }, defaultValue) => ({
+    target,
+    texture: primaryGetter(state) ?? defaultGetter(defaultValue),
+  }),
+  setUniform: (gl, location, { target, texture }, textureIndex) => {
+    gl.activeTexture(gl.TEXTURE0 + textureIndex);
+    gl.bindTexture(target, texture);
+    gl.uniform1i(location, textureIndex);
+  },
+});
 
 const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
   const materials = new Map<Material, GlMaterial>();
@@ -1531,6 +1384,150 @@ class GlTarget {
   }
 }
 
+const uniform = {
+  blackQuadTexture: <TState>(
+    getter: (state: TState) => GlTexture | undefined
+  ) =>
+    textureUniform(
+      getter,
+      ({ blackTexture }) => blackTexture,
+      WebGL2RenderingContext["TEXTURE_2D"]
+    ),
+
+  booleanScalar: <TState>(
+    getter: (state: TState) => boolean
+  ): GlUniformAccessor<TState, number> => ({
+    allocateTexture: false,
+    createValue: () => 0,
+    readValue: (state) => (getter(state) ? 1 : 0),
+    setUniform: (g, l, v) => g.uniform1i(l, v),
+  }),
+
+  cubeTexture: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+    textureUniform(
+      getter,
+      () => {
+        throw new Error("undefined cube texture");
+      },
+      WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
+    ),
+
+  numberArray4: <TState>(
+    getter: (state: TState) => number[]
+  ): GlUniformAccessor<TState, number[]> => ({
+    allocateTexture: false,
+    createValue: () => [],
+    readValue: (state) => getter(state),
+    setUniform: (g, l, v) => g.uniform4fv(l, v),
+  }),
+
+  numberMatrix3: <TState>(
+    getter: (state: TState) => Matrix3
+  ): GlUniformAccessor<TState, Float32Array> => {
+    return {
+      allocateTexture: false,
+      createValue: () => new Float32Array(9),
+      readValue: (state, value) => {
+        const matrix = getter(state);
+
+        value[0] = matrix.v00;
+        value[1] = matrix.v01;
+        value[2] = matrix.v02;
+        value[3] = matrix.v10;
+        value[4] = matrix.v11;
+        value[5] = matrix.v12;
+        value[6] = matrix.v20;
+        value[7] = matrix.v21;
+        value[8] = matrix.v22;
+
+        return value;
+      },
+      setUniform: (g, l, v) => g.uniformMatrix3fv(l, false, v),
+    };
+  },
+
+  numberMatrix4: <TState>(
+    getter: (state: TState) => Matrix4
+  ): GlUniformAccessor<TState, Float32Array> => ({
+    allocateTexture: false,
+    createValue: () => new Float32Array(16),
+    readValue: (state, value) => {
+      const matrix = getter(state);
+
+      value[0] = matrix.v00;
+      value[1] = matrix.v01;
+      value[2] = matrix.v02;
+      value[3] = matrix.v03;
+      value[4] = matrix.v10;
+      value[5] = matrix.v11;
+      value[6] = matrix.v12;
+      value[7] = matrix.v13;
+      value[8] = matrix.v20;
+      value[9] = matrix.v21;
+      value[10] = matrix.v22;
+      value[11] = matrix.v23;
+      value[12] = matrix.v30;
+      value[13] = matrix.v31;
+      value[14] = matrix.v32;
+      value[15] = matrix.v33;
+
+      return value;
+    },
+    setUniform: (g, l, v) => g.uniformMatrix4fv(l, false, v),
+  }),
+
+  numberScalar: <TState>(
+    getter: (state: TState) => number
+  ): GlUniformAccessor<TState, number> => ({
+    allocateTexture: false,
+    createValue: () => 0,
+    readValue: (state) => getter(state),
+    setUniform: (g, l, v) => g.uniform1f(l, v),
+  }),
+
+  numberVector2: <TState>(
+    getter: (state: TState) => Vector2
+  ): GlUniformAccessor<TState, Float32Array> => ({
+    allocateTexture: false,
+    createValue: () => new Float32Array(2),
+    readValue: (state, value) => {
+      const vector = getter(state);
+
+      value[0] = vector.x;
+      value[1] = vector.y;
+
+      return value;
+    },
+    setUniform: (g, l, v) => g.uniform2fv(l, v),
+  }),
+
+  numberVector3: <TState>(
+    getter: (state: TState) => Vector3
+  ): GlUniformAccessor<TState, Float32Array> => ({
+    allocateTexture: false,
+    createValue: () => new Float32Array(3),
+    readValue: (state, value) => {
+      const vector = getter(state);
+
+      value[0] = vector.x;
+      value[1] = vector.y;
+      value[2] = vector.z;
+
+      return value;
+    },
+    setUniform: (g, l, v) => g.uniform3fv(l, v),
+  }),
+
+  whiteQuadTexture: <TState>(
+    getter: (state: TState) => GlTexture | undefined
+  ) =>
+    textureUniform(
+      getter,
+      ({ whiteTexture }) => whiteTexture,
+      WebGL2RenderingContext["TEXTURE_2D"]
+    ),
+};
+
 export {
   type GlAttribute,
   type GlDirectionalLight,
@@ -1549,20 +1546,11 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  blackQuadTextureUniform,
-  booleanScalarUniform,
-  cubeTextureUniform,
   deleteLibrary,
   deleteModel,
   loadLibrary,
   loadModel,
   loadTextureCube,
   loadTextureQuad,
-  numberArray4Uniform,
-  numberMatrix3Uniform,
-  numberMatrix4Uniform,
-  numberScalarUniform,
-  numberVector2Uniform,
-  numberVector3Uniform,
-  whiteQuadTextureUniform,
+  uniform,
 };

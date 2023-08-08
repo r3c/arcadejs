@@ -78,25 +78,25 @@ const application: Application<WebGLScreen, SceneState> = {
 
     shader.setUniformPerMaterial(
       "albedoFactor",
-      webgl.numberArray4Uniform(({ albedoFactor }) => albedoFactor)
+      webgl.uniform.numberArray4(({ albedoFactor }) => albedoFactor)
     );
     shader.setUniformPerMaterial(
       "albedoMap",
-      webgl.whiteQuadTextureUniform(({ albedoMap }) =>
+      webgl.uniform.whiteQuadTexture(({ albedoMap }) =>
         tweak.useTexture ? albedoMap : undefined
       )
     );
     shader.setUniformPerMesh(
       "modelMatrix",
-      webgl.numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+      webgl.uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
     );
     shader.setUniformPerTarget(
       "projectionMatrix",
-      webgl.numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+      webgl.uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
     );
     shader.setUniformPerTarget(
       "viewMatrix",
-      webgl.numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+      webgl.uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
     );
 
     return {

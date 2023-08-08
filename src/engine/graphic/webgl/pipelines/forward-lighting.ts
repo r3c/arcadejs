@@ -27,15 +27,7 @@ import {
   GlTextureFormat,
   GlTextureType,
   GlTransform,
-  numberMatrix4Uniform,
-  numberMatrix3Uniform,
-  whiteQuadTextureUniform,
-  numberArray4Uniform,
-  blackQuadTextureUniform,
-  numberScalarUniform,
-  cubeTextureUniform,
-  numberVector3Uniform,
-  booleanScalarUniform,
+  uniform,
 } from "../../webgl";
 
 type ForwardLightingConfiguration = {
@@ -417,25 +409,25 @@ const loadLight = (
   // Bind matrix uniforms
   shader.setUniformPerMesh(
     "modelMatrix",
-    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
   shader.setUniformPerMesh(
     "normalMatrix",
-    numberMatrix3Uniform(({ normalMatrix }) => normalMatrix)
+    uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
   shader.setUniformPerTarget(
     "projectionMatrix",
-    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   if (!lightConfiguration.noShadow) {
     shader.setUniformPerTarget(
       "shadowProjectionMatrix",
-      numberMatrix4Uniform(
+      uniform.numberMatrix4(
         ({ shadowProjectionMatrix }) => shadowProjectionMatrix
       )
     );
@@ -445,12 +437,12 @@ const loadLight = (
   shader.setUniformPerMaterial(
     "albedoMap",
     materialConfiguration.noAlbedoMap !== true
-      ? whiteQuadTextureUniform(({ albedoMap }) => albedoMap)
-      : whiteQuadTextureUniform(() => undefined)
+      ? uniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
+      : uniform.whiteQuadTexture(() => undefined)
   );
   shader.setUniformPerMaterial(
     "albedoFactor",
-    numberArray4Uniform(({ albedoFactor }) => albedoFactor)
+    uniform.numberArray4(({ albedoFactor }) => albedoFactor)
   );
 
   switch (lightConfiguration.model) {
@@ -458,16 +450,16 @@ const loadLight = (
       shader.setUniformPerMaterial(
         "glossinessMap",
         materialConfiguration.noGlossMap !== true
-          ? blackQuadTextureUniform(({ glossMap }) => glossMap)
-          : blackQuadTextureUniform(() => undefined)
+          ? uniform.blackQuadTexture(({ glossMap }) => glossMap)
+          : uniform.blackQuadTexture(() => undefined)
       );
       shader.setUniformPerMaterial(
         "glossinessStrength",
-        numberScalarUniform(({ glossFactor }) => glossFactor[0])
+        uniform.numberScalar(({ glossFactor }) => glossFactor[0])
       );
       shader.setUniformPerMaterial(
         "shininess",
-        numberScalarUniform(({ shininess }) => shininess)
+        uniform.numberScalar(({ shininess }) => shininess)
       );
 
       break;
@@ -476,19 +468,19 @@ const loadLight = (
       if (!lightConfiguration.modelPhysicalNoIBL) {
         shader.setUniformPerTarget(
           "environmentBrdfMap",
-          blackQuadTextureUniform(
+          uniform.blackQuadTexture(
             ({ environmentLight }) => environmentLight?.brdf
           )
         );
         shader.setUniformPerTarget(
           "environmentDiffuseMap",
-          cubeTextureUniform(
+          uniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.diffuse
           )
         );
         shader.setUniformPerTarget(
           "environmentSpecularMap",
-          cubeTextureUniform(
+          uniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.specular
           )
         );
@@ -496,22 +488,22 @@ const loadLight = (
       shader.setUniformPerMaterial(
         "metalnessMap",
         materialConfiguration.noMetalnessMap !== true
-          ? blackQuadTextureUniform(({ metalnessMap }) => metalnessMap)
-          : blackQuadTextureUniform(() => undefined)
+          ? uniform.blackQuadTexture(({ metalnessMap }) => metalnessMap)
+          : uniform.blackQuadTexture(() => undefined)
       );
       shader.setUniformPerMaterial(
         "roughnessMap",
         materialConfiguration.noRoughnessMap !== true
-          ? blackQuadTextureUniform(({ roughnessMap }) => roughnessMap)
-          : blackQuadTextureUniform(() => undefined)
+          ? uniform.blackQuadTexture(({ roughnessMap }) => roughnessMap)
+          : uniform.blackQuadTexture(() => undefined)
       );
       shader.setUniformPerMaterial(
         "metalnessStrength",
-        numberScalarUniform(({ metalnessStrength }) => metalnessStrength)
+        uniform.numberScalar(({ metalnessStrength }) => metalnessStrength)
       );
       shader.setUniformPerMaterial(
         "roughnessStrength",
-        numberScalarUniform(({ roughnessStrength }) => roughnessStrength)
+        uniform.numberScalar(({ roughnessStrength }) => roughnessStrength)
       );
 
       break;
@@ -520,42 +512,42 @@ const loadLight = (
   shader.setUniformPerMaterial(
     "emissiveMap",
     materialConfiguration.noEmissiveMap !== true
-      ? blackQuadTextureUniform(({ emissiveMap }) => emissiveMap)
-      : blackQuadTextureUniform(() => undefined)
+      ? uniform.blackQuadTexture(({ emissiveMap }) => emissiveMap)
+      : uniform.blackQuadTexture(() => undefined)
   );
   shader.setUniformPerMaterial(
     "emissiveFactor",
-    numberArray4Uniform(({ emissiveFactor }) => emissiveFactor)
+    uniform.numberArray4(({ emissiveFactor }) => emissiveFactor)
   );
   shader.setUniformPerMaterial(
     "heightMap",
     materialConfiguration.noHeightMap !== true
-      ? blackQuadTextureUniform(({ heightMap }) => heightMap)
-      : blackQuadTextureUniform(() => undefined)
+      ? uniform.blackQuadTexture(({ heightMap }) => heightMap)
+      : uniform.blackQuadTexture(() => undefined)
   );
   shader.setUniformPerMaterial(
     "heightParallaxBias",
-    numberScalarUniform(({ heightParallaxBias }) => heightParallaxBias)
+    uniform.numberScalar(({ heightParallaxBias }) => heightParallaxBias)
   );
   shader.setUniformPerMaterial(
     "heightParallaxScale",
-    numberScalarUniform(({ heightParallaxScale }) => heightParallaxScale)
+    uniform.numberScalar(({ heightParallaxScale }) => heightParallaxScale)
   );
   shader.setUniformPerMaterial(
     "normalMap",
     materialConfiguration.noNormalMap !== true
-      ? blackQuadTextureUniform(({ normalMap }) => normalMap)
-      : blackQuadTextureUniform(() => undefined)
+      ? uniform.blackQuadTexture(({ normalMap }) => normalMap)
+      : uniform.blackQuadTexture(() => undefined)
   );
   shader.setUniformPerMaterial(
     "occlusionMap",
     materialConfiguration.noOcclusionMap !== true
-      ? blackQuadTextureUniform(({ occlusionMap }) => occlusionMap)
-      : blackQuadTextureUniform(() => undefined)
+      ? uniform.blackQuadTexture(({ occlusionMap }) => occlusionMap)
+      : uniform.blackQuadTexture(() => undefined)
   );
   shader.setUniformPerMaterial(
     "occlusionStrength",
-    numberScalarUniform(({ occlusionStrength }) => occlusionStrength)
+    uniform.numberScalar(({ occlusionStrength }) => occlusionStrength)
   );
 
   // Bind light uniforms
@@ -565,7 +557,7 @@ const loadLight = (
 
   shader.setUniformPerTarget(
     "ambientLightColor",
-    numberVector3Uniform(({ ambientLightColor }) => ambientLightColor)
+    uniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
   );
 
   for (let i = 0; i < maxDirectionalLights; ++i) {
@@ -574,7 +566,7 @@ const loadLight = (
     if (!lightConfiguration.noShadow) {
       shader.setUniformPerTarget(
         `directionalLights[${index}].castShadow`,
-        booleanScalarUniform(
+        uniform.booleanScalar(
           (state) =>
             index < state.directionalLights.length &&
             state.directionalLights[index].shadow
@@ -582,7 +574,7 @@ const loadLight = (
       );
       shader.setUniformPerTarget(
         `directionalLights[${index}].shadowViewMatrix`,
-        numberMatrix4Uniform(({ directionalLights }) =>
+        uniform.numberMatrix4(({ directionalLights }) =>
           index < directionalLights.length
             ? directionalLights[index].shadowViewMatrix
             : Matrix4.fromIdentity()
@@ -590,7 +582,7 @@ const loadLight = (
       );
       shader.setUniformPerTarget(
         `directionalLightShadowMaps[${index}]`,
-        blackQuadTextureUniform(
+        uniform.blackQuadTexture(
           ({ directionalLights }) => directionalLights[index].shadowMap
         )
       );
@@ -598,7 +590,7 @@ const loadLight = (
 
     shader.setUniformPerTarget(
       `directionalLights[${i}].color`,
-      numberVector3Uniform(({ directionalLights }) =>
+      uniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].color
           : defaultColor
@@ -606,7 +598,7 @@ const loadLight = (
     );
     shader.setUniformPerTarget(
       `directionalLights[${i}].direction`,
-      numberVector3Uniform(({ directionalLights }) =>
+      uniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].direction
           : defaultDirection
@@ -619,13 +611,13 @@ const loadLight = (
 
     shader.setUniformPerTarget(
       `pointLights[${i}].color`,
-      numberVector3Uniform(({ pointLights }) =>
+      uniform.numberVector3(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].color : defaultColor
       )
     );
     shader.setUniformPerTarget(
       `pointLights[${i}].position`,
-      numberVector3Uniform(({ pointLights }) =>
+      uniform.numberVector3(({ pointLights }) =>
         index < pointLights.length
           ? pointLights[index].position
           : defaultPosition
@@ -633,7 +625,7 @@ const loadLight = (
     );
     shader.setUniformPerTarget(
       `pointLights[${i}].radius`,
-      numberScalarUniform(({ pointLights }) =>
+      uniform.numberScalar(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].radius : 0
       )
     );
@@ -652,15 +644,15 @@ const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
   shader.setUniformPerMesh(
     "modelMatrix",
-    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
   shader.setUniformPerTarget(
     "projectionMatrix",
-    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   return shader;

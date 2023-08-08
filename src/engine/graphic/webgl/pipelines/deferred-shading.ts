@@ -20,15 +20,8 @@ import {
   GlTextureFormat,
   GlTextureType,
   GlTransform,
-  blackQuadTextureUniform,
   loadModel,
-  numberArray4Uniform,
-  numberMatrix3Uniform,
-  numberMatrix4Uniform,
-  numberScalarUniform,
-  numberVector2Uniform,
-  numberVector3Uniform,
-  whiteQuadTextureUniform,
+  uniform,
 } from "../../webgl";
 
 const enum LightModel {
@@ -323,25 +316,25 @@ const loadAmbient = (
 
   shader.setUniformPerMesh(
     "modelMatrix",
-    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
 
   shader.setUniformPerTarget(
     "projectionMatrix",
-    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   shader.setUniformPerTarget(
     "albedoAndShininess",
-    blackQuadTextureUniform((state) => state.albedoAndShininessBuffer)
+    uniform.blackQuadTexture((state) => state.albedoAndShininessBuffer)
   );
   shader.setUniformPerTarget(
     "ambientLightColor",
-    numberVector3Uniform(({ ambientLightColor }) => ambientLightColor)
+    uniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
   );
 
   return shader;
@@ -366,60 +359,60 @@ const loadGeometry = (
 
   shader.setUniformPerMesh(
     "modelMatrix",
-    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
   shader.setUniformPerMesh(
     "normalMatrix",
-    numberMatrix3Uniform(({ normalMatrix }) => normalMatrix)
+    uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
   shader.setUniformPerTarget(
     "projectionMatrix",
-    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   shader.setUniformPerMaterial(
     "albedoFactor",
-    numberArray4Uniform(({ albedoFactor }) => albedoFactor)
+    uniform.numberArray4(({ albedoFactor }) => albedoFactor)
   );
   shader.setUniformPerMaterial(
     "albedoMap",
-    whiteQuadTextureUniform(({ albedoMap }) => albedoMap)
+    uniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
   );
 
   if (configuration.lightModel === LightModel.Phong) {
     shader.setUniformPerMaterial(
       "glossinessMap",
-      blackQuadTextureUniform(({ glossMap }) => glossMap)
+      uniform.blackQuadTexture(({ glossMap }) => glossMap)
     );
     shader.setUniformPerMaterial(
       "shininess",
-      numberScalarUniform(({ shininess }) => shininess)
+      uniform.numberScalar(({ shininess }) => shininess)
     );
   }
 
   if (configuration.useHeightMap) {
     shader.setUniformPerMaterial(
       "heightMap",
-      blackQuadTextureUniform(({ heightMap }) => heightMap)
+      uniform.blackQuadTexture(({ heightMap }) => heightMap)
     );
     shader.setUniformPerMaterial(
       "heightParallaxBias",
-      numberScalarUniform(({ heightParallaxBias }) => heightParallaxBias)
+      uniform.numberScalar(({ heightParallaxBias }) => heightParallaxBias)
     );
     shader.setUniformPerMaterial(
       "heightParallaxScale",
-      numberScalarUniform(({ heightParallaxScale }) => heightParallaxScale)
+      uniform.numberScalar(({ heightParallaxScale }) => heightParallaxScale)
     );
   }
 
   if (configuration.useNormalMap)
     shader.setUniformPerMaterial(
       "normalMap",
-      blackQuadTextureUniform(({ normalMap }) => normalMap)
+      uniform.blackQuadTexture(({ normalMap }) => normalMap)
     );
 
   return shader;
@@ -459,11 +452,11 @@ const loadLight = <TState>(
 
   shader.setUniformPerMesh(
     "modelMatrix",
-    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
   shader.setUniformPerTarget(
     "inverseProjectionMatrix",
-    numberMatrix4Uniform(({ projectionMatrix }) => {
+    uniform.numberMatrix4(({ projectionMatrix }) => {
       const inverseProjectionMatrix = Matrix4.fromObject(projectionMatrix);
 
       inverseProjectionMatrix.invert();
@@ -473,29 +466,29 @@ const loadLight = <TState>(
   );
   shader.setUniformPerTarget(
     "projectionMatrix",
-    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   shader.setUniformPerTarget(
     "viewportSize",
-    numberVector2Uniform(({ viewportSize }) => viewportSize)
+    uniform.numberVector2(({ viewportSize }) => viewportSize)
   );
 
   shader.setUniformPerTarget(
     "albedoAndShininess",
-    blackQuadTextureUniform((state) => state.albedoAndShininessBuffer)
+    uniform.blackQuadTexture((state) => state.albedoAndShininessBuffer)
   );
   shader.setUniformPerTarget(
     "depth",
-    blackQuadTextureUniform(({ depthBuffer }) => depthBuffer)
+    uniform.blackQuadTexture(({ depthBuffer }) => depthBuffer)
   );
   shader.setUniformPerTarget(
     "normalAndGlossiness",
-    blackQuadTextureUniform((state) => state.normalAndGlossinessBuffer)
+    uniform.blackQuadTexture((state) => state.normalAndGlossinessBuffer)
   );
 
   return shader;
@@ -513,11 +506,11 @@ const loadLightDirectional = (
 
   shader.setUniformPerTarget(
     "directionalLight.color",
-    numberVector3Uniform(({ light }) => light.color)
+    uniform.numberVector3(({ light }) => light.color)
   );
   shader.setUniformPerTarget(
     "directionalLight.direction",
-    numberVector3Uniform(({ light }) => light.direction)
+    uniform.numberVector3(({ light }) => light.direction)
   );
 
   return shader;
@@ -531,15 +524,15 @@ const loadLightPoint = (
 
   shader.setUniformPerTarget(
     "pointLight.color",
-    numberVector3Uniform(({ light }) => light.color)
+    uniform.numberVector3(({ light }) => light.color)
   );
   shader.setUniformPerTarget(
     "pointLight.position",
-    numberVector3Uniform(({ light }) => light.position)
+    uniform.numberVector3(({ light }) => light.position)
   );
   shader.setUniformPerTarget(
     "pointLight.radius",
-    numberScalarUniform(({ light }) => light.radius)
+    uniform.numberScalar(({ light }) => light.radius)
   );
 
   return shader;
