@@ -146,7 +146,7 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
     { name: "ZNEAR", value: configuration.zNear },
   ];
 
-  const shader = new GlShader<State>(
+  const shader = new GlShader<State, undefined>(
     renderer,
     vertexSource,
     fragmentSource,
@@ -156,7 +156,7 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
   shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
   shader.setAttributePerPolygon("points", (geometry) => geometry.points);
 
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "source",
     uniform.blackQuadTexture(({ source }) => source)
   );
@@ -169,8 +169,8 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
   return shader;
 };
 
-class Pipeline implements GlPipeline {
-  private readonly painter: GlPainter<State>;
+class Pipeline implements GlPipeline<State, undefined> {
+  private readonly painter: GlPainter<State, undefined>;
   private readonly quad: GlModel;
   private readonly renderer: GlRenderer;
   private readonly scale: number;
@@ -180,8 +180,11 @@ class Pipeline implements GlPipeline {
    ** given texture. It allows easy construction of "scene" parameter expected
    ** by "process" method easily.
    */
-  public static createScene(source: WebGLTexture): GlScene {
+  public static createScene(source: WebGLTexture): GlScene<State, undefined> {
     return {
+      state: {
+        source,
+      },
       subjects: [
         {
           matrix: Matrix4.fromIdentity(),
@@ -202,6 +205,7 @@ class Pipeline implements GlPipeline {
               },
             ],
           },
+          state: undefined,
         },
       ],
     };
@@ -214,7 +218,11 @@ class Pipeline implements GlPipeline {
     this.scale = configuration.scale ?? 0.4;
   }
 
-  public process(target: GlTarget, _transform: GlTransform, scene: GlScene) {
+  public process(
+    target: GlTarget,
+    _transform: GlTransform,
+    scene: GlScene<State, undefined>
+  ) {
     const gl = this.renderer.context;
 
     gl.disable(gl.BLEND);
@@ -230,6 +238,7 @@ class Pipeline implements GlPipeline {
           ["scale", { x: this.scale, y: this.scale, z: 0 }]
         ),
         model: this.quad,
+        state: undefined,
       },
     ];
 

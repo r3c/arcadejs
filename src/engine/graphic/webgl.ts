@@ -106,9 +106,10 @@ type GlMesh = {
   transform: Matrix4;
 };
 
-type GlMeshState = {
+type GlModelState<TModel> = {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
+  state: TModel;
 };
 
 type GlNativeFormat = {
@@ -117,17 +118,21 @@ type GlNativeFormat = {
   type: number;
 };
 
-type GlPainter<T> = {
+type GlPainter<TScene, TModel> = {
   paint(
     target: GlTarget,
-    subjects: Iterable<GlSubject>,
+    subjects: Iterable<GlSubject<TModel>>,
     viewMatrix: Matrix4,
-    state: T
+    state: TScene
   ): void;
 };
 
-type GlPipeline = {
-  process(target: GlTarget, transform: GlTransform, scene: GlScene): void;
+type GlPipeline<TScene, TModel> = {
+  process(
+    target: GlTarget,
+    transform: GlTransform,
+    scene: GlScene<TScene, TModel>
+  ): void;
   resize(width: number, height: number): void;
 };
 
@@ -160,22 +165,15 @@ type GlRenderer = {
   default: GlDefault;
 };
 
-type GlScene = {
-  ambientLightColor?: Vector3;
-  directionalLights?: GlDirectionalLight[];
-  environmentLight?: {
-    brdf: GlTexture;
-    diffuse: GlTexture;
-    specular: GlTexture;
-  };
-  pointLights?: GlPointLight[];
-  subjects: GlSubject[];
+type GlScene<TScene, TModel> = {
+  state: TScene;
+  subjects: Iterable<GlSubject<TModel>>;
 };
 
-type GlSubject = {
+type GlSubject<TModel> = {
   matrix: Matrix4;
   model: GlModel;
-  noShadow?: boolean;
+  state: TModel;
 };
 
 type GlTexture = WebGLTexture;
@@ -781,13 +779,13 @@ const textureUniform = <TState>(
   },
 });
 
-class GlShader<TState> {
+class GlShader<TScene, TModel> {
   private readonly attributePerPolygon: Map<string, GlBinder<GlPolygon>>;
   private readonly program: WebGLProgram;
   private readonly renderer: GlRenderer;
   private readonly uniformPerMaterial: Map<string, GlBinder<GlMaterial>>;
-  private readonly uniformPerMesh: Map<string, GlBinder<GlMeshState>>;
-  private readonly uniformPerState: Map<string, GlBinder<TState>>;
+  private readonly uniformPerModel: Map<string, GlBinder<GlModelState<TModel>>>;
+  private readonly uniformPerScene: Map<string, GlBinder<TScene>>;
 
   private textureIndex: number;
 
@@ -836,8 +834,8 @@ class GlShader<TState> {
     this.renderer = renderer;
     this.textureIndex = 0;
     this.uniformPerMaterial = new Map();
-    this.uniformPerMesh = new Map();
-    this.uniformPerState = new Map();
+    this.uniformPerModel = new Map();
+    this.uniformPerScene = new Map();
   }
 
   public activate() {
@@ -854,11 +852,11 @@ class GlShader<TState> {
   }
 
   /*
-   ** Assign per-mesh uniforms.
+   ** Assign per-model uniforms.
    */
-  public bindMesh(meshState: GlMeshState) {
-    for (const binding of this.uniformPerMesh.values()) {
-      binding(meshState);
+  public bindModel(modelState: GlModelState<TModel>) {
+    for (const binding of this.uniformPerModel.values()) {
+      binding(modelState);
     }
   }
 
@@ -872,10 +870,10 @@ class GlShader<TState> {
   }
 
   /*
-   ** Assign per-state uniforms.
+   ** Assign per-scene uniforms.
    */
-  public bindState(state: TState) {
-    for (const binding of this.uniformPerState.values()) {
+  public bindScene(state: TScene) {
+    for (const binding of this.uniformPerScene.values()) {
       binding(state);
     }
   }
@@ -896,16 +894,16 @@ class GlShader<TState> {
 
   public setUniformPerMesh<TValue>(
     name: string,
-    accessor: GlUniformAccessor<GlMeshState, TValue>
+    accessor: GlUniformAccessor<GlModelState<TModel>, TValue>
   ) {
-    this.setUniform(this.uniformPerMesh, name, accessor);
+    this.setUniform(this.uniformPerModel, name, accessor);
   }
 
-  public setUniformPerState<TValue>(
+  public setUniformPerScene<TValue>(
     name: string,
-    accessor: GlUniformAccessor<TState, TValue>
+    accessor: GlUniformAccessor<TScene, TValue>
   ) {
-    this.setUniform(this.uniformPerState, name, accessor);
+    this.setUniform(this.uniformPerScene, name, accessor);
   }
 
   private setAttribute<TInput>(

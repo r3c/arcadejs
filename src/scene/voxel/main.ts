@@ -9,6 +9,9 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
   ForwardLightingPipeline,
+  ModelState,
+  SceneState,
+  hasShadowState,
 } from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -24,6 +27,7 @@ import {
 import { noise } from "./perlin";
 import {
   GlModel,
+  GlScene,
   GlTarget,
   GlTransform,
   createRenderer,
@@ -34,7 +38,7 @@ import { Library } from "../../engine/graphic/model/definition";
 
 interface SceneConfiguration {}
 
-interface SceneState {
+interface ApplicationState {
   camera: view.Camera;
   currentOffset: Vector3;
   input: Input;
@@ -64,7 +68,7 @@ const worldChunkSize = { x: 16, y: 16, z: 16 };
 const worldScale = { x: 0.1, y: 0.1, z: 0.1 };
 const timeFactor = 20;
 
-const application: Application<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const renderer = createRenderer(gl);
@@ -194,7 +198,7 @@ const application: Application<WebGLScreen, SceneState> = {
     };
   },
 
-  update(state: SceneState, dt: number) {
+  update(state: ApplicationState, dt: number) {
     const { camera, input, worldPhysic, worldGraphic } = state;
 
     // Move camera & define view matrix accordingly
@@ -314,7 +318,7 @@ const application: Application<WebGLScreen, SceneState> = {
     }
   },
 
-  render(state: SceneState) {
+  render(state: ApplicationState) {
     const {
       currentOffset,
       models,
@@ -339,24 +343,29 @@ const application: Application<WebGLScreen, SceneState> = {
     subjects.push({
       matrix: worldSubjectMatrix,
       model: models.select,
+      state: hasShadowState,
     });
 
     // Forward pass
     const lightPipeline = pipelines.forwardLighting;
-    const lightScene = {
-      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-      pointLights: state.lights.map(({ position, radius }) => ({
-        color: { x: 0.8, y: 0.8, z: 0.8 },
-        position,
-        radius,
-      })),
+    const lightScene: GlScene<SceneState, ModelState> = {
+      state: {
+        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+        pointLights: state.lights.map(({ position, radius }) => ({
+          color: { x: 0.8, y: 0.8, z: 0.8 },
+          position,
+          radius,
+        })),
+        projectionMatrix: transform.projectionMatrix,
+        viewMatrix: transform.viewMatrix,
+      },
       subjects,
     };
 
     lightPipeline.process(target, transform, lightScene);
   },
 
-  resize(state: SceneState, screen: WebGLScreen) {
+  resize(state: ApplicationState, screen: WebGLScreen) {
     state.pipelines.forwardLighting.resize(
       screen.getWidth(),
       screen.getHeight()

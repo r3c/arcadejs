@@ -192,9 +192,17 @@ const application: Application<WebGLScreen, SceneState> = {
     // Draw scene
     const deferredPipeline = pipelines.scene[bitfield.index(getOptions(tweak))];
     const deferredScene = {
-      ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-      directionalLights: directionalLights,
-      pointLights: pointLights,
+      state: {
+        ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
+        directionalLights: directionalLights,
+        pointLights: pointLights,
+        projectionMatrix: state.projectionMatrix,
+        viewMatrix: Matrix4.fromCustom(
+          ["translate", camera.position],
+          ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
+          ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
+        ),
+      },
       subjects: [
         {
           matrix: Matrix4.fromCustom([
@@ -206,6 +214,7 @@ const application: Application<WebGLScreen, SceneState> = {
             },
           ]),
           model: models.ground,
+          state: undefined,
         },
       ]
         .concat(
@@ -219,6 +228,7 @@ const application: Application<WebGLScreen, SceneState> = {
               },
             ]),
             model: models.cube,
+            state: undefined,
           }))
         )
         .concat(
@@ -231,6 +241,7 @@ const application: Application<WebGLScreen, SceneState> = {
             return {
               matrix: Matrix4.fromCustom(["translate", direction]),
               model: models.directionalLight,
+              state: undefined,
             };
           })
         )
@@ -238,6 +249,7 @@ const application: Application<WebGLScreen, SceneState> = {
           pointLights.map((light) => ({
             matrix: Matrix4.fromCustom(["translate", light.position]),
             model: models.pointLight,
+            state: undefined,
           }))
         ),
     };

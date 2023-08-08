@@ -8,7 +8,14 @@ import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import * as debugTexture from "../../engine/graphic/webgl/pipelines/debug-texture";
 import { WebGLScreen } from "../../engine/graphic/display";
-import * as forwardLighting from "../../engine/graphic/webgl/pipelines/forward-lighting";
+import {
+  ForwardLightingModel,
+  ForwardLightingPipeline,
+  SceneState,
+  ModelState,
+  hasShadowState,
+  noShadowState,
+} from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as move from "../move";
@@ -16,6 +23,7 @@ import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
 import {
   GlModel,
+  GlScene,
   GlTarget,
   createRenderer,
   loadModel,
@@ -33,7 +41,7 @@ interface Configuration {
   showDebug: boolean;
 }
 
-interface SceneState {
+interface ApplicationState {
   camera: view.Camera;
   input: Input;
   models: {
@@ -44,7 +52,7 @@ interface SceneState {
   move: number;
   pipelines: {
     debug: debugTexture.Pipeline;
-    lights: forwardLighting.ForwardLightingPipeline[];
+    lights: ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
   target: GlTarget;
@@ -59,7 +67,7 @@ const configuration = {
 
 const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
 
-const application: Application<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const renderer = createRenderer(gl);
@@ -91,9 +99,9 @@ const application: Application<WebGLScreen, SceneState> = {
         }),
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new forwardLighting.ForwardLightingPipeline(renderer, {
+            new ForwardLightingPipeline(renderer, {
               light: {
-                model: forwardLighting.ForwardLightingModel.Phong,
+                model: ForwardLightingModel.Phong,
                 maxDirectionalLights: 1,
                 noShadow: !flags[0],
               },
@@ -129,15 +137,23 @@ const application: Application<WebGLScreen, SceneState> = {
     modelLightDirection.normalize();
     modelLightDirection.scale(10);
 
-    const lightScene = {
-      ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-      directionalLights: [
-        {
-          color: { x: 0.8, y: 0.8, z: 0.8 },
-          direction: lightDirection,
-          shadow: true,
-        },
-      ],
+    const lightScene: GlScene<SceneState, ModelState> = {
+      state: {
+        ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
+        directionalLights: [
+          {
+            color: { x: 0.8, y: 0.8, z: 0.8 },
+            direction: lightDirection,
+            shadow: true,
+          },
+        ],
+        projectionMatrix: state.projectionMatrix,
+        viewMatrix: Matrix4.fromCustom(
+          ["translate", camera.position],
+          ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
+          ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
+        ),
+      },
       subjects: [
         {
           matrix: Matrix4.fromCustom([
@@ -146,15 +162,17 @@ const application: Application<WebGLScreen, SceneState> = {
             state.move * 5,
           ]),
           model: models.cube,
+          state: hasShadowState,
         },
         {
           matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
           model: models.ground,
+          state: hasShadowState,
         },
         {
           matrix: Matrix4.fromCustom(["translate", modelLightDirection]),
           model: models.light,
-          noShadow: true,
+          state: noShadowState,
         },
       ],
     };

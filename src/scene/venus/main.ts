@@ -7,7 +7,11 @@ import {
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import * as forwardLighting from "../../engine/graphic/webgl/pipelines/forward-lighting";
+import {
+  ForwardLightingModel,
+  ForwardLightingPipeline,
+  hasShadowState,
+} from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -47,7 +51,7 @@ interface SceneState {
   };
   move: number;
   pipelines: {
-    lights: forwardLighting.ForwardLightingPipeline[];
+    lights: ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
   stars: Light[];
@@ -100,9 +104,9 @@ const application: Application<WebGLScreen, SceneState> = {
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new forwardLighting.ForwardLightingPipeline(renderer, {
+            new ForwardLightingPipeline(renderer, {
               light: {
-                model: forwardLighting.ForwardLightingModel.Phong,
+                model: ForwardLightingModel.Phong,
                 maxPointLights: 3,
                 noShadow: true,
               },
@@ -143,7 +147,7 @@ const application: Application<WebGLScreen, SceneState> = {
 
     const starPositions = state.stars.map(({ position }) => position);
 
-    const cameraView = Matrix4.fromCustom(
+    const viewMatrix = Matrix4.fromCustom(
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
@@ -153,26 +157,31 @@ const application: Application<WebGLScreen, SceneState> = {
     target.clear(0);
 
     // PBR render
-    const stars = starPositions.map((position) => ({
+    const subjects = starPositions.map((position) => ({
       matrix: Matrix4.fromCustom(["translate", position]),
       model: models.star,
+      state: hasShadowState,
     }));
 
     const scene = {
-      ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
-      pointLights: lightPositions.map((position) => ({
-        color: { x: 1, y: 1, z: 1 },
-        position: position,
-        radius: 5,
-      })),
-      subjects: stars,
+      state: {
+        ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
+        pointLights: lightPositions.map((position) => ({
+          color: { x: 1, y: 1, z: 1 },
+          position: position,
+          radius: 5,
+        })),
+        projectionMatrix,
+        viewMatrix,
+      },
+      subjects,
     };
 
     pipelines.lights[bitfield.index(getOptions(tweak))].process(
       target,
       {
         projectionMatrix: projectionMatrix,
-        viewMatrix: cameraView,
+        viewMatrix: viewMatrix,
       },
       scene
     );

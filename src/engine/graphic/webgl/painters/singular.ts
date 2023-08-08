@@ -1,12 +1,13 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
 import { GlMesh, GlPainter, GlShader, GlSubject, GlTarget } from "../../webgl";
 
-const draw = <TState>(
-  shader: GlShader<TState>,
+const draw = <TScene, TModel>(
+  shader: GlShader<TScene, TModel>,
   target: GlTarget,
   meshes: Iterable<GlMesh>,
   parentTransform: Matrix4,
-  viewMatrix: Matrix4
+  viewMatrix: Matrix4,
+  state: TModel
 ): void => {
   const modelMatrix = Matrix4.fromIdentity();
   const normalMatrix = Matrix3.fromIdentity();
@@ -18,7 +19,7 @@ const draw = <TState>(
     normalMatrix.multiply(modelMatrix);
     normalMatrix.invert();
 
-    draw(shader, target, mesh.children, modelMatrix, viewMatrix);
+    draw(shader, target, mesh.children, modelMatrix, viewMatrix, state);
 
     for (const primitive of mesh.primitives) {
       const material = primitive.material;
@@ -27,32 +28,32 @@ const draw = <TState>(
 
       shader.bindPolygon(polygon);
       shader.bindMaterial(material);
-      shader.bindMesh({ normalMatrix, modelMatrix });
+      shader.bindModel({ normalMatrix, modelMatrix, state });
       target.draw(0, indexBuffer, indexCount, indexType);
     }
   }
 };
 
-class SingularPainter<TState> implements GlPainter<TState> {
-  private readonly shader: GlShader<TState>;
+class SingularPainter<TScene, TModel> implements GlPainter<TScene, TModel> {
+  private readonly shader: GlShader<TScene, TModel>;
 
-  public constructor(shader: GlShader<TState>) {
+  public constructor(shader: GlShader<TScene, TModel>) {
     this.shader = shader;
   }
 
   public paint(
     target: GlTarget,
-    subjects: Iterable<GlSubject>,
+    subjects: Iterable<GlSubject<TModel>>,
     viewMatrix: Matrix4,
-    state: TState
+    state: TScene
   ): void {
     const shader = this.shader;
 
     shader.activate();
-    shader.bindState(state);
+    shader.bindScene(state);
 
-    for (const subject of subjects) {
-      draw(shader, target, subject.model.meshes, subject.matrix, viewMatrix);
+    for (const { matrix, model, state } of subjects) {
+      draw(shader, target, model.meshes, matrix, viewMatrix, state);
     }
   }
 }

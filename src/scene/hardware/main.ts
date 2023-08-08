@@ -3,10 +3,10 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import * as painter from "../../engine/graphic/webgl/painters/singular";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
 import * as webgl from "../../engine/graphic/webgl";
+import { BatchPainter } from "../../engine/graphic/webgl/painters/batch";
 
 /*
  ** What changed?
@@ -51,7 +51,7 @@ interface SceneState {
   gl: WebGLRenderingContext;
   input: Input;
   model: webgl.GlModel;
-  painter: webgl.GlPainter<ShaderState>;
+  painter: webgl.GlPainter<ShaderState, undefined>;
   projectionMatrix: Matrix4;
   target: webgl.GlTarget;
 }
@@ -70,7 +70,7 @@ const application: Application<WebGLScreen, SceneState> = {
     const tweak = configure(configuration);
 
     const renderer = webgl.createRenderer(screen.context);
-    const shader = new webgl.GlShader<ShaderState>(
+    const shader = new webgl.GlShader<ShaderState, void>(
       renderer,
       vsSource,
       fsSource
@@ -94,11 +94,11 @@ const application: Application<WebGLScreen, SceneState> = {
       "modelMatrix",
       webgl.uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
     );
-    shader.setUniformPerTarget(
+    shader.setUniformPerScene(
       "projectionMatrix",
       webgl.uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
     );
-    shader.setUniformPerTarget(
+    shader.setUniformPerScene(
       "viewMatrix",
       webgl.uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
     );
@@ -111,9 +111,9 @@ const application: Application<WebGLScreen, SceneState> = {
         renderer,
         await loadModelFromJson("model/cube/mesh.json")
       ),
-      painter: new painter.SingularPainter(shader),
+      painter: new BatchPainter(shader),
       projectionMatrix: Matrix4.fromIdentity(),
-      screen: screen,
+      screen,
       target: new webgl.GlTarget(
         screen.context,
         screen.getWidth(),
@@ -134,6 +134,7 @@ const application: Application<WebGLScreen, SceneState> = {
     const cube = {
       matrix: Matrix4.fromIdentity(),
       model,
+      state: undefined,
     };
 
     gl.enable(gl.CULL_FACE);

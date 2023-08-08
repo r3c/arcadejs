@@ -7,6 +7,10 @@ import {
   loadLibrary,
   loadModel,
 } from "../../engine/graphic/webgl";
+import {
+  ModelState,
+  hasShadowState,
+} from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -46,7 +50,7 @@ interface WorldEvent {
 interface WorldGraphic {
   findOffsetPosition: (renderPosition: Vector3) => Vector3 | undefined;
   findRenderPosition: (offsetPosition: Vector3) => Vector3;
-  getSubjects: () => Iterable<GlSubject>;
+  getSubjects: () => Iterable<GlSubject<ModelState>>;
   setVoxel: (offset: Vector3, modelIndex: number | undefined) => void;
   offsetSize: Vector3;
   renderSize: Vector3;
@@ -127,9 +131,10 @@ const createWorldGraphic = (
     })
   );
 
-  const chunkSubjects = range<GlSubject>(chunks.length, () => ({
+  const chunkSubjects = range<GlSubject<ModelState>>(chunks.length, () => ({
     matrix: Matrix4.identity,
     model: { library: undefined, meshes: [] },
+    state: hasShadowState,
   }));
 
   const chunkUpdates = new Set<number>();

@@ -10,6 +10,9 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
   ForwardLightingPipeline,
+  ModelState,
+  SceneState,
+  hasShadowState,
 } from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -36,7 +39,7 @@ interface Configuration {
   useHeightMap: boolean;
 }
 
-interface SceneState {
+interface ApplicationState {
   camera: view.Camera;
   input: Input;
   lightPositions: Vector3[];
@@ -72,7 +75,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.useNormalMap !== 0,
 ];
 
-const application: Application<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const renderer = webgl.createRenderer(screen.context);
@@ -146,26 +149,39 @@ const application: Application<WebGLScreen, SceneState> = {
 
     // Forward pass
     const lightPipeline = pipelines.lights[bitfield.index(getOptions(tweak))];
-    const lightScene = {
-      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-      pointLights: lightPositions.slice(0, tweak.nbLights).map((position) => ({
-        color: { x: 0.8, y: 0.8, z: 0.8 },
-        position: position,
-        radius: 5,
-      })),
+    const lightScene: webgl.GlScene<SceneState, ModelState> = {
+      state: {
+        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+        pointLights: lightPositions
+          .slice(0, tweak.nbLights)
+          .map((position) => ({
+            color: { x: 0.8, y: 0.8, z: 0.8 },
+            position: position,
+            radius: 5,
+          })),
+        projectionMatrix: projectionMatrix,
+        viewMatrix: Matrix4.fromCustom(
+          ["translate", camera.position],
+          ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
+          ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
+        ),
+      },
       subjects: [
         {
           matrix: Matrix4.fromIdentity(),
           model: models.cube,
+          state: hasShadowState,
         },
         {
           matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
           model: models.ground,
+          state: hasShadowState,
         },
       ].concat(
         lightPositions.slice(0, tweak.nbLights).map((position) => ({
           matrix: Matrix4.fromCustom(["translate", position]),
           model: models.light,
+          state: hasShadowState,
         }))
       ),
     };

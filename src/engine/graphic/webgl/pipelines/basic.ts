@@ -29,13 +29,17 @@ void main(void) {
 	fragColor = vec4(1, 1, 1, 1);
 }`;
 
-interface State {
+interface SceneState {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 }
 
 const load = (renderer: GlRenderer) => {
-  const shader = new GlShader<State>(renderer, vertexShader, fragmentShader);
+  const shader = new GlShader<SceneState, undefined>(
+    renderer,
+    vertexShader,
+    fragmentShader
+  );
 
   shader.setAttributePerPolygon("points", (geometry) => geometry.points);
 
@@ -43,11 +47,11 @@ const load = (renderer: GlRenderer) => {
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
@@ -55,16 +59,20 @@ const load = (renderer: GlRenderer) => {
   return shader;
 };
 
-class Pipeline implements GlPipeline {
-  private readonly painter: GlPainter<State>;
+class Pipeline implements GlPipeline<SceneState, undefined> {
+  private readonly painter: GlPainter<SceneState, undefined>;
   private readonly renderer: GlRenderer;
 
   public constructor(renderer: GlRenderer) {
-    this.painter = new SingularPainter(load(renderer));
+    this.painter = new SingularPainter<SceneState, undefined>(load(renderer));
     this.renderer = renderer;
   }
 
-  public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
+  public process(
+    target: GlTarget,
+    transform: GlTransform,
+    scene: GlScene<SceneState, undefined>
+  ) {
     const gl = this.renderer.context;
 
     gl.enable(gl.CULL_FACE);

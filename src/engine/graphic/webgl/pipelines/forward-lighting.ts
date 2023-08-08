@@ -24,6 +24,7 @@ import {
   GlRenderer,
   GlScene,
   GlShader,
+  GlSubject,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
@@ -47,6 +48,12 @@ interface DirectionalLight extends GlDirectionalLight {
   shadowViewMatrix: Matrix4;
 }
 
+type EnvironmentLight = {
+  brdf: WebGLTexture;
+  diffuse: WebGLTexture;
+  specular: WebGLTexture;
+};
+
 type LightConfiguration = {
   maxDirectionalLights?: number;
   maxPointLights?: number;
@@ -59,7 +66,16 @@ type LightConfiguration = {
   noShadow?: boolean;
 };
 
-interface LightState extends State {
+interface SceneState extends State {
+  ambientLightColor?: Vector3;
+  directionalLights?: GlDirectionalLight[];
+  environmentLight?: EnvironmentLight;
+  pointLights?: GlPointLight[];
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
+}
+
+interface LightStateInternal extends State {
   ambientLightColor: Vector3;
   directionalLights: DirectionalLight[];
   environmentLight?: {
@@ -84,6 +100,10 @@ type MaterialConfiguration = {
   noRoughnessMap?: boolean;
 };
 
+type ModelState = {
+  noShadow: boolean;
+};
+
 interface ShadowState extends State {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
@@ -93,6 +113,9 @@ interface State {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 }
+
+const hasShadowState: ModelState = { noShadow: false };
+const noShadowState: ModelState = { noShadow: true };
 
 const lightHeaderShader = `
 ${sourceDeclare("HAS_SHADOW")}
@@ -394,7 +417,7 @@ const loadLight = (
     directives.push({ name: "HAS_SHADOW", value: 1 });
   }
 
-  const shader = new GlShader<LightState>(
+  const shader = new GlShader<LightStateInternal, ModelState>(
     renderer,
     lightVertexShader,
     lightFragmentShader,
@@ -416,17 +439,17 @@ const loadLight = (
     "normalMatrix",
     uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   if (!lightConfiguration.noShadow) {
-    shader.setUniformPerState(
+    shader.setUniformPerScene(
       "shadowProjectionMatrix",
       uniform.numberMatrix4(
         ({ shadowProjectionMatrix }) => shadowProjectionMatrix
@@ -467,19 +490,19 @@ const loadLight = (
 
     case ForwardLightingModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
-        shader.setUniformPerState(
+        shader.setUniformPerScene(
           "environmentBrdfMap",
           uniform.blackQuadTexture(
             ({ environmentLight }) => environmentLight?.brdf
           )
         );
-        shader.setUniformPerState(
+        shader.setUniformPerScene(
           "environmentDiffuseMap",
           uniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.diffuse
           )
         );
-        shader.setUniformPerState(
+        shader.setUniformPerScene(
           "environmentSpecularMap",
           uniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.specular
@@ -556,7 +579,7 @@ const loadLight = (
   const defaultDirection = { x: 1, y: 0, z: 0 };
   const defaultPosition = Vector3.zero;
 
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "ambientLightColor",
     uniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
   );
@@ -565,7 +588,7 @@ const loadLight = (
     const index = i;
 
     if (!lightConfiguration.noShadow) {
-      shader.setUniformPerState(
+      shader.setUniformPerScene(
         `directionalLights[${index}].castShadow`,
         uniform.booleanScalar(
           (state) =>
@@ -573,7 +596,7 @@ const loadLight = (
             state.directionalLights[index].shadow
         )
       );
-      shader.setUniformPerState(
+      shader.setUniformPerScene(
         `directionalLights[${index}].shadowViewMatrix`,
         uniform.numberMatrix4(({ directionalLights }) =>
           index < directionalLights.length
@@ -581,7 +604,7 @@ const loadLight = (
             : Matrix4.fromIdentity()
         )
       );
-      shader.setUniformPerState(
+      shader.setUniformPerScene(
         `directionalLightShadowMaps[${index}]`,
         uniform.blackQuadTexture(
           ({ directionalLights }) => directionalLights[index].shadowMap
@@ -589,7 +612,7 @@ const loadLight = (
       );
     }
 
-    shader.setUniformPerState(
+    shader.setUniformPerScene(
       `directionalLights[${i}].color`,
       uniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
@@ -597,7 +620,7 @@ const loadLight = (
           : defaultColor
       )
     );
-    shader.setUniformPerState(
+    shader.setUniformPerScene(
       `directionalLights[${i}].direction`,
       uniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
@@ -610,13 +633,13 @@ const loadLight = (
   for (let i = 0; i < maxPointLights; ++i) {
     const index = i;
 
-    shader.setUniformPerState(
+    shader.setUniformPerScene(
       `pointLights[${i}].color`,
       uniform.numberVector3(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].color : defaultColor
       )
     );
-    shader.setUniformPerState(
+    shader.setUniformPerScene(
       `pointLights[${i}].position`,
       uniform.numberVector3(({ pointLights }) =>
         index < pointLights.length
@@ -624,7 +647,7 @@ const loadLight = (
           : defaultPosition
       )
     );
-    shader.setUniformPerState(
+    shader.setUniformPerScene(
       `pointLights[${i}].radius`,
       uniform.numberScalar(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].radius : 0
@@ -636,7 +659,7 @@ const loadLight = (
 };
 
 const loadShadowDirectional = (renderer: GlRenderer) => {
-  const shader = new GlShader<ShadowState>(
+  const shader = new GlShader<ShadowState, undefined>(
     renderer,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
@@ -647,11 +670,11 @@ const loadShadowDirectional = (renderer: GlRenderer) => {
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "projectionMatrix",
     uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerState(
+  shader.setUniformPerScene(
     "viewMatrix",
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
@@ -661,24 +684,24 @@ const loadShadowDirectional = (renderer: GlRenderer) => {
 
 const loadShadowPoint = (renderer: GlRenderer) => {
   // Not implemented
-  return new GlShader<ShadowState>(
+  return new GlShader<ShadowState, undefined>(
     renderer,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
   );
 };
 
-class ForwardLightingPipeline implements GlPipeline {
+class ForwardLightingPipeline implements GlPipeline<SceneState, ModelState> {
   public readonly directionalShadowBuffers: WebGLTexture[];
   public readonly pointShadowBuffers: WebGLTexture[];
 
-  private readonly directionalShadowPainter: GlPainter<ShadowState>;
+  private readonly directionalShadowPainter: GlPainter<ShadowState, undefined>;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: GlTarget[];
-  private readonly lightPainter: GlPainter<LightState>;
+  private readonly lightPainter: GlPainter<LightStateInternal, ModelState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
-  private readonly pointShadowPainter: GlPainter<ShadowState>;
+  private readonly pointShadowPainter: GlPainter<ShadowState, undefined>;
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
   private readonly renderer: GlRenderer;
@@ -738,16 +761,30 @@ class ForwardLightingPipeline implements GlPipeline {
     this.renderer = renderer;
   }
 
-  public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
-    const directionalLights = scene.directionalLights || [];
+  public process(
+    target: GlTarget,
+    transform: GlTransform,
+    scene: GlScene<SceneState, ModelState>
+  ) {
+    const { state, subjects } = scene;
+
+    const directionalLights = state.directionalLights || [];
     const gl = this.renderer.context;
-    const pointLights = scene.pointLights || [];
+    const pointLights = state.pointLights || [];
 
     gl.disable(gl.BLEND);
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
 
-    const obstacles = scene.subjects.filter((subject) => !subject.noShadow);
+    // Create list of opaque subjects
+    const obstacles: GlSubject<undefined>[] = [];
+
+    for (const { matrix, model, state } of subjects) {
+      if (state.noShadow !== true) {
+        obstacles.push({ matrix, model, state: undefined });
+      }
+    }
+
     let bufferIndex = 0;
 
     // Create shadow maps for directional lights
@@ -808,10 +845,10 @@ class ForwardLightingPipeline implements GlPipeline {
     gl.colorMask(true, true, true, true);
     gl.cullFace(gl.BACK);
 
-    this.lightPainter.paint(target, scene.subjects, transform.viewMatrix, {
-      ambientLightColor: scene.ambientLightColor ?? Vector3.zero,
+    this.lightPainter.paint(target, subjects, transform.viewMatrix, {
+      ambientLightColor: state.ambientLightColor ?? Vector3.zero,
       directionalLights: directionalLightStates,
-      environmentLight: scene.environmentLight,
+      environmentLight: state.environmentLight,
       pointLights: pointLights,
       projectionMatrix: transform.projectionMatrix,
       shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
@@ -824,6 +861,10 @@ class ForwardLightingPipeline implements GlPipeline {
 
 export {
   type ForwardLightingConfiguration,
+  type ModelState,
+  type SceneState,
   ForwardLightingModel,
   ForwardLightingPipeline,
+  hasShadowState,
+  noShadowState,
 };

@@ -7,7 +7,6 @@ import {
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import * as forwardLighting from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { range } from "../../engine/language/functional";
 import * as image from "../../engine/graphic/image";
 import {
@@ -19,6 +18,14 @@ import { Vector3 } from "../../engine/math/vector";
 import * as webgl from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import * as view from "../view";
+import {
+  ForwardLightingPipeline,
+  ForwardLightingModel,
+  hasShadowState,
+  noShadowState,
+  ModelState,
+  SceneState,
+} from "../../engine/graphic/webgl/pipelines/forward-lighting";
 
 /*
  ** What changed?
@@ -42,7 +49,7 @@ interface Light {
   position: Vector3;
 }
 
-interface SceneState {
+interface ApplicationState {
   camera: view.Camera;
   input: Input;
   lights: Light[];
@@ -53,7 +60,7 @@ interface SceneState {
   };
   move: number;
   pipelines: {
-    lights: forwardLighting.ForwardLightingPipeline[];
+    lights: ForwardLightingPipeline[];
   };
   projectionMatrix: Matrix4;
   target: webgl.GlTarget;
@@ -85,7 +92,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.useNormalMap !== 0,
 ];
 
-const application: Application<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const renderer = webgl.createRenderer(gl);
@@ -148,9 +155,9 @@ const application: Application<WebGLScreen, SceneState> = {
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new forwardLighting.ForwardLightingPipeline(renderer, {
+            new ForwardLightingPipeline(renderer, {
               light: {
-                model: forwardLighting.ForwardLightingModel.Physical,
+                model: ForwardLightingModel.Physical,
                 modelPhysicalNoAmbient: !flags[0],
                 modelPhysicalNoIBL: !flags[3],
                 maxPointLights: 3,
@@ -196,7 +203,7 @@ const application: Application<WebGLScreen, SceneState> = {
       .slice(0, tweak.nbLights)
       .map((light) => light.position);
 
-    const cameraView = Matrix4.fromCustom(
+    const viewMatrix = Matrix4.fromCustom(
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
@@ -209,30 +216,37 @@ const application: Application<WebGLScreen, SceneState> = {
     const cube = {
       matrix: Matrix4.fromIdentity(),
       model: models.helmet,
+      state: hasShadowState,
     };
 
     const ground = {
       matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
       model: models.ground,
+      state: hasShadowState,
     };
 
     const lights = lightPositions.map((position) => ({
       matrix: Matrix4.fromCustom(["translate", position]),
       model: models.light,
+      state: noShadowState,
     }));
 
-    const scene = {
-      ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
-      environmentLight: {
-        brdf: textures.brdf,
-        diffuse: textures.diffuse,
-        specular: textures.specular,
+    const scene: webgl.GlScene<SceneState, ModelState> = {
+      state: {
+        ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
+        environmentLight: {
+          brdf: textures.brdf,
+          diffuse: textures.diffuse,
+          specular: textures.specular,
+        },
+        pointLights: lightPositions.map((position) => ({
+          color: { x: 1, y: 1, z: 1 },
+          position: position,
+          radius: 5,
+        })),
+        projectionMatrix,
+        viewMatrix,
       },
-      pointLights: lightPositions.map((position) => ({
-        color: { x: 1, y: 1, z: 1 },
-        position: position,
-        radius: 5,
-      })),
       subjects: [cube, ground].concat(lights),
     };
 
@@ -240,7 +254,7 @@ const application: Application<WebGLScreen, SceneState> = {
       target,
       {
         projectionMatrix: projectionMatrix,
-        viewMatrix: cameraView,
+        viewMatrix: viewMatrix,
       },
       scene
     );
