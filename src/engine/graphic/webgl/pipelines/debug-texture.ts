@@ -9,9 +9,9 @@ import {
   GlShader,
   GlTarget,
   GlTransform,
+  blackQuadTextureUniform,
   loadModel,
   numberMatrix4Uniform,
-  quadTextureUniform,
 } from "../../webgl";
 
 const vertexSource = `
@@ -158,7 +158,7 @@ const load = (gl: WebGL2RenderingContext, configuration: Configuration) => {
 
   shader.setUniformPerTarget(
     "source",
-    quadTextureUniform(({ source }) => source)
+    blackQuadTextureUniform(({ source }) => source)
   );
 
   shader.setUniformPerMesh(

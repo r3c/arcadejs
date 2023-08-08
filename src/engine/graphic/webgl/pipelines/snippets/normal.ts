@@ -1,5 +1,3 @@
-import * as compiler from "./compiler";
-
 const decodeDeclare = (): string => `
 vec3 normalDecode(in vec2 normalPack) {
 	// Spheremap transform
@@ -23,18 +21,9 @@ vec2 normalEncode(in vec3 decoded) {
 
 const encodeInvoke = (decoded: string): string => `normalEncode(${decoded})`;
 
-const perturbDeclare = (
-  samplerEnableDirective: string,
-  samplerEnableUniform: string,
-  sampler: string
-): string => `
+const perturbDeclare = (sampler: string): string => `
 vec3 normalPerturb(in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
-	vec3 normalFace = bool(${compiler.getDirectiveOrValue(
-    samplerEnableDirective,
-    samplerEnableUniform
-  )})
-		? normalize(2.0 * texture(${sampler}, coord).rgb - 1.0)
-		: vec3(0.0, 0.0, 1.0);
+	vec3 normalFace = normalize(2.0 * texture(${sampler}, coord).rgb - 1.0);
 
 	return normalize(normalFace.x * t + normalFace.y * b + normalFace.z * n);
 }

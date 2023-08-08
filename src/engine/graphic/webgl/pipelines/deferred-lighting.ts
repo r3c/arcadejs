@@ -21,6 +21,7 @@ import {
   GlTextureFormat,
   GlTextureType,
   GlTransform,
+  blackQuadTextureUniform,
   loadModel,
   numberArray4Uniform,
   numberMatrix3Uniform,
@@ -28,7 +29,7 @@ import {
   numberScalarUniform,
   numberVector2Uniform,
   numberVector3Uniform,
-  quadTextureUniform,
+  whiteQuadTextureUniform,
 } from "../../webgl";
 
 const enum LightModel {
@@ -80,8 +81,8 @@ uniform sampler2D normalMap;
 uniform float shininess;
 
 ${normal.encodeDeclare()}
-${normal.perturbDeclare("FORCE_NORMAL_MAP", "normalMapEnabled", "normalMap")}
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
+${normal.perturbDeclare("normalMap")}
+${parallax.perturbDeclare("heightMap")}
 ${shininess.encodeDeclare()}
 
 in vec3 bitangent;
@@ -268,7 +269,7 @@ uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
+${parallax.perturbDeclare("heightMap")}
 ${rgb.linearToStandardDeclare()}
 ${rgb.standardToLinearDeclare()}
 
@@ -347,18 +348,12 @@ const loadGeometry = (
   gl: WebGL2RenderingContext,
   configuration: Configuration
 ) => {
-  // Build directives from configuration
-  const directives = [
-    { name: "FORCE_HEIGHT_MAP", value: configuration.useHeightMap ? 1 : 0 },
-    { name: "FORCE_NORMAL_MAP", value: configuration.useNormalMap ? 1 : 0 },
-  ];
-
   // Setup geometry shader
   const shader = new GlShader<State>(
     gl,
     geometryVertexShader,
     geometryFragmentShader,
-    directives
+    []
   );
 
   shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
@@ -386,7 +381,7 @@ const loadGeometry = (
   if (configuration.lightModel === LightModel.Phong) {
     shader.setUniformPerMaterial(
       "glossinessMap",
-      quadTextureUniform(({ glossMap }) => glossMap)
+      blackQuadTextureUniform(({ glossMap }) => glossMap)
     );
     shader.setUniformPerMaterial(
       "shininess",
@@ -397,7 +392,7 @@ const loadGeometry = (
   if (configuration.useHeightMap) {
     shader.setUniformPerMaterial(
       "heightMap",
-      quadTextureUniform(({ heightMap }) => heightMap)
+      blackQuadTextureUniform(({ heightMap }) => heightMap)
     );
     shader.setUniformPerMaterial(
       "heightParallaxBias",
@@ -409,11 +404,12 @@ const loadGeometry = (
     );
   }
 
-  if (configuration.useNormalMap)
+  if (configuration.useNormalMap) {
     shader.setUniformPerMaterial(
       "normalMap",
-      quadTextureUniform(({ normalMap }) => normalMap)
+      blackQuadTextureUniform(({ normalMap }) => normalMap)
     );
+  }
 
   return shader;
 };
@@ -464,11 +460,11 @@ const loadLight = <TState>(
 
   shader.setUniformPerTarget(
     "depthBuffer",
-    quadTextureUniform(({ depthBuffer }) => depthBuffer)
+    blackQuadTextureUniform(({ depthBuffer }) => depthBuffer)
   );
   shader.setUniformPerTarget(
     "normalAndGlossinessBuffer",
-    quadTextureUniform((state) => state.normalAndGlossinessBuffer)
+    blackQuadTextureUniform((state) => state.normalAndGlossinessBuffer)
   );
 
   return shader;
@@ -543,11 +539,6 @@ const loadMaterial = (
       break;
   }
 
-  directives.push({
-    name: "FORCE_HEIGHT_MAP",
-    value: configuration.useHeightMap ? 1 : 0,
-  });
-
   // Setup material shader
   const shader = new GlShader<MaterialState>(
     gl,
@@ -584,7 +575,7 @@ const loadMaterial = (
   );
   shader.setUniformPerTarget(
     "lightBuffer",
-    quadTextureUniform(({ lightBuffer }) => lightBuffer)
+    blackQuadTextureUniform(({ lightBuffer }) => lightBuffer)
   );
 
   shader.setUniformPerMaterial(
@@ -593,7 +584,7 @@ const loadMaterial = (
   );
   shader.setUniformPerMaterial(
     "albedoMap",
-    quadTextureUniform(({ albedoMap }) => albedoMap)
+    whiteQuadTextureUniform(({ albedoMap }) => albedoMap)
   );
 
   if (configuration.lightModel >= LightModel.Phong) {
@@ -603,14 +594,14 @@ const loadMaterial = (
     );
     shader.setUniformPerMaterial(
       "glossinessMap",
-      quadTextureUniform(({ glossMap }) => glossMap)
+      blackQuadTextureUniform(({ glossMap }) => glossMap)
     );
   }
 
   if (configuration.useHeightMap) {
     shader.setUniformPerMaterial(
       "heightMap",
-      quadTextureUniform(({ heightMap }) => heightMap)
+      blackQuadTextureUniform(({ heightMap }) => heightMap)
     );
     shader.setUniformPerMaterial(
       "heightParallaxBias",

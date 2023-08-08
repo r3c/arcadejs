@@ -202,6 +202,7 @@ type GlUniformAccessor<TState, TValue> = {
 };
 
 type GlUniformDefault = {
+  blackTexture: GlTexture;
   whiteTexture: GlTexture;
 };
 
@@ -214,7 +215,6 @@ const materialExtractors: GlMaterialExtractor[] = [
   (material) => material.albedoMap,
   (material) => material.emissiveMap,
   (material) => material.glossMap,
-  (material) => material.emissiveMap,
   (material) => material.heightMap,
   (material) => material.metalnessMap,
   (material) => material.normalMap,
@@ -410,7 +410,16 @@ const cubeTextureUniform = <TState>(
     WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
   );
 
-const quadTextureUniform = <TState>(
+const blackQuadTextureUniform = <TState>(
+  getter: (state: TState) => GlTexture | undefined
+) =>
+  textureUniform(
+    getter,
+    ({ blackTexture }) => blackTexture,
+    WebGL2RenderingContext["TEXTURE_2D"]
+  );
+
+const whiteQuadTextureUniform = <TState>(
   getter: (state: TState) => GlTexture | undefined
 ) =>
   textureUniform(
@@ -739,9 +748,9 @@ const loadMaterial = (
     metalnessStrength: material.metalnessStrength ?? 0,
     normalMap: map(material.normalMap, toColorMap),
     occlusionMap: map(material.occlusionMap, toColorMap),
-    occlusionStrength: material.occlusionStrength ?? 1,
+    occlusionStrength: material.occlusionStrength ?? 0,
     roughnessMap: map(material.roughnessMap, toColorMap),
-    roughnessStrength: material.roughnessStrength ?? 1,
+    roughnessStrength: material.roughnessStrength ?? 0,
     shininess: material.shininess ?? 30,
   };
 };
@@ -942,6 +951,16 @@ class GlShader<TState> {
 
     this.attributePerGeometryBindings = [];
     this.defaultUniformValue = {
+      blackTexture: textureCreate(
+        gl,
+        undefined,
+        GlTextureType.Quad,
+        1,
+        1,
+        GlTextureFormat.RGBA8,
+        defaultFilter,
+        new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
+      ),
       whiteTexture: textureCreate(
         gl,
         undefined,
@@ -1530,6 +1549,7 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
+  blackQuadTextureUniform,
   booleanScalarUniform,
   cubeTextureUniform,
   deleteLibrary,
@@ -1544,5 +1564,5 @@ export {
   numberScalarUniform,
   numberVector2Uniform,
   numberVector3Uniform,
-  quadTextureUniform,
+  whiteQuadTextureUniform,
 };

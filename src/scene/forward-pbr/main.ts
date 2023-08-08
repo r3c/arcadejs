@@ -156,10 +156,10 @@ const application: Application<WebGLScreen, SceneState> = {
                 noShadow: true,
               },
               material: {
-                forceEmissiveMap: flags[1] ? undefined : false,
-                forceHeightMap: flags[4] ? undefined : false,
-                forceNormalMap: flags[5] ? undefined : false,
-                forceOcclusionMap: flags[2] ? undefined : false,
+                noEmissiveMap: !flags[1],
+                noHeightMap: !flags[4],
+                noNormalMap: !flags[5],
+                noOcclusionMap: !flags[2],
               },
             })
         ),

@@ -82,7 +82,7 @@ const application: Application<WebGLScreen, SceneState> = {
     );
     shader.setUniformPerMaterial(
       "albedoMap",
-      webgl.quadTextureUniform(({ albedoMap }) =>
+      webgl.whiteQuadTextureUniform(({ albedoMap }) =>
         tweak.useTexture ? albedoMap : undefined
       )
     );

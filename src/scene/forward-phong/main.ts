@@ -108,8 +108,8 @@ const application: Application<WebGLScreen, SceneState> = {
                 noShadow: true,
               },
               material: {
-                forceHeightMap: flags[3] ? undefined : false,
-                forceNormalMap: flags[4] ? undefined : false,
+                noHeightMap: !flags[3],
+                noNormalMap: !flags[4],
               },
             })
         ),

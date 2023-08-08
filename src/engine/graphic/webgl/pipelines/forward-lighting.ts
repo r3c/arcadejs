@@ -1,4 +1,3 @@
-import { getDirectiveOrValue } from "./snippets/compiler";
 import { range } from "../../../language/functional";
 import {
   sourceDeclare,
@@ -9,7 +8,6 @@ import {
   sourceTypeResult,
 } from "./snippets/light";
 import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
-import { MaterialPainter } from "../painters/material";
 import { SingularPainter } from "../painters/singular";
 import { Matrix4 } from "../../../math/matrix";
 import * as normal from "./snippets/normal";
@@ -17,13 +15,32 @@ import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
-import * as webgl from "../../webgl";
 import { Vector3 } from "../../../math/vector";
+import {
+  GlDirectionalLight,
+  GlPainter,
+  GlPipeline,
+  GlPointLight,
+  GlScene,
+  GlShader,
+  GlTarget,
+  GlTextureFormat,
+  GlTextureType,
+  GlTransform,
+  numberMatrix4Uniform,
+  numberMatrix3Uniform,
+  whiteQuadTextureUniform,
+  numberArray4Uniform,
+  blackQuadTextureUniform,
+  numberScalarUniform,
+  cubeTextureUniform,
+  numberVector3Uniform,
+  booleanScalarUniform,
+} from "../../webgl";
 
 type ForwardLightingConfiguration = {
   light?: LightConfiguration;
   material?: MaterialConfiguration;
-  noMaterialShader?: boolean;
 };
 
 enum ForwardLightingModel {
@@ -32,7 +49,7 @@ enum ForwardLightingModel {
   Physical,
 }
 
-interface DirectionalLight extends webgl.GlDirectionalLight {
+interface DirectionalLight extends GlDirectionalLight {
   shadowMap: WebGLTexture;
   shadowViewMatrix: Matrix4;
 }
@@ -57,21 +74,21 @@ interface LightState extends State {
     diffuse: WebGLTexture;
     specular: WebGLTexture;
   };
-  pointLights: webgl.GlPointLight[]; // FIXME: extend PointLight with extra properties
+  pointLights: GlPointLight[]; // FIXME: extend PointLight with extra properties
   projectionMatrix: Matrix4;
   shadowProjectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 }
 
 type MaterialConfiguration = {
-  forceAlbedoMap?: boolean;
-  forceEmissiveMap?: boolean;
-  forceGlossMap?: boolean;
-  forceHeightMap?: boolean;
-  forceMetalnessMap?: boolean;
-  forceNormalMap?: boolean;
-  forceOcclusionMap?: boolean;
-  forceRoughnessMap?: boolean;
+  noAlbedoMap?: boolean;
+  noEmissiveMap?: boolean;
+  noGlossMap?: boolean;
+  noHeightMap?: boolean;
+  noMetalnessMap?: boolean;
+  noNormalMap?: boolean;
+  noOcclusionMap?: boolean;
+  noRoughnessMap?: boolean;
 };
 
 interface ShadowState extends State {
@@ -180,27 +197,19 @@ ${lightHeaderShader}
 
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
-uniform bool albedoMapEnabled;
 uniform vec4 emissiveFactor;
 uniform sampler2D emissiveMap;
-uniform bool emissiveMapEnabled;
 uniform float glossinessStrength;
 uniform sampler2D glossinessMap;
-uniform bool glossinessMapEnabled;
 uniform sampler2D heightMap;
-uniform bool heightMapEnabled;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 uniform sampler2D metalnessMap;
-uniform bool metalnessMapEnabled;
 uniform float metalnessStrength;
 uniform sampler2D normalMap;
-uniform bool normalMapEnabled;
 uniform sampler2D occlusionMap;
-uniform bool occlusionMapEnabled;
 uniform float occlusionStrength;
 uniform sampler2D roughnessMap;
-uniform bool roughnessMapEnabled;
 uniform float roughnessStrength;
 uniform float shininess;
 
@@ -212,27 +221,19 @@ ${rgb.linearToStandardDeclare()}
 ${rgb.standardToLinearDeclare()}
 
 ${sampleDeclare(
-  "FORCE_ALBEDO_MAP",
-  "albedoMapEnabled",
   "albedoMap",
   "albedoFactor",
-  "FORCE_GLOSSINESS_MAP",
-  "glossinessMapEnabled",
   "glossinessMap",
   "glossinessStrength",
-  "FORCE_METALNESS_MAP",
-  "metalnessMapEnabled",
   "metalnessMap",
   "metalnessStrength",
-  "FORCE_ROUGHNESS_MAP",
-  "roughnessMapEnabled",
   "roughnessMap",
   "roughnessStrength",
   "shininess"
 )}
 
-${normal.perturbDeclare("FORCE_NORMAL_MAP", "normalMapEnabled", "normalMap")}
-${parallax.perturbDeclare("FORCE_HEIGHT_MAP", "heightMapEnabled", "heightMap")}
+${normal.perturbDeclare("normalMap")}
+${parallax.perturbDeclare("heightMap")}
 ${phong.lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 ${pbr.declare(
   "LIGHT_MODEL_PBR_IBL",
@@ -324,14 +325,12 @@ void main(void) {
 	}
 
 	// Apply occlusion component
-	if (bool(${getDirectiveOrValue("FORCE_OCCLUSION_MAP", "occlusionMapEnabled")}))
-		color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
+	color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
 	// Apply emissive component
-	if (bool(${getDirectiveOrValue("FORCE_EMISSIVE_MAP", "emissiveMapEnabled")}))
-		color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke(
-      "texture(emissiveMap, coordParallax).rgb"
-    )};
+  color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke(
+    "texture(emissiveMap, coordParallax).rgb"
+  )};
 
 	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
 }`;
@@ -386,8 +385,9 @@ const loadLight = (
       break;
 
     case ForwardLightingModel.Physical:
-      if (!lightConfiguration.modelPhysicalNoIBL)
+      if (!lightConfiguration.modelPhysicalNoIBL) {
         directives.push({ name: "LIGHT_MODEL_PBR_IBL", value: 1 });
+      }
 
       directives.push({
         name: "LIGHT_AMBIENT",
@@ -397,58 +397,11 @@ const loadLight = (
       break;
   }
 
-  if (materialConfiguration.forceAlbedoMap !== undefined)
-    directives.push({
-      name: "FORCE_ALBEDO_MAP",
-      value: materialConfiguration.forceAlbedoMap ? 1 : 0,
-    });
-
-  if (materialConfiguration.forceEmissiveMap !== undefined)
-    directives.push({
-      name: "FORCE_EMISSIVE_MAP",
-      value: materialConfiguration.forceEmissiveMap ? 1 : 0,
-    });
-
-  if (materialConfiguration.forceGlossMap !== undefined)
-    directives.push({
-      name: "FORCE_GLOSSINESS_MAP",
-      value: materialConfiguration.forceGlossMap ? 1 : 0,
-    });
-
-  if (materialConfiguration.forceHeightMap !== undefined)
-    directives.push({
-      name: "FORCE_HEIGHT_MAP",
-      value: materialConfiguration.forceHeightMap ? 1 : 0,
-    });
-
-  if (materialConfiguration.forceMetalnessMap !== undefined)
-    directives.push({
-      name: "FORCE_METALNESS_MAP",
-      value: materialConfiguration.forceMetalnessMap ? 1 : 0,
-    });
-
-  if (materialConfiguration.forceNormalMap !== undefined)
-    directives.push({
-      name: "FORCE_NORMAL_MAP",
-      value: materialConfiguration.forceNormalMap ? 1 : 0,
-    });
-
-  if (materialConfiguration.forceOcclusionMap !== undefined)
-    directives.push({
-      name: "FORCE_OCCLUSION_MAP",
-      value: materialConfiguration.forceOcclusionMap ? 1 : 0,
-    });
-
-  if (materialConfiguration.forceRoughnessMap !== undefined)
-    directives.push({
-      name: "FORCE_ROUGHNESS_MAP",
-      value: materialConfiguration.forceRoughnessMap ? 1 : 0,
-    });
-
-  if (!lightConfiguration.noShadow)
+  if (!lightConfiguration.noShadow) {
     directives.push({ name: "HAS_SHADOW", value: 1 });
+  }
 
-  const shader = new webgl.GlShader<LightState>(
+  const shader = new GlShader<LightState>(
     gl,
     lightVertexShader,
     lightFragmentShader,
@@ -456,90 +409,65 @@ const loadLight = (
   );
 
   // Bind geometry attributes
-  shader.setupAttributePerGeometry("normals", (geometry) => geometry.normals);
-  shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
-
-  if (
-    materialConfiguration.forceAlbedoMap !== false ||
-    materialConfiguration.forceEmissiveMap !== false ||
-    materialConfiguration.forceGlossMap !== false ||
-    materialConfiguration.forceHeightMap !== false ||
-    materialConfiguration.forceMetalnessMap !== false ||
-    materialConfiguration.forceNormalMap !== false ||
-    materialConfiguration.forceOcclusionMap !== false ||
-    materialConfiguration.forceRoughnessMap !== false
-  )
-    shader.setupAttributePerGeometry("coords", (geometry) => geometry.coords);
-  else shader.clearAttributePerGeometry("coords");
-
-  if (
-    materialConfiguration.forceHeightMap !== false ||
-    materialConfiguration.forceNormalMap !== false
-  )
-    shader.setupAttributePerGeometry(
-      "tangents",
-      (geometry) => geometry.tangents
-    );
-  else {
-    shader.clearAttributePerGeometry("tangents");
-  }
+  shader.setupAttributePerGeometry("coords", ({ coords }) => coords);
+  shader.setupAttributePerGeometry("normals", ({ normals }) => normals);
+  shader.setupAttributePerGeometry("points", ({ points }) => points);
+  shader.setupAttributePerGeometry("tangents", ({ tangents }) => tangents);
 
   // Bind matrix uniforms
   shader.setUniformPerMesh(
     "modelMatrix",
-    webgl.numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
   );
   shader.setUniformPerMesh(
     "normalMatrix",
-    webgl.numberMatrix3Uniform(({ normalMatrix }) => normalMatrix)
+    numberMatrix3Uniform(({ normalMatrix }) => normalMatrix)
   );
   shader.setUniformPerTarget(
     "projectionMatrix",
-    webgl.numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    webgl.numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
   );
 
   if (!lightConfiguration.noShadow) {
     shader.setUniformPerTarget(
       "shadowProjectionMatrix",
-      webgl.numberMatrix4Uniform(
+      numberMatrix4Uniform(
         ({ shadowProjectionMatrix }) => shadowProjectionMatrix
       )
     );
   }
 
   // Bind material uniforms
-  if (materialConfiguration.forceAlbedoMap !== false) {
-    shader.setUniformPerMaterial(
-      "albedoMap",
-      webgl.quadTextureUniform(({ albedoMap }) => albedoMap)
-    );
-  }
-
+  shader.setUniformPerMaterial(
+    "albedoMap",
+    materialConfiguration.noAlbedoMap !== true
+      ? whiteQuadTextureUniform(({ albedoMap }) => albedoMap)
+      : whiteQuadTextureUniform(() => undefined)
+  );
   shader.setUniformPerMaterial(
     "albedoFactor",
-    webgl.numberArray4Uniform(({ albedoFactor }) => albedoFactor)
+    numberArray4Uniform(({ albedoFactor }) => albedoFactor)
   );
 
   switch (lightConfiguration.model) {
     case ForwardLightingModel.Phong:
-      if (materialConfiguration.forceGlossMap !== false) {
-        shader.setUniformPerMaterial(
-          "glossinessMap",
-          webgl.quadTextureUniform(({ glossMap }) => glossMap)
-        );
-      }
-
+      shader.setUniformPerMaterial(
+        "glossinessMap",
+        materialConfiguration.noGlossMap !== true
+          ? blackQuadTextureUniform(({ glossMap }) => glossMap)
+          : blackQuadTextureUniform(() => undefined)
+      );
       shader.setUniformPerMaterial(
         "glossinessStrength",
-        webgl.numberScalarUniform(({ glossFactor }) => glossFactor[0])
+        numberScalarUniform(({ glossFactor }) => glossFactor[0])
       );
       shader.setUniformPerMaterial(
         "shininess",
-        webgl.numberScalarUniform(({ shininess }) => shininess)
+        numberScalarUniform(({ shininess }) => shininess)
       );
 
       break;
@@ -548,96 +476,87 @@ const loadLight = (
       if (!lightConfiguration.modelPhysicalNoIBL) {
         shader.setUniformPerTarget(
           "environmentBrdfMap",
-          webgl.quadTextureUniform(
+          blackQuadTextureUniform(
             ({ environmentLight }) => environmentLight?.brdf
           )
         );
         shader.setUniformPerTarget(
           "environmentDiffuseMap",
-          webgl.cubeTextureUniform(
+          cubeTextureUniform(
             ({ environmentLight }) => environmentLight?.diffuse
           )
         );
         shader.setUniformPerTarget(
           "environmentSpecularMap",
-          webgl.cubeTextureUniform(
+          cubeTextureUniform(
             ({ environmentLight }) => environmentLight?.specular
           )
         );
       }
-
-      if (materialConfiguration.forceMetalnessMap !== false) {
-        shader.setUniformPerMaterial(
-          "metalnessMap",
-          webgl.quadTextureUniform(({ metalnessMap }) => metalnessMap)
-        );
-      }
-
-      if (materialConfiguration.forceRoughnessMap !== false) {
-        shader.setUniformPerMaterial(
-          "roughnessMap",
-          webgl.quadTextureUniform(({ roughnessMap }) => roughnessMap)
-        );
-      }
-
+      shader.setUniformPerMaterial(
+        "metalnessMap",
+        materialConfiguration.noMetalnessMap !== true
+          ? blackQuadTextureUniform(({ metalnessMap }) => metalnessMap)
+          : blackQuadTextureUniform(() => undefined)
+      );
+      shader.setUniformPerMaterial(
+        "roughnessMap",
+        materialConfiguration.noRoughnessMap !== true
+          ? blackQuadTextureUniform(({ roughnessMap }) => roughnessMap)
+          : blackQuadTextureUniform(() => undefined)
+      );
       shader.setUniformPerMaterial(
         "metalnessStrength",
-        webgl.numberScalarUniform(({ metalnessStrength }) => metalnessStrength)
+        numberScalarUniform(({ metalnessStrength }) => metalnessStrength)
       );
       shader.setUniformPerMaterial(
         "roughnessStrength",
-        webgl.numberScalarUniform(({ roughnessStrength }) => roughnessStrength)
+        numberScalarUniform(({ roughnessStrength }) => roughnessStrength)
       );
 
       break;
   }
 
-  if (materialConfiguration.forceEmissiveMap !== false) {
-    shader.setUniformPerMaterial(
-      "emissiveMap",
-      webgl.quadTextureUniform(({ emissiveMap }) => emissiveMap)
-    );
-    shader.setUniformPerMaterial(
-      "emissiveFactor",
-      webgl.numberArray4Uniform(({ emissiveFactor }) => emissiveFactor)
-    );
-  }
-
-  if (materialConfiguration.forceHeightMap !== false) {
-    shader.setUniformPerMaterial(
-      "heightMap",
-      webgl.quadTextureUniform(({ heightMap }) => heightMap)
-    );
-
-    shader.setUniformPerMaterial(
-      "heightParallaxBias",
-      webgl.numberScalarUniform(({ heightParallaxBias }) => heightParallaxBias)
-    );
-    shader.setUniformPerMaterial(
-      "heightParallaxScale",
-      webgl.numberScalarUniform(
-        ({ heightParallaxScale }) => heightParallaxScale
-      )
-    );
-  }
-
-  if (materialConfiguration.forceNormalMap !== false)
-    shader.setUniformPerMaterial(
-      "normalMap",
-      webgl.quadTextureUniform(({ normalMap }) => normalMap)
-    );
-
-  if (materialConfiguration.forceOcclusionMap !== false) {
-    shader.setUniformPerMaterial(
-      "occlusionMap",
-      webgl.quadTextureUniform(({ occlusionMap }) => occlusionMap)
-    );
-
-    shader.setUniformPerMaterial(
-      "occlusionStrength",
-      webgl.numberScalarUniform(({ occlusionStrength }) => occlusionStrength)
-    );
-  }
+  shader.setUniformPerMaterial(
+    "emissiveMap",
+    materialConfiguration.noEmissiveMap !== true
+      ? blackQuadTextureUniform(({ emissiveMap }) => emissiveMap)
+      : blackQuadTextureUniform(() => undefined)
+  );
+  shader.setUniformPerMaterial(
+    "emissiveFactor",
+    numberArray4Uniform(({ emissiveFactor }) => emissiveFactor)
+  );
+  shader.setUniformPerMaterial(
+    "heightMap",
+    materialConfiguration.noHeightMap !== true
+      ? blackQuadTextureUniform(({ heightMap }) => heightMap)
+      : blackQuadTextureUniform(() => undefined)
+  );
+  shader.setUniformPerMaterial(
+    "heightParallaxBias",
+    numberScalarUniform(({ heightParallaxBias }) => heightParallaxBias)
+  );
+  shader.setUniformPerMaterial(
+    "heightParallaxScale",
+    numberScalarUniform(({ heightParallaxScale }) => heightParallaxScale)
+  );
+  shader.setUniformPerMaterial(
+    "normalMap",
+    materialConfiguration.noNormalMap !== true
+      ? blackQuadTextureUniform(({ normalMap }) => normalMap)
+      : blackQuadTextureUniform(() => undefined)
+  );
+  shader.setUniformPerMaterial(
+    "occlusionMap",
+    materialConfiguration.noOcclusionMap !== true
+      ? blackQuadTextureUniform(({ occlusionMap }) => occlusionMap)
+      : blackQuadTextureUniform(() => undefined)
+  );
+  shader.setUniformPerMaterial(
+    "occlusionStrength",
+    numberScalarUniform(({ occlusionStrength }) => occlusionStrength)
+  );
 
   // Bind light uniforms
   const defaultColor = Vector3.zero;
@@ -646,7 +565,7 @@ const loadLight = (
 
   shader.setUniformPerTarget(
     "ambientLightColor",
-    webgl.numberVector3Uniform(({ ambientLightColor }) => ambientLightColor)
+    numberVector3Uniform(({ ambientLightColor }) => ambientLightColor)
   );
 
   for (let i = 0; i < maxDirectionalLights; ++i) {
@@ -655,7 +574,7 @@ const loadLight = (
     if (!lightConfiguration.noShadow) {
       shader.setUniformPerTarget(
         `directionalLights[${index}].castShadow`,
-        webgl.booleanScalarUniform(
+        booleanScalarUniform(
           (state) =>
             index < state.directionalLights.length &&
             state.directionalLights[index].shadow
@@ -663,7 +582,7 @@ const loadLight = (
       );
       shader.setUniformPerTarget(
         `directionalLights[${index}].shadowViewMatrix`,
-        webgl.numberMatrix4Uniform(({ directionalLights }) =>
+        numberMatrix4Uniform(({ directionalLights }) =>
           index < directionalLights.length
             ? directionalLights[index].shadowViewMatrix
             : Matrix4.fromIdentity()
@@ -671,7 +590,7 @@ const loadLight = (
       );
       shader.setUniformPerTarget(
         `directionalLightShadowMaps[${index}]`,
-        webgl.quadTextureUniform(
+        blackQuadTextureUniform(
           ({ directionalLights }) => directionalLights[index].shadowMap
         )
       );
@@ -679,7 +598,7 @@ const loadLight = (
 
     shader.setUniformPerTarget(
       `directionalLights[${i}].color`,
-      webgl.numberVector3Uniform(({ directionalLights }) =>
+      numberVector3Uniform(({ directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].color
           : defaultColor
@@ -687,7 +606,7 @@ const loadLight = (
     );
     shader.setUniformPerTarget(
       `directionalLights[${i}].direction`,
-      webgl.numberVector3Uniform(({ directionalLights }) =>
+      numberVector3Uniform(({ directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].direction
           : defaultDirection
@@ -700,13 +619,13 @@ const loadLight = (
 
     shader.setUniformPerTarget(
       `pointLights[${i}].color`,
-      webgl.numberVector3Uniform(({ pointLights }) =>
+      numberVector3Uniform(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].color : defaultColor
       )
     );
     shader.setUniformPerTarget(
       `pointLights[${i}].position`,
-      webgl.numberVector3Uniform(({ pointLights }) =>
+      numberVector3Uniform(({ pointLights }) =>
         index < pointLights.length
           ? pointLights[index].position
           : defaultPosition
@@ -714,7 +633,7 @@ const loadLight = (
     );
     shader.setUniformPerTarget(
       `pointLights[${i}].radius`,
-      webgl.numberScalarUniform(({ pointLights }) =>
+      numberScalarUniform(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].radius : 0
       )
     );
@@ -724,7 +643,7 @@ const loadLight = (
 };
 
 const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
-  const shader = new webgl.GlShader<ShadowState>(
+  const shader = new GlShader<ShadowState>(
     gl,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
@@ -733,15 +652,15 @@ const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
   shader.setupAttributePerGeometry("points", (geometry) => geometry.points);
   shader.setUniformPerMesh(
     "modelMatrix",
-    webgl.numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
+    numberMatrix4Uniform(({ modelMatrix }) => modelMatrix)
   );
   shader.setUniformPerTarget(
     "projectionMatrix",
-    webgl.numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
+    numberMatrix4Uniform(({ projectionMatrix }) => projectionMatrix)
   );
   shader.setUniformPerTarget(
     "viewMatrix",
-    webgl.numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
+    numberMatrix4Uniform(({ viewMatrix }) => viewMatrix)
   );
 
   return shader;
@@ -749,64 +668,32 @@ const loadShadowDirectional = (gl: WebGL2RenderingContext) => {
 
 const loadShadowPoint = (gl: WebGL2RenderingContext) => {
   // Not implemented
-  return new webgl.GlShader<ShadowState>(
+  return new GlShader<ShadowState>(
     gl,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
   );
 };
 
-class ForwardLightingPipeline implements webgl.GlPipeline {
+class ForwardLightingPipeline implements GlPipeline {
   public readonly directionalShadowBuffers: WebGLTexture[];
   public readonly pointShadowBuffers: WebGLTexture[];
 
-  private readonly directionalShadowPainter: webgl.GlPainter<ShadowState>;
+  private readonly directionalShadowPainter: GlPainter<ShadowState>;
   private readonly directionalShadowProjectionMatrix: Matrix4;
-  private readonly directionalShadowTargets: webgl.GlTarget[];
+  private readonly directionalShadowTargets: GlTarget[];
   private readonly gl: WebGL2RenderingContext;
-  private readonly lightPainter: webgl.GlPainter<LightState>;
+  private readonly lightPainter: GlPainter<LightState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
-  private readonly pointShadowPainter: webgl.GlPainter<ShadowState>;
+  private readonly pointShadowPainter: GlPainter<ShadowState>;
   private readonly pointShadowProjectionMatrix: Matrix4;
-  private readonly pointShadowTargets: webgl.GlTarget[];
+  private readonly pointShadowTargets: GlTarget[];
 
   public constructor(
     gl: WebGL2RenderingContext,
     configuration: ForwardLightingConfiguration
   ) {
-    const materialClassifier = (material: webgl.GlMaterial) =>
-      (material.albedoMap !== undefined ? 1 : 0) +
-      (material.emissiveMap !== undefined ? 2 : 0) +
-      (material.glossMap !== undefined ? 4 : 0) +
-      (material.heightMap !== undefined ? 8 : 0) +
-      (material.metalnessMap !== undefined ? 16 : 0) +
-      (material.normalMap !== undefined ? 32 : 0) +
-      (material.occlusionMap !== undefined ? 64 : 0) +
-      (material.roughnessMap !== undefined ? 128 : 0);
-
-    const materialConfigurator = (
-      configuration: MaterialConfiguration,
-      material: webgl.GlMaterial
-    ) => ({
-      forceAlbedoMap:
-        configuration.forceAlbedoMap ?? material.albedoMap !== undefined,
-      forceEmissiveMap:
-        configuration.forceEmissiveMap ?? material.emissiveMap !== undefined,
-      forceGlossMap:
-        configuration.forceGlossMap ?? material.glossMap !== undefined,
-      forceHeightMap:
-        configuration.forceHeightMap ?? material.heightMap !== undefined,
-      forceMetalnessMap:
-        configuration.forceMetalnessMap ?? material.metalnessMap !== undefined,
-      forceNormalMap:
-        configuration.forceNormalMap ?? material.normalMap !== undefined,
-      forceOcclusionMap:
-        configuration.forceOcclusionMap ?? material.occlusionMap !== undefined,
-      forceRoughnessMap:
-        configuration.forceRoughnessMap ?? material.roughnessMap !== undefined,
-    });
-
     const lightConfiguration = configuration.light ?? {};
     const materialConfiguration = configuration.material ?? {};
     const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
@@ -816,18 +703,15 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
 
     const directionalShadowTargets = range(
       maxDirectionalLights,
-      () => new webgl.GlTarget(gl, targetWidth, targetHeight)
+      () => new GlTarget(gl, targetWidth, targetHeight)
     );
     const pointShadowTargets = range(
       maxPointLights,
-      () => new webgl.GlTarget(gl, targetWidth, targetHeight)
+      () => new GlTarget(gl, targetWidth, targetHeight)
     );
 
     this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
-      target.setupDepthTexture(
-        webgl.GlTextureFormat.Depth16,
-        webgl.GlTextureType.Quad
-      )
+      target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
     this.directionalShadowPainter = new SingularPainter(
       loadShadowDirectional(gl)
@@ -842,24 +726,13 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
     );
     this.directionalShadowTargets = directionalShadowTargets;
     this.gl = gl;
-    this.lightPainter = configuration.noMaterialShader
-      ? new SingularPainter(
-          loadLight(gl, materialConfiguration, lightConfiguration)
-        )
-      : new MaterialPainter(materialClassifier, (material) =>
-          loadLight(
-            gl,
-            materialConfigurator(materialConfiguration, material),
-            lightConfiguration
-          )
-        );
+    this.lightPainter = new SingularPainter(
+      loadLight(gl, materialConfiguration, lightConfiguration)
+    );
     this.maxDirectionalLights = maxDirectionalLights;
     this.maxPointLights = maxPointLights;
     this.pointShadowBuffers = pointShadowTargets.map((target) =>
-      target.setupDepthTexture(
-        webgl.GlTextureFormat.Depth16,
-        webgl.GlTextureType.Quad
-      )
+      target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
     this.pointShadowPainter = new SingularPainter(loadShadowPoint(gl));
     this.pointShadowProjectionMatrix = Matrix4.fromPerspective(
@@ -871,17 +744,12 @@ class ForwardLightingPipeline implements webgl.GlPipeline {
     this.pointShadowTargets = pointShadowTargets;
   }
 
-  public process(
-    target: webgl.GlTarget,
-    transform: webgl.GlTransform,
-    scene: webgl.GlScene
-  ) {
+  public process(target: GlTarget, transform: GlTransform, scene: GlScene) {
     const directionalLights = scene.directionalLights || [];
     const gl = this.gl;
     const pointLights = scene.pointLights || [];
 
     gl.disable(gl.BLEND);
-
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
 
