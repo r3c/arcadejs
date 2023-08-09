@@ -22,7 +22,6 @@ import {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  GlTransform,
   loadModel,
   uniform,
 } from "../../webgl";
@@ -679,11 +678,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     this.sphereModel = loadModel(renderer, sphereModel);
   }
 
-  public process(
-    target: GlTarget,
-    transform: GlTransform,
-    scene: GlScene<SceneState, undefined>
-  ) {
+  public process(target: GlTarget, scene: GlScene<SceneState, undefined>) {
     const { state, subjects } = scene;
     const gl = this.renderer.context;
     const viewportSize = {
@@ -704,8 +699,8 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     this.geometryPainter.paint(
       this.geometryTarget,
       subjects,
-      transform.viewMatrix,
-      transform
+      state.viewMatrix,
+      state
     );
 
     // Render lights to light buffer
@@ -723,7 +718,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       // passing 2 distinct "view" matrices to light shader:
       // - One for projecting our quad to fullscreen
       // - One for computing light directions in camera space
-      const subjectMatrix = Matrix4.fromObject(transform.viewMatrix);
+      const subjectMatrix = Matrix4.fromObject(state.viewMatrix);
 
       subjectMatrix.invert();
 
@@ -739,13 +734,13 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
         this.directionalLightPainter.paint(
           this.lightTarget,
           directionalLightSubjects,
-          transform.viewMatrix,
+          state.viewMatrix,
           {
             depthBuffer: this.depthBuffer,
             normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
             light: directionalLight,
             projectionMatrix: this.fullscreenProjection,
-            viewMatrix: transform.viewMatrix,
+            viewMatrix: state.viewMatrix,
             viewportSize: viewportSize,
           }
         );
@@ -779,13 +774,13 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
         this.pointLightPainter.paint(
           this.lightTarget,
           pointLightSubjects,
-          transform.viewMatrix,
+          state.viewMatrix,
           {
             depthBuffer: this.depthBuffer,
             normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
             light: pointLight,
-            projectionMatrix: transform.projectionMatrix,
-            viewMatrix: transform.viewMatrix,
+            projectionMatrix: state.projectionMatrix,
+            viewMatrix: state.viewMatrix,
             viewportSize: viewportSize,
           }
         );
@@ -801,11 +796,11 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
 
-    this.materialPainter.paint(target, subjects, transform.viewMatrix, {
+    this.materialPainter.paint(target, subjects, state.viewMatrix, {
       ambientLightColor: state.ambientLightColor ?? Vector3.zero,
       lightBuffer: this.lightBuffer,
-      projectionMatrix: transform.projectionMatrix,
-      viewMatrix: transform.viewMatrix,
+      projectionMatrix: state.projectionMatrix,
+      viewMatrix: state.viewMatrix,
     });
   }
 

@@ -6,7 +6,6 @@ import {
   GlScene,
   GlShader,
   GlTarget,
-  GlTransform,
   uniform,
 } from "../../webgl";
 import { SingularPainter } from "../painters/singular";
@@ -68,11 +67,8 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     this.renderer = renderer;
   }
 
-  public process(
-    target: GlTarget,
-    transform: GlTransform,
-    scene: GlScene<SceneState, undefined>
-  ) {
+  public process(target: GlTarget, scene: GlScene<SceneState, undefined>) {
+    const { state, subjects } = scene;
     const gl = this.renderer.context;
 
     gl.enable(gl.CULL_FACE);
@@ -80,10 +76,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
 
     gl.cullFace(gl.BACK);
 
-    this.painter.paint(target, scene.subjects, transform.viewMatrix, {
-      projectionMatrix: transform.projectionMatrix,
-      viewMatrix: transform.viewMatrix,
-    });
+    this.painter.paint(target, subjects, state.viewMatrix, state);
   }
 
   public resize(_width: number, _height: number) {}

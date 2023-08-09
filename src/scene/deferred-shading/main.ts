@@ -170,15 +170,6 @@ const application: Application<WebGLScreen, SceneState> = {
   render(state) {
     const { camera, models, pipelines, target, tweak } = state;
 
-    const transform = {
-      projectionMatrix: state.projectionMatrix,
-      viewMatrix: Matrix4.fromCustom(
-        ["translate", camera.position],
-        ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-        ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-      ),
-    };
-
     // Pick active lights
     const directionalLights = state.directionalLights.slice(
       0,
@@ -256,7 +247,7 @@ const application: Application<WebGLScreen, SceneState> = {
 
     target.clear(0);
 
-    deferredPipeline.process(target, transform, deferredScene);
+    deferredPipeline.process(target, deferredScene);
 
     // Draw debug
     if (tweak.debugMode !== 0) {
@@ -271,7 +262,7 @@ const application: Application<WebGLScreen, SceneState> = {
         ][tweak.debugMode - 1]
       );
 
-      debugPipeline.process(target, transform, debugScene);
+      debugPipeline.process(target, debugScene);
     }
   },
 

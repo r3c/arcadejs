@@ -9,7 +9,6 @@ import {
   GlScene,
   GlShader,
   GlTarget,
-  GlTransform,
   loadModel,
   uniform,
 } from "../../webgl";
@@ -218,11 +217,7 @@ class Pipeline implements GlPipeline<State, undefined> {
     this.scale = configuration.scale ?? 0.4;
   }
 
-  public process(
-    target: GlTarget,
-    _transform: GlTransform,
-    scene: GlScene<State, undefined>
-  ) {
+  public process(target: GlTarget, scene: GlScene<State, undefined>) {
     const gl = this.renderer.context;
 
     gl.disable(gl.BLEND);

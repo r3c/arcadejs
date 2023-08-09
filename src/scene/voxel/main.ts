@@ -29,7 +29,6 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  GlTransform,
   createRenderer,
   loadModel,
 } from "../../engine/graphic/webgl";
@@ -53,10 +52,11 @@ interface ApplicationState {
   pipelines: {
     forwardLighting: ForwardLightingPipeline;
   };
+  projectionMatrix: Matrix4;
   target: GlTarget;
   time: number;
-  transform: GlTransform;
   tweak: Tweak<SceneConfiguration>;
+  viewMatrix: Matrix4;
   worldGraphic: WorldGraphic;
   worldPhysic: WorldPhysic;
 }
@@ -186,13 +186,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
           },
         }),
       },
+      projectionMatrix: Matrix4.identity,
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       time: 0,
-      transform: {
-        projectionMatrix: Matrix4.identity,
-        viewMatrix: Matrix4.identity,
-      },
       tweak,
+      viewMatrix: Matrix4.identity,
       worldGraphic,
       worldPhysic,
     };
@@ -311,7 +309,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Update state
     state.currentOffset = lookOffset;
-    state.transform.viewMatrix = viewMatrix;
+    state.viewMatrix = viewMatrix;
 
     for (state.time += dt; state.time >= timeFactor; state.time -= timeFactor) {
       worldPhysic.tick();
@@ -323,8 +321,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
       currentOffset,
       models,
       pipelines,
+      projectionMatrix,
       target,
-      transform,
+      viewMatrix,
       worldGraphic,
     } = state;
 
@@ -356,13 +355,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
           position,
           radius,
         })),
-        projectionMatrix: transform.projectionMatrix,
-        viewMatrix: transform.viewMatrix,
+        projectionMatrix,
+        viewMatrix,
       },
       subjects,
     };
 
-    lightPipeline.process(target, transform, lightScene);
+    lightPipeline.process(target, lightScene);
   },
 
   resize(state: ApplicationState, screen: WebGLScreen) {
@@ -370,7 +369,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       screen.getWidth(),
       screen.getHeight()
     );
-    state.transform.projectionMatrix = Matrix4.fromPerspective(
+    state.projectionMatrix = Matrix4.fromPerspective(
       45,
       screen.getRatio(),
       0.1,

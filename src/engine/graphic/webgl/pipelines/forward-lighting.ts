@@ -28,7 +28,6 @@ import {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  GlTransform,
   uniform,
 } from "../../webgl";
 
@@ -761,11 +760,7 @@ class ForwardLightingPipeline implements GlPipeline<SceneState, ModelState> {
     this.renderer = renderer;
   }
 
-  public process(
-    target: GlTarget,
-    transform: GlTransform,
-    scene: GlScene<SceneState, ModelState>
-  ) {
+  public process(target: GlTarget, scene: GlScene<SceneState, ModelState>) {
     const { state, subjects } = scene;
 
     const directionalLights = state.directionalLights || [];
@@ -845,14 +840,14 @@ class ForwardLightingPipeline implements GlPipeline<SceneState, ModelState> {
     gl.colorMask(true, true, true, true);
     gl.cullFace(gl.BACK);
 
-    this.lightPainter.paint(target, subjects, transform.viewMatrix, {
+    this.lightPainter.paint(target, subjects, state.viewMatrix, {
       ambientLightColor: state.ambientLightColor ?? Vector3.zero,
       directionalLights: directionalLightStates,
       environmentLight: state.environmentLight,
       pointLights: pointLights,
-      projectionMatrix: transform.projectionMatrix,
+      projectionMatrix: state.projectionMatrix,
       shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
-      viewMatrix: transform.viewMatrix,
+      viewMatrix: state.viewMatrix,
     });
   }
 

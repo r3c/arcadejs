@@ -135,15 +135,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
       tweak,
     } = state;
 
-    const transform = {
-      projectionMatrix: projectionMatrix,
-      viewMatrix: Matrix4.fromCustom(
-        ["translate", camera.position],
-        ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-        ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-      ),
-    };
-
     // Clear screen
     target.clear(0);
 
@@ -186,7 +177,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
     };
 
-    lightPipeline.process(target, transform, lightScene);
+    lightPipeline.process(target, lightScene);
   },
 
   resize(state, screen) {

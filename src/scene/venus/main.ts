@@ -177,14 +177,7 @@ const application: Application<WebGLScreen, SceneState> = {
       subjects,
     };
 
-    pipelines.lights[bitfield.index(getOptions(tweak))].process(
-      target,
-      {
-        projectionMatrix: projectionMatrix,
-        viewMatrix: viewMatrix,
-      },
-      scene
-    );
+    pipelines.lights[bitfield.index(getOptions(tweak))].process(target, scene);
   },
 
   resize(state, screen) {

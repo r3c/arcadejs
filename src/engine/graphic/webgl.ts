@@ -128,11 +128,7 @@ type GlPainter<TScene, TModel> = {
 };
 
 type GlPipeline<TScene, TModel> = {
-  process(
-    target: GlTarget,
-    transform: GlTransform,
-    scene: GlScene<TScene, TModel>
-  ): void;
+  process(target: GlTarget, scene: GlScene<TScene, TModel>): void;
   resize(width: number, height: number): void;
 };
 
@@ -187,11 +183,6 @@ const enum GlTextureType {
   Quad,
   Cube,
 }
-
-type GlTransform = {
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
-};
 
 type GlUniformAccessor<TState, TValue> = {
   allocateTexture: boolean;
@@ -1524,7 +1515,6 @@ export {
   type GlRenderer,
   type GlScene,
   type GlSubject,
-  type GlTransform,
   GlShader,
   GlTarget,
   GlTextureFormat,

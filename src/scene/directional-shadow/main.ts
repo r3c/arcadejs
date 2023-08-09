@@ -117,16 +117,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
   render(state) {
     const { camera, models, pipelines, target } = state;
 
-    // Setup view matrices
-    const transform = {
-      projectionMatrix: state.projectionMatrix,
-      viewMatrix: Matrix4.fromCustom(
-        ["translate", camera.position],
-        ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-        ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-      ),
-    };
-
     // Draw scene
     const lightDirection = move.rotateDirection(-state.move * 10, 0);
     const lightPipeline =
@@ -179,7 +169,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    lightPipeline.process(target, transform, lightScene);
+    lightPipeline.process(target, lightScene);
 
     // Draw texture debug
     if (state.tweak.showDebug) {
@@ -188,7 +178,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         lightPipeline.directionalShadowBuffers[0]
       );
 
-      debugPipeline.process(target, transform, debugScene);
+      debugPipeline.process(target, debugScene);
     }
   },
 
