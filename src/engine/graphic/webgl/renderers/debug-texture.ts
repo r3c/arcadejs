@@ -4,8 +4,8 @@ import { mesh } from "./resources/quad";
 import {
   GlModel,
   GlPainter,
-  GlPipeline,
   GlRenderer,
+  GlRuntime,
   GlScene,
   GlShader,
   GlTarget,
@@ -137,7 +137,7 @@ type SceneState = {
   source: WebGLTexture;
 };
 
-const load = (renderer: GlRenderer, configuration: Configuration) => {
+const load = (runtime: GlRuntime, configuration: Configuration) => {
   const directives = [
     { name: "FORMAT", value: configuration.format },
     { name: "SELECT", value: configuration.select },
@@ -146,7 +146,7 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
   ];
 
   const shader = new GlShader<SceneState, undefined>(
-    renderer,
+    runtime,
     vertexSource,
     fragmentSource,
     directives
@@ -168,14 +168,14 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
   return shader;
 };
 
-class Pipeline implements GlPipeline<SceneState, undefined> {
+class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
   private readonly painter: GlPainter<SceneState, undefined>;
   private readonly quad: GlModel;
-  private readonly renderer: GlRenderer;
+  private readonly runtime: GlRuntime;
   private readonly scale: number;
 
   /*
-   ** Helper function used to build fake scene with a single subject using
+   ** Helper function used to build fake scene with a single object using
    ** given texture. It allows easy construction of "scene" parameter expected
    ** by "process" method easily.
    */
@@ -186,7 +186,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       state: {
         source,
       },
-      subjects: [
+      objects: [
         {
           matrix: Matrix4.fromIdentity(),
           model: {
@@ -212,15 +212,15 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     };
   }
 
-  public constructor(renderer: GlRenderer, configuration: Configuration) {
-    this.painter = new SingularPainter(load(renderer, configuration));
-    this.quad = loadModel(renderer, mesh);
-    this.renderer = renderer;
+  public constructor(runtime: GlRuntime, configuration: Configuration) {
+    this.painter = new SingularPainter(load(runtime, configuration));
+    this.quad = loadModel(runtime, mesh);
+    this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
   }
 
-  public process(target: GlTarget, scene: GlScene<SceneState, undefined>) {
-    const gl = this.renderer.context;
+  public render(target: GlTarget, scene: GlScene<SceneState, undefined>) {
+    const gl = this.runtime.context;
 
     gl.disable(gl.BLEND);
     gl.disable(gl.DEPTH_TEST);
@@ -228,7 +228,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
-    const subjects = [
+    const objects = [
       {
         matrix: Matrix4.fromCustom(
           ["translate", { x: 1 - this.scale, y: this.scale - 1, z: 0 }],
@@ -239,12 +239,12 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       },
     ];
 
-    // Hack: find first defined albedo map from subject models and use it as debug source
-    for (const subject of scene.subjects) {
-      for (const node of subject.model.meshes) {
+    // Hack: find first defined albedo map from object models and use it as debug source
+    for (const { model } of scene.objects) {
+      for (const node of model.meshes) {
         for (const primitive of node.primitives) {
           if (primitive.material.albedoMap !== undefined) {
-            this.painter.paint(target, subjects, Matrix4.fromIdentity(), {
+            this.painter.paint(target, objects, Matrix4.fromIdentity(), {
               source: primitive.material.albedoMap,
             });
 
@@ -258,4 +258,4 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
   public resize(_width: number, _height: number) {}
 }
 
-export { Format, Pipeline, Select };
+export { Format, DebugTextureRenderer, Select };

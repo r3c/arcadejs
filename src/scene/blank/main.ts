@@ -1,9 +1,13 @@
 import { type Application, declare, configure } from "../../engine/application";
 import { Context2DScreen } from "../../engine/graphic/display";
-import * as software from "../../engine/graphic/software";
+import {
+  SoftwareDrawMode,
+  SoftwareRenderer,
+} from "../../engine/graphic/software";
+import { Matrix4 } from "../../engine/math/matrix";
 
 interface State {
-  renderer: software.Renderer;
+  renderer: SoftwareRenderer;
 }
 
 const application: Application<Context2DScreen, State> = {
@@ -11,12 +15,15 @@ const application: Application<Context2DScreen, State> = {
     configure(undefined); // FIXME: required to clear tweaks, should be called automatically
 
     return {
-      renderer: new software.Renderer(screen),
+      renderer: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
     };
   },
 
   render(state) {
-    state.renderer.clear();
+    state.renderer.render({
+      objects: [],
+      state: { projection: Matrix4.identity, view: Matrix4.identity },
+    });
   },
 
   resize() {},

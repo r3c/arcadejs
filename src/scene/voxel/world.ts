@@ -2,15 +2,15 @@ import { flattenModel, mergeModels } from "../../engine/graphic/model";
 import { Instance, Model } from "../../engine/graphic/model/definition";
 import {
   deleteModel,
-  GlRenderer,
-  GlSubject,
+  GlRuntime,
+  GlObject,
   loadLibrary,
   loadModel,
 } from "../../engine/graphic/webgl";
 import {
   ModelState,
   hasShadowState,
-} from "../../engine/graphic/webgl/pipelines/forward-lighting";
+} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -50,7 +50,7 @@ interface WorldEvent {
 interface WorldGraphic {
   findOffsetPosition: (renderPosition: Vector3) => Vector3 | undefined;
   findRenderPosition: (offsetPosition: Vector3) => Vector3;
-  getSubjects: () => Iterable<GlSubject<ModelState>>;
+  getObjects: () => Iterable<GlObject<ModelState>>;
   setVoxel: (offset: Vector3, modelIndex: number | undefined) => void;
   offsetSize: Vector3;
   renderSize: Vector3;
@@ -104,7 +104,7 @@ const cubeFaces: WorldCubeFace[] = [
 ];
 
 const createWorldGraphic = (
-  renderer: GlRenderer,
+  runtime: GlRuntime,
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,
@@ -131,7 +131,7 @@ const createWorldGraphic = (
     })
   );
 
-  const chunkSubjects = range<GlSubject<ModelState>>(chunks.length, () => ({
+  const chunkObjects = range<GlObject<ModelState>>(chunks.length, () => ({
     matrix: Matrix4.identity,
     model: { library: undefined, meshes: [] },
     state: hasShadowState,
@@ -184,7 +184,7 @@ const createWorldGraphic = (
   };
 
   const library = loadLibrary(
-    renderer.context,
+    runtime.context,
     mergeModels(
       models.flatMap((faces) =>
         faces.map((face) => ({
@@ -214,12 +214,12 @@ const createWorldGraphic = (
       };
     },
 
-    getSubjects: () => {
+    getObjects: () => {
       if (chunkUpdates.size > 0) {
         for (const chunkIndex of chunkUpdates) {
           const chunk = chunks[chunkIndex];
 
-          deleteModel(renderer.context, chunkSubjects[chunkIndex].model);
+          deleteModel(runtime.context, chunkObjects[chunkIndex].model);
 
           const instances: Instance[] = [];
           const nextOffset = Vector3.fromZero();
@@ -246,15 +246,15 @@ const createWorldGraphic = (
 
           const mergedModel = mergeModels(instances);
           const flattenedModel = flattenModel(mergedModel);
-          const model = loadModel(renderer, flattenedModel, { library });
+          const model = loadModel(runtime, flattenedModel, { library });
 
-          chunkSubjects[chunkIndex].model = model;
+          chunkObjects[chunkIndex].model = model;
         }
 
         chunkUpdates.clear();
       }
 
-      return chunkSubjects;
+      return chunkObjects;
     },
 
     setVoxel: (offset, modelIndex) => {

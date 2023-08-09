@@ -3,23 +3,23 @@ import { Matrix4 } from "../math/matrix";
 import { Attribute, Material, Model, Mesh } from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 
-enum DrawMode {
+const enum SoftwareDrawMode {
   Default,
   Wire,
 }
 
-interface Image {
+type Image = {
   colors: Uint8ClampedArray;
   depths: Float32Array;
   height: number;
   width: number;
-}
+};
 
-interface Vertex {
+type Vertex = {
   color: Vector4;
   coord: Vector2;
   point: Vector3;
-}
+};
 
 const defaultAttribute = {
   buffer: new Float32Array(4).fill(0),
@@ -67,12 +67,14 @@ const drawMeshes = (
   image: Image,
   meshes: Iterable<Mesh>,
   modelViewProjection: Matrix4,
-  drawMode: DrawMode
+  drawMode: SoftwareDrawMode
 ) => {
   const halfWidth = image.width * 0.5;
   const halfHeight = image.height * 0.5;
   const drawTriangle =
-    drawMode === DrawMode.Default ? drawTriangleTexture : drawTriangleWireframe;
+    drawMode === SoftwareDrawMode.Default
+      ? drawTriangleTexture
+      : drawTriangleWireframe;
 
   for (const mesh of meshes) {
     drawMeshes(image, mesh.children, modelViewProjection, drawMode);
@@ -350,27 +352,43 @@ const projectVertexToScreen = (
   };
 };
 
-class Renderer {
+type SoftwareObject = {
+  matrix: Matrix4;
+  model: Model;
+};
+
+type SoftwareScene<TSceneState> = {
+  objects: Iterable<SoftwareObject>;
+  state: TSceneState;
+};
+
+type SceneState = {
+  projection: Matrix4;
+  view: Matrix4;
+};
+
+interface Renderer<TSceneState> {
+  render(scene: SoftwareScene<TSceneState>): void;
+  resize(width: number, height: number): void;
+}
+
+class SoftwareRenderer implements Renderer<SceneState> {
+  private readonly drawMode: SoftwareDrawMode;
   private readonly screen: Context2DScreen;
 
-  public constructor(screen: Context2DScreen) {
+  public constructor(screen: Context2DScreen, drawMode: SoftwareDrawMode) {
+    this.drawMode = drawMode;
     this.screen = screen;
   }
 
-  public clear() {
+  public render(scene: SoftwareScene<SceneState>) {
+    const { objects, state } = scene;
     const screen = this.screen;
 
+    // FIXME: reuse a blank image data buffer rather than following lines
     screen.context.fillStyle = "black";
     screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
-  }
 
-  public draw(
-    model: Model,
-    projection: Matrix4,
-    modelView: Matrix4,
-    drawMode: DrawMode
-  ) {
-    const screen = this.screen;
     const capture = screen.context.getImageData(
       0,
       0,
@@ -387,14 +405,24 @@ class Renderer {
 
     image.depths.fill(Math.pow(2, 127));
 
-    const viewModelProjection = Matrix4.fromObject(projection);
+    const modelViewProjection = Matrix4.fromIdentity();
+    const viewProjection = Matrix4.fromObject(state.projection);
 
-    viewModelProjection.multiply(modelView);
+    viewProjection.multiply(state.view);
 
-    drawMeshes(image, model.meshes, viewModelProjection, drawMode);
+    for (const { matrix, model } of objects) {
+      modelViewProjection.set(viewProjection);
+      modelViewProjection.multiply(matrix);
+
+      drawMeshes(image, model.meshes, modelViewProjection, this.drawMode);
+    }
 
     screen.context.putImageData(capture, 0, 0);
   }
+
+  public resize(_width: number, _height: number) {
+    // No-op
+  }
 }
 
-export { DrawMode, Renderer };
+export { SoftwareDrawMode, SoftwareRenderer };

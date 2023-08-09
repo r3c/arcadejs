@@ -9,16 +9,22 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
-  ForwardLightingPipeline,
+  ForwardLightingRenderer,
   ModelState,
   SceneState,
   hasShadowState,
-} from "../../engine/graphic/webgl/pipelines/forward-lighting";
+} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import * as webgl from "../../engine/graphic/webgl";
+import {
+  GlModel,
+  GlScene,
+  GlTarget,
+  createRuntime,
+  loadModel,
+} from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import * as view from "../view";
 
@@ -44,16 +50,16 @@ interface ApplicationState {
   input: Input;
   lightPositions: Vector3[];
   models: {
-    cube: webgl.GlModel;
-    ground: webgl.GlModel;
-    light: webgl.GlModel;
+    cube: GlModel;
+    ground: GlModel;
+    light: GlModel;
   };
   move: number;
   pipelines: {
-    lights: ForwardLightingPipeline[];
+    lights: ForwardLightingRenderer[];
   };
   projectionMatrix: Matrix4;
-  target: webgl.GlTarget;
+  target: GlTarget;
   tweak: Tweak<Configuration>;
 }
 
@@ -78,7 +84,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const renderer = webgl.createRenderer(screen.context);
+    const runtime = createRuntime(screen.context);
     const tweak = configure(configuration);
 
     // Load models
@@ -94,15 +100,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
       input: new Input(screen.canvas),
       lightPositions: range(3, () => Vector3.zero),
       models: {
-        cube: webgl.loadModel(renderer, cubeModel),
-        ground: webgl.loadModel(renderer, groundModel),
-        light: webgl.loadModel(renderer, lightModel),
+        cube: loadModel(runtime, cubeModel),
+        ground: loadModel(runtime, groundModel),
+        light: loadModel(runtime, lightModel),
       },
       move: 0,
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new ForwardLightingPipeline(renderer, {
+            new ForwardLightingRenderer(runtime, {
               light: {
                 maxPointLights: 3,
                 model: ForwardLightingModel.Phong,
@@ -119,7 +125,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ),
       },
       projectionMatrix: Matrix4.fromIdentity(),
-      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },
@@ -140,7 +146,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Forward pass
     const lightPipeline = pipelines.lights[bitfield.index(getOptions(tweak))];
-    const lightScene: webgl.GlScene<SceneState, ModelState> = {
+    const lightScene: GlScene<SceneState, ModelState> = {
       state: {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
         pointLights: lightPositions
@@ -157,7 +163,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
         ),
       },
-      subjects: [
+      objects: [
         {
           matrix: Matrix4.fromIdentity(),
           model: models.cube,
@@ -177,7 +183,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
     };
 
-    lightPipeline.process(target, lightScene);
+    lightPipeline.render(target, lightScene);
   },
 
   resize(state, screen) {

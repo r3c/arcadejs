@@ -15,17 +15,25 @@ import {
 } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import * as webgl from "../../engine/graphic/webgl";
+import {
+  GlModel,
+  GlScene,
+  GlTarget,
+  createRuntime,
+  loadModel,
+  loadTextureCube,
+  loadTextureQuad,
+} from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import * as view from "../view";
 import {
-  ForwardLightingPipeline,
+  ForwardLightingRenderer,
   ForwardLightingModel,
   hasShadowState,
   noShadowState,
   ModelState,
   SceneState,
-} from "../../engine/graphic/webgl/pipelines/forward-lighting";
+} from "../../engine/graphic/webgl/renderers/forward-lighting";
 
 /*
  ** What changed?
@@ -54,16 +62,16 @@ interface ApplicationState {
   input: Input;
   lights: Light[];
   models: {
-    ground: webgl.GlModel;
-    helmet: webgl.GlModel;
-    light: webgl.GlModel;
+    ground: GlModel;
+    helmet: GlModel;
+    light: GlModel;
   };
   move: number;
   pipelines: {
-    lights: ForwardLightingPipeline[];
+    lights: ForwardLightingRenderer[];
   };
   projectionMatrix: Matrix4;
-  target: webgl.GlTarget;
+  target: GlTarget;
   textures: {
     brdf: WebGLTexture;
     diffuse: WebGLTexture;
@@ -95,7 +103,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const renderer = webgl.createRenderer(gl);
+    const runtime = createRuntime(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -114,12 +122,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
     });
 
     // Load textures
-    const brdf = webgl.loadTextureQuad(
+    const brdf = loadTextureQuad(
       gl,
       await image.loadFromURL("model/ibl/ibl_brdf_lut.webp")
     );
 
-    const diffuse = webgl.loadTextureCube(
+    const diffuse = loadTextureCube(
       gl,
       await image.loadFromURL("model/papermill/diffuse_right_0.jpg"),
       await image.loadFromURL("model/papermill/diffuse_left_0.jpg"),
@@ -129,7 +137,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       await image.loadFromURL("model/papermill/diffuse_back_0.jpg")
     );
 
-    const specular = webgl.loadTextureCube(
+    const specular = loadTextureCube(
       gl,
       await image.loadFromURL("model/papermill/specular_right_0.jpg"),
       await image.loadFromURL("model/papermill/specular_left_0.jpg"),
@@ -147,15 +155,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
-        ground: webgl.loadModel(renderer, groundModel),
-        helmet: webgl.loadModel(renderer, helmetModel),
-        light: webgl.loadModel(renderer, lightModel),
+        ground: loadModel(runtime, groundModel),
+        helmet: loadModel(runtime, helmetModel),
+        light: loadModel(runtime, lightModel),
       },
       move: 0,
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new ForwardLightingPipeline(renderer, {
+            new ForwardLightingRenderer(runtime, {
               light: {
                 model: ForwardLightingModel.Physical,
                 modelPhysicalNoAmbient: !flags[0],
@@ -178,7 +186,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         0.1,
         100
       ),
-      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       textures: {
         brdf: brdf,
         diffuse: diffuse,
@@ -231,7 +239,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       state: noShadowState,
     }));
 
-    const scene: webgl.GlScene<SceneState, ModelState> = {
+    const scene: GlScene<SceneState, ModelState> = {
       state: {
         ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
         environmentLight: {
@@ -247,10 +255,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
         projectionMatrix,
         viewMatrix,
       },
-      subjects: [cube, ground].concat(lights),
+      objects: [cube, ground].concat(lights),
     };
 
-    pipelines.lights[bitfield.index(getOptions(tweak))].process(target, scene);
+    pipelines.lights[bitfield.index(getOptions(tweak))].render(target, scene);
   },
 
   resize(state, screen) {

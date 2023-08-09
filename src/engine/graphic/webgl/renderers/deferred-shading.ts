@@ -12,12 +12,12 @@ import {
   GlDirectionalLight,
   GlModel,
   GlPainter,
-  GlPipeline,
-  GlPointLight,
   GlRenderer,
+  GlPointLight,
+  GlRuntime,
   GlScene,
   GlShader,
-  GlSubject,
+  GlObject,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
@@ -294,7 +294,7 @@ type SceneState = State & {
   pointLights?: GlPointLight[];
 };
 
-const loadAmbient = (renderer: GlRenderer, configuration: Configuration) => {
+const loadAmbient = (runtime: GlRuntime, configuration: Configuration) => {
   // Build directives from configuration
   const directives = [];
 
@@ -310,7 +310,7 @@ const loadAmbient = (renderer: GlRenderer, configuration: Configuration) => {
 
   // Setup light shader
   const shader = new GlShader<AmbientState, undefined>(
-    renderer,
+    runtime,
     ambientVertexShader,
     ambientFragmentShader,
     directives
@@ -344,10 +344,10 @@ const loadAmbient = (renderer: GlRenderer, configuration: Configuration) => {
   return shader;
 };
 
-const loadGeometry = (renderer: GlRenderer, configuration: Configuration) => {
+const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
   // Setup geometry shader
   const shader = new GlShader<State, undefined>(
-    renderer,
+    runtime,
     geometryVertexShader,
     geometryFragmentShader,
     []
@@ -420,7 +420,7 @@ const loadGeometry = (renderer: GlRenderer, configuration: Configuration) => {
 };
 
 const loadLight = <TState>(
-  renderer: GlRenderer,
+  runtime: GlRuntime,
   configuration: Configuration,
   type: LightType
 ) => {
@@ -443,7 +443,7 @@ const loadLight = <TState>(
 
   // Setup light shader
   const shader = new GlShader<LightState<TState>, undefined>(
-    renderer,
+    runtime,
     lightVertexShader,
     lightFragmentShader,
     directives
@@ -496,11 +496,11 @@ const loadLight = <TState>(
 };
 
 const loadLightDirectional = (
-  renderer: GlRenderer,
+  runtime: GlRuntime,
   configuration: Configuration
 ) => {
   const shader = loadLight<GlDirectionalLight>(
-    renderer,
+    runtime,
     configuration,
     LightType.Directional
   );
@@ -517,9 +517,9 @@ const loadLightDirectional = (
   return shader;
 };
 
-const loadLightPoint = (renderer: GlRenderer, configuration: Configuration) => {
+const loadLightPoint = (runtime: GlRuntime, configuration: Configuration) => {
   const shader = loadLight<GlPointLight>(
-    renderer,
+    runtime,
     configuration,
     LightType.Point
   );
@@ -540,7 +540,7 @@ const loadLightPoint = (renderer: GlRenderer, configuration: Configuration) => {
   return shader;
 };
 
-class Pipeline implements GlPipeline<SceneState, undefined> {
+class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
   public readonly albedoAndShininessBuffer: WebGLTexture;
   public readonly depthBuffer: WebGLTexture;
   public readonly normalAndGlossinessBuffer: WebGLTexture;
@@ -558,11 +558,11 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     LightState<GlPointLight>,
     undefined
   >;
-  private readonly renderer: GlRenderer;
+  private readonly runtime: GlRuntime;
   private readonly sphereModel: GlModel;
 
-  public constructor(renderer: GlRenderer, configuration: Configuration) {
-    const gl = renderer.context;
+  public constructor(runtime: GlRuntime, configuration: Configuration) {
+    const gl = runtime.context;
     const geometry = new GlTarget(
       gl,
       gl.drawingBufferWidth,
@@ -574,19 +574,19 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       GlTextureType.Quad
     );
     this.ambientLightPainter = new SingularPainter(
-      loadAmbient(renderer, configuration)
+      loadAmbient(runtime, configuration)
     );
     this.depthBuffer = geometry.setupDepthTexture(
       GlTextureFormat.Depth16,
       GlTextureType.Quad
     );
     this.directionalLightPainter = new SingularPainter(
-      loadLightDirectional(renderer, configuration)
+      loadLightDirectional(runtime, configuration)
     );
-    this.fullscreenModel = loadModel(renderer, quadModel);
+    this.fullscreenModel = loadModel(runtime, quadModel);
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = new SingularPainter(
-      loadGeometry(renderer, configuration)
+      loadGeometry(runtime, configuration)
     );
     this.geometryTarget = geometry;
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
@@ -594,15 +594,15 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       GlTextureType.Quad
     );
     this.pointLightPainter = new SingularPainter(
-      loadLightPoint(renderer, configuration)
+      loadLightPoint(runtime, configuration)
     );
-    this.renderer = renderer;
-    this.sphereModel = loadModel(renderer, sphereModel);
+    this.runtime = runtime;
+    this.sphereModel = loadModel(runtime, sphereModel);
   }
 
-  public process(target: GlTarget, scene: GlScene<SceneState, undefined>) {
-    const { state, subjects } = scene;
-    const gl = this.renderer.context;
+  public render(target: GlTarget, scene: GlScene<SceneState, undefined>) {
+    const { objects, state } = scene;
+    const gl = this.runtime.context;
     const viewportSize = {
       x: gl.drawingBufferWidth,
       y: gl.drawingBufferHeight,
@@ -620,7 +620,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
     this.geometryTarget.clear(0);
     this.geometryPainter.paint(
       this.geometryTarget,
-      subjects,
+      objects,
       state.viewMatrix,
       state
     );
@@ -634,7 +634,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
 
     // Draw ambient light using fullscreen quad
     if (state.ambientLightColor !== undefined) {
-      const ambiantLightSubjects: GlSubject<undefined>[] = [
+      const ambiantLightObjects: GlObject<undefined>[] = [
         {
           matrix: Matrix4.fromIdentity(),
           model: this.fullscreenModel,
@@ -644,7 +644,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
 
       this.ambientLightPainter.paint(
         target,
-        ambiantLightSubjects,
+        ambiantLightObjects,
         state.viewMatrix,
         {
           albedoAndShininessBuffer: this.albedoAndShininessBuffer,
@@ -661,13 +661,13 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       // passing 2 distinct "view" matrices to light shader:
       // - One for projecting our quad to fullscreen
       // - One for computing light directions in camera space
-      const subjectMatrix = Matrix4.fromObject(state.viewMatrix);
+      const objectMatrix = Matrix4.fromObject(state.viewMatrix);
 
-      subjectMatrix.invert();
+      objectMatrix.invert();
 
-      const directionalLightSubjects: GlSubject<undefined>[] = [
+      const directionalLightObjects: GlObject<undefined>[] = [
         {
-          matrix: subjectMatrix,
+          matrix: objectMatrix,
           model: this.fullscreenModel,
           state: undefined,
         },
@@ -676,7 +676,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       for (const directionalLight of state.directionalLights) {
         this.directionalLightPainter.paint(
           target,
-          directionalLightSubjects,
+          directionalLightObjects,
           state.viewMatrix,
           {
             albedoAndShininessBuffer: this.albedoAndShininessBuffer,
@@ -693,7 +693,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
 
     // Draw point lights using spheres
     if (state.pointLights !== undefined) {
-      const pointLightSubjects: GlSubject<undefined>[] = [
+      const pointLightObjects: GlObject<undefined>[] = [
         {
           matrix: Matrix4.fromIdentity(),
           model: this.sphereModel,
@@ -704,7 +704,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
       gl.cullFace(gl.FRONT);
 
       for (const pointLight of state.pointLights) {
-        pointLightSubjects[0].matrix = Matrix4.fromCustom(
+        pointLightObjects[0].matrix = Matrix4.fromCustom(
           ["translate", pointLight.position],
           [
             "scale",
@@ -718,7 +718,7 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
 
         this.pointLightPainter.paint(
           target,
-          pointLightSubjects,
+          pointLightObjects,
           state.viewMatrix,
           {
             albedoAndShininessBuffer: this.albedoAndShininessBuffer,
@@ -739,4 +739,9 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
   }
 }
 
-export { type Configuration, type SceneState, LightModel, Pipeline };
+export {
+  type Configuration,
+  type SceneState,
+  DeferredShadingRenderer,
+  LightModel,
+};

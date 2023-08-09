@@ -1,8 +1,8 @@
 import { Matrix4 } from "../../../math/matrix";
 import {
   GlPainter,
-  GlPipeline,
   GlRenderer,
+  GlRuntime,
   GlScene,
   GlShader,
   GlTarget,
@@ -33,9 +33,9 @@ type SceneState = {
   viewMatrix: Matrix4;
 };
 
-const load = (renderer: GlRenderer) => {
+const load = (runtime: GlRuntime) => {
   const shader = new GlShader<SceneState, undefined>(
-    renderer,
+    runtime,
     vertexShader,
     fragmentShader
   );
@@ -58,28 +58,28 @@ const load = (renderer: GlRenderer) => {
   return shader;
 };
 
-class Pipeline implements GlPipeline<SceneState, undefined> {
+class BasicRenderer implements GlRenderer<SceneState, undefined> {
   private readonly painter: GlPainter<SceneState, undefined>;
-  private readonly renderer: GlRenderer;
+  private readonly runtime: GlRuntime;
 
-  public constructor(renderer: GlRenderer) {
-    this.painter = new SingularPainter<SceneState, undefined>(load(renderer));
-    this.renderer = renderer;
+  public constructor(runtime: GlRuntime) {
+    this.painter = new SingularPainter<SceneState, undefined>(load(runtime));
+    this.runtime = runtime;
   }
 
-  public process(target: GlTarget, scene: GlScene<SceneState, undefined>) {
-    const { state, subjects } = scene;
-    const gl = this.renderer.context;
+  public render(target: GlTarget, scene: GlScene<SceneState, undefined>) {
+    const { objects, state } = scene;
+    const gl = this.runtime.context;
 
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
 
     gl.cullFace(gl.BACK);
 
-    this.painter.paint(target, subjects, state.viewMatrix, state);
+    this.painter.paint(target, objects, state.viewMatrix, state);
   }
 
   public resize(_width: number, _height: number) {}
 }
 
-export { Pipeline };
+export { BasicRenderer };

@@ -8,11 +8,11 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
-  ForwardLightingPipeline,
+  ForwardLightingRenderer,
   ModelState,
   SceneState,
   hasShadowState,
-} from "../../engine/graphic/webgl/pipelines/forward-lighting";
+} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -29,7 +29,7 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  createRenderer,
+  createRuntime,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
@@ -50,7 +50,7 @@ interface ApplicationState {
   };
   move: number;
   pipelines: {
-    forwardLighting: ForwardLightingPipeline;
+    forwardLighting: ForwardLightingRenderer;
   };
   projectionMatrix: Matrix4;
   target: GlTarget;
@@ -71,7 +71,7 @@ const timeFactor = 20;
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const renderer = createRenderer(gl);
+    const runtime = createRuntime(gl);
     const tweak = configure(configuration);
 
     // Load models
@@ -104,7 +104,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       transform: Matrix4.fromCustom(["scale", worldScaleVector]),
     });
 
-    const select = loadModel(renderer, selectModel);
+    const select = loadModel(runtime, selectModel);
 
     const getModelIndex = (height: number): number => {
       const value = Math.pow(height, 0.5) / (1 / levelModels.length);
@@ -114,7 +114,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Create world
     const worldGraphic = createWorldGraphic(
-      renderer,
+      runtime,
       worldChunkCount,
       worldChunkSize,
       worldScale,
@@ -178,7 +178,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       pipelines: {
-        forwardLighting: new ForwardLightingPipeline(renderer, {
+        forwardLighting: new ForwardLightingRenderer(runtime, {
           light: {
             maxPointLights: maxLights,
             model: ForwardLightingModel.Phong,
@@ -330,17 +330,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Clear screen
     target.clear(0);
 
-    // Create subjects
-    const subjects = Array.from(worldGraphic.getSubjects());
+    // Create objects
+    const objects = Array.from(worldGraphic.getObjects());
 
-    const worldSubjectMatrix = Matrix4.fromIdentity();
+    const worldObjectMatrix = Matrix4.fromIdentity();
 
-    worldSubjectMatrix.translate(
-      worldGraphic.findRenderPosition(currentOffset)
-    );
+    worldObjectMatrix.translate(worldGraphic.findRenderPosition(currentOffset));
 
-    subjects.push({
-      matrix: worldSubjectMatrix,
+    objects.push({
+      matrix: worldObjectMatrix,
       model: models.select,
       state: hasShadowState,
     });
@@ -358,10 +356,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
         projectionMatrix,
         viewMatrix,
       },
-      subjects,
+      objects: objects,
     };
 
-    lightPipeline.process(target, lightScene);
+    lightPipeline.render(target, lightScene);
   },
 
   resize(state: ApplicationState, screen: WebGLScreen) {

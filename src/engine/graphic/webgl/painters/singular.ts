@@ -1,13 +1,13 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
-import { GlMesh, GlPainter, GlShader, GlSubject, GlTarget } from "../../webgl";
+import { GlMesh, GlPainter, GlShader, GlObject, GlTarget } from "../../webgl";
 
-const draw = <TScene, TModel>(
-  shader: GlShader<TScene, TModel>,
+const draw = <TSceneState, TModelState>(
+  shader: GlShader<TSceneState, TModelState>,
   target: GlTarget,
   meshes: Iterable<GlMesh>,
   parentTransform: Matrix4,
   viewMatrix: Matrix4,
-  state: TModel
+  state: TModelState
 ): void => {
   const modelMatrix = Matrix4.fromIdentity();
   const normalMatrix = Matrix3.fromIdentity();
@@ -34,26 +34,28 @@ const draw = <TScene, TModel>(
   }
 };
 
-class SingularPainter<TScene, TModel> implements GlPainter<TScene, TModel> {
-  private readonly shader: GlShader<TScene, TModel>;
+class SingularPainter<TSceneState, TModelState>
+  implements GlPainter<TSceneState, TModelState>
+{
+  private readonly shader: GlShader<TSceneState, TModelState>;
 
-  public constructor(shader: GlShader<TScene, TModel>) {
+  public constructor(shader: GlShader<TSceneState, TModelState>) {
     this.shader = shader;
   }
 
   public paint(
     target: GlTarget,
-    subjects: Iterable<GlSubject<TModel>>,
-    viewMatrix: Matrix4,
-    state: TScene
+    objects: Iterable<GlObject<TModelState>>,
+    view: Matrix4,
+    state: TSceneState
   ): void {
     const shader = this.shader;
 
     shader.activate();
     shader.bindScene(state);
 
-    for (const { matrix, model, state } of subjects) {
-      draw(shader, target, model.meshes, matrix, viewMatrix, state);
+    for (const { matrix, model, state } of objects) {
+      draw(shader, target, model.meshes, matrix, view, state);
     }
   }
 }

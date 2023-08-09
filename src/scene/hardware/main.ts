@@ -5,7 +5,15 @@ import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
-import * as webgl from "../../engine/graphic/webgl";
+import {
+  GlModel,
+  GlPainter,
+  GlShader,
+  GlTarget,
+  createRuntime,
+  loadModel,
+  uniform,
+} from "../../engine/graphic/webgl";
 import { BatchPainter } from "../../engine/graphic/webgl/painters/batch";
 
 /*
@@ -50,10 +58,10 @@ type ApplicationState = {
   camera: view.Camera;
   gl: WebGLRenderingContext;
   input: Input;
-  model: webgl.GlModel;
-  painter: webgl.GlPainter<SceneState, undefined>;
+  model: GlModel;
+  painter: GlPainter<SceneState, undefined>;
   projectionMatrix: Matrix4;
-  target: webgl.GlTarget;
+  target: GlTarget;
 };
 
 type SceneState = {
@@ -69,12 +77,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const tweak = configure(configuration);
 
-    const renderer = webgl.createRenderer(screen.context);
-    const shader = new webgl.GlShader<SceneState, void>(
-      renderer,
-      vsSource,
-      fsSource
-    );
+    const runtime = createRuntime(screen.context);
+    const shader = new GlShader<SceneState, void>(runtime, vsSource, fsSource);
 
     shader.setAttributePerPolygon("colors", (geometry) => geometry.colors);
     shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
@@ -82,39 +86,39 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     shader.setUniformPerMaterial(
       "albedoFactor",
-      webgl.uniform.numberArray4(({ albedoFactor }) => albedoFactor)
+      uniform.numberArray4(({ albedoFactor }) => albedoFactor)
     );
     shader.setUniformPerMaterial(
       "albedoMap",
-      webgl.uniform.whiteQuadTexture(({ albedoMap }) =>
+      uniform.whiteQuadTexture(({ albedoMap }) =>
         tweak.useTexture ? albedoMap : undefined
       )
     );
     shader.setUniformPerMesh(
       "modelMatrix",
-      webgl.uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+      uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
     );
     shader.setUniformPerScene(
       "projectionMatrix",
-      webgl.uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+      uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
     );
     shader.setUniformPerScene(
       "viewMatrix",
-      webgl.uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+      uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
     );
 
     return {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      gl: renderer.context,
+      gl: runtime.context,
       input: new Input(screen.canvas),
-      model: webgl.loadModel(
-        renderer,
+      model: loadModel(
+        runtime,
         await loadModelFromJson("model/cube/mesh.json")
       ),
       painter: new BatchPainter(shader),
       projectionMatrix: Matrix4.fromIdentity(),
       screen,
-      target: new webgl.GlTarget(
+      target: new GlTarget(
         screen.context,
         screen.getWidth(),
         screen.getHeight()

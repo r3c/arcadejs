@@ -90,6 +90,12 @@ type GlMaterial = {
 
 type GlMaterialExtractor = (material: GlMaterial) => GlTexture | undefined;
 
+type GlMesh = {
+  children: GlMesh[];
+  primitives: GlPrimitive[];
+  transform: Matrix4;
+};
+
 type GlModel = {
   library: GlLibrary | undefined;
   meshes: GlMesh[];
@@ -100,16 +106,10 @@ type GlModelConfiguration = {
   library?: GlLibrary;
 };
 
-type GlMesh = {
-  children: GlMesh[];
-  primitives: GlPrimitive[];
-  transform: Matrix4;
-};
-
-type GlModelState<TModel> = {
+type GlModelInstance<TModelState> = {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
-  state: TModel;
+  state: TModelState;
 };
 
 type GlNativeFormat = {
@@ -118,18 +118,19 @@ type GlNativeFormat = {
   type: number;
 };
 
-type GlPainter<TScene, TModel> = {
-  paint(
-    target: GlTarget,
-    subjects: Iterable<GlSubject<TModel>>,
-    viewMatrix: Matrix4,
-    state: TScene
-  ): void;
+type GlObject<TState> = {
+  matrix: Matrix4;
+  model: GlModel;
+  state: TState;
 };
 
-type GlPipeline<TScene, TModel> = {
-  process(target: GlTarget, scene: GlScene<TScene, TModel>): void;
-  resize(width: number, height: number): void;
+type GlPainter<TSceneState, TModelState> = {
+  paint(
+    target: GlTarget,
+    objects: Iterable<GlObject<TModelState>>,
+    view: Matrix4,
+    state: TSceneState
+  ): void;
 };
 
 type GlPointLight = {
@@ -156,20 +157,19 @@ type GlPrimitive = {
   polygon: GlPolygon;
 };
 
-type GlRenderer = {
+type GlRenderer<TSceneState, TModelState> = {
+  render(target: GlTarget, scene: GlScene<TSceneState, TModelState>): void;
+  resize(width: number, height: number): void;
+};
+
+type GlRuntime = {
   context: GlContext;
   default: GlDefault;
 };
 
-type GlScene<TScene, TModel> = {
-  state: TScene;
-  subjects: Iterable<GlSubject<TModel>>;
-};
-
-type GlSubject<TModel> = {
-  matrix: Matrix4;
-  model: GlModel;
-  state: TModel;
+type GlScene<TSceneState, TModelState> = {
+  objects: Iterable<GlObject<TModelState>>;
+  state: TSceneState;
 };
 
 type GlTexture = WebGLTexture;
@@ -256,7 +256,7 @@ const bufferGetType = (gl: GlContext, array: TypedArray) => {
   throw Error(`unsupported array type for indices`);
 };
 
-const createRenderer = (context: GlContext): GlRenderer => {
+const createRuntime = (context: GlContext): GlRuntime => {
   return {
     context,
     default: {
@@ -614,11 +614,11 @@ const loadMaterial = (
  * deleting and loading its textures again, then it will be deleted.
  */
 const loadModel = (
-  renderer: GlRenderer,
+  runtime: GlRuntime,
   model: Model,
   config?: GlModelConfiguration
 ): GlModel => {
-  const gl = renderer.context;
+  const gl = runtime.context;
 
   let ownedLibrary: GlLibrary | undefined;
   let usedLibrary: GlLibrary;
@@ -770,23 +770,26 @@ const textureUniform = <TState>(
   },
 });
 
-class GlShader<TScene, TModel> {
+class GlShader<TSceneState, TModelState> {
   private readonly attributePerPolygon: Map<string, GlBinder<GlPolygon>>;
   private readonly program: WebGLProgram;
-  private readonly renderer: GlRenderer;
+  private readonly runtime: GlRuntime;
   private readonly uniformPerMaterial: Map<string, GlBinder<GlMaterial>>;
-  private readonly uniformPerModel: Map<string, GlBinder<GlModelState<TModel>>>;
-  private readonly uniformPerScene: Map<string, GlBinder<TScene>>;
+  private readonly uniformPerModel: Map<
+    string,
+    GlBinder<GlModelInstance<TModelState>>
+  >;
+  private readonly uniformPerScene: Map<string, GlBinder<TSceneState>>;
 
   private textureIndex: number;
 
   public constructor(
-    renderer: GlRenderer,
+    runtime: GlRuntime,
     vsSource: string,
     fsSource: string,
     directives: GlDirective[] = []
   ) {
-    const gl = renderer.context;
+    const gl = runtime.context;
     const program = gl.createProgram();
 
     if (program === null) {
@@ -822,7 +825,7 @@ class GlShader<TScene, TModel> {
 
     this.attributePerPolygon = new Map();
     this.program = program;
-    this.renderer = renderer;
+    this.runtime = runtime;
     this.textureIndex = 0;
     this.uniformPerMaterial = new Map();
     this.uniformPerModel = new Map();
@@ -830,7 +833,7 @@ class GlShader<TScene, TModel> {
   }
 
   public activate() {
-    this.renderer.context.useProgram(this.program);
+    this.runtime.context.useProgram(this.program);
   }
 
   /*
@@ -845,7 +848,7 @@ class GlShader<TScene, TModel> {
   /*
    ** Assign per-model uniforms.
    */
-  public bindModel(modelState: GlModelState<TModel>) {
+  public bindModel(modelState: GlModelInstance<TModelState>) {
     for (const binding of this.uniformPerModel.values()) {
       binding(modelState);
     }
@@ -863,7 +866,7 @@ class GlShader<TScene, TModel> {
   /*
    ** Assign per-scene uniforms.
    */
-  public bindScene(state: TScene) {
+  public bindScene(state: TSceneState) {
     for (const binding of this.uniformPerScene.values()) {
       binding(state);
     }
@@ -885,14 +888,14 @@ class GlShader<TScene, TModel> {
 
   public setUniformPerMesh<TValue>(
     name: string,
-    accessor: GlUniformAccessor<GlModelState<TModel>, TValue>
+    accessor: GlUniformAccessor<GlModelInstance<TModelState>, TValue>
   ) {
     this.setUniform(this.uniformPerModel, name, accessor);
   }
 
   public setUniformPerScene<TValue>(
     name: string,
-    accessor: GlUniformAccessor<TScene, TValue>
+    accessor: GlUniformAccessor<TSceneState, TValue>
   ) {
     this.setUniform(this.uniformPerScene, name, accessor);
   }
@@ -906,7 +909,7 @@ class GlShader<TScene, TModel> {
       throw new Error(`cannot set attribute "${name}" twice`);
     }
 
-    const gl = this.renderer.context;
+    const gl = this.runtime.context;
     const location = gl.getAttribLocation(this.program, name);
 
     if (location === -1) {
@@ -938,9 +941,9 @@ class GlShader<TScene, TModel> {
     }
 
     const { allocateTexture, createValue, readValue, setUniform } = accessor;
-    const gl = this.renderer.context;
+    const gl = this.runtime.context;
     const currentValue = createValue(gl);
-    const defaultValue = this.renderer.default;
+    const defaultValue = this.runtime.default;
     const textureIndex = this.textureIndex;
 
     if (allocateTexture) {
@@ -1508,18 +1511,18 @@ export {
   type GlMaterial,
   type GlMesh,
   type GlModel,
+  type GlObject,
   type GlPainter,
-  type GlPipeline,
   type GlPointLight,
   type GlPolygon,
   type GlRenderer,
+  type GlRuntime,
   type GlScene,
-  type GlSubject,
   GlShader,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  createRenderer,
+  createRuntime,
   deleteLibrary,
   deleteModel,
   loadLibrary,

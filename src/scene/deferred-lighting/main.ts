@@ -7,8 +7,8 @@ import {
 import * as bitfield from "../bitfield";
 import * as color from "../color";
 import { Input } from "../../engine/io/controller";
-import * as debugTexture from "../../engine/graphic/webgl/pipelines/debug-texture";
-import * as deferredLighting from "../../engine/graphic/webgl/pipelines/deferred-lighting";
+import * as debugTexture from "../../engine/graphic/webgl/renderers/debug-texture";
+import * as deferredLighting from "../../engine/graphic/webgl/renderers/deferred-lighting";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -20,12 +20,12 @@ import {
   GlPointLight,
   GlScene,
   GlTarget,
-  createRenderer,
+  createRuntime,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import * as view from "../view";
-import { SceneState } from "../../engine/graphic/webgl/pipelines/deferred-lighting";
+import { SceneState } from "../../engine/graphic/webgl/renderers/deferred-lighting";
 
 /*
  ** What changed?
@@ -53,8 +53,8 @@ type ApplicationState = {
   };
   move: number;
   pipelines: {
-    debug: debugTexture.Pipeline[];
-    scene: deferredLighting.Pipeline[];
+    debug: debugTexture.DebugTextureRenderer[];
+    scene: deferredLighting.DeferredLightingRenderer[];
   };
   pointLights: GlPointLight[];
   projectionMatrix: Matrix4;
@@ -89,7 +89,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const renderer = createRenderer(gl);
+    const runtime = createRuntime(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -117,10 +117,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
       })),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(renderer, cubeModel),
-        directionalLight: loadModel(renderer, directionalLightModel),
-        ground: loadModel(renderer, groundModel),
-        pointLight: loadModel(renderer, pointLightModel),
+        cube: loadModel(runtime, cubeModel),
+        directionalLight: loadModel(runtime, directionalLightModel),
+        ground: loadModel(runtime, groundModel),
+        pointLight: loadModel(runtime, pointLightModel),
       },
       move: 0,
       pipelines: {
@@ -151,7 +151,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           },
         ].map(
           (configuration) =>
-            new debugTexture.Pipeline(renderer, {
+            new debugTexture.DebugTextureRenderer(runtime, {
               format: configuration.format,
               select: configuration.select,
               zNear: 0.1,
@@ -160,7 +160,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ),
         scene: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new deferredLighting.Pipeline(renderer, {
+            new deferredLighting.DeferredLightingRenderer(runtime, {
               lightModel: deferredLighting.LightModel.Phong,
               lightModelPhongNoAmbient: !flags[0],
               lightModelPhongNoDiffuse: !flags[1],
@@ -208,7 +208,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
         ),
       },
-      subjects: [
+      objects: [
         {
           matrix: Matrix4.fromCustom([
             "translate",
@@ -261,12 +261,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    deferredPipeline.process(target, deferredScene);
+    deferredPipeline.render(target, deferredScene);
 
     // Draw debug
     if (tweak.debugMode !== 0) {
       const debugPipeline = pipelines.debug[tweak.debugMode - 1];
-      const debugScene = debugTexture.Pipeline.createScene(
+      const debugScene = debugTexture.DebugTextureRenderer.createScene(
         [
           deferredPipeline.depthBuffer,
           deferredPipeline.normalAndGlossinessBuffer,
@@ -277,7 +277,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ][tweak.debugMode - 1]
       );
 
-      debugPipeline.process(target, debugScene);
+      debugPipeline.render(target, debugScene);
     }
   },
 

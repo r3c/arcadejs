@@ -9,7 +9,10 @@ import { Context2DScreen } from "../../engine/graphic/display";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as model from "../../engine/graphic/model";
-import { DrawMode, Renderer } from "../../engine/graphic/software";
+import {
+  SoftwareDrawMode,
+  SoftwareRenderer,
+} from "../../engine/graphic/software";
 import { Vector3 } from "../../engine/math/vector";
 import * as view from "../view";
 
@@ -21,27 +24,24 @@ import * as view from "../view";
  ** - Method update simplified and uses shared camera code
  */
 
-interface Configuration {
-  useTexture: boolean;
-}
+const configuration = {
+  useTexture: false,
+  useWire: false,
+};
 
-interface State {
+type ApplicationState = {
   camera: view.Camera;
   cubeWithColor: model.Model;
   cubeWithTexture: model.Model;
   input: Input;
   projection: Matrix4;
-  renderer: Renderer;
-  tweak: Tweak<Configuration>;
-}
-
-const configuration = {
-  useTexture: false,
+  rendererDefault: SoftwareRenderer;
+  rendererWire: SoftwareRenderer;
+  tweak: Tweak<typeof configuration>;
 };
 
-const application: Application<Context2DScreen, State> = {
+const application: Application<Context2DScreen, ApplicationState> = {
   async prepare(screen) {
-    const renderer = new Renderer(screen);
     const tweak = configure(configuration);
 
     return {
@@ -50,7 +50,8 @@ const application: Application<Context2DScreen, State> = {
       cubeWithTexture: await loadModelFromJson("model/cube/mesh.json"),
       input: new Input(screen.canvas),
       projection: Matrix4.fromIdentity(),
-      renderer: renderer,
+      rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
+      rendererWire: new SoftwareRenderer(screen, SoftwareDrawMode.Wire),
       tweak: tweak,
     };
   },
@@ -61,20 +62,24 @@ const application: Application<Context2DScreen, State> = {
       cubeWithColor,
       cubeWithTexture,
       projection,
-      renderer,
+      rendererDefault,
+      rendererWire,
       tweak,
     } = state;
 
-    const viewMatrix = Matrix4.fromCustom(
+    const view = Matrix4.fromCustom(
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
     );
 
     const model = tweak.useTexture ? cubeWithTexture : cubeWithColor;
+    const renderer = tweak.useWire ? rendererWire : rendererDefault;
 
-    renderer.clear();
-    renderer.draw(model, projection, viewMatrix, DrawMode.Default);
+    renderer.render({
+      objects: [{ matrix: Matrix4.identity, model }],
+      state: { projection, view },
+    });
   },
 
   resize(state, screen) {

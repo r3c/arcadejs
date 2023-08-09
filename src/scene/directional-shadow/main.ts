@@ -6,16 +6,16 @@ import {
 } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
-import * as debugTexture from "../../engine/graphic/webgl/pipelines/debug-texture";
+import * as debugTexture from "../../engine/graphic/webgl/renderers/debug-texture";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
-  ForwardLightingPipeline,
+  ForwardLightingRenderer,
   SceneState,
   ModelState,
   hasShadowState,
   noShadowState,
-} from "../../engine/graphic/webgl/pipelines/forward-lighting";
+} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as move from "../move";
@@ -25,7 +25,7 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  createRenderer,
+  createRuntime,
   loadModel,
 } from "../../engine/graphic/webgl";
 
@@ -51,8 +51,8 @@ interface ApplicationState {
   };
   move: number;
   pipelines: {
-    debug: debugTexture.Pipeline;
-    lights: ForwardLightingPipeline[];
+    debug: debugTexture.DebugTextureRenderer;
+    lights: ForwardLightingRenderer[];
   };
   projectionMatrix: Matrix4;
   target: GlTarget;
@@ -70,7 +70,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const renderer = createRenderer(gl);
+    const runtime = createRuntime(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -85,13 +85,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
       camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(renderer, cubeModel),
-        ground: loadModel(renderer, groundModel),
-        light: loadModel(renderer, lightModel),
+        cube: loadModel(runtime, cubeModel),
+        ground: loadModel(runtime, groundModel),
+        light: loadModel(runtime, lightModel),
       },
       move: 0,
       pipelines: {
-        debug: new debugTexture.Pipeline(renderer, {
+        debug: new debugTexture.DebugTextureRenderer(runtime, {
           format: debugTexture.Format.Monochrome,
           select: debugTexture.Select.Red,
           zNear: 0.1,
@@ -99,7 +99,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         }),
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new ForwardLightingPipeline(renderer, {
+            new ForwardLightingRenderer(runtime, {
               light: {
                 model: ForwardLightingModel.Phong,
                 maxDirectionalLights: 1,
@@ -144,7 +144,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
         ),
       },
-      subjects: [
+      objects: [
         {
           matrix: Matrix4.fromCustom([
             "rotate",
@@ -169,16 +169,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    lightPipeline.process(target, lightScene);
+    lightPipeline.render(target, lightScene);
 
     // Draw texture debug
     if (state.tweak.showDebug) {
       const debugPipeline = pipelines.debug;
-      const debugScene = debugTexture.Pipeline.createScene(
+      const debugScene = debugTexture.DebugTextureRenderer.createScene(
         lightPipeline.directionalShadowBuffers[0]
       );
 
-      debugPipeline.process(target, debugScene);
+      debugPipeline.render(target, debugScene);
     }
   },
 

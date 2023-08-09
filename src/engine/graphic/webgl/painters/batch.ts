@@ -5,25 +5,25 @@ import {
   GlPainter,
   GlPolygon,
   GlShader,
-  GlSubject,
+  GlObject,
   GlTarget,
 } from "../../webgl";
 
-type MeshBatch<TModel> = {
+type MeshBatch<TModelState> = {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
   polygon: GlPolygon;
-  state: TModel;
+  state: TModelState;
 };
 
-type MaterialMap<TModel> = Map<GlMaterial, MeshBatch<TModel>[]>;
+type MaterialMap<TModelState> = Map<GlMaterial, MeshBatch<TModelState>[]>;
 
-const group = <TModel>(
-  batchByMaterial: Map<GlMaterial, MeshBatch<TModel>[]>,
+const group = <TModelState>(
+  batchByMaterial: Map<GlMaterial, MeshBatch<TModelState>[]>,
   viewMatrix: Matrix4,
   parentMatrix: Matrix4,
   meshes: Iterable<GlMesh>,
-  state: TModel
+  state: TModelState
 ) => {
   for (const { children, primitives, transform } of meshes) {
     const modelMatrix = Matrix4.fromObject(parentMatrix);
@@ -51,11 +51,11 @@ const group = <TModel>(
   }
 };
 
-const paint = <TScene, TModel>(
-  shader: GlShader<TScene, TModel>,
+const paint = <TSceneState, TModelState>(
+  shader: GlShader<TSceneState, TModelState>,
   target: GlTarget,
-  materialMap: MaterialMap<TModel>,
-  state: TScene
+  materialMap: MaterialMap<TModelState>,
+  state: TSceneState
 ) => {
   shader.activate();
   shader.bindScene(state);
@@ -73,23 +73,25 @@ const paint = <TScene, TModel>(
   }
 };
 
-class BatchPainter<TScene, TModel> implements GlPainter<TScene, TModel> {
-  private readonly shader: GlShader<TScene, TModel>;
+class BatchPainter<TSceneState, TModelState>
+  implements GlPainter<TSceneState, TModelState>
+{
+  private readonly shader: GlShader<TSceneState, TModelState>;
 
-  public constructor(shader: GlShader<TScene, TModel>) {
+  public constructor(shader: GlShader<TSceneState, TModelState>) {
     this.shader = shader;
   }
 
   public paint(
     target: GlTarget,
-    subjects: Iterable<GlSubject<TModel>>,
-    viewMatrix: Matrix4,
-    state: TScene
+    objects: Iterable<GlObject<TModelState>>,
+    view: Matrix4,
+    state: TSceneState
   ): void {
-    const materialMap: MaterialMap<TModel> = new Map();
+    const materialMap: MaterialMap<TModelState> = new Map();
 
-    for (const { matrix, model, state } of subjects) {
-      group(materialMap, viewMatrix, matrix, model.meshes, state);
+    for (const { matrix, model, state } of objects) {
+      group(materialMap, view, matrix, model.meshes, state);
     }
 
     paint(this.shader, target, materialMap, state);

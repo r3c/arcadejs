@@ -9,11 +9,11 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
-  ForwardLightingPipeline,
+  ForwardLightingRenderer,
   ModelState,
   SceneState,
   hasShadowState,
-} from "../../engine/graphic/webgl/pipelines/forward-lighting";
+} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -22,7 +22,7 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  createRenderer,
+  createRuntime,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
@@ -59,7 +59,7 @@ type ApplicationState = {
   };
   move: number;
   pipelines: {
-    lights: ForwardLightingPipeline[];
+    lights: ForwardLightingRenderer[];
   };
   projectionMatrix: Matrix4;
   stars: Light[];
@@ -90,7 +90,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const renderer = createRenderer(gl);
+    const runtime = createRuntime(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -106,13 +106,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
-        star: loadModel(renderer, starModel),
+        star: loadModel(runtime, starModel),
       },
       move: 0,
       pipelines: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new ForwardLightingPipeline(renderer, {
+            new ForwardLightingRenderer(runtime, {
               light: {
                 model: ForwardLightingModel.Phong,
                 maxPointLights: 3,
@@ -165,7 +165,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     // PBR render
-    const subjects = starPositions.map((position) => ({
+    const objects = starPositions.map((position) => ({
       matrix: Matrix4.fromCustom(["translate", position]),
       model: models.star,
       state: hasShadowState,
@@ -182,10 +182,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
         projectionMatrix,
         viewMatrix,
       },
-      subjects,
+      objects: objects,
     };
 
-    pipelines.lights[bitfield.index(getOptions(tweak))].process(target, scene);
+    pipelines.lights[bitfield.index(getOptions(tweak))].render(target, scene);
   },
 
   resize(state, screen) {
