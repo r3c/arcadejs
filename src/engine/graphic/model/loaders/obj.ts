@@ -366,7 +366,7 @@ function* parseFile(data: string) {
 
     yield {
       fields: match[0].trim().split(/[\t ]+/),
-      line: line,
+      line,
     };
   }
 }

@@ -75,10 +75,9 @@ const configuration = {
 
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
-    const tweak = configure(configuration);
-
     const runtime = createRuntime(screen.context);
     const shader = new GlShader<SceneState, void>(runtime, vsSource, fsSource);
+    const tweak = configure(configuration);
 
     shader.setAttributePerPolygon("colors", (geometry) => geometry.colors);
     shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
@@ -116,7 +115,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         await loadModelFromJson("model/cube/mesh.json")
       ),
       painter: new BatchPainter(shader),
-      projectionMatrix: Matrix4.fromIdentity(),
+      projectionMatrix: Matrix4.identity,
       screen,
       target: new GlTarget(
         screen.context,
@@ -149,8 +148,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     painter.paint(target, [cube], viewMatrix, {
-      projectionMatrix: projectionMatrix,
-      viewMatrix: viewMatrix,
+      projectionMatrix,
+      viewMatrix,
     });
   },
 

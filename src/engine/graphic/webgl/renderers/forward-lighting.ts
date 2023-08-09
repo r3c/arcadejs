@@ -36,7 +36,7 @@ type ForwardLightingConfiguration = {
   material?: MaterialConfiguration;
 };
 
-enum ForwardLightingModel {
+enum ForwardLightingLightModel {
   None,
   Phong,
   Physical,
@@ -56,7 +56,7 @@ type EnvironmentLight = {
 type LightConfiguration = {
   maxDirectionalLights?: number;
   maxPointLights?: number;
-  model?: ForwardLightingModel;
+  model?: ForwardLightingLightModel;
   modelPhongNoAmbient?: boolean;
   modelPhongNoDiffuse?: boolean;
   modelPhongNoSpecular?: boolean;
@@ -269,7 +269,7 @@ in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
 layout(location=0) out vec4 fragColor;
 
 vec3 getLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
-	#if LIGHT_MODEL == ${ForwardLightingModel.Phong}
+	#if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
 		return ${phong.lightInvoke(
       "light",
       "material.albedo.rgb",
@@ -278,7 +278,7 @@ vec3 getLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 n
       "normal",
       "eyeDirection"
     )};
-	#elif LIGHT_MODEL == ${ForwardLightingModel.Physical}
+	#elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
 		return ${pbr.lightInvoke("light", "material", "normal", "eyeDirection")};
 	#endif
 }
@@ -380,7 +380,7 @@ const loadLight = (
   ];
 
   switch (lightConfiguration.model) {
-    case ForwardLightingModel.Phong:
+    case ForwardLightingLightModel.Phong:
       directives.push({
         name: "LIGHT_AMBIENT",
         value: lightConfiguration.modelPhongNoAmbient ? 0 : 1,
@@ -396,7 +396,7 @@ const loadLight = (
 
       break;
 
-    case ForwardLightingModel.Physical:
+    case ForwardLightingLightModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
         directives.push({ name: "LIGHT_MODEL_PBR_IBL", value: 1 });
       }
@@ -466,7 +466,7 @@ const loadLight = (
   );
 
   switch (lightConfiguration.model) {
-    case ForwardLightingModel.Phong:
+    case ForwardLightingLightModel.Phong:
       shader.setUniformPerMaterial(
         "glossinessMap",
         materialConfiguration.noGlossMap !== true
@@ -484,7 +484,7 @@ const loadLight = (
 
       break;
 
-    case ForwardLightingModel.Physical:
+    case ForwardLightingLightModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
         shader.setUniformPerScene(
           "environmentBrdfMap",
@@ -815,7 +815,7 @@ class ForwardLightingRenderer implements GlRenderer<SceneState, ModelState> {
         viewMatrix,
         {
           projectionMatrix: this.directionalShadowProjectionMatrix,
-          viewMatrix: viewMatrix,
+          viewMatrix,
         }
       );
 
@@ -844,7 +844,7 @@ class ForwardLightingRenderer implements GlRenderer<SceneState, ModelState> {
       ambientLightColor: state.ambientLightColor ?? Vector3.zero,
       directionalLights: directionalLightStates,
       environmentLight: state.environmentLight,
-      pointLights: pointLights,
+      pointLights,
       projectionMatrix: state.projectionMatrix,
       shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
       viewMatrix: state.viewMatrix,
@@ -858,7 +858,7 @@ export {
   type ForwardLightingConfiguration,
   type ModelState,
   type SceneState,
-  ForwardLightingModel,
+  ForwardLightingLightModel,
   ForwardLightingRenderer,
   hasShadowState,
   noShadowState,

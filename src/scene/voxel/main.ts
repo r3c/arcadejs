@@ -1,13 +1,8 @@
-import {
-  type Tweak,
-  Application,
-  configure,
-  declare,
-} from "../../engine/application";
+import { Application, configure, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
-  ForwardLightingModel,
+  ForwardLightingLightModel,
   ForwardLightingRenderer,
   ModelState,
   SceneState,
@@ -17,12 +12,12 @@ import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import * as view from "../view";
+import { Camera } from "../view";
 import {
-  WorldPhysic,
-  createWorldPhysic,
   WorldGraphic,
+  WorldPhysic,
   createWorldGraphic,
+  createWorldPhysic,
 } from "./world";
 import { noise } from "./perlin";
 import {
@@ -35,10 +30,8 @@ import {
 import { orbitatePosition } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
 
-interface SceneConfiguration {}
-
-interface ApplicationState {
-  camera: view.Camera;
+type ApplicationState = {
+  camera: Camera;
   currentOffset: Vector3;
   input: Input;
   lights: {
@@ -49,19 +42,16 @@ interface ApplicationState {
     select: GlModel;
   };
   move: number;
-  pipelines: {
+  projectionMatrix: Matrix4;
+  renderers: {
     forwardLighting: ForwardLightingRenderer;
   };
-  projectionMatrix: Matrix4;
   target: GlTarget;
   time: number;
-  tweak: Tweak<SceneConfiguration>;
   viewMatrix: Matrix4;
   worldGraphic: WorldGraphic;
   worldPhysic: WorldPhysic;
-}
-
-const configuration: SceneConfiguration = {};
+};
 
 const worldChunkCount = { x: 8, y: 2, z: 8 };
 const worldChunkSize = { x: 16, y: 16, z: 16 };
@@ -72,7 +62,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
-    const tweak = configure(configuration);
+
+    configure(undefined);
 
     // Load models
     const worldScaleVector = Vector3.fromZero();
@@ -159,7 +150,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const maxLights = 3;
 
     return {
-      camera: new view.Camera(
+      camera: new Camera(
         { x: 0, y: 0, z: -maxWorldRenderSize * 2 },
         { x: -Math.PI / 8, y: (5 * Math.PI) / 4, z: 0 }
       ),
@@ -177,19 +168,18 @@ const application: Application<WebGLScreen, ApplicationState> = {
         select,
       },
       move: 0,
-      pipelines: {
+      projectionMatrix: Matrix4.identity,
+      renderers: {
         forwardLighting: new ForwardLightingRenderer(runtime, {
           light: {
             maxPointLights: maxLights,
-            model: ForwardLightingModel.Phong,
+            model: ForwardLightingLightModel.Phong,
             noShadow: true,
           },
         }),
       },
-      projectionMatrix: Matrix4.identity,
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       time: 0,
-      tweak,
       viewMatrix: Matrix4.identity,
       worldGraphic,
       worldPhysic,
@@ -320,8 +310,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const {
       currentOffset,
       models,
-      pipelines,
       projectionMatrix,
+      renderers,
       target,
       viewMatrix,
       worldGraphic,
@@ -344,7 +334,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     });
 
     // Forward pass
-    const lightPipeline = pipelines.forwardLighting;
+    const lightRenderer = renderers.forwardLighting;
     const lightScene: GlScene<SceneState, ModelState> = {
       state: {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
@@ -356,14 +346,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
         projectionMatrix,
         viewMatrix,
       },
-      objects: objects,
+      objects,
     };
 
-    lightPipeline.render(target, lightScene);
+    lightRenderer.render(target, lightScene);
   },
 
   resize(state: ApplicationState, screen: WebGLScreen) {
-    state.pipelines.forwardLighting.resize(
+    state.renderers.forwardLighting.resize(
       screen.getWidth(),
       screen.getHeight()
     );

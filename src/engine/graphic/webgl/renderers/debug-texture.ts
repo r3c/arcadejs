@@ -104,14 +104,14 @@ void main(void) {
 }`;
 
 interface Configuration {
-  format: Format;
+  format: DebugTextureFormat;
   scale?: number;
-  select: Select;
+  select: DebugTextureSelect;
   zFar: number;
   zNear: number;
 }
 
-const enum Format {
+const enum DebugTextureFormat {
   Identity,
   Colorful,
   Monochrome,
@@ -120,7 +120,7 @@ const enum Format {
   Logarithm,
 }
 
-const enum Select {
+const enum DebugTextureSelect {
   Identity,
   RedGreenBlue,
   GreenBlueAlpha,
@@ -258,4 +258,4 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
   public resize(_width: number, _height: number) {}
 }
 
-export { Format, DebugTextureRenderer, Select };
+export { DebugTextureFormat, DebugTextureRenderer, DebugTextureSelect };

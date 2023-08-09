@@ -138,7 +138,7 @@ class Input {
     if (buttonSetups.every((buttonSetup) => buttonSetup.button !== button)) {
       buttonSetups.push({
         active: true,
-        button: button,
+        button,
       });
     }
   }

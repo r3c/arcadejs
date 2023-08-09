@@ -7,8 +7,15 @@ import {
 import * as bitfield from "../bitfield";
 import * as color from "../color";
 import { Input } from "../../engine/io/controller";
-import * as debugTexture from "../../engine/graphic/webgl/renderers/debug-texture";
-import * as deferredShading from "../../engine/graphic/webgl/renderers/deferred-shading";
+import {
+  DebugTextureFormat,
+  DebugTextureRenderer,
+  DebugTextureSelect,
+} from "../../engine/graphic/webgl/renderers/debug-texture";
+import {
+  DeferredShadingLightModel,
+  DeferredShadingRenderer,
+} from "../../engine/graphic/webgl/renderers/deferred-shading";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -24,43 +31,12 @@ import {
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
-import * as view from "../view";
+import { Camera } from "../view";
 import { SceneState } from "../../engine/graphic/webgl/renderers/deferred-shading";
 
 /*
  ** What changed?
  */
-
-type Configuration = {
-  nbDirectionals: string[];
-  nbPoints: string[];
-  animate: boolean;
-  ambient: boolean;
-  diffuse: boolean;
-  specular: boolean;
-  debugMode: string[];
-};
-
-type ApplicationState = {
-  camera: view.Camera;
-  directionalLights: GlDirectionalLight[];
-  input: Input;
-  models: {
-    cube: GlModel;
-    directionalLight: GlModel;
-    ground: GlModel;
-    pointLight: GlModel;
-  };
-  move: number;
-  pipelines: {
-    debug: debugTexture.DebugTextureRenderer[];
-    scene: deferredShading.DeferredShadingRenderer[];
-  };
-  pointLights: GlPointLight[];
-  projectionMatrix: Matrix4;
-  target: GlTarget;
-  tweak: Tweak<Configuration>;
-};
 
 const configuration = {
   nbDirectionals: [".0", "1", "2", "5"],
@@ -72,7 +48,28 @@ const configuration = {
   debugMode: [".None", "Depth", "Albedo", "Normal", "Shininess", "Gloss"],
 };
 
-const getOptions = (tweak: Tweak<Configuration>) => [
+type ApplicationState = {
+  camera: Camera;
+  directionalLights: GlDirectionalLight[];
+  input: Input;
+  models: {
+    cube: GlModel;
+    directionalLight: GlModel;
+    ground: GlModel;
+    pointLight: GlModel;
+  };
+  move: number;
+  pointLights: GlPointLight[];
+  projectionMatrix: Matrix4;
+  renderers: {
+    debug: DebugTextureRenderer[];
+    scene: DeferredShadingRenderer[];
+  };
+  target: GlTarget;
+  tweak: Tweak<typeof configuration>;
+};
+
+const getOptions = (tweak: Tweak<typeof configuration>) => [
   tweak.ambient !== 0,
   tweak.diffuse !== 0,
   tweak.specular !== 0,
@@ -101,7 +98,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Create state
     return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       directionalLights: range(10, (i) => ({
         color: color.createBright(i),
         direction: Vector3.zero,
@@ -115,31 +112,37 @@ const application: Application<WebGLScreen, ApplicationState> = {
         pointLight: loadModel(runtime, pointLightModel),
       },
       move: 0,
-      pipelines: {
+      pointLights: range(500, (i) => ({
+        color: color.createBright(i),
+        position: Vector3.zero,
+        radius: 2,
+      })),
+      projectionMatrix: Matrix4.identity,
+      renderers: {
         debug: [
           {
-            select: debugTexture.Select.Red,
-            format: debugTexture.Format.Depth,
+            select: DebugTextureSelect.Red,
+            format: DebugTextureFormat.Depth,
           },
           {
-            select: debugTexture.Select.RedGreenBlue,
-            format: debugTexture.Format.Colorful,
+            select: DebugTextureSelect.RedGreenBlue,
+            format: DebugTextureFormat.Colorful,
           },
           {
-            select: debugTexture.Select.RedGreen,
-            format: debugTexture.Format.Spheremap,
+            select: DebugTextureSelect.RedGreen,
+            format: DebugTextureFormat.Spheremap,
           },
           {
-            select: debugTexture.Select.Alpha,
-            format: debugTexture.Format.Monochrome,
+            select: DebugTextureSelect.Alpha,
+            format: DebugTextureFormat.Monochrome,
           },
           {
-            select: debugTexture.Select.Alpha,
-            format: debugTexture.Format.Monochrome,
+            select: DebugTextureSelect.Alpha,
+            format: DebugTextureFormat.Monochrome,
           },
         ].map(
           (configuration) =>
-            new debugTexture.DebugTextureRenderer(runtime, {
+            new DebugTextureRenderer(runtime, {
               format: configuration.format,
               select: configuration.select,
               zNear: 0.1,
@@ -148,8 +151,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ),
         scene: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
-            new deferredShading.DeferredShadingRenderer(runtime, {
-              lightModel: deferredShading.LightModel.Phong,
+            new DeferredShadingRenderer(runtime, {
+              lightModel: DeferredShadingLightModel.Phong,
               lightModelPhongNoAmbient: !flags[0],
               lightModelPhongNoDiffuse: !flags[1],
               lightModelPhongNoSpecular: !flags[2],
@@ -158,19 +161,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
             })
         ),
       },
-      pointLights: range(500, (i) => ({
-        color: color.createBright(i),
-        position: Vector3.zero,
-        radius: 2,
-      })),
-      projectionMatrix: Matrix4.fromIdentity(),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },
 
   render(state) {
-    const { camera, models, pipelines, target, tweak } = state;
+    const { camera, models, renderers, target, tweak } = state;
 
     // Pick active lights
     const directionalLights = state.directionalLights.slice(
@@ -183,12 +180,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
 
     // Draw scene
-    const deferredPipeline = pipelines.scene[bitfield.index(getOptions(tweak))];
+    const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
     const deferredScene: GlScene<SceneState, undefined> = {
       state: {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-        directionalLights: directionalLights,
-        pointLights: pointLights,
+        directionalLights,
+        pointLights,
         projectionMatrix: state.projectionMatrix,
         viewMatrix: Matrix4.fromCustom(
           ["translate", camera.position],
@@ -249,31 +246,31 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    deferredPipeline.render(target, deferredScene);
+    deferredRenderer.render(target, deferredScene);
 
     // Draw debug
     if (tweak.debugMode !== 0) {
-      const debugPipeline = pipelines.debug[tweak.debugMode - 1];
-      const debugScene = debugTexture.DebugTextureRenderer.createScene(
+      const debugRenderer = renderers.debug[tweak.debugMode - 1];
+      const debugScene = DebugTextureRenderer.createScene(
         [
-          deferredPipeline.depthBuffer,
-          deferredPipeline.albedoAndShininessBuffer,
-          deferredPipeline.normalAndGlossinessBuffer,
-          deferredPipeline.albedoAndShininessBuffer,
-          deferredPipeline.normalAndGlossinessBuffer,
+          deferredRenderer.depthBuffer,
+          deferredRenderer.albedoAndShininessBuffer,
+          deferredRenderer.normalAndGlossinessBuffer,
+          deferredRenderer.albedoAndShininessBuffer,
+          deferredRenderer.normalAndGlossinessBuffer,
         ][tweak.debugMode - 1]
       );
 
-      debugPipeline.render(target, debugScene);
+      debugRenderer.render(target, debugScene);
     }
   },
 
   resize(state, screen) {
-    for (const pipeline of state.pipelines.debug)
-      pipeline.resize(screen.getWidth(), screen.getHeight());
+    for (const renderer of state.renderers.debug)
+      renderer.resize(screen.getWidth(), screen.getHeight());
 
-    for (const pipeline of state.pipelines.scene)
-      pipeline.resize(screen.getWidth(), screen.getHeight());
+    for (const renderer of state.renderers.scene)
+      renderer.resize(screen.getWidth(), screen.getHeight());
 
     state.projectionMatrix = Matrix4.fromPerspective(
       45,
@@ -281,6 +278,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       0.1,
       100
     );
+
     state.target.resize(screen.getWidth(), screen.getHeight());
   },
 

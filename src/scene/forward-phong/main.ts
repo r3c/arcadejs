@@ -8,7 +8,7 @@ import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
-  ForwardLightingModel,
+  ForwardLightingLightModel,
   ForwardLightingRenderer,
   ModelState,
   SceneState,
@@ -26,7 +26,7 @@ import {
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
-import * as view from "../view";
+import { Camera } from "../view";
 
 /*
  ** What changed?
@@ -34,34 +34,6 @@ import * as view from "../view";
  ** - Shader supports tangent space transform for normal and height mapping
  ** - Scene uses two different shaders loaded from external files
  */
-
-interface Configuration {
-  nbLights: string[];
-  animate: boolean;
-  useAmbient: boolean;
-  useDiffuse: boolean;
-  useSpecular: boolean;
-  useNormalMap: boolean;
-  useHeightMap: boolean;
-}
-
-interface ApplicationState {
-  camera: view.Camera;
-  input: Input;
-  lightPositions: Vector3[];
-  models: {
-    cube: GlModel;
-    ground: GlModel;
-    light: GlModel;
-  };
-  move: number;
-  pipelines: {
-    lights: ForwardLightingRenderer[];
-  };
-  projectionMatrix: Matrix4;
-  target: GlTarget;
-  tweak: Tweak<Configuration>;
-}
 
 const configuration = {
   nbLights: ["0", ".1", "2", "3"],
@@ -73,7 +45,25 @@ const configuration = {
   useHeightMap: true,
 };
 
-const getOptions = (tweak: Tweak<Configuration>) => [
+type ApplicationState = {
+  camera: Camera;
+  input: Input;
+  lightPositions: Vector3[];
+  models: {
+    cube: GlModel;
+    ground: GlModel;
+    light: GlModel;
+  };
+  move: number;
+  projectionMatrix: Matrix4;
+  renderers: {
+    lights: ForwardLightingRenderer[];
+  };
+  target: GlTarget;
+  tweak: Tweak<typeof configuration>;
+};
+
+const getOptions = (tweak: Tweak<typeof configuration>) => [
   tweak.useAmbient !== 0,
   tweak.useDiffuse !== 0,
   tweak.useSpecular !== 0,
@@ -96,7 +86,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Create state
     return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
       lightPositions: range(3, () => Vector3.zero),
       models: {
@@ -105,13 +95,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
         light: loadModel(runtime, lightModel),
       },
       move: 0,
-      pipelines: {
+      projectionMatrix: Matrix4.identity,
+      renderers: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
             new ForwardLightingRenderer(runtime, {
               light: {
                 maxPointLights: 3,
-                model: ForwardLightingModel.Phong,
+                model: ForwardLightingLightModel.Phong,
                 modelPhongNoAmbient: !flags[0],
                 modelPhongNoDiffuse: !flags[1],
                 modelPhongNoSpecular: !flags[2],
@@ -124,7 +115,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
             })
         ),
       },
-      projectionMatrix: Matrix4.fromIdentity(),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
@@ -135,8 +125,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       camera,
       lightPositions,
       models,
-      pipelines,
       projectionMatrix,
+      renderers,
       target,
       tweak,
     } = state;
@@ -145,7 +135,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     // Forward pass
-    const lightPipeline = pipelines.lights[bitfield.index(getOptions(tweak))];
+    const lightRenderer = renderers.lights[bitfield.index(getOptions(tweak))];
     const lightScene: GlScene<SceneState, ModelState> = {
       state: {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
@@ -153,10 +143,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
           .slice(0, tweak.nbLights)
           .map((position) => ({
             color: { x: 0.8, y: 0.8, z: 0.8 },
-            position: position,
+            position,
             radius: 5,
           })),
-        projectionMatrix: projectionMatrix,
+        projectionMatrix,
         viewMatrix: Matrix4.fromCustom(
           ["translate", camera.position],
           ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
@@ -183,12 +173,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
     };
 
-    lightPipeline.render(target, lightScene);
+    lightRenderer.render(target, lightScene);
   },
 
   resize(state, screen) {
-    for (const pipeline of state.pipelines.lights)
-      pipeline.resize(screen.getWidth(), screen.getHeight());
+    for (const renderer of state.renderers.lights) {
+      renderer.resize(screen.getWidth(), screen.getHeight());
+    }
 
     state.projectionMatrix = Matrix4.fromPerspective(
       45,

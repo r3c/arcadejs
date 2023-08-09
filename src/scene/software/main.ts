@@ -14,7 +14,7 @@ import {
   SoftwareRenderer,
 } from "../../engine/graphic/software";
 import { Vector3 } from "../../engine/math/vector";
-import * as view from "../view";
+import { Camera } from "../view";
 
 /*
  ** What changed?
@@ -30,7 +30,7 @@ const configuration = {
 };
 
 type ApplicationState = {
-  camera: view.Camera;
+  camera: Camera;
   cubeWithColor: model.Model;
   cubeWithTexture: model.Model;
   input: Input;
@@ -45,14 +45,14 @@ const application: Application<Context2DScreen, ApplicationState> = {
     const tweak = configure(configuration);
 
     return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       cubeWithColor: await loadModelFromJson("model/cube-color/mesh.json"),
       cubeWithTexture: await loadModelFromJson("model/cube/mesh.json"),
       input: new Input(screen.canvas),
       projection: Matrix4.fromIdentity(),
       rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
       rendererWire: new SoftwareRenderer(screen, SoftwareDrawMode.Wire),
-      tweak: tweak,
+      tweak,
     };
   },
 

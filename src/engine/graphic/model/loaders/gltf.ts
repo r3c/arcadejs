@@ -177,8 +177,8 @@ const expandAccessor = (
   );
 
   return {
-    buffer: buffer,
-    stride: stride,
+    buffer,
+    stride,
   };
 };
 
@@ -368,10 +368,10 @@ const loadAccessor = (
 
   return {
     arrayBuffer: bufferView.buffer,
-    arrayConstructor: arrayConstructor,
-    componentsPerElement: componentsPerElement,
+    arrayConstructor,
+    componentsPerElement,
     elements: count,
-    index: index,
+    index,
     offset: bufferView.offset + byteOffset,
     stride: bufferView.stride,
   };
@@ -594,11 +594,11 @@ const loadNode = (
     }
 
     nodes[index] = {
-      children: children,
+      children,
       mesh: map(node.mesh, (mesh) =>
         convertReferenceTo(url, source + ".mesh", mesh, meshes)
       ),
-      transform: transform,
+      transform,
     };
   }
 

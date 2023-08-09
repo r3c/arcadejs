@@ -114,7 +114,7 @@ const toAttribute = <TValue>(
   stride: number
 ) => ({
   buffer: new Float32Array(values.map(converter).flatMap((items) => items)),
-  stride: stride,
+  stride,
 });
 
 const toCoord = (name: string, instance: unknown): Vector2 => {

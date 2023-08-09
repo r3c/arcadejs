@@ -26,12 +26,12 @@ import {
   uniform,
 } from "../../webgl";
 
-const enum LightModel {
+const enum DeferredLightingLightModel {
   None,
   Phong,
 }
 
-const enum LightType {
+const enum DeferredLightingLightType {
   Directional,
   Point,
 }
@@ -140,9 +140,9 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 }
 
 void main(void) {
-	#if LIGHT_TYPE == ${LightType.Directional}
+	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 		lightDistanceCamera = toCameraDirection(directionalLight.direction);
-	#elif LIGHT_TYPE == ${LightType.Point}
+	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
 		lightPositionCamera = toCameraPosition(pointLight.position);
 	#endif
 
@@ -195,12 +195,12 @@ void main(void) {
 	vec3 eyeDirection = normalize(-point);
 
 	// Compute lightning parameters
-	#if LIGHT_TYPE == ${LightType.Directional}
+	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 		${light.sourceTypeResult} light = ${light.sourceInvokeDirectional(
   "directionalLight",
   "lightDistanceCamera"
 )};
-	#elif LIGHT_TYPE == ${LightType.Point}
+	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
 		${light.sourceTypeResult} light = ${light.sourceInvokePoint(
   "pointLight",
   "lightPositionCamera - point"
@@ -313,7 +313,7 @@ void main(void) {
 }`;
 
 type Configuration = {
-  lightModel: LightModel;
+  lightModel: DeferredLightingLightModel;
   lightModelPhongNoAmbient?: boolean;
   lightModelPhongNoDiffuse?: boolean;
   lightModelPhongNoSpecular?: boolean;
@@ -375,7 +375,7 @@ const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
     uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
-  if (configuration.lightModel === LightModel.Phong) {
+  if (configuration.lightModel === DeferredLightingLightModel.Phong) {
     shader.setUniformPerMaterial(
       "glossinessMap",
       uniform.blackQuadTexture(({ glossMap }) => glossMap)
@@ -414,7 +414,7 @@ const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
 const loadLight = <TState>(
   runtime: GlRuntime,
   _: Configuration,
-  type: LightType
+  type: DeferredLightingLightType
 ) => {
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
@@ -474,7 +474,7 @@ const loadLightDirectional = (
   const shader = loadLight<GlDirectionalLight>(
     runtime,
     configuration,
-    LightType.Directional
+    DeferredLightingLightType.Directional
   );
 
   shader.setUniformPerScene(
@@ -493,7 +493,7 @@ const loadLightPoint = (runtime: GlRuntime, configuration: Configuration) => {
   const shader = loadLight<GlPointLight>(
     runtime,
     configuration,
-    LightType.Point
+    DeferredLightingLightType.Point
   );
 
   shader.setUniformPerScene(
@@ -517,7 +517,7 @@ const loadMaterial = (runtime: GlRuntime, configuration: Configuration) => {
   const directives = [];
 
   switch (configuration.lightModel) {
-    case LightModel.Phong:
+    case DeferredLightingLightModel.Phong:
       directives.push({
         name: "LIGHT_MODEL_AMBIENT",
         value: configuration.lightModelPhongNoAmbient ? 0 : 1,
@@ -582,7 +582,7 @@ const loadMaterial = (runtime: GlRuntime, configuration: Configuration) => {
     uniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
   );
 
-  if (configuration.lightModel >= LightModel.Phong) {
+  if (configuration.lightModel >= DeferredLightingLightModel.Phong) {
     shader.setUniformPerMaterial(
       "glossinessFactor",
       uniform.numberScalar(({ glossFactor }) => glossFactor[0])
@@ -741,7 +741,7 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
             light: directionalLight,
             projectionMatrix: this.fullscreenProjection,
             viewMatrix: state.viewMatrix,
-            viewportSize: viewportSize,
+            viewportSize,
           }
         );
       }
@@ -781,7 +781,7 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
             light: pointLight,
             projectionMatrix: state.projectionMatrix,
             viewMatrix: state.viewMatrix,
-            viewportSize: viewportSize,
+            viewportSize,
           }
         );
       }
@@ -813,6 +813,6 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
 export {
   type Configuration,
   type SceneState,
+  DeferredLightingLightModel,
   DeferredLightingRenderer,
-  LightModel,
 };

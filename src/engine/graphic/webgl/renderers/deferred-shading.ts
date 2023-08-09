@@ -25,12 +25,12 @@ import {
   uniform,
 } from "../../webgl";
 
-const enum LightModel {
+const enum DeferredShadingLightModel {
   None,
   Phong,
 }
 
-const enum LightType {
+const enum DeferredShadingLightType {
   Directional,
   Point,
 }
@@ -183,9 +183,9 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 }
 
 void main(void) {
-	#if LIGHT_TYPE == ${LightType.Directional}
+	#if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
 		lightDistanceCamera = toCameraDirection(directionalLight.direction);
-	#elif LIGHT_TYPE == ${LightType.Point}
+	#elif LIGHT_TYPE == ${DeferredShadingLightType.Point}
 		lightPositionCamera = toCameraPosition(pointLight.position);
 	#endif
 
@@ -237,12 +237,12 @@ void main(void) {
 	vec3 eyeDirection = normalize(-point);
 
 	// Compute lightning
-	#if LIGHT_TYPE == ${LightType.Directional}
+	#if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
 		${light.sourceTypeResult} light = ${light.sourceInvokeDirectional(
   "directionalLight",
   "lightDistanceCamera"
 )};
-	#elif LIGHT_TYPE == ${LightType.Point}
+	#elif LIGHT_TYPE == ${DeferredShadingLightType.Point}
 		${light.sourceTypeResult} light = ${light.sourceInvokePoint(
   "pointLight",
   "lightPositionCamera - point"
@@ -262,7 +262,7 @@ void main(void) {
 }`;
 
 type Configuration = {
-  lightModel: LightModel;
+  lightModel: DeferredShadingLightModel;
   lightModelPhongNoAmbient?: boolean;
   lightModelPhongNoDiffuse?: boolean;
   lightModelPhongNoSpecular?: boolean;
@@ -299,7 +299,7 @@ const loadAmbient = (runtime: GlRuntime, configuration: Configuration) => {
   const directives = [];
 
   switch (configuration.lightModel) {
-    case LightModel.Phong:
+    case DeferredShadingLightModel.Phong:
       directives.push({
         name: "LIGHT_MODEL_AMBIENT",
         value: configuration.lightModelPhongNoAmbient ? 0 : 1,
@@ -384,7 +384,7 @@ const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
     uniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
   );
 
-  if (configuration.lightModel === LightModel.Phong) {
+  if (configuration.lightModel === DeferredShadingLightModel.Phong) {
     shader.setUniformPerMaterial(
       "glossinessMap",
       uniform.blackQuadTexture(({ glossMap }) => glossMap)
@@ -422,13 +422,13 @@ const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
 const loadLight = <TState>(
   runtime: GlRuntime,
   configuration: Configuration,
-  type: LightType
+  type: DeferredShadingLightType
 ) => {
   // Build directives from configuration
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   switch (configuration.lightModel) {
-    case LightModel.Phong:
+    case DeferredShadingLightModel.Phong:
       directives.push({
         name: "LIGHT_MODEL_PHONG_DIFFUSE",
         value: configuration.lightModelPhongNoDiffuse ? 0 : 1,
@@ -502,7 +502,7 @@ const loadLightDirectional = (
   const shader = loadLight<GlDirectionalLight>(
     runtime,
     configuration,
-    LightType.Directional
+    DeferredShadingLightType.Directional
   );
 
   shader.setUniformPerScene(
@@ -521,7 +521,7 @@ const loadLightPoint = (runtime: GlRuntime, configuration: Configuration) => {
   const shader = loadLight<GlPointLight>(
     runtime,
     configuration,
-    LightType.Point
+    DeferredShadingLightType.Point
   );
 
   shader.setUniformPerScene(
@@ -685,7 +685,7 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
             normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
             projectionMatrix: this.fullscreenProjection,
             viewMatrix: state.viewMatrix,
-            viewportSize: viewportSize,
+            viewportSize,
           }
         );
       }
@@ -727,7 +727,7 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
             light: pointLight,
             projectionMatrix: state.projectionMatrix,
             viewMatrix: state.viewMatrix,
-            viewportSize: viewportSize,
+            viewportSize,
           }
         );
       }
@@ -742,6 +742,6 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
 export {
   type Configuration,
   type SceneState,
+  DeferredShadingLightModel,
   DeferredShadingRenderer,
-  LightModel,
 };

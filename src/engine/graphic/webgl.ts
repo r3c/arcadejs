@@ -1250,7 +1250,7 @@ class GlTarget {
     );
 
     attachment.renderbuffer = {
-      format: format,
+      format,
       handle: renderbuffer,
     };
 
@@ -1324,7 +1324,7 @@ class GlTarget {
       GlTarget.clearRenderbufferAttachments(gl, attachment);
 
       const offset = attachment.textures.push({
-        format: format,
+        format,
         handle: texture,
       });
 

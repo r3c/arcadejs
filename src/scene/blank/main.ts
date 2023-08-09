@@ -6,11 +6,11 @@ import {
 } from "../../engine/graphic/software";
 import { Matrix4 } from "../../engine/math/matrix";
 
-interface State {
+type ApplicationState = {
   renderer: SoftwareRenderer;
-}
+};
 
-const application: Application<Context2DScreen, State> = {
+const application: Application<Context2DScreen, ApplicationState> = {
   async prepare(screen) {
     configure(undefined); // FIXME: required to clear tweaks, should be called automatically
 

@@ -6,10 +6,14 @@ import {
 } from "../../engine/application";
 import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
-import * as debugTexture from "../../engine/graphic/webgl/renderers/debug-texture";
+import {
+  DebugTextureFormat,
+  DebugTextureRenderer,
+  DebugTextureSelect,
+} from "../../engine/graphic/webgl/renderers/debug-texture";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
-  ForwardLightingModel,
+  ForwardLightingLightModel,
   ForwardLightingRenderer,
   SceneState,
   ModelState,
@@ -20,7 +24,7 @@ import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import * as move from "../move";
 import { Vector3 } from "../../engine/math/vector";
-import * as view from "../view";
+import { Camera } from "../view";
 import {
   GlModel,
   GlScene,
@@ -35,14 +39,14 @@ import {
  ** - Then rendered a second time from camera's point of view, using this map for shadowing
  */
 
-interface Configuration {
-  animate: boolean;
-  enableShadow: boolean;
-  showDebug: boolean;
-}
+const configuration = {
+  animate: true,
+  enableShadow: true,
+  showDebug: false,
+};
 
 interface ApplicationState {
-  camera: view.Camera;
+  camera: Camera;
   input: Input;
   models: {
     cube: GlModel;
@@ -50,22 +54,18 @@ interface ApplicationState {
     light: GlModel;
   };
   move: number;
-  pipelines: {
-    debug: debugTexture.DebugTextureRenderer;
+  projectionMatrix: Matrix4;
+  renderers: {
+    debug: DebugTextureRenderer;
     lights: ForwardLightingRenderer[];
   };
-  projectionMatrix: Matrix4;
   target: GlTarget;
-  tweak: Tweak<Configuration>;
+  tweak: Tweak<typeof configuration>;
 }
 
-const configuration = {
-  animate: true,
-  enableShadow: true,
-  showDebug: false,
-};
-
-const getOptions = (tweak: Tweak<Configuration>) => [tweak.enableShadow !== 0];
+const getOptions = (tweak: Tweak<typeof configuration>) => [
+  tweak.enableShadow !== 0,
+];
 
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
@@ -82,7 +82,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Create state
     return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
       models: {
         cube: loadModel(runtime, cubeModel),
@@ -90,10 +90,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
         light: loadModel(runtime, lightModel),
       },
       move: 0,
-      pipelines: {
-        debug: new debugTexture.DebugTextureRenderer(runtime, {
-          format: debugTexture.Format.Monochrome,
-          select: debugTexture.Select.Red,
+      projectionMatrix: Matrix4.identity,
+      renderers: {
+        debug: new DebugTextureRenderer(runtime, {
+          format: DebugTextureFormat.Monochrome,
+          select: DebugTextureSelect.Red,
           zNear: 0.1,
           zFar: 100,
         }),
@@ -101,26 +102,25 @@ const application: Application<WebGLScreen, ApplicationState> = {
           (flags) =>
             new ForwardLightingRenderer(runtime, {
               light: {
-                model: ForwardLightingModel.Phong,
+                model: ForwardLightingLightModel.Phong,
                 maxDirectionalLights: 1,
                 noShadow: !flags[0],
               },
             })
         ),
       },
-      projectionMatrix: Matrix4.fromIdentity(),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },
 
   render(state) {
-    const { camera, models, pipelines, target } = state;
+    const { camera, models, renderers, target } = state;
 
     // Draw scene
     const lightDirection = move.rotateDirection(-state.move * 10, 0);
-    const lightPipeline =
-      pipelines.lights[bitfield.index(getOptions(state.tweak))];
+    const lightRenderer =
+      renderers.lights[bitfield.index(getOptions(state.tweak))];
 
     const modelLightDirection = Vector3.fromObject(lightDirection);
 
@@ -169,22 +169,23 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    lightPipeline.render(target, lightScene);
+    lightRenderer.render(target, lightScene);
 
     // Draw texture debug
     if (state.tweak.showDebug) {
-      const debugPipeline = pipelines.debug;
-      const debugScene = debugTexture.DebugTextureRenderer.createScene(
-        lightPipeline.directionalShadowBuffers[0]
+      const debugRenderer = renderers.debug;
+      const debugScene = DebugTextureRenderer.createScene(
+        lightRenderer.directionalShadowBuffers[0]
       );
 
-      debugPipeline.render(target, debugScene);
+      debugRenderer.render(target, debugScene);
     }
   },
 
   resize(state, screen) {
-    for (const pipeline of state.pipelines.lights)
-      pipeline.resize(screen.getWidth(), screen.getHeight());
+    for (const renderer of state.renderers.lights) {
+      renderer.resize(screen.getWidth(), screen.getHeight());
+    }
 
     state.projectionMatrix = Matrix4.fromPerspective(
       45,
@@ -192,7 +193,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       0.1,
       100
     );
-    state.pipelines.debug.resize(screen.getWidth(), screen.getHeight());
+    state.renderers.debug.resize(screen.getWidth(), screen.getHeight());
     state.target.resize(screen.getWidth(), screen.getHeight());
   },
 
