@@ -810,4 +810,4 @@ class Pipeline implements GlPipeline<SceneState, undefined> {
   }
 }
 
-export { type Configuration, LightModel, Pipeline };
+export { type Configuration, type SceneState, LightModel, Pipeline };

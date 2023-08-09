@@ -46,31 +46,31 @@ void main(void) {
 	fragColor = color * albedoFactor * texture(albedoMap, coord);
 }`;
 
-interface SceneState {
+type ApplicationState = {
   camera: view.Camera;
   gl: WebGLRenderingContext;
   input: Input;
   model: webgl.GlModel;
-  painter: webgl.GlPainter<ShaderState, undefined>;
+  painter: webgl.GlPainter<SceneState, undefined>;
   projectionMatrix: Matrix4;
   target: webgl.GlTarget;
-}
+};
 
-interface ShaderState {
+type SceneState = {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
-}
+};
 
 const configuration = {
   useTexture: true,
 };
 
-const application: Application<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const tweak = configure(configuration);
 
     const renderer = webgl.createRenderer(screen.context);
-    const shader = new webgl.GlShader<ShaderState, void>(
+    const shader = new webgl.GlShader<SceneState, void>(
       renderer,
       vsSource,
       fsSource

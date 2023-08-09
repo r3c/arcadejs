@@ -10,13 +10,21 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingModel,
   ForwardLightingPipeline,
+  ModelState,
+  SceneState,
   hasShadowState,
 } from "../../engine/graphic/webgl/pipelines/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import * as webgl from "../../engine/graphic/webgl";
+import {
+  GlModel,
+  GlScene,
+  GlTarget,
+  createRenderer,
+  loadModel,
+} from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import * as view from "../view";
 
@@ -27,7 +35,7 @@ import * as view from "../view";
  ** - Scene uses two different shaders loaded from external files
  */
 
-interface Configuration {
+type Configuration = {
   nbLights: string[];
   animate: boolean;
   useAmbient: boolean;
@@ -36,18 +44,18 @@ interface Configuration {
   useIBL: boolean;
   useHeightMap: boolean;
   useNormalMap: boolean;
-}
+};
 
-interface Light {
+type Light = {
   position: Vector3;
-}
+};
 
-interface SceneState {
+type ApplicationState = {
   camera: view.Camera;
   input: Input;
   lights: Light[];
   models: {
-    star: webgl.GlModel;
+    star: GlModel;
   };
   move: number;
   pipelines: {
@@ -55,9 +63,9 @@ interface SceneState {
   };
   projectionMatrix: Matrix4;
   stars: Light[];
-  target: webgl.GlTarget;
+  target: GlTarget;
   tweak: Tweak<Configuration>;
-}
+};
 
 const configuration = {
   nbLights: ["0", ".1", "2", "3"],
@@ -79,10 +87,10 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.useNormalMap !== 0,
 ];
 
-const application: Application<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const renderer = webgl.createRenderer(gl);
+    const renderer = createRenderer(gl);
     const tweak = configure(configuration);
 
     // Load meshes
@@ -98,7 +106,7 @@ const application: Application<WebGLScreen, SceneState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
-        star: webgl.loadModel(renderer, starModel),
+        star: loadModel(renderer, starModel),
       },
       move: 0,
       pipelines: {
@@ -132,7 +140,7 @@ const application: Application<WebGLScreen, SceneState> = {
           z: Math.random() * 10 - 5,
         },
       })),
-      target: new webgl.GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },
@@ -163,7 +171,7 @@ const application: Application<WebGLScreen, SceneState> = {
       state: hasShadowState,
     }));
 
-    const scene = {
+    const scene: GlScene<SceneState, ModelState> = {
       state: {
         ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
         pointLights: lightPositions.map((position) => ({

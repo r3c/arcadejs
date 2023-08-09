@@ -65,16 +65,16 @@ type LightConfiguration = {
   noShadow?: boolean;
 };
 
-interface SceneState extends State {
+type SceneState = State & {
   ambientLightColor?: Vector3;
   directionalLights?: GlDirectionalLight[];
   environmentLight?: EnvironmentLight;
   pointLights?: GlPointLight[];
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
-}
+};
 
-interface LightStateInternal extends State {
+type LightSceneState = State & {
   ambientLightColor: Vector3;
   directionalLights: DirectionalLight[];
   environmentLight?: {
@@ -86,7 +86,7 @@ interface LightStateInternal extends State {
   projectionMatrix: Matrix4;
   shadowProjectionMatrix: Matrix4;
   viewMatrix: Matrix4;
-}
+};
 
 type MaterialConfiguration = {
   noAlbedoMap?: boolean;
@@ -103,15 +103,12 @@ type ModelState = {
   noShadow: boolean;
 };
 
-interface ShadowState extends State {
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
-}
+type ShadowSceneState = State;
 
-interface State {
+type State = {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
-}
+};
 
 const hasShadowState: ModelState = { noShadow: false };
 const noShadowState: ModelState = { noShadow: true };
@@ -416,7 +413,7 @@ const loadLight = (
     directives.push({ name: "HAS_SHADOW", value: 1 });
   }
 
-  const shader = new GlShader<LightStateInternal, ModelState>(
+  const shader = new GlShader<LightSceneState, ModelState>(
     renderer,
     lightVertexShader,
     lightFragmentShader,
@@ -658,7 +655,7 @@ const loadLight = (
 };
 
 const loadShadowDirectional = (renderer: GlRenderer) => {
-  const shader = new GlShader<ShadowState, undefined>(
+  const shader = new GlShader<ShadowSceneState, undefined>(
     renderer,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
@@ -683,7 +680,7 @@ const loadShadowDirectional = (renderer: GlRenderer) => {
 
 const loadShadowPoint = (renderer: GlRenderer) => {
   // Not implemented
-  return new GlShader<ShadowState, undefined>(
+  return new GlShader<ShadowSceneState, undefined>(
     renderer,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
@@ -694,13 +691,16 @@ class ForwardLightingPipeline implements GlPipeline<SceneState, ModelState> {
   public readonly directionalShadowBuffers: WebGLTexture[];
   public readonly pointShadowBuffers: WebGLTexture[];
 
-  private readonly directionalShadowPainter: GlPainter<ShadowState, undefined>;
+  private readonly directionalShadowPainter: GlPainter<
+    ShadowSceneState,
+    undefined
+  >;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: GlTarget[];
-  private readonly lightPainter: GlPainter<LightStateInternal, ModelState>;
+  private readonly lightPainter: GlPainter<LightSceneState, ModelState>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
-  private readonly pointShadowPainter: GlPainter<ShadowState, undefined>;
+  private readonly pointShadowPainter: GlPainter<ShadowSceneState, undefined>;
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
   private readonly renderer: GlRenderer;

@@ -18,18 +18,20 @@ import {
   GlDirectionalLight,
   GlModel,
   GlPointLight,
+  GlScene,
   GlTarget,
   createRenderer,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import * as view from "../view";
+import { SceneState } from "../../engine/graphic/webgl/pipelines/deferred-shading";
 
 /*
  ** What changed?
  */
 
-interface Configuration {
+type Configuration = {
   nbDirectionals: string[];
   nbPoints: string[];
   animate: boolean;
@@ -37,9 +39,9 @@ interface Configuration {
   diffuse: boolean;
   specular: boolean;
   debugMode: string[];
-}
+};
 
-interface SceneState {
+type ApplicationState = {
   camera: view.Camera;
   directionalLights: GlDirectionalLight[];
   input: Input;
@@ -58,7 +60,7 @@ interface SceneState {
   projectionMatrix: Matrix4;
   target: GlTarget;
   tweak: Tweak<Configuration>;
-}
+};
 
 const configuration = {
   nbDirectionals: [".0", "1", "2", "5"],
@@ -76,7 +78,7 @@ const getOptions = (tweak: Tweak<Configuration>) => [
   tweak.specular !== 0,
 ];
 
-const application: Application<WebGLScreen, SceneState> = {
+const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const renderer = createRenderer(gl);
@@ -182,7 +184,7 @@ const application: Application<WebGLScreen, SceneState> = {
 
     // Draw scene
     const deferredPipeline = pipelines.scene[bitfield.index(getOptions(tweak))];
-    const deferredScene = {
+    const deferredScene: GlScene<SceneState, undefined> = {
       state: {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
         directionalLights: directionalLights,

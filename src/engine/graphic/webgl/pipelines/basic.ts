@@ -28,10 +28,10 @@ void main(void) {
 	fragColor = vec4(1, 1, 1, 1);
 }`;
 
-interface SceneState {
+type SceneState = {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
-}
+};
 
 const load = (renderer: GlRenderer) => {
   const shader = new GlShader<SceneState, undefined>(

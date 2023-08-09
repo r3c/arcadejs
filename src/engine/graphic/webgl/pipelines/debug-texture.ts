@@ -133,9 +133,9 @@ const enum Select {
   Alpha,
 }
 
-interface State {
+type SceneState = {
   source: WebGLTexture;
-}
+};
 
 const load = (renderer: GlRenderer, configuration: Configuration) => {
   const directives = [
@@ -145,7 +145,7 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
     { name: "ZNEAR", value: configuration.zNear },
   ];
 
-  const shader = new GlShader<State, undefined>(
+  const shader = new GlShader<SceneState, undefined>(
     renderer,
     vertexSource,
     fragmentSource,
@@ -168,8 +168,8 @@ const load = (renderer: GlRenderer, configuration: Configuration) => {
   return shader;
 };
 
-class Pipeline implements GlPipeline<State, undefined> {
-  private readonly painter: GlPainter<State, undefined>;
+class Pipeline implements GlPipeline<SceneState, undefined> {
+  private readonly painter: GlPainter<SceneState, undefined>;
   private readonly quad: GlModel;
   private readonly renderer: GlRenderer;
   private readonly scale: number;
@@ -179,7 +179,9 @@ class Pipeline implements GlPipeline<State, undefined> {
    ** given texture. It allows easy construction of "scene" parameter expected
    ** by "process" method easily.
    */
-  public static createScene(source: WebGLTexture): GlScene<State, undefined> {
+  public static createScene(
+    source: WebGLTexture
+  ): GlScene<SceneState, undefined> {
     return {
       state: {
         source,
@@ -217,7 +219,7 @@ class Pipeline implements GlPipeline<State, undefined> {
     this.scale = configuration.scale ?? 0.4;
   }
 
-  public process(target: GlTarget, scene: GlScene<State, undefined>) {
+  public process(target: GlTarget, scene: GlScene<SceneState, undefined>) {
     const gl = this.renderer.context;
 
     gl.disable(gl.BLEND);
