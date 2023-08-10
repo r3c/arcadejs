@@ -21,14 +21,15 @@ const draw = <TSceneState, TModelState>(
 
     draw(shader, target, mesh.children, modelMatrix, viewMatrix, state);
 
+    shader.bindModel({ normalMatrix, modelMatrix, state });
+
     for (const primitive of mesh.primitives) {
       const material = primitive.material;
       const polygon = primitive.polygon;
       const { indexBuffer, indexCount, indexType } = polygon;
 
-      shader.bindPolygon(polygon);
       shader.bindMaterial(material);
-      shader.bindModel({ normalMatrix, modelMatrix, state });
+      shader.bindPolygon(polygon);
       target.draw(0, indexBuffer, indexCount, indexType);
     }
   }
