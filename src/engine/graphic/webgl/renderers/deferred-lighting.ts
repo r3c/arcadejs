@@ -4,6 +4,7 @@ import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
+import { model as billboardModel } from "./resources/billboard";
 import { model as quadModel } from "./resources/quad";
 import * as rgb from "./snippets/rgb";
 import * as shininess from "./snippets/shininess";
@@ -121,14 +122,19 @@ uniform ${light.sourceTypePoint} pointLight;`;
 const lightVertexShader = `
 ${lightHeaderShader}
 
+uniform mat4 billboardMatrix;
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
+in vec2 coords;
 in vec4 points;
 
+#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 out vec3 lightDistanceCamera;
+#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
 out vec3 lightPositionCamera;
+#endif
 
 vec3 toCameraDirection(in vec3 worldDirection) {
 	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
@@ -145,7 +151,9 @@ void main(void) {
 		lightPositionCamera = toCameraPosition(pointLight.position);
 	#endif
 
-	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
+	gl_Position =
+		projectionMatrix * viewMatrix * modelMatrix * points +
+		projectionMatrix * billboardMatrix * modelMatrix * vec4(coords, 0.0, 0.0);
 }`;
 
 const lightFragmentShader = `
@@ -328,11 +336,19 @@ type State = {
   viewMatrix: Matrix4;
 };
 
-type LightState<TLight> = State & {
+type LightState = State & {
+  billboardMatrix: Matrix4;
   depthBuffer: WebGLTexture;
-  light: TLight;
   normalAndGlossinessBuffer: WebGLTexture;
   viewportSize: Vector2;
+};
+
+type DirectionalLightState = LightState & {
+  directionalLight: GlDirectionalLight;
+};
+
+type PointLightState = LightState & {
+  pointLight: GlPointLight;
 };
 
 type MaterialState = State & {
@@ -413,7 +429,7 @@ const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
   return shader;
 };
 
-const loadLight = <TState>(
+const loadLight = <TSceneState extends LightState>(
   runtime: GlRuntime,
   _: Configuration,
   type: DeferredLightingLightType
@@ -421,14 +437,20 @@ const loadLight = <TState>(
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
-  const shader = new GlShader<LightState<TState>, undefined>(
+  const shader = new GlShader<TSceneState, undefined>(
     runtime,
     lightVertexShader,
     lightFragmentShader,
     directives
   );
 
-  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
+  shader.setAttributePerPolygon("points", ({ points }) => points);
+
+  shader.setUniformPerScene(
+    "billboardMatrix",
+    uniform.numberMatrix4(({ billboardMatrix }) => billboardMatrix)
+  );
   shader.setUniformPerMesh(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
@@ -473,7 +495,7 @@ const loadLightDirectional = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const shader = loadLight<GlDirectionalLight>(
+  const shader = loadLight<DirectionalLightState>(
     runtime,
     configuration,
     DeferredLightingLightType.Directional
@@ -481,18 +503,18 @@ const loadLightDirectional = (
 
   shader.setUniformPerScene(
     "directionalLight.color",
-    uniform.numberVector3(({ light }) => light.color)
+    uniform.numberVector3(({ directionalLight }) => directionalLight.color)
   );
   shader.setUniformPerScene(
     "directionalLight.direction",
-    uniform.numberVector3(({ light }) => light.direction)
+    uniform.numberVector3(({ directionalLight }) => directionalLight.direction)
   );
 
   return shader;
 };
 
 const loadLightPoint = (runtime: GlRuntime, configuration: Configuration) => {
-  const shader = loadLight<GlPointLight>(
+  const shader = loadLight<PointLightState>(
     runtime,
     configuration,
     DeferredLightingLightType.Point
@@ -500,15 +522,15 @@ const loadLightPoint = (runtime: GlRuntime, configuration: Configuration) => {
 
   shader.setUniformPerScene(
     "pointLight.color",
-    uniform.numberVector3(({ light }) => light.color)
+    uniform.numberVector3(({ pointLight }) => pointLight.color)
   );
   shader.setUniformPerScene(
     "pointLight.position",
-    uniform.numberVector3(({ light }) => light.position)
+    uniform.numberVector3(({ pointLight }) => pointLight.position)
   );
   shader.setUniformPerScene(
     "pointLight.radius",
-    uniform.numberScalar(({ light }) => light.radius)
+    uniform.numberScalar(({ pointLight }) => pointLight.radius)
   );
 
   return shader;
@@ -618,8 +640,9 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
   public readonly lightBuffer: WebGLTexture;
   public readonly normalAndGlossinessBuffer: WebGLTexture;
 
+  private readonly billboardModel: GlModel;
   private readonly directionalLightPainter: GlPainter<
-    LightState<GlDirectionalLight>,
+    DirectionalLightState,
     undefined
   >;
   private readonly fullscreenProjection: Matrix4;
@@ -627,10 +650,7 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
   private readonly geometryTarget: GlTarget;
   private readonly lightTarget: GlTarget;
   private readonly materialPainter: GlPainter<MaterialState, undefined>;
-  private readonly pointLightPainter: GlPainter<
-    LightState<GlPointLight>,
-    undefined
-  >;
+  private readonly pointLightPainter: GlPainter<PointLightState, undefined>;
   private readonly quadModel: GlModel;
   private readonly runtime: GlRuntime;
 
@@ -647,6 +667,7 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
       gl.drawingBufferWidth
     );
 
+    this.billboardModel = loadModel(runtime, billboardModel);
     this.depthBuffer = geometry.setupDepthTexture(
       GlTextureFormat.Depth16,
       GlTextureType.Quad
@@ -685,6 +706,19 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
       x: gl.drawingBufferWidth,
       y: gl.drawingBufferHeight,
     };
+
+    // Build billboard matrix from view matrix to get camera-facing quads
+    const billboardMatrix = Matrix4.fromObject(state.viewMatrix);
+
+    billboardMatrix.v00 = 1;
+    billboardMatrix.v01 = 0;
+    billboardMatrix.v02 = 0;
+    billboardMatrix.v10 = 0;
+    billboardMatrix.v11 = 1;
+    billboardMatrix.v12 = 0;
+    billboardMatrix.v20 = 0;
+    billboardMatrix.v21 = 0;
+    billboardMatrix.v22 = 1;
 
     // Render geometries to geometry buffers
     gl.disable(gl.BLEND);
@@ -736,9 +770,10 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
           objects,
           state.viewMatrix,
           {
+            billboardMatrix,
             depthBuffer: this.depthBuffer,
+            directionalLight,
             normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-            light: directionalLight,
             projectionMatrix: this.fullscreenProjection,
             viewMatrix: state.viewMatrix,
             viewportSize,
@@ -750,7 +785,7 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
     if (state.pointLights !== undefined) {
       const pointLightObject: GlObject<undefined> = {
         matrix: Matrix4.identity,
-        model: this.quadModel,
+        model: this.billboardModel,
         state: undefined,
       };
       const objects = [pointLightObject];
@@ -780,9 +815,10 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
           objects,
           state.viewMatrix,
           {
+            billboardMatrix,
             depthBuffer: this.depthBuffer,
             normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-            light: pointLight,
+            pointLight,
             projectionMatrix: state.projectionMatrix,
             viewMatrix: state.viewMatrix,
             viewportSize,
