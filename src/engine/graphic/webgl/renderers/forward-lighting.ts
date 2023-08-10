@@ -597,7 +597,7 @@ const loadLight = (
         uniform.numberMatrix4(({ directionalLights }) =>
           index < directionalLights.length
             ? directionalLights[index].shadowViewMatrix
-            : Matrix4.fromIdentity()
+            : Matrix4.identity
         )
       );
       shader.setUniformPerScene(

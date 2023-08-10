@@ -570,7 +570,7 @@ const loadNode = (
         ]
       );
     } else {
-      transform = Matrix4.fromIdentity();
+      transform = Matrix4.identity;
     }
 
     const childrenIndices = convertArrayOf(

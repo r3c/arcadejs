@@ -206,7 +206,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // PBR render
     const cube = {
-      matrix: Matrix4.fromIdentity(),
+      matrix: Matrix4.identity,
       model: models.helmet,
       state: hasShadowState,
     };

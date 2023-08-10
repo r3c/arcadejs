@@ -155,7 +155,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       objects: [
         {
-          matrix: Matrix4.fromIdentity(),
+          matrix: Matrix4.identity,
           model: models.cube,
           state: hasShadowState,
         },

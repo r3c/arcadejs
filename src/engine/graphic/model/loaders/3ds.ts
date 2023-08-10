@@ -79,7 +79,7 @@ const load = async (url: string): Promise<Model> => {
               : undefined,
           points: { buffer: new Float32Array(mesh.points), stride: 3 },
         })),
-        transform: Matrix4.fromIdentity(),
+        transform: Matrix4.identity,
       },
     ],
   };

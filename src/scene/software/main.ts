@@ -49,7 +49,7 @@ const application: Application<Context2DScreen, ApplicationState> = {
       cubeWithColor: await loadModelFromJson("model/cube-color/mesh.json"),
       cubeWithTexture: await loadModelFromJson("model/cube/mesh.json"),
       input: new Input(screen.canvas),
-      projection: Matrix4.fromIdentity(),
+      projection: Matrix4.identity,
       rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
       rendererWire: new SoftwareRenderer(screen, SoftwareDrawMode.Wire),
       tweak,

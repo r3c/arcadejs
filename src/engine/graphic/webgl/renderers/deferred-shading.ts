@@ -681,7 +681,7 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
     // Draw point lights using quads
     if (state.pointLights !== undefined) {
       const pointLightObject: GlObject<undefined> = {
-        matrix: Matrix4.fromIdentity(),
+        matrix: Matrix4.identity,
         model: this.quadModel,
         state: undefined,
       };

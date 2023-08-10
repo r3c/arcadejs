@@ -188,7 +188,7 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
       },
       objects: [
         {
-          matrix: Matrix4.fromIdentity(),
+          matrix: Matrix4.identity,
           model: {
             library: undefined,
             meshes: [
@@ -202,7 +202,7 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
                     } as any,
                   },
                 ],
-                transform: Matrix4.fromIdentity(),
+                transform: Matrix4.identity,
               },
             ],
           },
@@ -244,7 +244,7 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
       for (const mesh of model.meshes) {
         for (const primitive of mesh.primitives) {
           if (primitive.material.albedoMap !== undefined) {
-            this.painter.paint(target, objects, Matrix4.fromIdentity(), {
+            this.painter.paint(target, objects, Matrix4.identity, {
               source: primitive.material.albedoMap,
             });
 

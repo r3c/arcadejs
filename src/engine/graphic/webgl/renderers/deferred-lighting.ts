@@ -746,7 +746,7 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
 
     if (state.pointLights !== undefined) {
       const pointLightObject: GlObject<undefined> = {
-        matrix: Matrix4.fromIdentity(),
+        matrix: Matrix4.identity,
         model: this.quadModel,
         state: undefined,
       };

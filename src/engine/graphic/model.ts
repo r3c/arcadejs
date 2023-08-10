@@ -32,7 +32,7 @@ type Configuration<TLoad> = {
 const computeBounds = (model: Model): BoundingBox => {
   return reduceMeshPoints<BoundingBox>(
     model.meshes,
-    Matrix4.fromIdentity(),
+    Matrix4.identity,
     {
       xMax: Number.MIN_VALUE,
       xMin: Number.MAX_VALUE,
@@ -331,7 +331,7 @@ const flattenModel = (model: Model): Model => {
     }
   };
 
-  flattenFragments(model.meshes, Matrix4.fromIdentity());
+  flattenFragments(model.meshes, Matrix4.identity);
 
   // Merge polygons by material name
   const polygons: Polygon[] = [];
@@ -487,7 +487,7 @@ const flattenModel = (model: Model): Model => {
 
   // Create and return flattened model
   return {
-    meshes: [{ children: [], polygons, transform: Matrix4.fromIdentity() }],
+    meshes: [{ children: [], polygons, transform: Matrix4.identity }],
   };
 };
 
