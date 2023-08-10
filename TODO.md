@@ -3,7 +3,7 @@
 ## ToDo
 
 - Fix directional shadow scene
-- Rename WebGL types and import them individually to avoid webgl.Type references
+- Fix deferred point lights bug when light is behind camera (due to quad not being drawn)
 - Strong typing for tweaks
 - Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}
@@ -18,6 +18,7 @@
 
 ## Done
 
+- Rename WebGL types and import them individually to avoid webgl.Type references
 - Draw lights using quads instead of spheres in deferred {shading,lighting}
 - Change signature of `{MatrixVector}N.fromCustom(["method1", arg1, arg2], ["method2", arg1])`
 - Move matrix3 to engine library
