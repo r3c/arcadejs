@@ -1,4 +1,13 @@
-import * as light from "./snippets/light";
+import {
+  DirectionalLight,
+  PointLight,
+  sourceDeclare,
+  sourceInvokeDirectional,
+  sourceInvokePoint,
+  sourceTypeDirectional,
+  sourceTypePoint,
+  sourceTypeResult,
+} from "./snippets/light";
 import { Matrix4 } from "../../../math/matrix";
 import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
@@ -9,11 +18,9 @@ import { model as quadModel } from "./resources/quad";
 import * as shininess from "./snippets/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
-  GlDirectionalLight,
   GlModel,
   GlPainter,
   GlRenderer,
-  GlPointLight,
   GlRuntime,
   GlScene,
   GlShader,
@@ -157,10 +164,10 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-${light.sourceDeclare("HAS_SHADOW")}
+${sourceDeclare("HAS_SHADOW")}
 
-uniform ${light.sourceTypeDirectional} directionalLight;
-uniform ${light.sourceTypePoint} pointLight;`;
+uniform ${sourceTypeDirectional} directionalLight;
+uniform ${sourceTypePoint} pointLight;`;
 
 const lightVertexShader = `
 ${lightHeaderShader}
@@ -248,12 +255,12 @@ void main(void) {
 
 	// Compute lightning
 	#if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
-		${light.sourceTypeResult} light = ${light.sourceInvokeDirectional(
+		${sourceTypeResult} light = ${sourceInvokeDirectional(
   "directionalLight",
   "lightDistanceCamera"
 )};
 	#elif LIGHT_TYPE == ${DeferredShadingLightType.Point}
-		${light.sourceTypeResult} light = ${light.sourceInvokePoint(
+		${sourceTypeResult} light = ${sourceInvokePoint(
   "pointLight",
   "lightPositionCamera - point"
 )};
@@ -299,20 +306,23 @@ type LightState = State & {
 };
 
 type DirectionalLightState = LightState & {
-  directionalLight: GlDirectionalLight;
+  directionalLight: DirectionalLight;
 };
 
 type PointLightState = LightState & {
-  pointLight: GlPointLight;
+  pointLight: PointLight;
 };
 
 type SceneState = State & {
   ambientLightColor?: Vector3;
-  directionalLights?: GlDirectionalLight[];
-  pointLights?: GlPointLight[];
+  directionalLights?: DirectionalLight[];
+  pointLights?: PointLight[];
 };
 
-const loadAmbient = (runtime: GlRuntime, configuration: Configuration) => {
+const loadAmbientShader = (
+  runtime: GlRuntime,
+  configuration: Configuration
+): GlShader<AmbientLightState, void> => {
   // Build directives from configuration
   const directives = [];
 
@@ -327,7 +337,7 @@ const loadAmbient = (runtime: GlRuntime, configuration: Configuration) => {
   }
 
   // Setup light shader
-  const shader = new GlShader<AmbientLightState, undefined>(
+  const shader = new GlShader<AmbientLightState, void>(
     runtime,
     ambientVertexShader,
     ambientFragmentShader,
@@ -362,9 +372,12 @@ const loadAmbient = (runtime: GlRuntime, configuration: Configuration) => {
   return shader;
 };
 
-const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
+const loadGeometryShader = (
+  runtime: GlRuntime,
+  configuration: Configuration
+): GlShader<State, void> => {
   // Setup geometry shader
-  const shader = new GlShader<State, undefined>(
+  const shader = new GlShader<State, void>(
     runtime,
     geometryVertexShader,
     geometryFragmentShader,
@@ -437,11 +450,11 @@ const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
   return shader;
 };
 
-const loadLight = <TSceneState extends LightState>(
+const loadLightShader = <TSceneState extends LightState>(
   runtime: GlRuntime,
   configuration: Configuration,
   type: DeferredShadingLightType
-) => {
+): GlShader<TSceneState, void> => {
   // Build directives from configuration
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
@@ -460,7 +473,7 @@ const loadLight = <TSceneState extends LightState>(
   }
 
   // Setup light shader
-  const shader = new GlShader<TSceneState, undefined>(
+  const shader = new GlShader<TSceneState, void>(
     runtime,
     lightVertexShader,
     lightFragmentShader,
@@ -517,11 +530,11 @@ const loadLight = <TSceneState extends LightState>(
   return shader;
 };
 
-const loadLightDirectional = (
+const loadDirectionalLightShader = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const shader = loadLight<DirectionalLightState>(
+  const shader = loadLightShader<DirectionalLightState>(
     runtime,
     configuration,
     DeferredShadingLightType.Directional
@@ -539,8 +552,11 @@ const loadLightDirectional = (
   return shader;
 };
 
-const loadLightPoint = (runtime: GlRuntime, configuration: Configuration) => {
-  const shader = loadLight<PointLightState>(
+const loadPointLightShader = (
+  runtime: GlRuntime,
+  configuration: Configuration
+) => {
+  const shader = loadLightShader<PointLightState>(
     runtime,
     configuration,
     DeferredShadingLightType.Point
@@ -593,7 +609,7 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
       GlTextureType.Quad
     );
     this.ambientLightPainter = new SingularPainter(
-      loadAmbient(runtime, configuration)
+      loadAmbientShader(runtime, configuration)
     );
     this.billboardModel = loadModel(runtime, billboardModel);
     this.depthBuffer = geometry.setupDepthTexture(
@@ -601,11 +617,11 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
       GlTextureType.Quad
     );
     this.directionalLightPainter = new SingularPainter(
-      loadLightDirectional(runtime, configuration)
+      loadDirectionalLightShader(runtime, configuration)
     );
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = new SingularPainter(
-      loadGeometry(runtime, configuration)
+      loadGeometryShader(runtime, configuration)
     );
     this.geometryTarget = geometry;
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
@@ -613,7 +629,7 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
       GlTextureType.Quad
     );
     this.pointLightPainter = new SingularPainter(
-      loadLightPoint(runtime, configuration)
+      loadPointLightShader(runtime, configuration)
     );
     this.quadModel = loadModel(runtime, quadModel);
     this.runtime = runtime;

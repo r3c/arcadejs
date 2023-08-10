@@ -1,5 +1,7 @@
 import { range } from "../../../language/functional";
 import {
+  DirectionalLight,
+  PointLight,
   sourceDeclare,
   sourceInvokeDirectional,
   sourceInvokePoint,
@@ -17,10 +19,8 @@ import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
-  GlDirectionalLight,
   GlPainter,
   GlRenderer,
-  GlPointLight,
   GlRuntime,
   GlScene,
   GlShader,
@@ -42,10 +42,10 @@ enum ForwardLightingLightModel {
   Physical,
 }
 
-interface DirectionalLight extends GlDirectionalLight {
+type ShadowDirectionalLight = DirectionalLight & {
   shadowMap: WebGLTexture;
   shadowViewMatrix: Matrix4;
-}
+};
 
 type EnvironmentLight = {
   brdf: WebGLTexture;
@@ -67,22 +67,22 @@ type LightConfiguration = {
 
 type SceneState = State & {
   ambientLightColor?: Vector3;
-  directionalLights?: GlDirectionalLight[];
+  directionalLights?: DirectionalLight[];
   environmentLight?: EnvironmentLight;
-  pointLights?: GlPointLight[];
+  pointLights?: PointLight[];
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
 
 type LightSceneState = State & {
   ambientLightColor: Vector3;
-  directionalLights: DirectionalLight[];
+  directionalLights: ShadowDirectionalLight[];
   environmentLight?: {
     brdf: WebGLTexture;
     diffuse: WebGLTexture;
     specular: WebGLTexture;
   };
-  pointLights: GlPointLight[]; // FIXME: extend PointLight with extra properties
+  pointLights: PointLight[]; // FIXME: extend PointLight with extra properties
   projectionMatrix: Matrix4;
   shadowProjectionMatrix: Matrix4;
   viewMatrix: Matrix4;
@@ -655,7 +655,7 @@ const loadLight = (
 };
 
 const loadShadowDirectional = (runtime: GlRuntime) => {
-  const shader = new GlShader<ShadowSceneState, undefined>(
+  const shader = new GlShader<ShadowSceneState, void>(
     runtime,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
@@ -680,7 +680,7 @@ const loadShadowDirectional = (runtime: GlRuntime) => {
 
 const loadShadowPoint = (runtime: GlRuntime) => {
   // Not implemented
-  return new GlShader<ShadowSceneState, undefined>(
+  return new GlShader<ShadowSceneState, void>(
     runtime,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader

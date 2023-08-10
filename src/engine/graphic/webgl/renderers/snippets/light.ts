@@ -1,3 +1,17 @@
+import { Vector3 } from "../../../../math/vector";
+
+type DirectionalLight = {
+  color: Vector3;
+  direction: Vector3;
+  shadow: boolean;
+};
+
+type PointLight = {
+  color: Vector3;
+  position: Vector3;
+  radius: number;
+};
+
 const sourceTypeDirectional = "DirectionalLight";
 const sourceTypePoint = "PointLight";
 const sourceTypeResult = "ResultLight";
@@ -49,6 +63,8 @@ const sourceInvokePoint = (light: string, distanceCamera: string): string =>
   `lightSourcePoint(${light}, ${distanceCamera})`;
 
 export {
+  type DirectionalLight,
+  type PointLight,
   sourceDeclare,
   sourceInvokeDirectional,
   sourceInvokePoint,

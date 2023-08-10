@@ -1,4 +1,13 @@
-import * as light from "./snippets/light";
+import {
+  DirectionalLight,
+  PointLight,
+  sourceDeclare,
+  sourceInvokeDirectional,
+  sourceInvokePoint,
+  sourceTypeDirectional,
+  sourceTypePoint,
+  sourceTypeResult,
+} from "./snippets/light";
 import { Matrix4 } from "../../../math/matrix";
 import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
@@ -10,11 +19,9 @@ import * as rgb from "./snippets/rgb";
 import * as shininess from "./snippets/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
-  GlDirectionalLight,
   GlModel,
   GlPainter,
   GlRenderer,
-  GlPointLight,
   GlRuntime,
   GlScene,
   GlShader,
@@ -114,10 +121,10 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-${light.sourceDeclare("HAS_SHADOW")}
+${sourceDeclare("HAS_SHADOW")}
 
-uniform ${light.sourceTypeDirectional} directionalLight;
-uniform ${light.sourceTypePoint} pointLight;`;
+uniform ${sourceTypeDirectional} directionalLight;
+uniform ${sourceTypePoint} pointLight;`;
 
 const lightVertexShader = `
 ${lightHeaderShader}
@@ -206,12 +213,12 @@ void main(void) {
 
 	// Compute lightning parameters
 	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-		${light.sourceTypeResult} light = ${light.sourceInvokeDirectional(
+		${sourceTypeResult} light = ${sourceInvokeDirectional(
   "directionalLight",
   "lightDistanceCamera"
 )};
 	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
-		${light.sourceTypeResult} light = ${light.sourceInvokePoint(
+		${sourceTypeResult} light = ${sourceInvokePoint(
   "pointLight",
   "lightPositionCamera - point"
 )};
@@ -344,11 +351,11 @@ type LightState = State & {
 };
 
 type DirectionalLightState = LightState & {
-  directionalLight: GlDirectionalLight;
+  directionalLight: DirectionalLight;
 };
 
 type PointLightState = LightState & {
-  pointLight: GlPointLight;
+  pointLight: PointLight;
 };
 
 type MaterialState = State & {
@@ -358,13 +365,13 @@ type MaterialState = State & {
 
 type SceneState = State & {
   ambientLightColor?: Vector3;
-  directionalLights?: GlDirectionalLight[];
-  pointLights?: GlPointLight[];
+  directionalLights?: DirectionalLight[];
+  pointLights?: PointLight[];
 };
 
 const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
   // Setup geometry shader
-  const shader = new GlShader<State, undefined>(
+  const shader = new GlShader<State, void>(
     runtime,
     geometryVertexShader,
     geometryFragmentShader,
@@ -437,7 +444,7 @@ const loadLight = <TSceneState extends LightState>(
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
-  const shader = new GlShader<TSceneState, undefined>(
+  const shader = new GlShader<TSceneState, void>(
     runtime,
     lightVertexShader,
     lightFragmentShader,
@@ -559,7 +566,7 @@ const loadMaterial = (runtime: GlRuntime, configuration: Configuration) => {
   }
 
   // Setup material shader
-  const shader = new GlShader<MaterialState, undefined>(
+  const shader = new GlShader<MaterialState, void>(
     runtime,
     materialVertexShader,
     materialFragmentShader,

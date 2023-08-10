@@ -52,12 +52,6 @@ type GlDefault = {
   whiteTexture: GlTexture;
 };
 
-type GlDirectionalLight = {
-  color: Vector3;
-  direction: Vector3;
-  shadow: boolean;
-};
-
 type GlDirective = {
   name: string;
   value: number;
@@ -131,12 +125,6 @@ type GlPainter<TSceneState, TModelState> = {
     view: Matrix4,
     state: TSceneState
   ): void;
-};
-
-type GlPointLight = {
-  color: Vector3;
-  position: Vector3;
-  radius: number;
 };
 
 type GlPolygon = {
@@ -1506,14 +1494,12 @@ const uniform = {
 
 export {
   type GlAttribute,
-  type GlDirectionalLight,
   type GlDirective,
   type GlMaterial,
   type GlMesh,
   type GlModel,
   type GlObject,
   type GlPainter,
-  type GlPointLight,
   type GlPolygon,
   type GlRenderer,
   type GlRuntime,

@@ -34,7 +34,7 @@ type SceneState = {
 };
 
 const load = (runtime: GlRuntime) => {
-  const shader = new GlShader<SceneState, undefined>(
+  const shader = new GlShader<SceneState, void>(
     runtime,
     vertexShader,
     fragmentShader

@@ -145,7 +145,7 @@ const load = (runtime: GlRuntime, configuration: Configuration) => {
     { name: "ZNEAR", value: configuration.zNear },
   ];
 
-  const shader = new GlShader<SceneState, undefined>(
+  const shader = new GlShader<SceneState, void>(
     runtime,
     vertexSource,
     fragmentSource,

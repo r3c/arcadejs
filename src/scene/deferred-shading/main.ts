@@ -22,9 +22,7 @@ import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
-  GlDirectionalLight,
   GlModel,
-  GlPointLight,
   GlScene,
   GlTarget,
   createRuntime,
@@ -33,6 +31,10 @@ import {
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { SceneState } from "../../engine/graphic/webgl/renderers/deferred-shading";
+import {
+  DirectionalLight,
+  PointLight,
+} from "../../engine/graphic/webgl/renderers/snippets/light";
 
 /*
  ** What changed?
@@ -64,7 +66,7 @@ const pointLightParameters = [
 
 type ApplicationState = {
   camera: Camera;
-  directionalLights: GlDirectionalLight[];
+  directionalLights: DirectionalLight[];
   input: Input;
   models: {
     cube: GlModel;
@@ -73,7 +75,7 @@ type ApplicationState = {
     pointLight: GlModel;
   };
   move: number;
-  pointLights: GlPointLight[];
+  pointLights: PointLight[];
   projectionMatrix: Matrix4;
   renderers: {
     debug: DebugTextureRenderer[];
