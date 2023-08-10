@@ -69,23 +69,23 @@ const computeNormals = (indices: TypedArray, points: Attribute): Attribute => {
     const index2 = indices[i + 1];
     const index3 = indices[i + 2];
 
-    const point1 = Vector3.fromObject({
-      x: pointsBuffer[index1 * pointsStride + 0],
-      y: pointsBuffer[index1 * pointsStride + 1],
-      z: pointsBuffer[index1 * pointsStride + 2],
-    });
+    const point1 = Vector3.fromXYZ(
+      pointsBuffer[index1 * pointsStride + 0],
+      pointsBuffer[index1 * pointsStride + 1],
+      pointsBuffer[index1 * pointsStride + 2]
+    );
 
-    const point2 = Vector3.fromObject({
-      x: pointsBuffer[index2 * pointsStride + 0],
-      y: pointsBuffer[index2 * pointsStride + 1],
-      z: pointsBuffer[index2 * pointsStride + 2],
-    });
+    const point2 = Vector3.fromXYZ(
+      pointsBuffer[index2 * pointsStride + 0],
+      pointsBuffer[index2 * pointsStride + 1],
+      pointsBuffer[index2 * pointsStride + 2]
+    );
 
-    const point3 = Vector3.fromObject({
-      x: pointsBuffer[index3 * pointsStride + 0],
-      y: pointsBuffer[index3 * pointsStride + 1],
-      z: pointsBuffer[index3 * pointsStride + 2],
-    });
+    const point3 = Vector3.fromXYZ(
+      pointsBuffer[index3 * pointsStride + 0],
+      pointsBuffer[index3 * pointsStride + 1],
+      pointsBuffer[index3 * pointsStride + 2]
+    );
 
     point1.sub(point2);
     point3.sub(point2);
@@ -193,11 +193,11 @@ const computeTangents = (
   const tangentsStride = 3;
 
   for (let i = 0; i < tangents.length; ++i) {
-    const n = Vector3.fromObject({
-      x: normalsBuffer[i * normalsStride + 0],
-      y: normalsBuffer[i * normalsStride + 1],
-      z: normalsBuffer[i * normalsStride + 2],
-    });
+    const n = Vector3.fromXYZ(
+      normalsBuffer[i * normalsStride + 0],
+      normalsBuffer[i * normalsStride + 1],
+      normalsBuffer[i * normalsStride + 2]
+    );
     const t = tangents[i];
 
     // Gram-Schmidt orthogonalize: t' = normalize(t - n * dot(n, t));
@@ -264,11 +264,11 @@ const finalizePolygon = (polygon: Polygon): void => {
     const count = polygon.normals.stride;
 
     for (let i = 0; i + count - 1 < buffer.length; i += count) {
-      const normal = Vector3.fromObject({
-        x: buffer[i + 0],
-        y: buffer[i + 1],
-        z: buffer[i + 2],
-      });
+      const normal = Vector3.fromXYZ(
+        buffer[i + 0],
+        buffer[i + 1],
+        buffer[i + 2]
+      );
 
       normal.normalize();
 
@@ -286,11 +286,11 @@ const finalizePolygon = (polygon: Polygon): void => {
     const count = polygon.tangents.stride;
 
     for (let i = 0; i + count - 1 < buffer.length; i += count) {
-      const tangent = Vector3.fromObject({
-        x: buffer[i + 0],
-        y: buffer[i + 1],
-        z: buffer[i + 2],
-      });
+      const tangent = Vector3.fromXYZ(
+        buffer[i + 0],
+        buffer[i + 1],
+        buffer[i + 2]
+      );
 
       tangent.normalize();
 

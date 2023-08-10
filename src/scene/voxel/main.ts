@@ -271,8 +271,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     if (input.fetchPressed("space") && lookVoxel !== undefined) {
       const direction =
         Math.abs(cameraDirection.x) > Math.abs(cameraDirection.z)
-          ? Vector3.fromObject({ x: Math.sign(cameraDirection.x), y: 0, z: 0 })
-          : Vector3.fromObject({ x: 0, y: 0, z: Math.sign(cameraDirection.z) });
+          ? Vector3.fromXYZ(Math.sign(cameraDirection.x), 0, 0)
+          : Vector3.fromXYZ(0, 0, Math.sign(cameraDirection.z));
 
       direction.scale(-0.5);
 

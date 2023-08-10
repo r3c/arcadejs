@@ -137,6 +137,10 @@ class Vector3 {
     return new MutableVector3(vector.x, vector.y, vector.z);
   }
 
+  public static fromXYZ(x: number, y: number, z: number): MutableVector3 {
+    return new MutableVector3(x, y, z);
+  }
+
   public static fromZero(): MutableVector3 {
     return new MutableVector3(0, 0, 0);
   }
@@ -185,6 +189,15 @@ class Vector4 {
 
   public static fromObject(vector: Vector4): MutableVector4 {
     return new MutableVector4(vector.x, vector.y, vector.z, vector.w);
+  }
+
+  public static fromXYZW(
+    x: number,
+    y: number,
+    z: number,
+    w: number
+  ): MutableVector4 {
+    return new MutableVector4(x, y, z, w);
   }
 
   public static fromZero(): MutableVector4 {
