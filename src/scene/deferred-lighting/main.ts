@@ -40,7 +40,7 @@ import { SceneState } from "../../engine/graphic/webgl/renderers/deferred-lighti
 
 const configuration = {
   nbDirectionals: [".0", "1", "2", "5"],
-  nbPoints: ["0", ".50", "100", "250", "500"],
+  nbPoints: ["0", ".20", "100", "500"],
   animate: true,
   ambient: true,
   diffuse: true,
@@ -55,6 +55,20 @@ const configuration = {
     "Specular light",
   ],
 };
+
+const directionalLightParameters = [
+  { count: 0 },
+  { count: 1 },
+  { count: 2 },
+  { count: 5 },
+];
+
+const pointLightParameters = [
+  { count: 0, radius: 0 },
+  { count: 20, radius: 4 },
+  { count: 100, radius: 2 },
+  { count: 500, radius: 1 },
+];
 
 type ApplicationState = {
   camera: Camera;
@@ -184,11 +198,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Pick active lights
     const directionalLights = state.directionalLights.slice(
       0,
-      [0, 1, 2, 5][tweak.nbDirectionals] || 0
+      directionalLightParameters[tweak.nbDirectionals].count
     );
     const pointLights = state.pointLights.slice(
       0,
-      [0, 50, 100, 250, 500][tweak.nbPoints] || 0
+      pointLightParameters[tweak.nbPoints].count
     );
 
     // Draw scene
@@ -298,21 +312,25 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   update(state, dt) {
+    const { camera, directionalLights, input, pointLights, tweak } = state;
+    const pointLightRadius = pointLightParameters[tweak.nbPoints].radius;
+
     // Update light positions
-    if (state.tweak.animate) {
+    if (tweak.animate) {
       state.move += dt * 0.0002;
     }
 
-    for (let i = 0; i < state.directionalLights.length; ++i) {
-      state.directionalLights[i].direction = rotateDirection(state.move * 5, i);
+    for (let i = 0; i < directionalLights.length; ++i) {
+      directionalLights[i].direction = rotateDirection(state.move * 5, i);
     }
 
-    for (let i = 0; i < state.pointLights.length; ++i) {
-      state.pointLights[i].position = orbitatePosition(state.move, i, 1, 5);
+    for (let i = 0; i < pointLights.length; ++i) {
+      pointLights[i].position = orbitatePosition(state.move, i, 1, 5);
+      pointLights[i].radius = pointLightRadius;
     }
 
     // Move camera
-    state.camera.move(state.input);
+    camera.move(input);
   },
 };
 

@@ -163,8 +163,11 @@ ${normal.decodeDeclare()}
 ${phong.lightDeclare("ZERO", "ZERO")}
 ${shininess.decodeDeclare()}
 
+#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 in vec3 lightDistanceCamera;
+#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
 in vec3 lightPositionCamera;
+#endif
 
 layout(location=0) out vec4 fragColor;
 
@@ -764,10 +767,10 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
       viewInvert.v33 = 1;
 
       for (const pointLight of state.pointLights) {
-        const radius = pointLight.radius;
+        const { position, radius } = pointLight;
 
         pointLightObject.matrix = Matrix4.fromCustom(
-          ["translate", pointLight.position],
+          ["translate", position],
           ["scale", { x: radius, y: radius, z: radius }],
           ["multiply", viewInvert]
         );
