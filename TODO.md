@@ -10,7 +10,6 @@
 - Implement point light shadow maps
 - Implement smooth shadows
 - Implement PBR lighting model for deferred {shading,lighting}
-- Draw lights using quads instead of spheres in deferred {shading,lighting}
 - Use RGB standard to linear conversion in deferred shader
 - Extract model textures out of materials to factorize bitmaps
 - Split scene update and draw to perform batch sorting only on change
@@ -19,6 +18,7 @@
 
 ## Done
 
+- Draw lights using quads instead of spheres in deferred {shading,lighting}
 - Change signature of `{MatrixVector}N.fromCustom(["method1", arg1, arg2], ["method2", arg1])`
 - Move matrix3 to engine library
 - Detect canvas resizing and stop violating encapsulation [canvas-resize]

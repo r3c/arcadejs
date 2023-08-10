@@ -1,6 +1,6 @@
 import { Matrix4 } from "../../../math/matrix";
 import { SingularPainter } from "../painters/singular";
-import { mesh } from "./resources/quad";
+import { model } from "./resources/quad";
 import {
   GlModel,
   GlPainter,
@@ -214,7 +214,7 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {
     this.painter = new SingularPainter(load(runtime, configuration));
-    this.quad = loadModel(runtime, mesh);
+    this.quad = loadModel(runtime, model);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
   }
@@ -241,8 +241,8 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
 
     // Hack: find first defined albedo map from object models and use it as debug source
     for (const { model } of scene.objects) {
-      for (const node of model.meshes) {
-        for (const primitive of node.primitives) {
+      for (const mesh of model.meshes) {
+        for (const primitive of mesh.primitives) {
           if (primitive.material.albedoMap !== undefined) {
             this.painter.paint(target, objects, Matrix4.fromIdentity(), {
               source: primitive.material.albedoMap,

@@ -1,7 +1,7 @@
 import { Matrix4 } from "../../../../math/matrix";
+import { Model } from "../../../model";
 
-const mesh = {
-  materials: new Map(),
+const model: Model = {
   meshes: [
     {
       children: [],
@@ -20,9 +20,9 @@ const mesh = {
           },
         },
       ],
-      transform: Matrix4.fromIdentity(),
+      transform: Matrix4.identity,
     },
   ],
 };
 
-export { mesh };
+export { model };

@@ -4,9 +4,8 @@ import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
-import { mesh as quadModel } from "./resources/quad";
+import { model as quadModel } from "./resources/quad";
 import * as shininess from "./snippets/shininess";
-import { mesh as sphereModel } from "./resources/sphere";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlDirectionalLight,
@@ -550,7 +549,6 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
     LightState<GlDirectionalLight>,
     undefined
   >;
-  private readonly fullscreenModel: GlModel;
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: GlPainter<State, undefined>;
   private readonly geometryTarget: GlTarget;
@@ -558,8 +556,8 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
     LightState<GlPointLight>,
     undefined
   >;
+  private readonly quadModel: GlModel;
   private readonly runtime: GlRuntime;
-  private readonly sphereModel: GlModel;
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {
     const gl = runtime.context;
@@ -583,7 +581,6 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
     this.directionalLightPainter = new SingularPainter(
       loadLightDirectional(runtime, configuration)
     );
-    this.fullscreenModel = loadModel(runtime, quadModel);
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = new SingularPainter(
       loadGeometry(runtime, configuration)
@@ -597,7 +594,7 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
       loadLightPoint(runtime, configuration)
     );
     this.runtime = runtime;
-    this.sphereModel = loadModel(runtime, sphereModel);
+    this.quadModel = loadModel(runtime, quadModel);
   }
 
   public render(target: GlTarget, scene: GlScene<SceneState, undefined>) {
@@ -634,25 +631,20 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
 
     // Draw ambient light using fullscreen quad
     if (state.ambientLightColor !== undefined) {
-      const ambiantLightObjects: GlObject<undefined>[] = [
+      const objects: GlObject<undefined>[] = [
         {
-          matrix: Matrix4.fromIdentity(),
-          model: this.fullscreenModel,
+          matrix: Matrix4.identity,
+          model: this.quadModel,
           state: undefined,
         },
       ];
 
-      this.ambientLightPainter.paint(
-        target,
-        ambiantLightObjects,
-        state.viewMatrix,
-        {
-          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-          ambientLightColor: state.ambientLightColor,
-          projectionMatrix: this.fullscreenProjection,
-          viewMatrix: Matrix4.fromIdentity(),
-        }
-      );
+      this.ambientLightPainter.paint(target, objects, state.viewMatrix, {
+        albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+        ambientLightColor: state.ambientLightColor,
+        projectionMatrix: this.fullscreenProjection,
+        viewMatrix: Matrix4.identity,
+      });
     }
 
     // Draw directional lights using fullscreen quads
@@ -665,71 +657,65 @@ class DeferredShadingRenderer implements GlRenderer<SceneState, undefined> {
 
       objectMatrix.invert();
 
-      const directionalLightObjects: GlObject<undefined>[] = [
+      const objects: GlObject<undefined>[] = [
         {
           matrix: objectMatrix,
-          model: this.fullscreenModel,
+          model: this.quadModel,
           state: undefined,
         },
       ];
 
       for (const directionalLight of state.directionalLights) {
-        this.directionalLightPainter.paint(
-          target,
-          directionalLightObjects,
-          state.viewMatrix,
-          {
-            albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-            depthBuffer: this.depthBuffer,
-            light: directionalLight,
-            normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-            projectionMatrix: this.fullscreenProjection,
-            viewMatrix: state.viewMatrix,
-            viewportSize,
-          }
-        );
+        this.directionalLightPainter.paint(target, objects, state.viewMatrix, {
+          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+          depthBuffer: this.depthBuffer,
+          light: directionalLight,
+          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+          projectionMatrix: this.fullscreenProjection,
+          viewMatrix: state.viewMatrix,
+          viewportSize,
+        });
       }
     }
 
-    // Draw point lights using spheres
+    // Draw point lights using quads
     if (state.pointLights !== undefined) {
-      const pointLightObjects: GlObject<undefined>[] = [
-        {
-          matrix: Matrix4.fromIdentity(),
-          model: this.sphereModel,
-          state: undefined,
-        },
-      ];
+      const pointLightObject: GlObject<undefined> = {
+        matrix: Matrix4.fromIdentity(),
+        model: this.quadModel,
+        state: undefined,
+      };
+      const objects = [pointLightObject];
+      const viewInvert = Matrix4.fromObject(state.viewMatrix);
 
-      gl.cullFace(gl.FRONT);
+      // Invert view matrix to display camera-facing quads
+      viewInvert.invert();
+      viewInvert.v03 = 0;
+      viewInvert.v13 = 0;
+      viewInvert.v23 = 0;
+      viewInvert.v30 = 0;
+      viewInvert.v31 = 0;
+      viewInvert.v32 = 0;
+      viewInvert.v33 = 1;
 
       for (const pointLight of state.pointLights) {
-        pointLightObjects[0].matrix = Matrix4.fromCustom(
+        const radius = pointLight.radius;
+
+        pointLightObject.matrix = Matrix4.fromCustom(
           ["translate", pointLight.position],
-          [
-            "scale",
-            {
-              x: pointLight.radius,
-              y: pointLight.radius,
-              z: pointLight.radius,
-            },
-          ]
+          ["scale", { x: radius, y: radius, z: radius }],
+          ["multiply", viewInvert]
         );
 
-        this.pointLightPainter.paint(
-          target,
-          pointLightObjects,
-          state.viewMatrix,
-          {
-            albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-            depthBuffer: this.depthBuffer,
-            normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-            light: pointLight,
-            projectionMatrix: state.projectionMatrix,
-            viewMatrix: state.viewMatrix,
-            viewportSize,
-          }
-        );
+        this.pointLightPainter.paint(target, objects, state.viewMatrix, {
+          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+          depthBuffer: this.depthBuffer,
+          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+          light: pointLight,
+          projectionMatrix: state.projectionMatrix,
+          viewMatrix: state.viewMatrix,
+          viewportSize,
+        });
       }
     }
   }
