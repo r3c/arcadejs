@@ -650,7 +650,6 @@ class DeferredLightingRenderer
   public readonly lightBuffer: WebGLTexture;
   public readonly normalAndGlossinessBuffer: WebGLTexture;
 
-  private readonly billboardModel: GlModel<GlPolygon>;
   private readonly directionalLightPainter: GlPainter<
     DirectionalLightState,
     GlPolygon
@@ -660,12 +659,14 @@ class DeferredLightingRenderer
   private readonly geometryTarget: GlTarget;
   private readonly lightTarget: GlTarget;
   private readonly materialPainter: GlPainter<MaterialState, GlPolygon>;
+  private readonly pointLightObjects: GlObject<GlPolygon>[];
   private readonly pointLightPainter: GlPainter<PointLightState, GlPolygon>;
   private readonly quadModel: GlModel<GlPolygon>;
   private readonly runtime: GlRuntime;
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {
     const gl = runtime.context;
+    const billboard = loadModel(runtime, billboardModel);
     const geometry = new GlTarget(
       gl,
       gl.drawingBufferWidth,
@@ -677,7 +678,6 @@ class DeferredLightingRenderer
       gl.drawingBufferWidth
     );
 
-    this.billboardModel = loadModel(runtime, billboardModel);
     this.depthBuffer = geometry.setupDepthTexture(
       GlTextureFormat.Depth16,
       GlTextureType.Quad
@@ -698,6 +698,7 @@ class DeferredLightingRenderer
     this.materialPainter = new SingularPainter(
       loadMaterial(runtime, configuration)
     );
+    this.pointLightObjects = [{ matrix: Matrix4.identity, model: billboard }];
     this.pointLightPainter = new SingularPainter(
       loadLightPoint(runtime, configuration)
     );
@@ -795,35 +796,17 @@ class DeferredLightingRenderer
     }
 
     if (state.pointLights !== undefined) {
-      const pointLightObject: GlObject<GlPolygon> = {
-        matrix: Matrix4.identity,
-        model: this.billboardModel,
-      };
-      const objects = [pointLightObject];
-      const viewInvert = Matrix4.fromObject(state.viewMatrix);
-
-      // Invert view matrix to display camera-facing quads
-      viewInvert.invert();
-      viewInvert.v03 = 0;
-      viewInvert.v13 = 0;
-      viewInvert.v23 = 0;
-      viewInvert.v30 = 0;
-      viewInvert.v31 = 0;
-      viewInvert.v32 = 0;
-      viewInvert.v33 = 1;
-
       for (const pointLight of state.pointLights) {
         const { position, radius } = pointLight;
 
-        pointLightObject.matrix = Matrix4.fromCustom(
+        this.pointLightObjects[0].matrix = Matrix4.fromCustom(
           ["translate", position],
-          ["scale", { x: radius, y: radius, z: radius }],
-          ["multiply", viewInvert]
+          ["scale", { x: radius, y: radius, z: radius }]
         );
 
         this.pointLightPainter.paint(
           this.lightTarget,
-          objects,
+          this.pointLightObjects,
           state.viewMatrix,
           {
             billboardMatrix,
