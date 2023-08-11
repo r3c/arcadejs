@@ -594,13 +594,14 @@ class DeferredShadingRenderer
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: GlPainter<State, GlPolygon>;
   private readonly geometryTarget: GlTarget;
-  private readonly billboardModel: GlModel<GlPolygon>;
+  private readonly pointLightObjects: GlObject<GlPolygon>[];
   private readonly pointLightPainter: GlPainter<PointLightState, GlPolygon>;
   private readonly quadModel: GlModel<GlPolygon>;
   private readonly runtime: GlRuntime;
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {
     const gl = runtime.context;
+    const billboard = loadModel(runtime, billboardModel);
     const geometry = new GlTarget(
       gl,
       gl.drawingBufferWidth,
@@ -614,7 +615,6 @@ class DeferredShadingRenderer
     this.ambientLightPainter = new SingularPainter(
       loadAmbientShader(runtime, configuration)
     );
-    this.billboardModel = loadModel(runtime, billboardModel);
     this.depthBuffer = geometry.setupDepthTexture(
       GlTextureFormat.Depth16,
       GlTextureType.Quad
@@ -631,6 +631,7 @@ class DeferredShadingRenderer
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
+    this.pointLightObjects = [{ matrix: Matrix4.identity, model: billboard }];
     this.pointLightPainter = new SingularPainter(
       loadPointLightShader(runtime, configuration)
     );
@@ -736,30 +737,29 @@ class DeferredShadingRenderer
 
     // Draw point lights using quads
     if (state.pointLights !== undefined) {
-      const pointLightObject: GlObject<GlPolygon> = {
-        matrix: Matrix4.identity,
-        model: this.billboardModel,
-      };
-      const objects = [pointLightObject];
-
       for (const pointLight of state.pointLights) {
         const { position, radius } = pointLight;
 
-        pointLightObject.matrix = Matrix4.fromCustom(
+        this.pointLightObjects[0].matrix = Matrix4.fromCustom(
           ["translate", position],
           ["scale", { x: radius, y: radius, z: radius }]
         );
 
-        this.pointLightPainter.paint(target, objects, state.viewMatrix, {
-          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-          billboardMatrix,
-          depthBuffer: this.depthBuffer,
-          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-          pointLight,
-          projectionMatrix: state.projectionMatrix,
-          viewMatrix: state.viewMatrix,
-          viewportSize,
-        });
+        this.pointLightPainter.paint(
+          target,
+          this.pointLightObjects,
+          state.viewMatrix,
+          {
+            albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+            billboardMatrix,
+            depthBuffer: this.depthBuffer,
+            normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+            pointLight,
+            projectionMatrix: state.projectionMatrix,
+            viewMatrix: state.viewMatrix,
+            viewportSize,
+          }
+        );
       }
     }
   }
