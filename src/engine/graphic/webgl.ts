@@ -41,9 +41,9 @@ type GlAttribute = {
   type: number;
 };
 
-type GlAttributeAccessor<TState> = (state: TState) => GlAttribute | undefined;
-
 type GlBinder<TState> = (state: TState) => void;
+
+type GlBinderMap<TState> = Map<string, GlBinder<TState>>;
 
 type GlContext = WebGL2RenderingContext;
 
@@ -55,6 +55,11 @@ type GlDefault = {
 type GlDirective = {
   name: string;
   value: number;
+};
+
+type GlGeometry = {
+  modelMatrix: Matrix4;
+  normalMatrix: Matrix3;
 };
 
 type GlLibrary = {
@@ -84,26 +89,20 @@ type GlMaterial = {
 
 type GlMaterialExtractor = (material: GlMaterial) => GlTexture | undefined;
 
-type GlMesh = {
-  children: GlMesh[];
-  primitives: GlPrimitive[];
+type GlMesh<TPolygon> = {
+  children: GlMesh<TPolygon>[];
+  primitives: GlPrimitive<TPolygon>[];
   transform: Matrix4;
 };
 
-type GlModel = {
+type GlModel<TPolygon> = {
   library: GlLibrary | undefined;
-  meshes: GlMesh[];
+  meshes: GlMesh<TPolygon>[];
 };
 
 type GlModelConfiguration = {
   isDynamic?: boolean;
   library?: GlLibrary;
-};
-
-type GlModelInstance<TModelState> = {
-  modelMatrix: Matrix4;
-  normalMatrix: Matrix3;
-  state: TModelState;
 };
 
 type GlNativeFormat = {
@@ -112,41 +111,39 @@ type GlNativeFormat = {
   type: number;
 };
 
-type GlObject<TState> = {
+type GlObject<TPolygon> = {
   matrix: Matrix4;
-  model: GlModel;
-  state: TState;
+  model: GlModel<TPolygon>;
 };
 
-type GlPainter<TSceneState, TModelState> = {
+type GlPainter<TSceneState, TPolygon> = {
   paint(
     target: GlTarget,
-    objects: Iterable<GlObject<TModelState>>,
+    objects: Iterable<GlObject<TPolygon>>,
     view: Matrix4,
     state: TSceneState
   ): void;
 };
 
+// TODO: extract out of base WebGL file
 type GlPolygon = {
   colors: GlAttribute | undefined;
   coords: GlAttribute | undefined;
-  indexCount: number;
-  indexBuffer: WebGLBuffer;
-  indexType: number;
   normals: GlAttribute | undefined;
   points: GlAttribute;
   tangents: GlAttribute | undefined;
 };
 
-type GlPolygonExtractor = (polygon: GlPolygon) => GlAttribute | undefined;
-
-type GlPrimitive = {
+type GlPrimitive<TPolygon> = {
+  indexCount: number;
+  indexBuffer: WebGLBuffer;
+  indexType: number;
   material: GlMaterial;
-  polygon: GlPolygon;
+  polygon: TPolygon;
 };
 
-type GlRenderer<TSceneState, TModelState> = {
-  render(target: GlTarget, scene: GlScene<TSceneState, TModelState>): void;
+type GlRenderer<TSceneState, TObject> = {
+  render(target: GlTarget, scene: GlScene<TSceneState, TObject>): void;
   resize(width: number, height: number): void;
 };
 
@@ -155,8 +152,8 @@ type GlRuntime = {
   default: GlDefault;
 };
 
-type GlScene<TSceneState, TModelState> = {
-  objects: Iterable<GlObject<TModelState>>;
+type GlScene<TSceneState, TObject> = {
+  objects: Iterable<TObject>;
   state: TSceneState;
 };
 
@@ -202,12 +199,15 @@ const materialExtractors: GlMaterialExtractor[] = [
   (material) => material.roughnessMap,
 ];
 
-const polygonExtractors: GlPolygonExtractor[] = [
-  (polygon) => polygon.colors,
-  (polygon) => polygon.coords,
-  (polygon) => polygon.normals,
-  (polygon) => polygon.points,
-  (polygon) => polygon.tangents,
+// TODO: extract out of base WebGL file
+const glPolygonExtractor: (
+  polygon: GlPolygon
+) => Iterable<GlAttribute | undefined> = (polygon) => [
+  polygon.colors,
+  polygon.coords,
+  polygon.normals,
+  polygon.points,
+  polygon.tangents,
 ];
 
 const bufferConvert = (
@@ -288,35 +288,43 @@ const deleteMaterial = (gl: GlContext, material: GlMaterial): void => {
   }
 };
 
-const deleteMesh = (gl: GlContext, mesh: GlMesh): void => {
+const deleteMesh = <TPolygon>(
+  gl: GlContext,
+  mesh: GlMesh<TPolygon>,
+  extractor: (polygon: TPolygon) => Iterable<GlAttribute | undefined>
+): void => {
   for (const child of mesh.children) {
-    deleteMesh(gl, child);
+    deleteMesh(gl, child, extractor);
   }
 
-  for (const { polygon } of mesh.primitives) {
-    for (const extractor of polygonExtractors) {
-      const attribute = extractor(polygon);
-
+  for (const { indexBuffer, polygon } of mesh.primitives) {
+    for (const attribute of extractor(polygon)) {
       if (attribute !== undefined) {
         gl.deleteBuffer(attribute.buffer);
       }
     }
 
-    gl.deleteBuffer(polygon.indexBuffer);
+    gl.deleteBuffer(indexBuffer);
   }
 };
 
-const deleteModel = (gl: GlContext, model: GlModel): void => {
-  if (model.library !== undefined) {
-    for (const material of model.library.materials.values()) {
+const deleteModel = <TPolygon>(
+  gl: GlContext,
+  model: GlModel<TPolygon>,
+  extractor: (polygon: TPolygon) => Iterable<GlAttribute | undefined>
+): void => {
+  const { library, meshes } = model;
+
+  if (library !== undefined) {
+    for (const material of library.materials.values()) {
       deleteMaterial(gl, material);
     }
 
-    deleteMaterial(gl, model.library.defaultMaterial);
+    deleteMaterial(gl, library.defaultMaterial);
   }
 
-  for (const mesh of model.meshes) {
-    deleteMesh(gl, mesh);
+  for (const mesh of meshes) {
+    deleteMesh(gl, mesh, extractor);
   }
 };
 
@@ -605,7 +613,7 @@ const loadModel = (
   runtime: GlRuntime,
   model: Model,
   config?: GlModelConfiguration
-): GlModel => {
+): GlModel<GlPolygon> => {
   const gl = runtime.context;
 
   let ownedLibrary: GlLibrary | undefined;
@@ -619,7 +627,7 @@ const loadModel = (
     usedLibrary = ownedLibrary;
   }
 
-  const loadMesh = (mesh: Mesh): GlMesh => ({
+  const loadMesh = (mesh: Mesh): GlMesh<GlPolygon> => ({
     children: mesh.children.map((child) => loadMesh(child)),
     primitives: mesh.polygons.map((polygon) =>
       loadPrimitive(gl, usedLibrary, polygon, isDynamic)
@@ -638,10 +646,18 @@ const loadPrimitive = (
   library: GlLibrary,
   polygon: Polygon,
   isDynamic: boolean
-): GlPrimitive => {
+): GlPrimitive<GlPolygon> => {
   const { defaultMaterial, materials } = library;
 
   return {
+    indexCount: polygon.indices.length,
+    indexBuffer: bufferConvert(
+      gl,
+      gl.ELEMENT_ARRAY_BUFFER,
+      polygon.indices,
+      isDynamic
+    ),
+    indexType: bufferGetType(gl, polygon.indices),
     material:
       polygon.material !== undefined
         ? materials.get(polygon.material) ?? defaultMaterial
@@ -659,14 +675,6 @@ const loadPrimitive = (
         stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
         type: bufferGetType(gl, coords.buffer),
       })),
-      indexCount: polygon.indices.length,
-      indexBuffer: bufferConvert(
-        gl,
-        gl.ELEMENT_ARRAY_BUFFER,
-        polygon.indices,
-        isDynamic
-      ),
-      indexType: bufferGetType(gl, polygon.indices),
       normals: map(polygon.normals, (normals) => ({
         buffer: bufferConvert(gl, gl.ARRAY_BUFFER, normals.buffer, isDynamic),
         size: normals.stride,
@@ -758,16 +766,13 @@ const textureUniform = <TState>(
   },
 });
 
-class GlShader<TSceneState, TModelState> {
-  private readonly attributePerPolygon: Map<string, GlBinder<GlPolygon>>;
+class GlShader<TSceneState, TPolygonState> {
+  private readonly attributePerPolygon: GlBinderMap<TPolygonState>;
   private readonly program: WebGLProgram;
   private readonly runtime: GlRuntime;
-  private readonly uniformPerMaterial: Map<string, GlBinder<GlMaterial>>;
-  private readonly uniformPerModel: Map<
-    string,
-    GlBinder<GlModelInstance<TModelState>>
-  >;
-  private readonly uniformPerScene: Map<string, GlBinder<TSceneState>>;
+  private readonly uniformPerGeometry: GlBinderMap<GlGeometry>;
+  private readonly uniformPerMaterial: GlBinderMap<GlMaterial>;
+  private readonly uniformPerScene: GlBinderMap<TSceneState>;
 
   private textureIndex: number;
 
@@ -815,13 +820,22 @@ class GlShader<TSceneState, TModelState> {
     this.program = program;
     this.runtime = runtime;
     this.textureIndex = 0;
+    this.uniformPerGeometry = new Map();
     this.uniformPerMaterial = new Map();
-    this.uniformPerModel = new Map();
     this.uniformPerScene = new Map();
   }
 
   public activate() {
     this.runtime.context.useProgram(this.program);
+  }
+
+  /*
+   ** Assign per-geometry uniforms.
+   */
+  public bindGeometry(geometry: GlGeometry) {
+    for (const binding of this.uniformPerGeometry.values()) {
+      binding(geometry);
+    }
   }
 
   /*
@@ -834,18 +848,9 @@ class GlShader<TSceneState, TModelState> {
   }
 
   /*
-   ** Assign per-model uniforms.
-   */
-  public bindModel(modelState: GlModelInstance<TModelState>) {
-    for (const binding of this.uniformPerModel.values()) {
-      binding(modelState);
-    }
-  }
-
-  /*
    ** Assign per-polygon attributes.
    */
-  public bindPolygon(polygon: GlPolygon) {
+  public bindPolygon(polygon: TPolygonState) {
     for (const binding of this.attributePerPolygon.values()) {
       binding(polygon);
     }
@@ -862,9 +867,16 @@ class GlShader<TSceneState, TModelState> {
 
   public setAttributePerPolygon(
     name: string,
-    getter: (state: GlPolygon) => GlAttribute | undefined
+    getter: (state: TPolygonState) => GlAttribute | undefined
   ) {
     this.setAttribute(this.attributePerPolygon, name, getter);
+  }
+
+  public setUniformPerGeometry<TValue>(
+    name: string,
+    accessor: GlUniformAccessor<GlGeometry, TValue>
+  ) {
+    this.setUniform(this.uniformPerGeometry, name, accessor);
   }
 
   public setUniformPerMaterial<TValue>(
@@ -872,13 +884,6 @@ class GlShader<TSceneState, TModelState> {
     accessor: GlUniformAccessor<GlMaterial, TValue>
   ) {
     this.setUniform(this.uniformPerMaterial, name, accessor);
-  }
-
-  public setUniformPerMesh<TValue>(
-    name: string,
-    accessor: GlUniformAccessor<GlModelInstance<TModelState>, TValue>
-  ) {
-    this.setUniform(this.uniformPerModel, name, accessor);
   }
 
   public setUniformPerScene<TValue>(
@@ -891,7 +896,7 @@ class GlShader<TSceneState, TModelState> {
   private setAttribute<TInput>(
     target: Map<string, GlBinder<TInput>>,
     name: string,
-    accessor: GlAttributeAccessor<TInput>
+    accessor: (input: TInput) => GlAttribute | undefined
   ) {
     if (target.has(name)) {
       throw new Error(`cannot set attribute "${name}" twice`);
@@ -1501,6 +1506,7 @@ export {
   type GlObject,
   type GlPainter,
   type GlPolygon,
+  type GlPrimitive,
   type GlRenderer,
   type GlRuntime,
   type GlScene,
@@ -1515,5 +1521,6 @@ export {
   loadModel,
   loadTextureCube,
   loadTextureQuad,
+  glPolygonExtractor,
   uniform,
 };

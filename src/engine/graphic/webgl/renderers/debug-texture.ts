@@ -2,8 +2,11 @@ import { Matrix4 } from "../../../math/matrix";
 import { SingularPainter } from "../painters/singular";
 import { model } from "./resources/quad";
 import {
+  GlAttribute,
   GlModel,
+  GlObject,
   GlPainter,
+  GlPrimitive,
   GlRenderer,
   GlRuntime,
   GlScene,
@@ -103,13 +106,13 @@ void main(void) {
 	#endif
 }`;
 
-interface Configuration {
+type DebugTextureConfiguration = {
   format: DebugTextureFormat;
   scale?: number;
   select: DebugTextureSelect;
   zFar: number;
   zNear: number;
-}
+};
 
 const enum DebugTextureFormat {
   Identity,
@@ -119,6 +122,11 @@ const enum DebugTextureFormat {
   Spheremap,
   Logarithm,
 }
+
+type DebugTexturePolygon = {
+  coords: GlAttribute | undefined;
+  points: GlAttribute;
+};
 
 const enum DebugTextureSelect {
   Identity,
@@ -137,7 +145,7 @@ type SceneState = {
   source: WebGLTexture;
 };
 
-const load = (runtime: GlRuntime, configuration: Configuration) => {
+const load = (runtime: GlRuntime, configuration: DebugTextureConfiguration) => {
   const directives = [
     { name: "FORMAT", value: configuration.format },
     { name: "SELECT", value: configuration.select },
@@ -145,22 +153,22 @@ const load = (runtime: GlRuntime, configuration: Configuration) => {
     { name: "ZNEAR", value: configuration.zNear },
   ];
 
-  const shader = new GlShader<SceneState, void>(
+  const shader = new GlShader<SceneState, DebugTexturePolygon>(
     runtime,
     vertexSource,
     fragmentSource,
     directives
   );
 
-  shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
-  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
+  shader.setAttributePerPolygon("points", ({ points }) => points);
 
   shader.setUniformPerScene(
     "source",
     uniform.blackQuadTexture(({ source }) => source)
   );
 
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
@@ -168,9 +176,11 @@ const load = (runtime: GlRuntime, configuration: Configuration) => {
   return shader;
 };
 
-class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
-  private readonly painter: GlPainter<SceneState, undefined>;
-  private readonly quad: GlModel;
+class DebugTextureRenderer
+  implements GlRenderer<SceneState, GlObject<DebugTexturePolygon>>
+{
+  private readonly painter: GlPainter<SceneState, DebugTexturePolygon>;
+  private readonly quad: GlModel<DebugTexturePolygon>;
   private readonly runtime: GlRuntime;
   private readonly scale: number;
 
@@ -181,11 +191,8 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
    */
   public static createScene(
     source: WebGLTexture
-  ): GlScene<SceneState, undefined> {
+  ): GlScene<SceneState, GlObject<DebugTexturePolygon>> {
     return {
-      state: {
-        source,
-      },
       objects: [
         {
           matrix: Matrix4.identity,
@@ -196,30 +203,35 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
                 children: [],
                 primitives: [
                   {
-                    polygon: undefined as any,
-                    material: {
-                      albedoMap: source,
-                    } as any,
-                  },
+                    material: { albedoMap: source },
+                  } as GlPrimitive<DebugTexturePolygon>,
                 ],
                 transform: Matrix4.identity,
               },
             ],
           },
-          state: undefined,
         },
       ],
+      state: {
+        source,
+      },
     };
   }
 
-  public constructor(runtime: GlRuntime, configuration: Configuration) {
+  public constructor(
+    runtime: GlRuntime,
+    configuration: DebugTextureConfiguration
+  ) {
     this.painter = new SingularPainter(load(runtime, configuration));
     this.quad = loadModel(runtime, model);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
   }
 
-  public render(target: GlTarget, scene: GlScene<SceneState, undefined>) {
+  public render(
+    target: GlTarget,
+    scene: GlScene<SceneState, GlObject<DebugTexturePolygon>>
+  ) {
     const gl = this.runtime.context;
 
     gl.disable(gl.BLEND);
@@ -228,24 +240,23 @@ class DebugTextureRenderer implements GlRenderer<SceneState, undefined> {
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
-    const objects = [
+    const objects: GlObject<DebugTexturePolygon>[] = [
       {
         matrix: Matrix4.fromCustom(
           ["translate", { x: 1 - this.scale, y: this.scale - 1, z: 0 }],
           ["scale", { x: this.scale, y: this.scale, z: 0 }]
         ),
         model: this.quad,
-        state: undefined,
       },
     ];
 
     // Hack: find first defined albedo map from object models and use it as debug source
     for (const { model } of scene.objects) {
       for (const mesh of model.meshes) {
-        for (const primitive of mesh.primitives) {
-          if (primitive.material.albedoMap !== undefined) {
+        for (const { material } of mesh.primitives) {
+          if (material.albedoMap !== undefined) {
             this.painter.paint(target, objects, Matrix4.identity, {
-              source: primitive.material.albedoMap,
+              source: material.albedoMap,
             });
 
             return;

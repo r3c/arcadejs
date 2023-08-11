@@ -9,10 +9,9 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
+  ForwardLightingObject,
   ForwardLightingRenderer,
-  ModelState,
   SceneState,
-  hasShadowState,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -20,6 +19,7 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
   GlModel,
+  GlPolygon,
   GlScene,
   GlTarget,
   createRuntime,
@@ -50,9 +50,9 @@ type ApplicationState = {
   input: Input;
   lightPositions: Vector3[];
   models: {
-    cube: GlModel;
-    ground: GlModel;
-    light: GlModel;
+    cube: GlModel<GlPolygon>;
+    ground: GlModel<GlPolygon>;
+    light: GlModel<GlPolygon>;
   };
   move: number;
   projectionMatrix: Matrix4;
@@ -136,7 +136,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Forward pass
     const lightRenderer = renderers.lights[bitfield.index(getOptions(tweak))];
-    const lightScene: GlScene<SceneState, ModelState> = {
+    const lightScene: GlScene<SceneState, ForwardLightingObject> = {
       state: {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
         pointLights: lightPositions
@@ -157,18 +157,18 @@ const application: Application<WebGLScreen, ApplicationState> = {
         {
           matrix: Matrix4.identity,
           model: models.cube,
-          state: hasShadowState,
+          noShadow: false,
         },
         {
           matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
           model: models.ground,
-          state: hasShadowState,
+          noShadow: false,
         },
       ].concat(
         lightPositions.slice(0, tweak.nbLights).map((position) => ({
           matrix: Matrix4.fromCustom(["translate", position]),
           model: models.light,
-          state: hasShadowState,
+          noShadow: true,
         }))
       ),
     };

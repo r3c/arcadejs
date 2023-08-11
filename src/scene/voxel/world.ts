@@ -2,15 +2,12 @@ import { flattenModel, mergeModels } from "../../engine/graphic/model";
 import { Instance, Model } from "../../engine/graphic/model/definition";
 import {
   deleteModel,
+  glPolygonExtractor,
   GlRuntime,
-  GlObject,
   loadLibrary,
   loadModel,
 } from "../../engine/graphic/webgl";
-import {
-  ModelState,
-  hasShadowState,
-} from "../../engine/graphic/webgl/renderers/forward-lighting";
+import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -50,7 +47,7 @@ interface WorldEvent {
 interface WorldGraphic {
   findOffsetPosition: (renderPosition: Vector3) => Vector3 | undefined;
   findRenderPosition: (offsetPosition: Vector3) => Vector3;
-  getObjects: () => Iterable<GlObject<ModelState>>;
+  getObjects: () => Iterable<ForwardLightingObject>;
   setVoxel: (offset: Vector3, modelIndex: number | undefined) => void;
   offsetSize: Vector3;
   renderSize: Vector3;
@@ -131,10 +128,10 @@ const createWorldGraphic = (
     })
   );
 
-  const chunkObjects = range<GlObject<ModelState>>(chunks.length, () => ({
+  const chunkObjects = range<ForwardLightingObject>(chunks.length, () => ({
     matrix: Matrix4.identity,
     model: { library: undefined, meshes: [] },
-    state: hasShadowState,
+    noShadow: false,
   }));
 
   const chunkUpdates = new Set<number>();
@@ -219,7 +216,11 @@ const createWorldGraphic = (
         for (const chunkIndex of chunkUpdates) {
           const chunk = chunks[chunkIndex];
 
-          deleteModel(runtime.context, chunkObjects[chunkIndex].model);
+          deleteModel(
+            runtime.context,
+            chunkObjects[chunkIndex].model,
+            glPolygonExtractor
+          );
 
           const instances: Instance[] = [];
           const nextOffset = Vector3.fromZero();

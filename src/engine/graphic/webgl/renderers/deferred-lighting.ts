@@ -31,6 +31,7 @@ import {
   GlTextureType,
   loadModel,
   uniform,
+  GlPolygon,
 } from "../../webgl";
 
 const enum DeferredLightingLightModel {
@@ -371,23 +372,23 @@ type SceneState = State & {
 
 const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
   // Setup geometry shader
-  const shader = new GlShader<State, void>(
+  const shader = new GlShader<State, GlPolygon>(
     runtime,
     geometryVertexShader,
     geometryFragmentShader,
     []
   );
 
-  shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
-  shader.setAttributePerPolygon("normals", (geometry) => geometry.normals);
-  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
-  shader.setAttributePerPolygon("tangents", (geometry) => geometry.tangents);
+  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
+  shader.setAttributePerPolygon("normals", ({ normals }) => normals);
+  shader.setAttributePerPolygon("points", ({ points }) => points);
+  shader.setAttributePerPolygon("tangents", ({ tangents }) => tangents);
 
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "normalMatrix",
     uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
@@ -444,7 +445,7 @@ const loadLight = <TSceneState extends LightState>(
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
-  const shader = new GlShader<TSceneState, void>(
+  const shader = new GlShader<TSceneState, GlPolygon>(
     runtime,
     lightVertexShader,
     lightFragmentShader,
@@ -458,7 +459,7 @@ const loadLight = <TSceneState extends LightState>(
     "billboardMatrix",
     uniform.numberMatrix4(({ billboardMatrix }) => billboardMatrix)
   );
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
@@ -566,23 +567,23 @@ const loadMaterial = (runtime: GlRuntime, configuration: Configuration) => {
   }
 
   // Setup material shader
-  const shader = new GlShader<MaterialState, void>(
+  const shader = new GlShader<MaterialState, GlPolygon>(
     runtime,
     materialVertexShader,
     materialFragmentShader,
     directives
   );
 
-  shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
-  shader.setAttributePerPolygon("normals", (geometry) => geometry.normals);
-  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
-  shader.setAttributePerPolygon("tangents", (geometry) => geometry.tangents);
+  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
+  shader.setAttributePerPolygon("normals", ({ normals }) => normals);
+  shader.setAttributePerPolygon("points", ({ points }) => points);
+  shader.setAttributePerPolygon("tangents", ({ tangents }) => tangents);
 
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "normalMatrix",
     uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
@@ -642,23 +643,25 @@ const loadMaterial = (runtime: GlRuntime, configuration: Configuration) => {
   return shader;
 };
 
-class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
+class DeferredLightingRenderer
+  implements GlRenderer<SceneState, GlObject<GlPolygon>>
+{
   public readonly depthBuffer: WebGLTexture;
   public readonly lightBuffer: WebGLTexture;
   public readonly normalAndGlossinessBuffer: WebGLTexture;
 
-  private readonly billboardModel: GlModel;
+  private readonly billboardModel: GlModel<GlPolygon>;
   private readonly directionalLightPainter: GlPainter<
     DirectionalLightState,
-    undefined
+    GlPolygon
   >;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: GlPainter<State, undefined>;
+  private readonly geometryPainter: GlPainter<State, GlPolygon>;
   private readonly geometryTarget: GlTarget;
   private readonly lightTarget: GlTarget;
-  private readonly materialPainter: GlPainter<MaterialState, undefined>;
-  private readonly pointLightPainter: GlPainter<PointLightState, undefined>;
-  private readonly quadModel: GlModel;
+  private readonly materialPainter: GlPainter<MaterialState, GlPolygon>;
+  private readonly pointLightPainter: GlPainter<PointLightState, GlPolygon>;
+  private readonly quadModel: GlModel<GlPolygon>;
   private readonly runtime: GlRuntime;
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {
@@ -706,7 +709,10 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
     this.quadModel = loadModel(runtime, quadModel);
   }
 
-  public render(target: GlTarget, scene: GlScene<SceneState, undefined>) {
+  public render(
+    target: GlTarget,
+    scene: GlScene<SceneState, GlObject<GlPolygon>>
+  ) {
     const { objects, state } = scene;
     const gl = this.runtime.context;
     const viewportSize = {
@@ -763,11 +769,10 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
 
       objectMatrix.invert();
 
-      const objects: GlObject<undefined>[] = [
+      const objects: GlObject<GlPolygon>[] = [
         {
           matrix: objectMatrix,
           model: this.quadModel,
-          state: undefined,
         },
       ];
 
@@ -790,10 +795,9 @@ class DeferredLightingRenderer implements GlRenderer<SceneState, undefined> {
     }
 
     if (state.pointLights !== undefined) {
-      const pointLightObject: GlObject<undefined> = {
+      const pointLightObject: GlObject<GlPolygon> = {
         matrix: Matrix4.identity,
         model: this.billboardModel,
-        state: undefined,
       };
       const objects = [pointLightObject];
       const viewInvert = Matrix4.fromObject(state.viewMatrix);

@@ -1,13 +1,12 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
 import { GlMesh, GlPainter, GlShader, GlObject, GlTarget } from "../../webgl";
 
-const draw = <TSceneState, TModelState>(
-  shader: GlShader<TSceneState, TModelState>,
+const draw = <TSceneState, TPolygon>(
+  shader: GlShader<TSceneState, TPolygon>,
   target: GlTarget,
-  meshes: Iterable<GlMesh>,
+  meshes: Iterable<GlMesh<TPolygon>>,
   parentTransform: Matrix4,
-  viewMatrix: Matrix4,
-  state: TModelState
+  viewMatrix: Matrix4
 ): void => {
   const modelMatrix = Matrix4.fromIdentity();
   const normalMatrix = Matrix3.fromIdentity();
@@ -19,14 +18,13 @@ const draw = <TSceneState, TModelState>(
     normalMatrix.multiply(modelMatrix);
     normalMatrix.invert();
 
-    draw(shader, target, mesh.children, modelMatrix, viewMatrix, state);
+    draw(shader, target, mesh.children, modelMatrix, viewMatrix);
 
-    shader.bindModel({ normalMatrix, modelMatrix, state });
+    shader.bindGeometry({ normalMatrix, modelMatrix });
 
     for (const primitive of mesh.primitives) {
-      const material = primitive.material;
-      const polygon = primitive.polygon;
-      const { indexBuffer, indexCount, indexType } = polygon;
+      const { indexBuffer, indexCount, indexType, material, polygon } =
+        primitive;
 
       shader.bindMaterial(material);
       shader.bindPolygon(polygon);
@@ -35,18 +33,18 @@ const draw = <TSceneState, TModelState>(
   }
 };
 
-class SingularPainter<TSceneState, TModelState>
-  implements GlPainter<TSceneState, TModelState>
+class SingularPainter<TSceneState, TPolygon>
+  implements GlPainter<TSceneState, TPolygon>
 {
-  private readonly shader: GlShader<TSceneState, TModelState>;
+  private readonly shader: GlShader<TSceneState, TPolygon>;
 
-  public constructor(shader: GlShader<TSceneState, TModelState>) {
+  public constructor(shader: GlShader<TSceneState, TPolygon>) {
     this.shader = shader;
   }
 
   public paint(
     target: GlTarget,
-    objects: Iterable<GlObject<TModelState>>,
+    objects: Iterable<GlObject<TPolygon>>,
     view: Matrix4,
     state: TSceneState
   ): void {
@@ -55,8 +53,8 @@ class SingularPainter<TSceneState, TModelState>
     shader.activate();
     shader.bindScene(state);
 
-    for (const { matrix, model, state } of objects) {
-      draw(shader, target, model.meshes, matrix, view, state);
+    for (const { matrix, model } of objects) {
+      draw(shader, target, model.meshes, matrix, view);
     }
   }
 }

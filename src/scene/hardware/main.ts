@@ -8,6 +8,7 @@ import * as view from "../view";
 import {
   GlModel,
   GlPainter,
+  GlPolygon,
   GlShader,
   GlTarget,
   createRuntime,
@@ -58,8 +59,8 @@ type ApplicationState = {
   camera: view.Camera;
   gl: WebGLRenderingContext;
   input: Input;
-  model: GlModel;
-  painter: GlPainter<SceneState, undefined>;
+  model: GlModel<GlPolygon>;
+  painter: GlPainter<SceneState, GlPolygon>;
   projectionMatrix: Matrix4;
   target: GlTarget;
 };
@@ -76,7 +77,11 @@ const configuration = {
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const runtime = createRuntime(screen.context);
-    const shader = new GlShader<SceneState, void>(runtime, vsSource, fsSource);
+    const shader = new GlShader<SceneState, GlPolygon>(
+      runtime,
+      vsSource,
+      fsSource
+    );
     const tweak = configure(configuration);
 
     shader.setAttributePerPolygon("colors", (geometry) => geometry.colors);
@@ -93,7 +98,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         tweak.useTexture ? albedoMap : undefined
       )
     );
-    shader.setUniformPerMesh(
+    shader.setUniformPerGeometry(
       "modelMatrix",
       uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
     );

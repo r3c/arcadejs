@@ -29,6 +29,7 @@ import {
   GlTextureFormat,
   GlTextureType,
   uniform,
+  GlPolygon,
 } from "../../webgl";
 
 type ForwardLightingConfiguration = {
@@ -41,6 +42,10 @@ enum ForwardLightingLightModel {
   Phong,
   Physical,
 }
+
+type ForwardLightingObject = GlObject<GlPolygon> & {
+  noShadow: boolean;
+};
 
 type ShadowDirectionalLight = DirectionalLight & {
   shadowMap: WebGLTexture;
@@ -99,19 +104,12 @@ type MaterialConfiguration = {
   noRoughnessMap?: boolean;
 };
 
-type ModelState = {
-  noShadow: boolean;
-};
-
 type ShadowSceneState = State;
 
 type State = {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
-
-const hasShadowState: ModelState = { noShadow: false };
-const noShadowState: ModelState = { noShadow: true };
 
 const lightHeaderShader = `
 ${sourceDeclare("HAS_SHADOW")}
@@ -413,7 +411,7 @@ const loadLight = (
     directives.push({ name: "HAS_SHADOW", value: 1 });
   }
 
-  const shader = new GlShader<LightSceneState, ModelState>(
+  const shader = new GlShader<LightSceneState, GlPolygon>(
     runtime,
     lightVertexShader,
     lightFragmentShader,
@@ -427,11 +425,11 @@ const loadLight = (
   shader.setAttributePerPolygon("tangents", ({ tangents }) => tangents);
 
   // Bind matrix uniforms
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "normalMatrix",
     uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
@@ -655,14 +653,14 @@ const loadLight = (
 };
 
 const loadShadowDirectional = (runtime: GlRuntime) => {
-  const shader = new GlShader<ShadowSceneState, void>(
+  const shader = new GlShader<ShadowSceneState, GlPolygon>(
     runtime,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
   );
 
-  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
-  shader.setUniformPerMesh(
+  shader.setAttributePerPolygon("points", ({ points }) => points);
+  shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
@@ -680,27 +678,29 @@ const loadShadowDirectional = (runtime: GlRuntime) => {
 
 const loadShadowPoint = (runtime: GlRuntime) => {
   // Not implemented
-  return new GlShader<ShadowSceneState, void>(
+  return new GlShader<ShadowSceneState, GlPolygon>(
     runtime,
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader
   );
 };
 
-class ForwardLightingRenderer implements GlRenderer<SceneState, ModelState> {
+class ForwardLightingRenderer
+  implements GlRenderer<SceneState, ForwardLightingObject>
+{
   public readonly directionalShadowBuffers: WebGLTexture[];
   public readonly pointShadowBuffers: WebGLTexture[];
 
   private readonly directionalShadowPainter: GlPainter<
     ShadowSceneState,
-    undefined
+    GlPolygon
   >;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: GlTarget[];
-  private readonly lightPainter: GlPainter<LightSceneState, ModelState>;
+  private readonly lightPainter: GlPainter<LightSceneState, GlPolygon>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
-  private readonly pointShadowPainter: GlPainter<ShadowSceneState, undefined>;
+  private readonly pointShadowPainter: GlPainter<ShadowSceneState, GlPolygon>;
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
   private readonly runtime: GlRuntime;
@@ -760,7 +760,10 @@ class ForwardLightingRenderer implements GlRenderer<SceneState, ModelState> {
     this.runtime = runtime;
   }
 
-  public render(target: GlTarget, scene: GlScene<SceneState, ModelState>) {
+  public render(
+    target: GlTarget,
+    scene: GlScene<SceneState, ForwardLightingObject>
+  ) {
     const { objects, state } = scene;
 
     const directionalLights = state.directionalLights || [];
@@ -772,11 +775,11 @@ class ForwardLightingRenderer implements GlRenderer<SceneState, ModelState> {
     gl.enable(gl.DEPTH_TEST);
 
     // Create list of opaque objects
-    const obstacles: GlObject<undefined>[] = [];
+    const obstacles: GlObject<GlPolygon>[] = [];
 
-    for (const { matrix, model, state } of objects) {
-      if (state.noShadow !== true) {
-        obstacles.push({ matrix, model, state: undefined });
+    for (const { matrix, model, noShadow } of objects) {
+      if (!noShadow) {
+        obstacles.push({ matrix, model });
       }
     }
 
@@ -856,10 +859,8 @@ class ForwardLightingRenderer implements GlRenderer<SceneState, ModelState> {
 
 export {
   type ForwardLightingConfiguration,
-  type ModelState,
+  type ForwardLightingObject,
   type SceneState,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
-  hasShadowState,
-  noShadowState,
 };

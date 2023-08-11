@@ -14,11 +14,9 @@ import {
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
+  ForwardLightingObject,
   ForwardLightingRenderer,
   SceneState,
-  ModelState,
-  hasShadowState,
-  noShadowState,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -27,6 +25,7 @@ import { Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
 import {
   GlModel,
+  GlPolygon,
   GlScene,
   GlTarget,
   createRuntime,
@@ -49,9 +48,9 @@ interface ApplicationState {
   camera: Camera;
   input: Input;
   models: {
-    cube: GlModel;
-    ground: GlModel;
-    light: GlModel;
+    cube: GlModel<GlPolygon>;
+    ground: GlModel<GlPolygon>;
+    light: GlModel<GlPolygon>;
   };
   move: number;
   projectionMatrix: Matrix4;
@@ -127,7 +126,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     modelLightDirection.normalize();
     modelLightDirection.scale(10);
 
-    const lightScene: GlScene<SceneState, ModelState> = {
+    const lightScene: GlScene<SceneState, ForwardLightingObject> = {
       state: {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
         directionalLights: [
@@ -152,17 +151,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
             state.move * 5,
           ]),
           model: models.cube,
-          state: hasShadowState,
+          noShadow: false,
         },
         {
           matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
           model: models.ground,
-          state: hasShadowState,
+          noShadow: false,
         },
         {
           matrix: Matrix4.fromCustom(["translate", modelLightDirection]),
           model: models.light,
-          state: noShadowState,
+          noShadow: true,
         },
       ],
     };

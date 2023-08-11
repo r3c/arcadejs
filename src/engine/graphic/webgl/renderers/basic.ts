@@ -1,5 +1,7 @@
 import { Matrix4 } from "../../../math/matrix";
 import {
+  GlAttribute,
+  GlObject,
   GlPainter,
   GlRenderer,
   GlRuntime,
@@ -28,21 +30,25 @@ void main(void) {
 	fragColor = vec4(1, 1, 1, 1);
 }`;
 
+type BasicPolygon = {
+  points: GlAttribute;
+};
+
 type SceneState = {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
 
 const load = (runtime: GlRuntime) => {
-  const shader = new GlShader<SceneState, void>(
+  const shader = new GlShader<SceneState, BasicPolygon>(
     runtime,
     vertexShader,
     fragmentShader
   );
 
-  shader.setAttributePerPolygon("points", (geometry) => geometry.points);
+  shader.setAttributePerPolygon("points", ({ points }) => points);
 
-  shader.setUniformPerMesh(
+  shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
@@ -58,16 +64,19 @@ const load = (runtime: GlRuntime) => {
   return shader;
 };
 
-class BasicRenderer implements GlRenderer<SceneState, undefined> {
-  private readonly painter: GlPainter<SceneState, undefined>;
+class BasicRenderer implements GlRenderer<SceneState, GlObject<BasicPolygon>> {
+  private readonly painter: GlPainter<SceneState, BasicPolygon>;
   private readonly runtime: GlRuntime;
 
   public constructor(runtime: GlRuntime) {
-    this.painter = new SingularPainter<SceneState, undefined>(load(runtime));
+    this.painter = new SingularPainter<SceneState, BasicPolygon>(load(runtime));
     this.runtime = runtime;
   }
 
-  public render(target: GlTarget, scene: GlScene<SceneState, undefined>) {
+  public render(
+    target: GlTarget,
+    scene: GlScene<SceneState, GlObject<BasicPolygon>>
+  ) {
     const { objects, state } = scene;
     const gl = this.runtime.context;
 

@@ -3,10 +3,9 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
+  ForwardLightingObject,
   ForwardLightingRenderer,
-  ModelState,
   SceneState,
-  hasShadowState,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -14,6 +13,7 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
   GlModel,
+  GlPolygon,
   GlScene,
   GlTarget,
   createRuntime,
@@ -38,7 +38,7 @@ type ApplicationState = {
   input: Input;
   lights: Light[];
   models: {
-    star: GlModel;
+    star: GlModel<GlPolygon>;
   };
   move: number;
   projectionMatrix: Matrix4;
@@ -108,10 +108,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const objects = starPositions.map((position) => ({
       matrix: Matrix4.fromCustom(["translate", position]),
       model: models.star,
-      state: hasShadowState,
+      noShadow: false,
     }));
 
-    const scene: GlScene<SceneState, ModelState> = {
+    const scene: GlScene<SceneState, ForwardLightingObject> = {
       objects,
       state: {
         ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },

@@ -23,6 +23,8 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
   GlModel,
+  GlObject,
+  GlPolygon,
   GlScene,
   GlTarget,
   createRuntime,
@@ -77,10 +79,10 @@ type ApplicationState = {
   directionalLights: DirectionalLight[];
   input: Input;
   models: {
-    cube: GlModel;
-    directionalLight: GlModel;
-    ground: GlModel;
-    pointLight: GlModel;
+    cube: GlModel<GlPolygon>;
+    directionalLight: GlModel<GlPolygon>;
+    ground: GlModel<GlPolygon>;
+    pointLight: GlModel<GlPolygon>;
   };
   move: number;
   pointLights: PointLight[];
@@ -209,7 +211,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Draw scene
     const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
-    const deferredScene: GlScene<SceneState, undefined> = {
+    const deferredScene: GlScene<SceneState, GlObject<GlPolygon>> = {
       state: {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
         directionalLights,

@@ -3,27 +3,27 @@ import {
   GlMaterial,
   GlMesh,
   GlPainter,
-  GlPolygon,
   GlShader,
   GlObject,
   GlTarget,
 } from "../../webgl";
 
-type MeshBatch<TModelState> = {
+type MeshBatch<TPolygon> = {
+  indexCount: number;
+  indexBuffer: WebGLBuffer;
+  indexType: number;
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
-  polygon: GlPolygon;
-  state: TModelState;
+  polygon: TPolygon;
 };
 
-type MaterialMap<TModelState> = Map<GlMaterial, MeshBatch<TModelState>[]>;
+type MaterialMap<TPolygon> = Map<GlMaterial, MeshBatch<TPolygon>[]>;
 
-const group = <TModelState>(
-  batchByMaterial: Map<GlMaterial, MeshBatch<TModelState>[]>,
+const group = <TPolygon>(
+  batchByMaterial: Map<GlMaterial, MeshBatch<TPolygon>[]>,
   viewMatrix: Matrix4,
   parentMatrix: Matrix4,
-  meshes: Iterable<GlMesh>,
-  state: TModelState
+  meshes: Iterable<GlMesh<TPolygon>>
 ) => {
   for (const { children, primitives, transform } of meshes) {
     const modelMatrix = Matrix4.fromObject(parentMatrix);
@@ -35,7 +35,13 @@ const group = <TModelState>(
     normalMatrix.multiply(modelMatrix);
     normalMatrix.invert();
 
-    for (const { material, polygon } of primitives) {
+    for (const {
+      indexBuffer,
+      indexCount,
+      indexType,
+      material,
+      polygon,
+    } of primitives) {
       let meshBatches = batchByMaterial.get(material);
 
       if (meshBatches === undefined) {
@@ -44,17 +50,24 @@ const group = <TModelState>(
         batchByMaterial.set(material, meshBatches);
       }
 
-      meshBatches.push({ modelMatrix, normalMatrix, polygon, state });
+      meshBatches.push({
+        indexBuffer,
+        indexCount,
+        indexType,
+        modelMatrix,
+        normalMatrix,
+        polygon,
+      });
     }
 
-    group(batchByMaterial, viewMatrix, modelMatrix, children, state);
+    group(batchByMaterial, viewMatrix, modelMatrix, children);
   }
 };
 
-const paint = <TSceneState, TModelState>(
-  shader: GlShader<TSceneState, TModelState>,
+const paint = <TSceneState, TPolygon>(
+  shader: GlShader<TSceneState, TPolygon>,
   target: GlTarget,
-  materialMap: MaterialMap<TModelState>,
+  materialMap: MaterialMap<TPolygon>,
   state: TSceneState
 ) => {
   shader.activate();
@@ -63,35 +76,40 @@ const paint = <TSceneState, TModelState>(
   for (const [material, meshBatches] of materialMap.entries()) {
     shader.bindMaterial(material);
 
-    for (const { polygon, modelMatrix, normalMatrix, state } of meshBatches) {
-      const { indexBuffer, indexCount, indexType } = polygon;
-
-      shader.bindModel({ normalMatrix, modelMatrix, state });
+    for (const {
+      indexBuffer,
+      indexCount,
+      indexType,
+      polygon,
+      modelMatrix,
+      normalMatrix,
+    } of meshBatches) {
+      shader.bindGeometry({ normalMatrix, modelMatrix });
       shader.bindPolygon(polygon);
       target.draw(0, indexBuffer, indexCount, indexType);
     }
   }
 };
 
-class BatchPainter<TSceneState, TModelState>
-  implements GlPainter<TSceneState, TModelState>
+class BatchPainter<TSceneState, TPolygon>
+  implements GlPainter<TSceneState, TPolygon>
 {
-  private readonly shader: GlShader<TSceneState, TModelState>;
+  private readonly shader: GlShader<TSceneState, TPolygon>;
 
-  public constructor(shader: GlShader<TSceneState, TModelState>) {
+  public constructor(shader: GlShader<TSceneState, TPolygon>) {
     this.shader = shader;
   }
 
   public paint(
     target: GlTarget,
-    objects: Iterable<GlObject<TModelState>>,
+    objects: Iterable<GlObject<TPolygon>>,
     view: Matrix4,
     state: TSceneState
   ): void {
-    const materialMap: MaterialMap<TModelState> = new Map();
+    const materialMap: MaterialMap<TPolygon> = new Map();
 
-    for (const { matrix, model, state } of objects) {
-      group(materialMap, view, matrix, model.meshes, state);
+    for (const { matrix, model } of objects) {
+      group(materialMap, view, matrix, model.meshes);
     }
 
     paint(this.shader, target, materialMap, state);
