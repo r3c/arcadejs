@@ -44,7 +44,7 @@ import {
 
 const configuration = {
   nbDirectionals: [".0", "1", "2", "5"],
-  nbPoints: ["0", ".20", "100", "500"],
+  nbPoints: ["0", ".20", "100", "500", "2000"],
   animate: true,
   ambient: true,
   diffuse: true,
@@ -72,6 +72,7 @@ const pointLightParameters = [
   { count: 20, radius: 4 },
   { count: 100, radius: 2 },
   { count: 500, radius: 1 },
+  { count: 2000, radius: 1 },
 ];
 
 type ApplicationState = {
@@ -186,10 +187,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
             })
         ),
       },
-      pointLights: range(500, (i) => ({
+      pointLights: range(2000, (i) => ({
         color: color.createBright(i),
         position: Vector3.zero,
-        radius: 2,
+        radius: 0,
       })),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,

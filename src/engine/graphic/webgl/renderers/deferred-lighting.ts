@@ -13,14 +13,12 @@ import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
-import { model as billboardModel } from "./resources/billboard";
-import { model as quadModel } from "./resources/quad";
 import * as rgb from "./snippets/rgb";
 import * as shininess from "./snippets/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
-  GlModel,
   GlPainter,
+  GlPolygon,
   GlRenderer,
   GlRuntime,
   GlScene,
@@ -29,10 +27,13 @@ import {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  loadModel,
   uniform,
-  GlPolygon,
 } from "../../webgl";
+import {
+  LightBillboard,
+  LightPolygon,
+  pointLightBillboard,
+} from "./objects/billboard";
 
 const enum DeferredLightingLightModel {
   None,
@@ -124,8 +125,7 @@ void main(void) {
 const lightHeaderShader = `
 ${sourceDeclare("HAS_SHADOW")}
 
-uniform ${sourceTypeDirectional} directionalLight;
-uniform ${sourceTypePoint} pointLight;`;
+uniform ${sourceTypeDirectional} directionalLight;`;
 
 const lightVertexShader = `
 ${lightHeaderShader}
@@ -135,13 +135,18 @@ uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coords;
-in vec4 points;
+in vec3 lightColor;
+in vec2 lightCorner;
+in vec3 lightPosition;
+in float lightRadius;
 
 #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 out vec3 lightDistanceCamera;
 #elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
 out vec3 lightPositionCamera;
+out vec3 pointLightColor;
+out vec3 pointLightPosition;
+out float pointLightRadius;
 #endif
 
 vec3 toCameraDirection(in vec3 worldDirection) {
@@ -156,12 +161,15 @@ void main(void) {
 	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 		lightDistanceCamera = toCameraDirection(directionalLight.direction);
 	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
-		lightPositionCamera = toCameraPosition(pointLight.position);
+		lightPositionCamera = toCameraPosition(lightPosition);
+    pointLightColor = lightColor;
+    pointLightPosition = lightPosition;
+    pointLightRadius = lightRadius;
 	#endif
 
 	gl_Position =
-		projectionMatrix * viewMatrix * modelMatrix * points +
-		projectionMatrix * billboardMatrix * modelMatrix * vec4(coords, 0.0, 0.0);
+		projectionMatrix * viewMatrix * modelMatrix * vec4(lightPosition, 1.0) +
+		projectionMatrix * billboardMatrix * modelMatrix * vec4(lightCorner, 0.0, 0.0);
 }`;
 
 const lightFragmentShader = `
@@ -183,6 +191,9 @@ ${shininess.decodeDeclare()}
 in vec3 lightDistanceCamera;
 #elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
 in vec3 lightPositionCamera;
+in vec3 pointLightColor;
+in vec3 pointLightPosition;
+in float pointLightRadius;
 #endif
 
 layout(location=0) out vec4 fragColor;
@@ -219,6 +230,7 @@ void main(void) {
   "lightDistanceCamera"
 )};
 	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
+    ${sourceTypePoint} pointLight = ${sourceTypePoint}(pointLightColor, pointLightPosition, pointLightRadius);
 		${sourceTypeResult} light = ${sourceInvokePoint(
   "pointLight",
   "lightPositionCamera - point"
@@ -355,10 +367,6 @@ type DirectionalLightState = LightState & {
   directionalLight: DirectionalLight;
 };
 
-type PointLightState = LightState & {
-  pointLight: PointLight;
-};
-
 type MaterialState = State & {
   ambientLightColor: Vector3;
   lightBuffer: WebGLTexture;
@@ -370,8 +378,10 @@ type SceneState = State & {
   pointLights?: PointLight[];
 };
 
-const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
-  // Setup geometry shader
+const loadGeometryShader = (
+  runtime: GlRuntime,
+  configuration: Configuration
+) => {
   const shader = new GlShader<State, GlPolygon>(
     runtime,
     geometryVertexShader,
@@ -437,7 +447,7 @@ const loadGeometry = (runtime: GlRuntime, configuration: Configuration) => {
   return shader;
 };
 
-const loadLight = <TSceneState extends LightState>(
+const loadLightShader = <TSceneState extends LightState>(
   runtime: GlRuntime,
   _: Configuration,
   type: DeferredLightingLightType
@@ -445,15 +455,19 @@ const loadLight = <TSceneState extends LightState>(
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
-  const shader = new GlShader<TSceneState, GlPolygon>(
+  const shader = new GlShader<TSceneState, LightPolygon>(
     runtime,
     lightVertexShader,
     lightFragmentShader,
     directives
   );
 
-  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
-  shader.setAttributePerPolygon("points", ({ points }) => points);
+  if (type === DeferredLightingLightType.Point) {
+    shader.setAttributePerPolygon("lightColor", (p) => p.lightColor);
+    shader.setAttributePerPolygon("lightCorner", (p) => p.lightCorner);
+    shader.setAttributePerPolygon("lightPosition", (p) => p.lightPosition);
+    shader.setAttributePerPolygon("lightRadius", (p) => p.lightRadius);
+  }
 
   shader.setUniformPerScene(
     "billboardMatrix",
@@ -499,11 +513,11 @@ const loadLight = <TSceneState extends LightState>(
   return shader;
 };
 
-const loadLightDirectional = (
+const loadDirectionalLightShader = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const shader = loadLight<DirectionalLightState>(
+  const shader = loadLightShader<DirectionalLightState>(
     runtime,
     configuration,
     DeferredLightingLightType.Directional
@@ -521,30 +535,23 @@ const loadLightDirectional = (
   return shader;
 };
 
-const loadLightPoint = (runtime: GlRuntime, configuration: Configuration) => {
-  const shader = loadLight<PointLightState>(
+const loadPointLightShader = (
+  runtime: GlRuntime,
+  configuration: Configuration
+) => {
+  const shader = loadLightShader<LightState>(
     runtime,
     configuration,
     DeferredLightingLightType.Point
   );
 
-  shader.setUniformPerScene(
-    "pointLight.color",
-    uniform.numberVector3(({ pointLight }) => pointLight.color)
-  );
-  shader.setUniformPerScene(
-    "pointLight.position",
-    uniform.numberVector3(({ pointLight }) => pointLight.position)
-  );
-  shader.setUniformPerScene(
-    "pointLight.radius",
-    uniform.numberScalar(({ pointLight }) => pointLight.radius)
-  );
-
   return shader;
 };
 
-const loadMaterial = (runtime: GlRuntime, configuration: Configuration) => {
+const loadMaterialShader = (
+  runtime: GlRuntime,
+  configuration: Configuration
+) => {
   // Build directives from configuration
   const directives = [];
 
@@ -652,21 +659,20 @@ class DeferredLightingRenderer
 
   private readonly directionalLightPainter: GlPainter<
     DirectionalLightState,
-    GlPolygon
+    LightPolygon
   >;
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: GlPainter<State, GlPolygon>;
   private readonly geometryTarget: GlTarget;
+  private readonly lightBillboard: LightBillboard;
+  private readonly lightObjects: GlObject<LightPolygon>[];
   private readonly lightTarget: GlTarget;
   private readonly materialPainter: GlPainter<MaterialState, GlPolygon>;
-  private readonly pointLightObjects: GlObject<GlPolygon>[];
-  private readonly pointLightPainter: GlPainter<PointLightState, GlPolygon>;
-  private readonly quadModel: GlModel<GlPolygon>;
+  private readonly pointLightPainter: GlPainter<LightState, LightPolygon>;
   private readonly runtime: GlRuntime;
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {
     const gl = runtime.context;
-    const billboard = loadModel(runtime, billboardModel);
     const geometry = new GlTarget(
       gl,
       gl.drawingBufferWidth,
@@ -683,31 +689,33 @@ class DeferredLightingRenderer
       GlTextureType.Quad
     );
     this.directionalLightPainter = new SingularPainter(
-      loadLightDirectional(runtime, configuration)
+      loadDirectionalLightShader(runtime, configuration)
     );
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = new SingularPainter(
-      loadGeometry(runtime, configuration)
+      loadGeometryShader(runtime, configuration)
     );
     this.geometryTarget = geometry;
+    this.lightBillboard = pointLightBillboard(gl);
     this.lightBuffer = light.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
+    this.lightObjects = [
+      { matrix: Matrix4.identity, model: this.lightBillboard.model },
+    ];
     this.lightTarget = light;
     this.materialPainter = new SingularPainter(
-      loadMaterial(runtime, configuration)
+      loadMaterialShader(runtime, configuration)
     );
-    this.pointLightObjects = [{ matrix: Matrix4.identity, model: billboard }];
     this.pointLightPainter = new SingularPainter(
-      loadLightPoint(runtime, configuration)
+      loadPointLightShader(runtime, configuration)
     );
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
     this.runtime = runtime;
-    this.quadModel = loadModel(runtime, quadModel);
   }
 
   public render(
@@ -721,7 +729,8 @@ class DeferredLightingRenderer
       y: gl.drawingBufferHeight,
     };
 
-    // Build billboard matrix from view matrix to get camera-facing quads
+    // Build billboard matrix from view matrix to get camera-facing quads by
+    // copying view matrix and cancelling any rotation.
     const billboardMatrix = Matrix4.fromObject(state.viewMatrix);
 
     billboardMatrix.v00 = 1;
@@ -761,6 +770,7 @@ class DeferredLightingRenderer
     this.lightTarget.setClearColor(1, 1, 1, 1);
     this.lightTarget.clear(0);
 
+    // Draw directional lights using fullscreen quads
     if (state.directionalLights !== undefined) {
       // FIXME: a simple identity matrix could be use here at the cost of
       // passing 2 distinct "view" matrices to light shader:
@@ -770,55 +780,45 @@ class DeferredLightingRenderer
 
       objectMatrix.invert();
 
-      const objects: GlObject<GlPolygon>[] = [
-        {
-          matrix: objectMatrix,
-          model: this.quadModel,
-        },
-      ];
+      this.lightObjects[0].matrix = objectMatrix;
 
       for (const directionalLight of state.directionalLights) {
         this.directionalLightPainter.paint(
           this.lightTarget,
-          objects,
+          this.lightObjects,
           state.viewMatrix,
           {
-            billboardMatrix,
             depthBuffer: this.depthBuffer,
             directionalLight,
             normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
             projectionMatrix: this.fullscreenProjection,
             viewMatrix: state.viewMatrix,
             viewportSize,
+            billboardMatrix: Matrix4.identity, // FIXME: unused
           }
         );
       }
     }
 
+    // Draw point lights using quads
     if (state.pointLights !== undefined) {
-      for (const pointLight of state.pointLights) {
-        const { position, radius } = pointLight;
+      // FIXME: remove when directional light doesn't overwrite this value
+      this.lightObjects[0].matrix = Matrix4.identity;
+      this.lightBillboard.set(state.pointLights);
 
-        this.pointLightObjects[0].matrix = Matrix4.fromCustom(
-          ["translate", position],
-          ["scale", { x: radius, y: radius, z: radius }]
-        );
-
-        this.pointLightPainter.paint(
-          this.lightTarget,
-          this.pointLightObjects,
-          state.viewMatrix,
-          {
-            billboardMatrix,
-            depthBuffer: this.depthBuffer,
-            normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-            pointLight,
-            projectionMatrix: state.projectionMatrix,
-            viewMatrix: state.viewMatrix,
-            viewportSize,
-          }
-        );
-      }
+      this.pointLightPainter.paint(
+        this.lightTarget,
+        this.lightObjects,
+        state.viewMatrix,
+        {
+          billboardMatrix,
+          depthBuffer: this.depthBuffer,
+          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+          projectionMatrix: state.projectionMatrix,
+          viewMatrix: state.viewMatrix,
+          viewportSize,
+        }
+      );
     }
 
     // Render materials to output
