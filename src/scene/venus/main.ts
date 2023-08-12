@@ -16,7 +16,7 @@ import {
   GlPolygon,
   GlScene,
   GlTarget,
-  createRuntime,
+  runtimeCreate,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
@@ -50,7 +50,7 @@ type ApplicationState = {
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const runtime = createRuntime(gl);
+    const runtime = runtimeCreate(gl);
 
     configure(undefined);
 

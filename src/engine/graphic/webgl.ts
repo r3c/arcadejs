@@ -1,7 +1,6 @@
 import { map, range } from "../language/functional";
 import { Matrix3, Matrix4 } from "../math/matrix";
 import {
-  defaultFilter,
   Filter,
   Interpolation,
   Material,
@@ -9,10 +8,17 @@ import {
   Model,
   Polygon,
   Texture,
-  TypedArray,
   Wrap,
+  defaultFilter,
 } from "./model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
+import {
+  GlAttribute,
+  GlBuffer,
+  GlContext,
+  attributeCreate,
+  bufferCreate,
+} from "./webgl/resource";
 
 type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -34,18 +40,9 @@ type GlAttachmentTexture = {
   handle: GlTexture;
 };
 
-type GlAttribute = {
-  buffer: WebGLBuffer;
-  size: number;
-  stride: number;
-  type: number;
-};
-
 type GlBinder<TState> = (state: TState) => void;
 
 type GlBinderMap<TState> = Map<string, GlBinder<TState>>;
-
-type GlContext = WebGL2RenderingContext;
 
 type GlDefault = {
   blackTexture: GlTexture;
@@ -63,7 +60,6 @@ type GlGeometry = {
 };
 
 type GlLibrary = {
-  defaultMaterial: GlMaterial;
   materials: Map<Material, GlMaterial>;
 };
 
@@ -135,9 +131,7 @@ type GlPolygon = {
 };
 
 type GlPrimitive<TPolygon> = {
-  indexCount: number;
-  indexBuffer: WebGLBuffer;
-  indexType: number;
+  index: GlBuffer;
   material: GlMaterial;
   polygon: TPolygon;
 };
@@ -188,6 +182,26 @@ type GlUniformAccessor<TState, TValue> = {
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
+const defaultMaterial: GlMaterial = {
+  albedoFactor: Vector4.toArray(colorWhite),
+  albedoMap: undefined,
+  emissiveFactor: Vector4.toArray(colorBlack),
+  emissiveMap: undefined,
+  glossFactor: Vector4.toArray(colorWhite),
+  glossMap: undefined,
+  heightMap: undefined,
+  heightParallaxBias: 0,
+  heightParallaxScale: 0,
+  metalnessMap: undefined,
+  metalnessStrength: 0,
+  normalMap: undefined,
+  occlusionMap: undefined,
+  occlusionStrength: 0,
+  roughnessMap: undefined,
+  roughnessStrength: 0,
+  shininess: 30,
+};
+
 const materialExtractors: GlMaterialExtractor[] = [
   (material) => material.albedoMap,
   (material) => material.emissiveMap,
@@ -210,41 +224,7 @@ const glPolygonExtractor: (
   polygon.tangents,
 ];
 
-const bufferConvert = (
-  gl: GlContext,
-  target: number,
-  values: TypedArray,
-  isDynamic: boolean
-) => {
-  const buffer = gl.createBuffer();
-
-  if (buffer === null) {
-    throw Error("could not create buffer");
-  }
-
-  gl.bindBuffer(target, buffer);
-  gl.bufferData(target, values, isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
-
-  return buffer;
-};
-
-/*
- ** Find OpenGL type from associated array type.
- ** See: https://developer.mozilla.org/docs/Web/API/WebGL2RenderingContext/vertexAttribPointer
- */
-const bufferGetType = (gl: GlContext, array: TypedArray) => {
-  if (array instanceof Float32Array) return gl.FLOAT;
-  else if (array instanceof Int32Array) return gl.INT;
-  else if (array instanceof Uint32Array) return gl.UNSIGNED_INT;
-  else if (array instanceof Int16Array) return gl.SHORT;
-  else if (array instanceof Uint16Array) return gl.UNSIGNED_SHORT;
-  else if (array instanceof Int8Array) return gl.BYTE;
-  else if (array instanceof Uint8Array) return gl.UNSIGNED_BYTE;
-
-  throw Error(`unsupported array type for indices`);
-};
-
-const createRuntime = (context: GlContext): GlRuntime => {
+const runtimeCreate = (context: GlContext): GlRuntime => {
   return {
     context,
     default: {
@@ -272,12 +252,14 @@ const createRuntime = (context: GlContext): GlRuntime => {
   };
 };
 
+// TODO: move to resource module
 const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
   for (const material of library.materials.values()) {
     deleteMaterial(gl, material);
   }
 };
 
+// TODO: move to resource module
 const deleteMaterial = (gl: GlContext, material: GlMaterial): void => {
   for (const extractor of materialExtractors) {
     const texture = extractor(material);
@@ -288,6 +270,7 @@ const deleteMaterial = (gl: GlContext, material: GlMaterial): void => {
   }
 };
 
+// TODO: move to resource module
 const deleteMesh = <TPolygon>(
   gl: GlContext,
   mesh: GlMesh<TPolygon>,
@@ -297,17 +280,18 @@ const deleteMesh = <TPolygon>(
     deleteMesh(gl, child, extractor);
   }
 
-  for (const { indexBuffer, polygon } of mesh.primitives) {
+  for (const { index, polygon } of mesh.primitives) {
     for (const attribute of extractor(polygon)) {
       if (attribute !== undefined) {
-        gl.deleteBuffer(attribute.buffer);
+        attribute.dispose();
       }
     }
 
-    gl.deleteBuffer(indexBuffer);
+    index.dispose();
   }
 };
 
+// TODO: move to resource module
 const deleteModel = <TPolygon>(
   gl: GlContext,
   model: GlModel<TPolygon>,
@@ -319,8 +303,6 @@ const deleteModel = <TPolygon>(
     for (const material of library.materials.values()) {
       deleteMaterial(gl, material);
     }
-
-    deleteMaterial(gl, library.defaultMaterial);
   }
 
   for (const mesh of meshes) {
@@ -546,13 +528,11 @@ const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
     }
   };
 
-  const defaultMaterial = loadMaterial(gl, textures, {}); // TODO: share across multiple models
-
   for (const mesh of model.meshes) {
     loadMesh(mesh);
   }
 
-  return { defaultMaterial, materials };
+  return { materials };
 };
 
 const loadMaterial = (
@@ -581,6 +561,7 @@ const loadMaterial = (
     return glTexture;
   };
 
+  // FIXME: mutualize defaults with `defaultMaterial`
   return {
     albedoFactor: Vector4.toArray(material.albedoFactor ?? colorWhite),
     albedoMap: map(material.albedoMap, toColorMap),
@@ -647,57 +628,35 @@ const loadPrimitive = (
   polygon: Polygon,
   isDynamic: boolean
 ): GlPrimitive<GlPolygon> => {
-  const { defaultMaterial, materials } = library;
+  const { materials } = library;
+
+  const index = bufferCreate(
+    gl,
+    gl.ELEMENT_ARRAY_BUFFER,
+    polygon.indices,
+    isDynamic
+  );
 
   return {
-    indexCount: polygon.indices.length,
-    indexBuffer: bufferConvert(
-      gl,
-      gl.ELEMENT_ARRAY_BUFFER,
-      polygon.indices,
-      isDynamic
-    ),
-    indexType: bufferGetType(gl, polygon.indices),
+    index,
     material:
       polygon.material !== undefined
         ? materials.get(polygon.material) ?? defaultMaterial
         : defaultMaterial,
     polygon: {
-      colors: map(polygon.colors, (colors) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, colors.buffer, isDynamic),
-        size: colors.stride,
-        stride: colors.stride * colors.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, colors.buffer),
-      })),
-      coords: map(polygon.coords, (coords) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, coords.buffer, isDynamic),
-        size: coords.stride,
-        stride: coords.stride * coords.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, coords.buffer),
-      })),
-      normals: map(polygon.normals, (normals) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, normals.buffer, isDynamic),
-        size: normals.stride,
-        stride: normals.stride * normals.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, normals.buffer),
-      })),
-      points: {
-        buffer: bufferConvert(
-          gl,
-          gl.ARRAY_BUFFER,
-          polygon.points.buffer,
-          isDynamic
-        ),
-        size: polygon.points.stride,
-        stride: polygon.points.stride * polygon.points.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, polygon.points.buffer),
-      },
-      tangents: map(polygon.tangents, (tangents) => ({
-        buffer: bufferConvert(gl, gl.ARRAY_BUFFER, tangents.buffer, isDynamic),
-        size: tangents.stride,
-        stride: tangents.stride * tangents.buffer.BYTES_PER_ELEMENT,
-        type: bufferGetType(gl, tangents.buffer),
-      })),
+      colors: map(polygon.colors, (colors) =>
+        attributeCreate(gl, colors, isDynamic)
+      ),
+      coords: map(polygon.coords, (coords) =>
+        attributeCreate(gl, coords, isDynamic)
+      ),
+      normals: map(polygon.normals, (normals) =>
+        attributeCreate(gl, normals, isDynamic)
+      ),
+      points: attributeCreate(gl, polygon.points, isDynamic),
+      tangents: map(polygon.tangents, (tangents) =>
+        attributeCreate(gl, tangents, isDynamic)
+      ),
     },
   };
 };
@@ -1514,7 +1473,6 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  createRuntime,
   deleteLibrary,
   deleteModel,
   loadLibrary,
@@ -1522,5 +1480,7 @@ export {
   loadTextureCube,
   loadTextureQuad,
   glPolygonExtractor,
+  runtimeCreate,
+  defaultMaterial,
   uniform,
 };

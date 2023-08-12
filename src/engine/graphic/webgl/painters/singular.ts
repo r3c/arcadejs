@@ -23,12 +23,11 @@ const draw = <TSceneState, TPolygon>(
     shader.bindGeometry({ normalMatrix, modelMatrix });
 
     for (const primitive of mesh.primitives) {
-      const { indexBuffer, indexCount, indexType, material, polygon } =
-        primitive;
+      const { index, material, polygon } = primitive;
 
       shader.bindMaterial(material);
       shader.bindPolygon(polygon);
-      target.draw(0, indexBuffer, indexCount, indexType);
+      target.draw(0, index.buffer, index.count, index.type);
     }
   }
 };

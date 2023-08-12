@@ -11,7 +11,7 @@ import {
   GlPolygon,
   GlShader,
   GlTarget,
-  createRuntime,
+  runtimeCreate,
   loadModel,
   uniform,
 } from "../../engine/graphic/webgl";
@@ -76,7 +76,7 @@ const configuration = {
 
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
-    const runtime = createRuntime(screen.context);
+    const runtime = runtimeCreate(screen.context);
     const shader = new GlShader<SceneState, GlPolygon>(
       runtime,
       vsSource,

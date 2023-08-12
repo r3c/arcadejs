@@ -7,11 +7,10 @@ import {
   GlObject,
   GlTarget,
 } from "../../webgl";
+import { GlBuffer } from "../resource";
 
 type MeshBatch<TPolygon> = {
-  indexCount: number;
-  indexBuffer: WebGLBuffer;
-  indexType: number;
+  index: GlBuffer;
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
   polygon: TPolygon;
@@ -35,13 +34,7 @@ const group = <TPolygon>(
     normalMatrix.multiply(modelMatrix);
     normalMatrix.invert();
 
-    for (const {
-      indexBuffer,
-      indexCount,
-      indexType,
-      material,
-      polygon,
-    } of primitives) {
+    for (const { index, material, polygon } of primitives) {
       let meshBatches = batchByMaterial.get(material);
 
       if (meshBatches === undefined) {
@@ -51,9 +44,7 @@ const group = <TPolygon>(
       }
 
       meshBatches.push({
-        indexBuffer,
-        indexCount,
-        indexType,
+        index,
         modelMatrix,
         normalMatrix,
         polygon,
@@ -76,17 +67,10 @@ const paint = <TSceneState, TPolygon>(
   for (const [material, meshBatches] of materialMap.entries()) {
     shader.bindMaterial(material);
 
-    for (const {
-      indexBuffer,
-      indexCount,
-      indexType,
-      polygon,
-      modelMatrix,
-      normalMatrix,
-    } of meshBatches) {
+    for (const { index, polygon, modelMatrix, normalMatrix } of meshBatches) {
       shader.bindGeometry({ normalMatrix, modelMatrix });
       shader.bindPolygon(polygon);
-      target.draw(0, indexBuffer, indexCount, indexType);
+      target.draw(0, index.buffer, index.count, index.type);
     }
   }
 };
