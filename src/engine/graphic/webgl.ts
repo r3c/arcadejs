@@ -875,10 +875,10 @@ class GlShader<TSceneState, TPolygonState> {
         throw Error(`undefined geometry attribute "${name}"`);
       }
 
-      const { buffer, size, stride, type } = attribute;
+      const { buffer, size, stride } = attribute;
 
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.vertexAttribPointer(location, size, type, false, stride, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
+      gl.vertexAttribPointer(location, size, buffer.type, false, stride, 0);
       gl.enableVertexAttribArray(location);
     });
   }

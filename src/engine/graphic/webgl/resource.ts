@@ -2,14 +2,14 @@ import { Attribute, TypedArray } from "../model";
 
 type GlAttribute = {
   dispose: () => void;
-  buffer: WebGLBuffer;
+  buffer: Omit<GlBuffer, "dispose">;
   size: number;
   stride: number;
-  type: GlBufferType;
 };
 
 type GlBuffer = {
   dispose: () => void;
+  set: (data: TypedArray) => void;
   buffer: WebGLBuffer;
   count: number;
   type: GlBufferType;
@@ -38,11 +38,10 @@ const attributeCreate = (
   const buffer = bufferCreate(gl, gl.ARRAY_BUFFER, attribute.buffer, isDynamic);
 
   return {
-    dispose: () => buffer.dispose(),
-    buffer: buffer.buffer,
+    dispose: buffer.dispose,
+    buffer,
     size: attribute.stride,
     stride: attribute.stride * attribute.buffer.BYTES_PER_ELEMENT,
-    type: buffer.type,
   };
 };
 
@@ -63,14 +62,23 @@ const bufferCreate = (
   gl.bindBuffer(bufferTarget, buffer);
   gl.bufferData(bufferTarget, source, usage);
 
-  return {
+  const result = {
     dispose: () => {
       gl.deleteBuffer(buffer);
+    },
+    set: (source: TypedArray) => {
+      gl.bindBuffer(bufferTarget, buffer);
+      gl.bufferData(bufferTarget, source, usage);
+
+      result.count = source.length;
+      result.type = bufferType(gl, source);
     },
     buffer,
     count: source.length,
     type: bufferType(gl, source),
   };
+
+  return result;
 };
 
 /*
