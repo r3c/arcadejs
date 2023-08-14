@@ -10,19 +10,19 @@ const model: Model = {
       children: [],
       polygons: [
         {
-          coords: {
-            buffer: new Float32Array([
-              -1.0, -1.0, 1.0, -1.0, 1.0, 1.0, -1.0, 1.0,
-            ]),
-            stride: 2,
-          },
-          indices: new Uint32Array([0, 1, 2, 0, 2, 3]),
-          points: {
-            buffer: new Float32Array([
-              0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            ]),
-            stride: 3,
-          },
+          coords: [
+            { x: -1.0, y: -1.0 },
+            { x: 1.0, y: -1.0 },
+            { x: 1.0, y: 1.0 },
+            { x: -1.0, y: 1.0 },
+          ],
+          indices: [0, 1, 2, 0, 2, 3],
+          points: [
+            { x: 0, y: 0, z: 0 },
+            { x: 0, y: 0, z: 0 },
+            { x: 0, y: 0, z: 0 },
+            { x: 0, y: 0, z: 0 },
+          ],
         },
       ],
       transform: Matrix4.identity,

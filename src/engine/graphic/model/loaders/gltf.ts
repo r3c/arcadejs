@@ -3,25 +3,23 @@ import { map } from "../../../language/functional";
 import * as image from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
-  Attribute,
   Interpolation,
   Material,
   Mesh,
   Model,
   Polygon,
-  TypedArray,
   Wrap,
 } from "../definition";
 import * as path from "../../../fs/path";
 import * as stream from "../../../io/stream";
-import { Vector4 } from "../../../math/vector";
+import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
 /*
  ** Implementation based on:
  ** https://github.com/KhronosGroup/glTF/tree/master/specification/2.0
  */
 
-interface TfAccessor {
+type TfAccessor = {
   arrayBuffer: ArrayBuffer;
   arrayConstructor: TfArrayConstructor;
   componentsPerElement: number;
@@ -29,25 +27,33 @@ interface TfAccessor {
   index: number;
   offset: number;
   stride: number | undefined;
-}
+};
 
-interface TfArrayConstructor {
+type TfArray =
+  | Int8Array
+  | Float32Array
+  | Int16Array
+  | Uint8Array
+  | Uint32Array
+  | Uint16Array;
+
+type TfArrayConstructor = {
   BYTES_PER_ELEMENT: number;
 
-  new (buffer: ArrayBuffer, offset: number, length: number): TypedArray;
-}
+  new (buffer: ArrayBuffer, offset: number, length: number): TfArray;
+};
 
-interface TfBuffer {
+type TfBuffer = {
   buffer: ArrayBuffer;
   length: number;
-}
+};
 
-interface TfBufferView {
+type TfBufferView = {
   buffer: ArrayBuffer;
   length: number;
   offset: number;
   stride: number | undefined;
-}
+};
 
 const enum TfComponentType {
   Byte = 5120,
@@ -58,7 +64,7 @@ const enum TfComponentType {
   UnsignedInt = 5125,
 }
 
-interface TfMaterial {
+type TfMaterial = {
   baseColorFactor: Vector4 | undefined;
   baseColorTexture: TfTexture | undefined;
   emissiveFactor: Vector4 | undefined;
@@ -71,19 +77,19 @@ interface TfMaterial {
   normalTexture: TfTexture | undefined;
   occlusionFactor: Vector4 | undefined;
   occlusionTexture: TfTexture | undefined;
-}
+};
 
-interface TfMesh {
+type TfMesh = {
   primitives: TfPrimitive[];
-}
+};
 
-interface TfNode {
+type TfNode = {
   children: TfNode[];
   mesh: TfMesh | undefined;
   transform: Matrix4;
-}
+};
 
-interface TfPrimitive {
+type TfPrimitive = {
   colors: TfAccessor | undefined;
   coords: TfAccessor | undefined;
   indices: TfAccessor;
@@ -91,23 +97,23 @@ interface TfPrimitive {
   points: TfAccessor;
   materialName: string | undefined;
   tangents: TfAccessor | undefined;
-}
+};
 
-interface TfSampler {
+type TfSampler = {
   magnifier: Interpolation;
   minifier: Interpolation;
   mipmap: boolean;
   wrap: Wrap;
-}
+};
 
-interface TfScene {
+type TfScene = {
   nodes: TfNode[];
-}
+};
 
-interface TfTexture {
+type TfTexture = {
   image: ImageData;
   sampler: TfSampler;
-}
+};
 
 enum TfType {
   MAT2,
@@ -152,12 +158,13 @@ const convertReferenceTo = <TValue>(
   return pool[reference];
 };
 
-const expandAccessor = (
+const expandAccessor = <T>(
   url: string,
   accessor: TfAccessor,
   cardinality: number,
+  converter: (buffer: number[]) => T,
   type: string
-): Attribute => {
+): T[] => {
   const stride =
     accessor.stride !== undefined
       ? accessor.stride / accessor.arrayConstructor.BYTES_PER_ELEMENT
@@ -176,10 +183,13 @@ const expandAccessor = (
     accessor.elements * stride
   );
 
-  return {
-    buffer,
-    stride,
-  };
+  const result: T[] = [];
+
+  for (let i = 0; i + cardinality <= buffer.length; i += cardinality) {
+    result.push(converter(Array.from(buffer.slice(i, i + cardinality))));
+  }
+
+  return result;
 };
 
 const expandMaterial = (material: TfMaterial): Material => {
@@ -228,26 +238,25 @@ const expandMesh = (
   materials: Map<string, Material>
 ): Polygon[] => {
   return mesh.primitives.map((primitive) => {
-    const indices = expandAccessor(url, primitive.indices, 1, "index");
+    const { colors, coords, indices, materialName, normals, points, tangents } =
+      primitive;
 
     return {
-      colors: map(primitive.colors, (colors) =>
-        expandAccessor(url, colors, 4, "colors")
+      colors: map(colors, (colors) =>
+        expandAccessor(url, colors, 4, Vector4.fromArray, "colors")
       ),
-      coords: map(primitive.coords, (coords) =>
-        expandAccessor(url, coords, 2, "coords")
+      coords: map(coords, (coords) =>
+        expandAccessor(url, coords, 2, Vector2.fromArray, "coords")
       ),
-      indices: indices.buffer,
+      indices: expandAccessor(url, indices, 1, (i) => i[0], "index"),
       material:
-        primitive.materialName !== undefined
-          ? materials.get(primitive.materialName)
-          : undefined,
-      normals: map(primitive.normals, (normals) =>
-        expandAccessor(url, normals, 3, "normals")
+        materialName !== undefined ? materials.get(materialName) : undefined,
+      normals: map(normals, (normals) =>
+        expandAccessor(url, normals, 3, Vector3.fromArray, "normals")
       ),
-      points: expandAccessor(url, primitive.points, 3, "points"),
-      tangents: map(primitive.tangents, (tangents) =>
-        expandAccessor(url, tangents, 3, "tangents")
+      points: expandAccessor(url, points, 3, Vector3.fromArray, "points"),
+      tangents: map(tangents, (tangents) =>
+        expandAccessor(url, tangents, 3, Vector3.fromArray, "tangents")
       ),
     };
   });

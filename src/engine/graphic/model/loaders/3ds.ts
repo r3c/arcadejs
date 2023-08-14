@@ -11,7 +11,7 @@ import {
 } from "../definition";
 import * as path from "../../../fs/path";
 import * as stream from "../../../io/stream";
-import { Vector4 } from "../../../math/vector";
+import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
 /*
  ** Implementation based on:
@@ -37,10 +37,10 @@ interface RawModel {
 }
 
 interface RawPolygon {
-  coords: number[];
+  coords: Vector2[];
   indices: number[];
   materialName: string | undefined;
-  points: number[];
+  points: Vector3[];
 }
 
 const invalidChunk = (file: string, chunk: number, description: string) => {
@@ -68,16 +68,13 @@ const load = async (url: string): Promise<Model> => {
       {
         children: [],
         polygons: model.polygons.map((mesh) => ({
-          coords:
-            mesh.coords.length > 0
-              ? { buffer: new Float32Array(mesh.coords), stride: 2 }
-              : undefined,
-          indices: new Uint32Array(mesh.indices),
+          coords: mesh.coords.length > 0 ? mesh.coords : undefined,
+          indices: mesh.indices,
           material:
             mesh.materialName !== undefined
               ? model.materials.get(mesh.materialName)
               : undefined,
-          points: { buffer: new Float32Array(mesh.points), stride: 3 },
+          points: mesh.points,
         })),
         transform: Matrix4.identity,
       },
@@ -286,9 +283,11 @@ const readPolygon = async (
   switch (chunk) {
     case 0x4110: // TRI_VERTEXL
       for (let count = context.reader.readInt16u(); count > 0; --count) {
-        state.points.push(context.reader.readFloat32());
-        state.points.push(context.reader.readFloat32());
-        state.points.push(context.reader.readFloat32());
+        const x = context.reader.readFloat32();
+        const y = context.reader.readFloat32();
+        const z = context.reader.readFloat32();
+
+        state.points.push(Vector3.fromXYZ(x, y, z));
       }
 
       return state;
@@ -308,8 +307,10 @@ const readPolygon = async (
 
     case 0x4140: // TRI_MAPPINGCOORS
       for (let count = context.reader.readInt16u(); count > 0; --count) {
-        state.coords.push(context.reader.readFloat32());
-        state.coords.push(1.0 - context.reader.readFloat32());
+        const x = context.reader.readFloat32();
+        const y = 1.0 - context.reader.readFloat32();
+
+        state.coords.push(Vector2.fromXY(x, y));
       }
 
       return state;

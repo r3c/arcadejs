@@ -1,6 +1,6 @@
 import { Context2DScreen } from "./display";
 import { Matrix4 } from "../math/matrix";
-import { Attribute, Material, Model, Mesh } from "../graphic/model";
+import { Material, Model, Mesh, defaultColor } from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 
 const enum SoftwareDrawMode {
@@ -19,11 +19,6 @@ type Vertex = {
   color: Vector4;
   coord: Vector2;
   point: Vector3;
-};
-
-const defaultAttribute = {
-  buffer: new Float32Array(4).fill(0),
-  stride: 0,
 };
 
 const drawLine = (image: Image, begin: Vector3, end: Vector3) => {
@@ -80,11 +75,7 @@ const drawMeshes = (
     drawMeshes(image, mesh.children, modelViewProjection, drawMode);
 
     for (const polygon of mesh.polygons) {
-      const colors = polygon.colors || defaultAttribute;
-      const coords = polygon.coords || defaultAttribute;
-      const indices = polygon.indices;
-      const material = polygon.material;
-      const points = polygon.points;
+      const { colors, coords, indices, material, points } = polygon;
 
       for (let i = 0; i + 3 <= indices.length; i += 3) {
         const vertex0 = projectVertexToScreen(
@@ -328,27 +319,20 @@ const projectVertexToScreen = (
   modelViewProjection: Matrix4,
   halfWidth: number,
   halfHeight: number,
-  points: Attribute,
-  colors: Attribute,
-  coords: Attribute,
+  points: Vector3[],
+  colors: Vector4[] | undefined,
+  coords: Vector2[] | undefined,
   index: number
 ) => {
   return {
-    color: {
-      x: colors.buffer[index * colors.stride + 0],
-      y: colors.buffer[index * colors.stride + 1],
-      z: colors.buffer[index * colors.stride + 2],
-      w: colors.buffer[index * colors.stride + 3],
-    },
-    coord: {
-      x: coords.buffer[index * coords.stride + 0],
-      y: coords.buffer[index * coords.stride + 1],
-    },
-    point: projectPointToScreen(modelViewProjection, halfWidth, halfHeight, {
-      x: points.buffer[index * points.stride + 0],
-      y: points.buffer[index * points.stride + 1],
-      z: points.buffer[index * points.stride + 2],
-    }),
+    color: colors !== undefined ? colors[index] : defaultColor,
+    coord: coords !== undefined ? coords[index] : Vector2.zero,
+    point: projectPointToScreen(
+      modelViewProjection,
+      halfWidth,
+      halfHeight,
+      points[index]
+    ),
   };
 };
 

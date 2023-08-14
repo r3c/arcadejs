@@ -633,7 +633,7 @@ const loadPrimitive = (
   const index = bufferCreate(
     gl,
     gl.ELEMENT_ARRAY_BUFFER,
-    polygon.indices,
+    new Uint32Array(polygon.indices),
     isDynamic
   );
 
@@ -645,17 +645,42 @@ const loadPrimitive = (
         : defaultMaterial,
     polygon: {
       colors: map(polygon.colors, (colors) =>
-        attributeCreate(gl, colors, isDynamic)
+        attributeCreate(
+          gl,
+          new Float32Array(colors.flatMap(Vector4.toArray)),
+          4,
+          isDynamic
+        )
       ),
       coords: map(polygon.coords, (coords) =>
-        attributeCreate(gl, coords, isDynamic)
+        attributeCreate(
+          gl,
+          new Float32Array(coords.flatMap(Vector2.toArray)),
+          2,
+          isDynamic
+        )
       ),
       normals: map(polygon.normals, (normals) =>
-        attributeCreate(gl, normals, isDynamic)
+        attributeCreate(
+          gl,
+          new Float32Array(normals.flatMap(Vector3.toArray)),
+          3,
+          isDynamic
+        )
       ),
-      points: attributeCreate(gl, polygon.points, isDynamic),
+      points: attributeCreate(
+        gl,
+        new Float32Array(polygon.points.flatMap(Vector3.toArray)),
+        3,
+        isDynamic
+      ),
       tangents: map(polygon.tangents, (tangents) =>
-        attributeCreate(gl, tangents, isDynamic)
+        attributeCreate(
+          gl,
+          new Float32Array(tangents.flatMap(Vector3.toArray)),
+          3,
+          isDynamic
+        )
       ),
     },
   };

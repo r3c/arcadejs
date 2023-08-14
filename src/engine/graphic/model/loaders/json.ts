@@ -108,15 +108,6 @@ const toColor = (name: string, instance: unknown): Vector4 => {
   };
 };
 
-const toAttribute = <TValue>(
-  values: TValue[],
-  converter: (value: TValue) => number[],
-  stride: number
-) => ({
-  buffer: new Float32Array(values.map(converter).flatMap((items) => items)),
-  stride,
-});
-
 const toCoord = (name: string, instance: unknown): Vector2 => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "texture coordinate");
@@ -288,45 +279,27 @@ const toPolygon = (
   return {
     colors:
       polygon.colors !== undefined
-        ? toAttribute(
-            toArrayOf(`${name}.colors`, polygon.colors, toColor, state),
-            (object) => Vector4.toArray(object),
-            4
-          )
+        ? toArrayOf(`${name}.colors`, polygon.colors, toColor, state)
         : undefined,
     coords:
       polygon.coords !== undefined
-        ? toAttribute(
-            toArrayOf(`${name}.coords`, polygon.coords, toCoord, state),
-            (object) => Vector2.toArray(object),
-            2
-          )
+        ? toArrayOf(`${name}.coords`, polygon.coords, toCoord, state)
         : undefined,
-    indices: new Uint32Array(
-      toArrayOf(
-        `${name}.faces`,
-        polygon.faces,
-        (name, item) => toTuple3(name, item, toInteger),
-        state
-      ).flatMap((items) => items)
-    ),
+    indices: toArrayOf(
+      `${name}.faces`,
+      polygon.faces,
+      (name, item) => toTuple3(name, item, toInteger),
+      state
+    ).flatMap((items) => items),
     material:
       materialName !== undefined
         ? state.materials.get(materialName)
         : undefined,
     normals:
       polygon.normals !== undefined
-        ? toAttribute(
-            toArrayOf(`${name}.normals`, polygon.normals, toVertex, state),
-            (object) => Vector3.toArray(object),
-            3
-          )
+        ? toArrayOf(`${name}.normals`, polygon.normals, toVertex, state)
         : undefined,
-    points: toAttribute(
-      toArrayOf(`${name}.points`, polygon.points, toVertex, state),
-      (object) => Vector3.toArray(object),
-      3
-    ),
+    points: toArrayOf(`${name}.points`, polygon.points, toVertex, state),
   };
 };
 

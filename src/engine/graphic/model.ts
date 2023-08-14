@@ -1,7 +1,6 @@
 import { Matrix4 } from "../math/matrix";
 import { Vector2, Vector3 } from "../math/vector";
 import {
-  Attribute,
   BoundingBox,
   Filter,
   Instance,
@@ -12,7 +11,6 @@ import {
   Model,
   Polygon,
   Texture,
-  TypedArray,
   Wrap,
   defaultColor,
   defaultFilter,
@@ -56,36 +54,16 @@ const computeBounds = (model: Model): BoundingBox => {
  ** Based on:
  ** http://www.iquilezles.org/www/articles/normals/normals.htm
  */
-const computeNormals = (indices: TypedArray, points: Attribute): Attribute => {
-  const pointsBuffer = points.buffer;
-  const pointsStride = points.stride;
-  const normals = range(
-    Math.floor(pointsBuffer.length / pointsStride),
-    Vector3.fromZero
-  );
+const computeNormals = (indices: number[], points: Vector3[]): Vector3[] => {
+  const normals = range(points.length, Vector3.fromZero);
 
   for (let i = 0; i + 2 < indices.length; i += 3) {
     const index1 = indices[i + 0];
     const index2 = indices[i + 1];
     const index3 = indices[i + 2];
-
-    const point1 = Vector3.fromXYZ(
-      pointsBuffer[index1 * pointsStride + 0],
-      pointsBuffer[index1 * pointsStride + 1],
-      pointsBuffer[index1 * pointsStride + 2]
-    );
-
-    const point2 = Vector3.fromXYZ(
-      pointsBuffer[index2 * pointsStride + 0],
-      pointsBuffer[index2 * pointsStride + 1],
-      pointsBuffer[index2 * pointsStride + 2]
-    );
-
-    const point3 = Vector3.fromXYZ(
-      pointsBuffer[index3 * pointsStride + 0],
-      pointsBuffer[index3 * pointsStride + 1],
-      pointsBuffer[index3 * pointsStride + 2]
-    );
+    const point1 = Vector3.fromObject(points[index1]);
+    const point2 = Vector3.fromObject(points[index2]);
+    const point3 = Vector3.fromObject(points[index3]);
 
     point1.sub(point2);
     point3.sub(point2);
@@ -93,28 +71,18 @@ const computeNormals = (indices: TypedArray, points: Attribute): Attribute => {
 
     const normal = point3;
 
+    normal.normalize;
+
     normals[index1].add(normal);
     normals[index2].add(normal);
     normals[index3].add(normal);
   }
 
-  const normalsBuffer = new Float32Array(normals.length * 3);
-  const normalsStride = 3;
-
-  for (let i = 0; i < normals.length; ++i) {
-    const normal = normals[i];
-
+  for (const normal of normals) {
     normal.normalize();
-
-    normalsBuffer[i * normalsStride + 0] = normal.x;
-    normalsBuffer[i * normalsStride + 1] = normal.y;
-    normalsBuffer[i * normalsStride + 2] = normal.z;
   }
 
-  return {
-    buffer: normalsBuffer,
-    stride: normalsStride,
-  };
+  return normals;
 };
 
 /*
@@ -123,51 +91,23 @@ const computeNormals = (indices: TypedArray, points: Attribute): Attribute => {
  ** http://www.terathon.com/code/tangent.html
  */
 const computeTangents = (
-  indices: TypedArray,
-  points: Attribute,
-  coords: Attribute,
-  normals: Attribute
-): Attribute => {
-  const coordsBuffer = coords.buffer;
-  const coordsStride = coords.stride;
-  const pointsBuffer = points.buffer;
-  const pointsStride = points.stride;
-  const tangents = range(
-    Math.floor(pointsBuffer.length / pointsStride),
-    Vector3.fromZero
-  );
+  indices: number[],
+  points: Vector3[],
+  coords: Vector2[],
+  normals: Vector3[]
+): Vector3[] => {
+  const tangents = range(points.length, Vector3.fromZero);
 
   for (let i = 0; i + 2 < indices.length; i += 3) {
     const index1 = indices[i + 0];
     const index2 = indices[i + 1];
     const index3 = indices[i + 2];
-    const coord1 = Vector2.fromObject({
-      x: coordsBuffer[index1 * coordsStride + 0],
-      y: coordsBuffer[index1 * coordsStride + 1],
-    });
-    const coord2 = Vector2.fromObject({
-      x: coordsBuffer[index2 * coordsStride + 0],
-      y: coordsBuffer[index2 * coordsStride + 1],
-    });
-    const coord3 = Vector2.fromObject({
-      x: coordsBuffer[index3 * coordsStride + 0],
-      y: coordsBuffer[index3 * coordsStride + 1],
-    });
-    const point1 = Vector3.fromObject({
-      x: pointsBuffer[index1 * pointsStride + 0],
-      y: pointsBuffer[index1 * pointsStride + 1],
-      z: pointsBuffer[index1 * pointsStride + 2],
-    });
-    const point2 = Vector3.fromObject({
-      x: pointsBuffer[index2 * pointsStride + 0],
-      y: pointsBuffer[index2 * pointsStride + 1],
-      z: pointsBuffer[index2 * pointsStride + 2],
-    });
-    const point3 = Vector3.fromObject({
-      x: pointsBuffer[index3 * pointsStride + 0],
-      y: pointsBuffer[index3 * pointsStride + 1],
-      z: pointsBuffer[index3 * pointsStride + 2],
-    });
+    const coord1 = Vector2.fromObject(coords[index1]);
+    const coord2 = Vector2.fromObject(coords[index2]);
+    const coord3 = Vector2.fromObject(coords[index3]);
+    const point1 = Vector3.fromObject(points[index1]);
+    const point2 = Vector3.fromObject(points[index2]);
+    const point3 = Vector3.fromObject(points[index3]);
 
     coord3.sub(coord2);
     coord1.sub(coord2);
@@ -187,33 +127,17 @@ const computeTangents = (
     tangents[index3].add(tangent);
   }
 
-  const normalsBuffer = normals.buffer;
-  const normalsStride = normals.stride;
-  const tangentsBuffer = new Float32Array(tangents.length * 3);
-  const tangentsStride = 3;
-
   for (let i = 0; i < tangents.length; ++i) {
-    const n = Vector3.fromXYZ(
-      normalsBuffer[i * normalsStride + 0],
-      normalsBuffer[i * normalsStride + 1],
-      normalsBuffer[i * normalsStride + 2]
-    );
+    const n = Vector3.fromObject(normals[i]);
     const t = tangents[i];
 
     // Gram-Schmidt orthogonalize: t' = normalize(t - n * dot(n, t));
     n.scale(n.dot(t));
     t.sub(n);
     t.normalize();
-
-    tangentsBuffer[i * tangentsStride + 0] = t.x;
-    tangentsBuffer[i * tangentsStride + 1] = t.y;
-    tangentsBuffer[i * tangentsStride + 2] = t.z;
   }
 
-  return {
-    buffer: tangentsBuffer,
-    stride: tangentsStride,
-  };
+  return tangents;
 };
 
 const createLoadModel = <TSource, TLoad>(
@@ -260,21 +184,12 @@ const finalizeMesh = (mesh: Mesh, config: Configuration<unknown>): void => {
 const finalizePolygon = (polygon: Polygon): void => {
   // Transform normals or compute them from vertices
   if (polygon.normals !== undefined) {
-    const buffer = polygon.normals.buffer;
-    const count = polygon.normals.stride;
-
-    for (let i = 0; i + count - 1 < buffer.length; i += count) {
-      const normal = Vector3.fromXYZ(
-        buffer[i + 0],
-        buffer[i + 1],
-        buffer[i + 2]
-      );
+    for (let i = 0; i < polygon.normals.length; ++i) {
+      const normal = Vector3.fromObject(polygon.normals[i]);
 
       normal.normalize();
 
-      buffer[i + 0] = normal.x;
-      buffer[i + 1] = normal.y;
-      buffer[i + 2] = normal.z;
+      polygon.normals[i] = normal;
     }
   } else {
     polygon.normals = computeNormals(polygon.indices, polygon.points);
@@ -282,21 +197,12 @@ const finalizePolygon = (polygon: Polygon): void => {
 
   // Transform tangents or compute them from vertices, normals and texture coordinates
   if (polygon.tangents !== undefined) {
-    const buffer = polygon.tangents.buffer;
-    const count = polygon.tangents.stride;
-
-    for (let i = 0; i + count - 1 < buffer.length; i += count) {
-      const tangent = Vector3.fromXYZ(
-        buffer[i + 0],
-        buffer[i + 1],
-        buffer[i + 2]
-      );
+    for (let i = 0; i < polygon.tangents.length; ++i) {
+      const tangent = Vector3.fromObject(polygon.tangents[i]);
 
       tangent.normalize();
 
-      buffer[i + 0] = tangent.x;
-      buffer[i + 1] = tangent.y;
-      buffer[i + 2] = tangent.z;
+      polygon.tangents[i] = tangent;
     }
   } else if (polygon.coords !== undefined) {
     polygon.tangents = computeTangents(
@@ -335,152 +241,86 @@ const flattenModel = (model: Model): Model => {
 
   // Merge polygons by material name
   const polygons: Polygon[] = [];
-  const concatAttributes = (
+  const concatFragments = <T>(
     fragments: Fragment[],
-    expectedStride: number,
-    extractor: (polygon: Polygon) => Attribute | undefined,
-    converter: (
-      targetBuffer: TypedArray,
-      targetOffset: number,
-      sourceBuffer: TypedArray,
-      sourceOffset: number,
-      transform: Matrix4
-    ) => void
-  ): Attribute | undefined => {
-    let concatLength = 0;
-
-    for (const { polygon } of fragments) {
-      const attribute = extractor(polygon);
-
-      if (attribute === undefined) {
-        continue;
-      }
-
-      const { buffer, stride } = attribute;
-
-      if (stride !== expectedStride) {
-        throw new Error(`incompatible stride (${stride} != ${expectedStride})`);
-      }
-
-      concatLength += buffer.length;
-    }
-
-    if (concatLength < 1) {
-      return undefined;
-    }
-
-    const concatBuffer = new Float32Array(concatLength);
-    let concatOffset = 0;
+    extractor: (polygon: Polygon) => T[] | undefined,
+    converter: (value: T, transform: Matrix4) => T
+  ): T[] | undefined => {
+    const concatenated: T[] = [];
+    let isDefined = false;
 
     for (const { polygon, transform } of fragments) {
-      const attribute = extractor(polygon);
+      const values = extractor(polygon);
 
-      if (attribute === undefined) {
+      if (values === undefined) {
         continue;
       }
 
-      const { buffer, stride } = attribute;
-
-      for (let offset = 0; offset + stride <= buffer.length; offset += stride) {
-        converter(concatBuffer, concatOffset, buffer, offset, transform);
-
-        concatOffset += stride;
+      for (const value of values) {
+        concatenated.push(converter(value, transform));
       }
+
+      isDefined = true;
     }
 
-    return { buffer: concatBuffer, stride: expectedStride };
+    return isDefined ? concatenated : undefined;
   };
 
   for (const [material, fragments] of fragmentsByMaterial.entries()) {
-    const concatPoints = concatAttributes(
+    // Build concatenated points
+    const points = concatFragments(
       fragments,
-      3,
-      (polygon) => polygon.points,
-      (targetBuffer, targetOffset, sourceBuffer, sourceOffset, transform) => {
-        const point = Matrix4.transform(transform, {
-          x: sourceBuffer[sourceOffset + 0],
-          y: sourceBuffer[sourceOffset + 1],
-          z: sourceBuffer[sourceOffset + 2],
+      (p) => p.points,
+      (value, transform) =>
+        Matrix4.transform(transform, {
+          x: value.x,
+          y: value.y,
+          z: value.z,
           w: 1,
-        });
-
-        targetBuffer[targetOffset + 0] = point.x;
-        targetBuffer[targetOffset + 1] = point.y;
-        targetBuffer[targetOffset + 2] = point.z;
-      }
+        })
     );
 
-    if (concatPoints === undefined) {
+    if (points === undefined) {
       throw Error("got undefined attribute when flattening model points");
     }
 
-    // Build concatenated index buffer
-    let indexLength = 0;
+    // Build concatenated indices
+    const indices: number[] = [];
+
+    let indexShift = 0;
 
     for (const { polygon } of fragments) {
-      indexLength += polygon.indices.length;
-    }
-
-    const concatIndexBuffer = new Uint32Array(indexLength);
-
-    let concatIndexOffset = 0;
-    let concatIndexShift = 0;
-
-    for (const { polygon } of fragments) {
-      const { indices, points } = polygon;
-
-      for (const index of indices) {
-        concatIndexBuffer[concatIndexOffset++] = index + concatIndexShift;
+      for (const index of polygon.indices) {
+        indices.push(index + indexShift);
       }
 
-      concatIndexShift += points.buffer.length / points.stride;
+      indexShift += polygon.points.length;
     }
 
+    // Build output polygon with concatenated vertex arrays
     polygons.push({
-      colors: concatAttributes(
+      colors: concatFragments(
         fragments,
-        4,
-        (polygon) => polygon.colors,
-        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
-          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
-          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
-          targetBuffer[targetOffset + 2] = sourceBuffer[sourceOffset + 2];
-          targetBuffer[targetOffset + 3] = sourceBuffer[sourceOffset + 3];
-        }
+        (p) => p.colors,
+        (c) => c
       ),
-      coords: concatAttributes(
+      coords: concatFragments(
         fragments,
-        2,
-        (polygon) => polygon.coords,
-        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
-          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
-          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
-        }
+        (p) => p.coords,
+        (c) => c
       ),
-      indices: concatIndexBuffer,
+      indices,
       material,
-      normals: concatAttributes(
+      normals: concatFragments(
         fragments,
-        3,
-        (polygon) => polygon.normals,
-        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
-          // FIXME: missing multiplication by normalMatrix
-          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
-          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
-          targetBuffer[targetOffset + 2] = sourceBuffer[sourceOffset + 2];
-        }
+        (p) => p.normals,
+        (n) => n // FIXME: missing multiplication by normalMatrix
       ),
-      points: concatPoints,
-      tangents: concatAttributes(
+      points,
+      tangents: concatFragments(
         fragments,
-        3,
-        (polygon) => polygon.tangents,
-        (targetBuffer, targetOffset, sourceBuffer, sourceOffset) => {
-          // FIXME: missing multiplication by normalMatrix
-          targetBuffer[targetOffset + 0] = sourceBuffer[sourceOffset + 0];
-          targetBuffer[targetOffset + 1] = sourceBuffer[sourceOffset + 1];
-          targetBuffer[targetOffset + 2] = sourceBuffer[sourceOffset + 2];
-        }
+        (p) => p.tangents,
+        (t) => t // FIXME: missing multiplication by normalMatrix
       ),
     });
   }
@@ -542,17 +382,13 @@ const reduceMeshPoints = <TState>(
     parent,
     state,
     (previous: TState, polygon: Polygon, transform: Matrix4) => {
-      const points = polygon.points;
-      const buffer = points.buffer;
-      const count = points.stride;
-
-      for (let i = 0; i + count - 1 < buffer.length; i += count) {
+      for (const point of polygon.points) {
         state = reduce(
           previous,
           Matrix4.transform(transform, {
-            x: buffer[i + 0],
-            y: buffer[i + 1],
-            z: buffer[i + 2],
+            x: point.x,
+            y: point.y,
+            z: point.z,
             w: 1,
           })
         );
@@ -564,14 +400,12 @@ const reduceMeshPoints = <TState>(
 };
 
 export {
-  type Attribute,
   type Filter,
   type Material,
   type Mesh,
   type Model,
   type Polygon,
   type Texture,
-  type TypedArray,
   Interpolation,
   Wrap,
   computeBounds,

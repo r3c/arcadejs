@@ -1,10 +1,5 @@
 import { Matrix4 } from "../../math/matrix";
-import { Vector4 } from "../../math/vector";
-
-interface Attribute {
-  buffer: TypedArray;
-  stride: number;
-}
+import { Vector2, Vector3, Vector4 } from "../../math/vector";
 
 interface BoundingBox {
   xMax: number;
@@ -32,13 +27,13 @@ interface Library {
 }
 
 interface Polygon {
-  colors?: Attribute;
-  coords?: Attribute;
-  indices: TypedArray;
+  colors?: Vector4[];
+  coords?: Vector2[];
+  indices: number[];
   material?: Material;
-  normals?: Attribute;
-  points: Attribute;
-  tangents?: Attribute;
+  normals?: Vector3[];
+  points: Vector3[];
+  tangents?: Vector3[];
 }
 
 interface Instance {
@@ -81,15 +76,6 @@ interface Texture {
   image: ImageData;
 }
 
-type TypedArray =
-  | Float32Array
-  | Int8Array
-  | Int16Array
-  | Int32Array
-  | Uint8Array
-  | Uint16Array
-  | Uint32Array;
-
 const enum Wrap {
   Clamp,
   Repeat,
@@ -111,7 +97,6 @@ const defaultFilter: Filter = {
 };
 
 export {
-  type Attribute,
   type BoundingBox,
   type Filter,
   type Instance,
@@ -121,7 +106,6 @@ export {
   type Model,
   type Polygon,
   type Texture,
-  type TypedArray,
   Interpolation,
   Wrap,
   defaultColor,

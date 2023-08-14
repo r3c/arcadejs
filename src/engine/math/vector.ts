@@ -26,6 +26,10 @@ class MutableVector2 implements Vector2 {
 }
 
 class Vector2 {
+  public static fromArray(values: number[]): MutableVector2 {
+    return new MutableVector2(values[0], values[1]);
+  }
+
   public static fromCustom(
     ...invokes: InvokeOf<MutableVector2>[]
   ): MutableVector2 {
@@ -34,6 +38,10 @@ class Vector2 {
 
   public static fromObject(vector: Vector2): MutableVector2 {
     return new MutableVector2(vector.x, vector.y);
+  }
+
+  public static fromXY(x: number, y: number): MutableVector2 {
+    return new MutableVector2(x, y);
   }
 
   public static fromZero(): MutableVector2 {
@@ -127,6 +135,10 @@ class MutableVector3 implements Vector3 {
 }
 
 class Vector3 {
+  public static fromArray(values: number[]): MutableVector3 {
+    return new MutableVector3(values[0], values[1], values[2]);
+  }
+
   public static fromCustom(
     ...invokes: InvokeOf<MutableVector3>[]
   ): MutableVector3 {
@@ -181,6 +193,10 @@ class MutableVector4 implements Vector4 {
 }
 
 class Vector4 {
+  public static fromArray(values: number[]): MutableVector4 {
+    return new MutableVector4(values[0], values[1], values[2], values[3]);
+  }
+
   public static fromCustom(
     ...invokes: InvokeOf<MutableVector4>[]
   ): MutableVector4 {

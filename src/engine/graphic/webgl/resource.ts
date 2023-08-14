@@ -1,4 +1,11 @@
-import { Attribute, TypedArray } from "../model";
+type GlArray =
+  | Float32Array
+  | Int8Array
+  | Int16Array
+  | Int32Array
+  | Uint8Array
+  | Uint16Array
+  | Uint32Array;
 
 type GlAttribute = {
   dispose: () => void;
@@ -9,7 +16,7 @@ type GlAttribute = {
 
 type GlBuffer = {
   dispose: () => void;
-  set: (data: TypedArray) => void;
+  set: (data: GlArray) => void;
   buffer: WebGLBuffer;
   count: number;
   type: GlBufferType;
@@ -32,23 +39,24 @@ type GlContext = WebGL2RenderingContext;
 
 const attributeCreate = (
   gl: GlContext,
-  attribute: Attribute,
+  source: GlArray,
+  stride: number,
   isDynamic: boolean
 ): GlAttribute => {
-  const buffer = bufferCreate(gl, gl.ARRAY_BUFFER, attribute.buffer, isDynamic);
+  const buffer = bufferCreate(gl, gl.ARRAY_BUFFER, source, isDynamic);
 
   return {
     dispose: buffer.dispose,
     buffer,
-    size: attribute.stride,
-    stride: attribute.stride * attribute.buffer.BYTES_PER_ELEMENT,
+    size: stride,
+    stride: stride * source.BYTES_PER_ELEMENT,
   };
 };
 
 const bufferCreate = (
   gl: GlContext,
   bufferTarget: GlBufferTarget,
-  source: TypedArray,
+  source: GlArray,
   isDynamic: boolean
 ): GlBuffer => {
   const buffer = gl.createBuffer();
@@ -66,7 +74,7 @@ const bufferCreate = (
     dispose: () => {
       gl.deleteBuffer(buffer);
     },
-    set: (source: TypedArray) => {
+    set: (source: GlArray) => {
       gl.bindBuffer(bufferTarget, buffer);
       gl.bufferData(bufferTarget, source, usage);
 
@@ -85,7 +93,7 @@ const bufferCreate = (
  ** Find OpenGL type from associated array type.
  ** See: https://developer.mozilla.org/docs/Web/API/WebGL2RenderingContext/vertexAttribPointer
  */
-const bufferType = (gl: GlContext, array: TypedArray): GlBufferType => {
+const bufferType = (gl: GlContext, array: GlArray): GlBufferType => {
   if (array instanceof Float32Array) {
     return gl.FLOAT;
   } else if (array instanceof Int32Array) {
