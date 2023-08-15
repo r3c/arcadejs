@@ -10,7 +10,7 @@
     },
     "polygons": [
         {
-            "coords": [
+            "coordinates": [
                 {
                     "u": 0.5,
                     "v": 0
@@ -924,7 +924,7 @@
                     "z": 0
                 }
             ],
-            "points": [
+            "positions": [
                 {
                     "x": 0,
                     "y": 1,

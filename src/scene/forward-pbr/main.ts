@@ -17,7 +17,6 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
   GlModel,
-  GlPolygon,
   GlScene,
   GlTarget,
   runtimeCreate,
@@ -33,6 +32,7 @@ import {
   SceneState,
   ForwardLightingObject,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
+import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
 /*
  ** What changed?

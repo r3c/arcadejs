@@ -108,7 +108,7 @@ const toColor = (name: string, instance: unknown): Vector4 => {
   };
 };
 
-const toCoord = (name: string, instance: unknown): Vector2 => {
+const toCoordinate = (name: string, instance: unknown): Vector2 => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "texture coordinate");
   }
@@ -277,13 +277,14 @@ const toPolygon = (
       : undefined;
 
   return {
-    colors:
-      polygon.colors !== undefined
-        ? toArrayOf(`${name}.colors`, polygon.colors, toColor, state)
-        : undefined,
-    coords:
-      polygon.coords !== undefined
-        ? toArrayOf(`${name}.coords`, polygon.coords, toCoord, state)
+    coordinates:
+      polygon.coordinates !== undefined
+        ? toArrayOf(
+            `${name}.coordinates`,
+            polygon.coordinates,
+            toCoordinate,
+            state
+          )
         : undefined,
     indices: toArrayOf(
       `${name}.faces`,
@@ -299,7 +300,16 @@ const toPolygon = (
       polygon.normals !== undefined
         ? toArrayOf(`${name}.normals`, polygon.normals, toVertex, state)
         : undefined,
-    points: toArrayOf(`${name}.points`, polygon.points, toVertex, state),
+    positions: toArrayOf(
+      `${name}.positions`,
+      polygon.positions,
+      toVertex,
+      state
+    ),
+    tints:
+      polygon.tints !== undefined
+        ? toArrayOf(`${name}.tints`, polygon.tints, toColor, state)
+        : undefined,
   };
 };
 

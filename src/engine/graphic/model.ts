@@ -192,7 +192,7 @@ const finalizePolygon = (polygon: Polygon): void => {
       polygon.normals[i] = normal;
     }
   } else {
-    polygon.normals = computeNormals(polygon.indices, polygon.points);
+    polygon.normals = computeNormals(polygon.indices, polygon.positions);
   }
 
   // Transform tangents or compute them from vertices, normals and texture coordinates
@@ -204,11 +204,11 @@ const finalizePolygon = (polygon: Polygon): void => {
 
       polygon.tangents[i] = tangent;
     }
-  } else if (polygon.coords !== undefined) {
+  } else if (polygon.coordinates !== undefined) {
     polygon.tangents = computeTangents(
       polygon.indices,
-      polygon.points,
-      polygon.coords,
+      polygon.positions,
+      polygon.coordinates,
       polygon.normals
     );
   }
@@ -244,7 +244,7 @@ const flattenModel = (model: Model): Model => {
   const concatFragments = <T>(
     fragments: Fragment[],
     extractor: (polygon: Polygon) => T[] | undefined,
-    converter: (value: T, transform: Matrix4) => T
+    converter: (value: T, matrix: Matrix4) => T
   ): T[] | undefined => {
     const concatenated: T[] = [];
     let isDefined = false;
@@ -270,14 +270,9 @@ const flattenModel = (model: Model): Model => {
     // Build concatenated points
     const points = concatFragments(
       fragments,
-      (p) => p.points,
-      (value, transform) =>
-        Matrix4.transform(transform, {
-          x: value.x,
-          y: value.y,
-          z: value.z,
-          w: 1,
-        })
+      (p) => p.positions,
+      (value, matrix) =>
+        Matrix4.transform(matrix, { x: value.x, y: value.y, z: value.z, w: 1 })
     );
 
     if (points === undefined) {
@@ -294,19 +289,14 @@ const flattenModel = (model: Model): Model => {
         indices.push(index + indexShift);
       }
 
-      indexShift += polygon.points.length;
+      indexShift += polygon.positions.length;
     }
 
     // Build output polygon with concatenated vertex arrays
     polygons.push({
-      colors: concatFragments(
+      coordinates: concatFragments(
         fragments,
-        (p) => p.colors,
-        (c) => c
-      ),
-      coords: concatFragments(
-        fragments,
-        (p) => p.coords,
+        (p) => p.coordinates,
         (c) => c
       ),
       indices,
@@ -316,11 +306,16 @@ const flattenModel = (model: Model): Model => {
         (p) => p.normals,
         (n) => n // FIXME: missing multiplication by normalMatrix
       ),
-      points,
+      positions: points,
       tangents: concatFragments(
         fragments,
         (p) => p.tangents,
         (t) => t // FIXME: missing multiplication by normalMatrix
+      ),
+      tints: concatFragments(
+        fragments,
+        (p) => p.tints,
+        (t) => t
       ),
     });
   }
@@ -382,7 +377,7 @@ const reduceMeshPoints = <TState>(
     parent,
     state,
     (previous: TState, polygon: Polygon, transform: Matrix4) => {
-      for (const point of polygon.points) {
+      for (const point of polygon.positions) {
         state = reduce(
           previous,
           Matrix4.transform(transform, {

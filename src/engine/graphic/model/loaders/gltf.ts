@@ -90,13 +90,13 @@ type TfNode = {
 };
 
 type TfPrimitive = {
-  colors: TfAccessor | undefined;
-  coords: TfAccessor | undefined;
+  coordinates: TfAccessor | undefined;
   indices: TfAccessor;
   normals: TfAccessor | undefined;
-  points: TfAccessor;
+  positions: TfAccessor;
   materialName: string | undefined;
   tangents: TfAccessor | undefined;
+  tints: TfAccessor | undefined;
 };
 
 type TfSampler = {
@@ -238,15 +238,19 @@ const expandMesh = (
   materials: Map<string, Material>
 ): Polygon[] => {
   return mesh.primitives.map((primitive) => {
-    const { colors, coords, indices, materialName, normals, points, tangents } =
-      primitive;
+    const {
+      coordinates,
+      indices,
+      materialName,
+      normals,
+      positions,
+      tangents,
+      tints,
+    } = primitive;
 
     return {
-      colors: map(colors, (colors) =>
-        expandAccessor(url, colors, 4, Vector4.fromArray, "colors")
-      ),
-      coords: map(coords, (coords) =>
-        expandAccessor(url, coords, 2, Vector2.fromArray, "coords")
+      coordinates: map(coordinates, (coordinates) =>
+        expandAccessor(url, coordinates, 2, Vector2.fromArray, "coordinates")
       ),
       indices: expandAccessor(url, indices, 1, (i) => i[0], "index"),
       material:
@@ -254,9 +258,18 @@ const expandMesh = (
       normals: map(normals, (normals) =>
         expandAccessor(url, normals, 3, Vector3.fromArray, "normals")
       ),
-      points: expandAccessor(url, points, 3, Vector3.fromArray, "points"),
+      positions: expandAccessor(
+        url,
+        positions,
+        3,
+        Vector3.fromArray,
+        "positions"
+      ),
       tangents: map(tangents, (tangents) =>
         expandAccessor(url, tangents, 3, Vector3.fromArray, "tangents")
+      ),
+      tints: map(tints, (tints) =>
+        expandAccessor(url, tints, 4, Vector4.fromArray, "tints")
       ),
     };
   });
@@ -629,7 +642,7 @@ const loadPrimitive = (
     throw invalidData(url, `${source} has no attributes defined`);
 
   return {
-    colors:
+    tints:
       attributes.COLOR_0 !== undefined
         ? convertReferenceTo(
             url,
@@ -638,7 +651,7 @@ const loadPrimitive = (
             accessors
           )
         : undefined,
-    coords:
+    coordinates:
       attributes.TEXCOORD_0 !== undefined
         ? convertReferenceTo(
             url,
@@ -667,7 +680,7 @@ const loadPrimitive = (
         ? convertReferenceTo(url, source + ".material", material, materials)
             .name
         : undefined,
-    points: convertReferenceTo(
+    positions: convertReferenceTo(
       url,
       source + ".attributes.POSITION",
       parseInt(attributes.POSITION),

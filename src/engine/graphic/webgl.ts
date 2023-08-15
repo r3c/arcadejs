@@ -19,6 +19,7 @@ import {
   attributeCreate,
   bufferCreate,
 } from "./webgl/resource";
+import { GlPolygon } from "./webgl/renderers/objects/polygon";
 
 type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -121,15 +122,6 @@ type GlPainter<TSceneState, TPolygon> = {
   ): void;
 };
 
-// TODO: extract out of base WebGL file
-type GlPolygon = {
-  colors: GlAttribute | undefined;
-  coords: GlAttribute | undefined;
-  normals: GlAttribute | undefined;
-  points: GlAttribute;
-  tangents: GlAttribute | undefined;
-};
-
 type GlPrimitive<TPolygon> = {
   index: GlBuffer;
   material: GlMaterial;
@@ -211,17 +203,6 @@ const materialExtractors: GlMaterialExtractor[] = [
   (material) => material.normalMap,
   (material) => material.occlusionMap,
   (material) => material.roughnessMap,
-];
-
-// TODO: extract out of base WebGL file
-const glPolygonExtractor: (
-  polygon: GlPolygon
-) => Iterable<GlAttribute | undefined> = (polygon) => [
-  polygon.colors,
-  polygon.coords,
-  polygon.normals,
-  polygon.points,
-  polygon.tangents,
 ];
 
 const runtimeCreate = (context: GlContext): GlRuntime => {
@@ -644,23 +625,23 @@ const loadPrimitive = (
         ? materials.get(polygon.material) ?? defaultMaterial
         : defaultMaterial,
     polygon: {
-      colors: map(polygon.colors, (colors) =>
+      tint: map(polygon.tints, (tints) =>
         attributeCreate(
           gl,
-          new Float32Array(colors.flatMap(Vector4.toArray)),
+          new Float32Array(tints.flatMap(Vector4.toArray)),
           4,
           isDynamic
         )
       ),
-      coords: map(polygon.coords, (coords) =>
+      coordinate: map(polygon.coordinates, (coordinates) =>
         attributeCreate(
           gl,
-          new Float32Array(coords.flatMap(Vector2.toArray)),
+          new Float32Array(coordinates.flatMap(Vector2.toArray)),
           2,
           isDynamic
         )
       ),
-      normals: map(polygon.normals, (normals) =>
+      normal: map(polygon.normals, (normals) =>
         attributeCreate(
           gl,
           new Float32Array(normals.flatMap(Vector3.toArray)),
@@ -668,13 +649,13 @@ const loadPrimitive = (
           isDynamic
         )
       ),
-      points: attributeCreate(
+      position: attributeCreate(
         gl,
-        new Float32Array(polygon.points.flatMap(Vector3.toArray)),
+        new Float32Array(polygon.positions.flatMap(Vector3.toArray)),
         3,
         isDynamic
       ),
-      tangents: map(polygon.tangents, (tangents) =>
+      tangent: map(polygon.tangents, (tangents) =>
         attributeCreate(
           gl,
           new Float32Array(tangents.flatMap(Vector3.toArray)),
@@ -1482,14 +1463,12 @@ const uniform = {
 };
 
 export {
-  type GlAttribute,
   type GlDirective,
   type GlMaterial,
   type GlMesh,
   type GlModel,
   type GlObject,
   type GlPainter,
-  type GlPolygon,
   type GlPrimitive,
   type GlRenderer,
   type GlRuntime,
@@ -1504,7 +1483,6 @@ export {
   loadModel,
   loadTextureCube,
   loadTextureQuad,
-  glPolygonExtractor,
   runtimeCreate,
   defaultMaterial,
   uniform,

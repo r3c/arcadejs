@@ -2,7 +2,6 @@ import { Matrix4 } from "../../../math/matrix";
 import { SingularPainter } from "../painters/singular";
 import { model } from "./resources/quad";
 import {
-  GlAttribute,
   GlModel,
   GlObject,
   GlPainter,
@@ -15,19 +14,20 @@ import {
   loadModel,
   uniform,
 } from "../../webgl";
+import { GlPolygon } from "./objects/polygon";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
 
-in vec2 coords;
-in vec3 points;
+in vec2 coordinate;
+in vec3 position;
 
 out vec2 coord;
 
 void main(void) {
-	coord = coords;
+	coord = coordinate;
 
-	gl_Position = modelMatrix * vec4(points, 1.0);
+	gl_Position = modelMatrix * vec4(position, 1.0);
 }`;
 
 const fragmentSource = `
@@ -123,10 +123,7 @@ const enum DebugTextureFormat {
   Logarithm,
 }
 
-type DebugTexturePolygon = {
-  coords: GlAttribute | undefined;
-  points: GlAttribute;
-};
+type DebugTexturePolygon = Pick<GlPolygon, "coordinate" | "position">;
 
 const enum DebugTextureSelect {
   Identity,
@@ -160,8 +157,8 @@ const load = (runtime: GlRuntime, configuration: DebugTextureConfiguration) => {
     directives
   );
 
-  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
-  shader.setAttributePerPolygon("points", ({ points }) => points);
+  shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
+  shader.setAttributePerPolygon("position", ({ position }) => position);
 
   shader.setUniformPerScene(
     "source",

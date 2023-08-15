@@ -19,7 +19,6 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
   GlModel,
-  GlPolygon,
   GlScene,
   GlTarget,
   runtimeCreate,
@@ -27,6 +26,7 @@ import {
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Camera } from "../view";
+import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
 /*
  ** What changed?

@@ -21,17 +21,17 @@ if slices < 2 or stacks < 2:
 	sys.exit(1)
 
 mesh = {
-	"coords": [],
+	"coordinates": [],
 	"materialName": "default",
 	"normals": [],
-	"points": [],
+	"positions": [],
 	"triangles": []
 }
 
 # Write vertices - Top
-mesh["coords"].append({"u": 0.5, "v": 0})
+mesh["coordinates"].append({"u": 0.5, "v": 0})
 mesh["normals"].append({"x": 0, "y": 1, "z": 0})
-mesh["points"].append({"x": 0, "y": radius, "z": 0})
+mesh["positions"].append({"x": 0, "y": radius, "z": 0})
 
 # Write vertices - Middle
 for i in range(0, stacks - 1):
@@ -44,14 +44,14 @@ for i in range(0, stacks - 1):
 		y = math.cos(a)
 		z = math.sin(b) * math.sin(a)
 
-		mesh["coords"].append({"u": float(j) / slices, "v": float(i + 1) / stacks})
+		mesh["coordinates"].append({"u": float(j) / slices, "v": float(i + 1) / stacks})
 		mesh["normals"].append({"x": x, "y": y, "z": z})
-		mesh["points"].append({"x": x * radius, "y": y * radius, "z": z * radius})
+		mesh["positions"].append({"x": x * radius, "y": y * radius, "z": z * radius})
 
 # Write vertices - Bottom
-mesh["coords"].append({"u": 0.5, "v": 1})
+mesh["coordinates"].append({"u": 0.5, "v": 1})
 mesh["normals"].append({"x": 0, "y": -1, "z": 0})
-mesh["points"].append({"x": 0, "y": -radius, "z": 0})
+mesh["positions"].append({"x": 0, "y": -radius, "z": 0})
 
 # Write faces - Top triangles
 fixed = 0

@@ -27,13 +27,13 @@ interface Library {
 }
 
 interface Polygon {
-  colors?: Vector4[];
-  coords?: Vector2[];
+  coordinates?: Vector2[];
   indices: number[];
   material?: Material;
   normals?: Vector3[];
-  points: Vector3[];
+  positions: Vector3[];
   tangents?: Vector3[];
+  tints?: Vector4[];
 }
 
 interface Instance {

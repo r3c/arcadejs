@@ -1,6 +1,5 @@
 import { Matrix4 } from "../../../math/matrix";
 import {
-  GlAttribute,
   GlObject,
   GlPainter,
   GlRenderer,
@@ -11,6 +10,7 @@ import {
   uniform,
 } from "../../webgl";
 import { SingularPainter } from "../painters/singular";
+import { GlAttribute } from "../resource";
 
 const vertexShader = `
 uniform mat4 modelMatrix;

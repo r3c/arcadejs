@@ -18,7 +18,6 @@ import * as shininess from "./snippets/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlPainter,
-  GlPolygon,
   GlRenderer,
   GlRuntime,
   GlScene,
@@ -30,10 +29,11 @@ import {
   uniform,
 } from "../../webgl";
 import {
-  LightBillboard,
-  LightPolygon,
+  GlLightBillboard,
+  GlLightPolygon,
   pointLightBillboard,
 } from "./objects/billboard";
+import { GlPolygon } from "./objects/polygon";
 
 const enum DeferredLightingLightModel {
   None,
@@ -51,9 +51,9 @@ uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coords;
+in vec2 coordinate;
 in vec3 normals;
-in vec3 points;
+in vec3 position;
 in vec3 tangents;
 
 out vec3 bitangent; // Bitangent at point in camera space
@@ -63,9 +63,9 @@ out vec3 point; // Point position in camera space
 out vec3 tangent; // Tangent at point in camera space
 
 void main(void) {
-	vec4 pointCamera = viewMatrix * modelMatrix * vec4(points, 1.0);
+	vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
 
-	coord = coords;
+	coord = coordinate;
 	normal = normalize(normalMatrix * normals);
 	point = pointCamera.xyz;
 	tangent = normalize(normalMatrix * tangents);
@@ -257,9 +257,9 @@ uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coords;
+in vec2 coordinate;
 in vec3 normals;
-in vec3 points;
+in vec3 position;
 in vec3 tangents;
 
 out vec3 bitangent;
@@ -269,13 +269,13 @@ out vec3 point;
 out vec3 tangent;
 
 void main(void) {
-	vec4 pointCamera = viewMatrix * modelMatrix * vec4(points, 1.0);
+	vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
 
 	normal = normalize(normalMatrix * normals);
 	tangent = normalize(normalMatrix * tangents);
 
 	bitangent = cross(normal, tangent);
-	coord = coords;
+	coord = coordinate;
 	point = pointCamera.xyz;
 
 	gl_Position = projectionMatrix * pointCamera;
@@ -389,10 +389,13 @@ const loadGeometryShader = (
     []
   );
 
-  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
-  shader.setAttributePerPolygon("normals", ({ normals }) => normals);
-  shader.setAttributePerPolygon("points", ({ points }) => points);
-  shader.setAttributePerPolygon("tangents", ({ tangents }) => tangents);
+  shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
+  shader.setAttributePerPolygon("normals", ({ normal }) => normal);
+  shader.setAttributePerPolygon("position", ({ position }) => position);
+  shader.setAttributePerPolygon(
+    "tangents",
+    ({ tangent: tangents }) => tangents
+  );
 
   shader.setUniformPerGeometry(
     "modelMatrix",
@@ -455,7 +458,7 @@ const loadLightShader = <TSceneState extends LightState>(
   const directives = [{ name: "LIGHT_TYPE", value: type }];
 
   // Setup light shader
-  const shader = new GlShader<TSceneState, LightPolygon>(
+  const shader = new GlShader<TSceneState, GlLightPolygon>(
     runtime,
     lightVertexShader,
     lightFragmentShader,
@@ -581,10 +584,13 @@ const loadMaterialShader = (
     directives
   );
 
-  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
-  shader.setAttributePerPolygon("normals", ({ normals }) => normals);
-  shader.setAttributePerPolygon("points", ({ points }) => points);
-  shader.setAttributePerPolygon("tangents", ({ tangents }) => tangents);
+  shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
+  shader.setAttributePerPolygon("normals", ({ normal: normals }) => normals);
+  shader.setAttributePerPolygon("position", ({ position }) => position);
+  shader.setAttributePerPolygon(
+    "tangents",
+    ({ tangent: tangents }) => tangents
+  );
 
   shader.setUniformPerGeometry(
     "modelMatrix",
@@ -659,16 +665,16 @@ class DeferredLightingRenderer
 
   private readonly directionalLightPainter: GlPainter<
     DirectionalLightState,
-    LightPolygon
+    GlLightPolygon
   >;
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: GlPainter<State, GlPolygon>;
   private readonly geometryTarget: GlTarget;
-  private readonly lightBillboard: LightBillboard;
-  private readonly lightObjects: GlObject<LightPolygon>[];
+  private readonly lightBillboard: GlLightBillboard;
+  private readonly lightObjects: GlObject<GlLightPolygon>[];
   private readonly lightTarget: GlTarget;
   private readonly materialPainter: GlPainter<MaterialState, GlPolygon>;
-  private readonly pointLightPainter: GlPainter<LightState, LightPolygon>;
+  private readonly pointLightPainter: GlPainter<LightState, GlLightPolygon>;
   private readonly runtime: GlRuntime;
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {

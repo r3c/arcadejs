@@ -75,16 +75,16 @@ const drawMeshes = (
     drawMeshes(image, mesh.children, modelViewProjection, drawMode);
 
     for (const polygon of mesh.polygons) {
-      const { colors, coords, indices, material, points } = polygon;
+      const { coordinates, indices, material, positions, tints } = polygon;
 
       for (let i = 0; i + 3 <= indices.length; i += 3) {
         const vertex0 = projectVertexToScreen(
           modelViewProjection,
           halfWidth,
           halfHeight,
-          points,
-          colors,
-          coords,
+          positions,
+          tints,
+          coordinates,
           indices[i + 0]
         );
 
@@ -92,9 +92,9 @@ const drawMeshes = (
           modelViewProjection,
           halfWidth,
           halfHeight,
-          points,
-          colors,
-          coords,
+          positions,
+          tints,
+          coordinates,
           indices[i + 1]
         );
 
@@ -102,9 +102,9 @@ const drawMeshes = (
           modelViewProjection,
           halfWidth,
           halfHeight,
-          points,
-          colors,
-          coords,
+          positions,
+          tints,
+          coordinates,
           indices[i + 2]
         );
 

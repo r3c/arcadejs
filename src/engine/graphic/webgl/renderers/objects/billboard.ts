@@ -11,20 +11,20 @@ import { PointLight } from "../snippets/light";
 const emptyFloats = new Float32Array();
 const emptyIntegers = new Uint32Array();
 
-type LightBillboard = {
+type GlLightBillboard = {
   dispose: () => void;
   set: (lights: ArrayLike<PointLight>) => void;
-  model: GlModel<LightPolygon>;
+  model: GlModel<GlLightPolygon>;
 };
 
-type LightPolygon = {
+type GlLightPolygon = {
   lightColor: GlAttribute;
   lightCorner: GlAttribute;
   lightPosition: GlAttribute;
   lightRadius: GlAttribute;
 };
 
-const pointLightBillboard = (gl: GlContext): LightBillboard => {
+const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
   const lightColor = attributeCreate(gl, emptyFloats, 3, true);
   const lightPosition = attributeCreate(gl, emptyFloats, 3, true);
   const lightCorner = attributeCreate(gl, emptyFloats, 2, true);
@@ -106,4 +106,4 @@ const pointLightBillboard = (gl: GlContext): LightBillboard => {
   };
 };
 
-export { type LightBillboard, type LightPolygon, pointLightBillboard };
+export { type GlLightBillboard, type GlLightPolygon, pointLightBillboard };

@@ -28,9 +28,9 @@ interface WavefrontOBJGroup {
 }
 
 interface WavefrontOBJVertex {
-  coord: number | undefined;
+  coordinate: number | undefined;
   normal: number | undefined;
-  point: number;
+  position: number;
 }
 
 const invalidFile = (file: string, description: string) => {
@@ -135,12 +135,12 @@ const loadMaterial = async (
 };
 
 const loadObject = async (data: string, fileName: string): Promise<Model> => {
-  const coords: Vector2[] = [];
+  const coordinates: Vector2[] = [];
   const polygons: Polygon[] = [];
   const groups: WavefrontOBJGroup[] = [];
   const materials = new Map<string, Material>();
   const normals: Vector3[] = [];
-  const points: Vector3[] = [];
+  const positions: Vector3[] = [];
 
   let mustStartNew = true;
   let mustUseMaterial: string | undefined = undefined;
@@ -203,7 +203,7 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
           throw invalidLine(fileName, line, "vertex");
         }
 
-        points.push(parseVector3(fields));
+        positions.push(parseVector3(fields));
 
         break;
 
@@ -221,7 +221,7 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
           throw invalidLine(fileName, line, "texture");
         }
 
-        coords.push(parseVector2(fields));
+        coordinates.push(parseVector2(fields));
 
         break;
     }
@@ -230,10 +230,10 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
   // Convert groups into meshes by transforming multi-component face indices into scalar batch indices
   for (const group of groups) {
     const batches: WavefrontOBJBatchMap = {};
-    const groupCoords: Vector2[] = [];
+    const groupCoordinates: Vector2[] = [];
     const groupIndices: number[] = [];
     const groupNormals: Vector3[] = [];
-    const groupPoints: Vector3[] = [];
+    const groupPositions: Vector3[] = [];
 
     // Convert faces into triangles, a face with N vertices defines N-2 triangles with
     // vertices [0, i + 1, i + 2] for 0 <= i < N - 2 (equivalent to gl.TRIANGLE_FAN mode)
@@ -241,25 +241,29 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
       for (let triangle = 0; triangle + 2 < face.length; ++triangle) {
         for (let i = 0; i < 3; ++i) {
           const vertex = face[i === 0 ? i : triangle + i];
-          const key = vertex.point + "/" + vertex.coord + "/" + vertex.normal;
+          const key =
+            vertex.position + "/" + vertex.coordinate + "/" + vertex.normal;
 
           if (batches[key] === undefined) {
-            batches[key] = points.length;
+            batches[key] = positions.length;
 
-            if (coords.length > 0) {
-              if (vertex.coord === undefined)
+            if (coordinates.length > 0) {
+              if (vertex.coordinate === undefined)
                 throw invalidFile(
                   fileName,
                   "faces must include texture coordinate index if file specify them"
                 );
 
-              if (vertex.coord < 0 || vertex.coord >= coords.length)
+              if (
+                vertex.coordinate < 0 ||
+                vertex.coordinate >= coordinates.length
+              )
                 throw invalidFile(
                   fileName,
-                  `invalid texture coordinate index ${vertex.coord}`
+                  `invalid texture coordinate index ${vertex.coordinate}`
                 );
 
-              groupCoords.push(coords[vertex.coord]);
+              groupCoordinates.push(coordinates[vertex.coordinate]);
             }
 
             if (normals.length > 0) {
@@ -278,13 +282,13 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
               groupNormals.push(normals[vertex.normal]);
             }
 
-            if (vertex.point < 0 || vertex.point >= points.length)
+            if (vertex.position < 0 || vertex.position >= positions.length)
               throw invalidFile(
                 fileName,
-                `invalid vertex index ${vertex.point}`
+                `invalid vertex index ${vertex.position}`
               );
 
-            groupPoints.push(points[vertex.point]);
+            groupPositions.push(positions[vertex.position]);
           }
 
           groupIndices.push(batches[key]);
@@ -298,11 +302,11 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
         : undefined;
 
     polygons.push({
-      coords: groupCoords,
+      coordinates: groupCoordinates,
       indices: groupIndices,
       material,
       normals: groupNormals,
-      points: groupPoints,
+      positions: groupPositions,
     });
   }
 
@@ -336,7 +340,7 @@ const parseFace = (face: string) => {
   const indices = face.split(/\//);
 
   return {
-    coord:
+    coordinate:
       indices.length > 1 && indices[1].trim() !== ""
         ? parseInt(indices[1]) - 1
         : undefined,
@@ -344,7 +348,7 @@ const parseFace = (face: string) => {
       indices.length > 2 && indices[2].trim() !== ""
         ? parseInt(indices[2]) - 1
         : undefined,
-    point: parseInt(indices[0]) - 1,
+    position: parseInt(indices[0]) - 1,
   };
 };
 

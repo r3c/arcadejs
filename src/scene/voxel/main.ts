@@ -21,7 +21,6 @@ import {
 import { noise } from "./perlin";
 import {
   GlModel,
-  GlPolygon,
   GlScene,
   GlTarget,
   runtimeCreate,
@@ -29,6 +28,7 @@ import {
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
+import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
 type ApplicationState = {
   camera: Camera;

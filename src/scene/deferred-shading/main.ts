@@ -24,7 +24,6 @@ import { Vector3 } from "../../engine/math/vector";
 import {
   GlModel,
   GlObject,
-  GlPolygon,
   GlScene,
   GlTarget,
   runtimeCreate,
@@ -37,6 +36,7 @@ import {
   DirectionalLight,
   PointLight,
 } from "../../engine/graphic/webgl/renderers/snippets/light";
+import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
 /*
  ** What changed?

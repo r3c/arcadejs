@@ -29,8 +29,8 @@ import {
   GlTextureFormat,
   GlTextureType,
   uniform,
-  GlPolygon,
 } from "../../webgl";
+import { GlPolygon } from "./objects/polygon";
 
 type ForwardLightingConfiguration = {
   light?: LightConfiguration;
@@ -142,9 +142,9 @@ uniform mat4 projectionMatrix;
 uniform mat4 shadowProjectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coords;
+in vec2 coordinate;
 in vec3 normals;
-in vec3 points;
+in vec3 position;
 in vec3 tangents;
 
 out vec3 bitangent; // Bitangent at point in camera space
@@ -168,7 +168,7 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 }
 
 void main(void) {
-	vec4 pointWorld = modelMatrix * vec4(points, 1.0);
+	vec4 pointWorld = modelMatrix * vec4(position, 1.0);
 	vec4 pointCamera = viewMatrix * pointWorld;
 
 	// Process directional lights
@@ -193,7 +193,7 @@ void main(void) {
 		pointLightDistances[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
 	}
 
-	coord = coords;
+	coord = coordinate;
 	eye = -pointCamera.xyz;
 	normal = normalize(normalMatrix * normals);
 	tangent = normalize(normalMatrix * tangents);
@@ -350,10 +350,10 @@ uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec4 points;
+in vec4 position;
 
 void main(void) {
-	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
+	gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
 }`;
 
 const shadowDirectionalFragmentShader = `
@@ -419,10 +419,10 @@ const loadLight = (
   );
 
   // Bind geometry attributes
-  shader.setAttributePerPolygon("coords", ({ coords }) => coords);
-  shader.setAttributePerPolygon("normals", ({ normals }) => normals);
-  shader.setAttributePerPolygon("points", ({ points }) => points);
-  shader.setAttributePerPolygon("tangents", ({ tangents }) => tangents);
+  shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
+  shader.setAttributePerPolygon("normals", ({ normal }) => normal); // FIXME: remove plural
+  shader.setAttributePerPolygon("position", ({ position }) => position);
+  shader.setAttributePerPolygon("tangents", ({ tangent: tangents }) => tangents);
 
   // Bind matrix uniforms
   shader.setUniformPerGeometry(
@@ -659,7 +659,7 @@ const loadShadowDirectional = (runtime: GlRuntime) => {
     shadowDirectionalFragmentShader
   );
 
-  shader.setAttributePerPolygon("points", ({ points }) => points);
+  shader.setAttributePerPolygon("position", ({ position }) => position);
   shader.setUniformPerGeometry(
     "modelMatrix",
     uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)

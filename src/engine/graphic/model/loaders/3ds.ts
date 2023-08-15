@@ -37,10 +37,10 @@ interface RawModel {
 }
 
 interface RawPolygon {
-  coords: Vector2[];
+  coordinates: Vector2[];
   indices: number[];
   materialName: string | undefined;
-  points: Vector3[];
+  positions: Vector3[];
 }
 
 const invalidChunk = (file: string, chunk: number, description: string) => {
@@ -68,13 +68,14 @@ const load = async (url: string): Promise<Model> => {
       {
         children: [],
         polygons: model.polygons.map((mesh) => ({
-          coords: mesh.coords.length > 0 ? mesh.coords : undefined,
+          coordinates:
+            mesh.coordinates.length > 0 ? mesh.coordinates : undefined,
           indices: mesh.indices,
           material:
             mesh.materialName !== undefined
               ? model.materials.get(mesh.materialName)
               : undefined,
-          points: mesh.points,
+          positions: mesh.positions,
         })),
         transform: Matrix4.identity,
       },
@@ -260,10 +261,10 @@ const readObject = async (
   switch (chunk) {
     case 0x4100: // OBJ_TRIMESH
       const mesh = await scan(context, end, readPolygon, {
-        coords: [],
+        coordinates: [],
         indices: [],
         materialName: undefined,
-        points: [],
+        positions: [],
       });
 
       state.push(mesh);
@@ -287,7 +288,7 @@ const readPolygon = async (
         const y = context.reader.readFloat32();
         const z = context.reader.readFloat32();
 
-        state.points.push(Vector3.fromXYZ(x, y, z));
+        state.positions.push(Vector3.fromXYZ(x, y, z));
       }
 
       return state;
@@ -310,7 +311,7 @@ const readPolygon = async (
         const x = context.reader.readFloat32();
         const y = 1.0 - context.reader.readFloat32();
 
-        state.coords.push(Vector2.fromXY(x, y));
+        state.coordinates.push(Vector2.fromXY(x, y));
       }
 
       return state;

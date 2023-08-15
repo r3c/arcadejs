@@ -8,7 +8,6 @@ import * as view from "../view";
 import {
   GlModel,
   GlPainter,
-  GlPolygon,
   GlShader,
   GlTarget,
   runtimeCreate,
@@ -16,6 +15,7 @@ import {
   uniform,
 } from "../../engine/graphic/webgl";
 import { BatchPainter } from "../../engine/graphic/webgl/painters/batch";
+import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
 /*
  ** What changed?
@@ -24,9 +24,9 @@ import { BatchPainter } from "../../engine/graphic/webgl/painters/batch";
  */
 
 const vsSource = `
-in vec4 colors;
-in vec2 coords;
-in vec4 points;
+in vec2 coordinate;
+in vec4 position;
+in vec4 tint;
 
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
@@ -36,10 +36,10 @@ out vec4 color;
 out vec2 coord;
 
 void main(void) {
-	color = colors;
-	coord = coords;
+	color = tint;
+	coord = coordinate;
 
-	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
+	gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
 }`;
 
 const fsSource = `
@@ -84,9 +84,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
     const tweak = configure(configuration);
 
-    shader.setAttributePerPolygon("colors", (geometry) => geometry.colors);
-    shader.setAttributePerPolygon("coords", (geometry) => geometry.coords);
-    shader.setAttributePerPolygon("points", (geometry) => geometry.points);
+    shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
+    shader.setAttributePerPolygon("position", ({ position }) => position);
+    shader.setAttributePerPolygon("tint", ({ tint }) => tint);
 
     shader.setUniformPerMaterial(
       "albedoFactor",

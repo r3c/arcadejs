@@ -25,12 +25,12 @@ import { Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
 import {
   GlModel,
-  GlPolygon,
   GlScene,
   GlTarget,
   runtimeCreate,
   loadModel,
 } from "../../engine/graphic/webgl";
+import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
 /*
  ** What changed?
