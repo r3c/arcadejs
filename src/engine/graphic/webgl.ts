@@ -50,11 +50,6 @@ type GlDefault = {
   whiteTexture: GlTexture;
 };
 
-type GlDirective = {
-  name: string;
-  value: number;
-};
-
 type GlGeometry = {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
@@ -142,6 +137,23 @@ type GlScene<TSceneState, TObject> = {
   objects: Iterable<TObject>;
   state: TSceneState;
 };
+
+type GlShaderDirective = Record<string, GlShaderDirectiveValue>;
+
+const enum GlShaderDirectiveType {
+  Boolean,
+  Number,
+}
+
+type GlShaderDirectiveValue =
+  | {
+      type: GlShaderDirectiveType.Boolean;
+      value: boolean;
+    }
+  | {
+      type: GlShaderDirectiveType.Number;
+      value: number;
+    };
 
 type GlTexture = WebGLTexture;
 
@@ -288,6 +300,19 @@ const deleteModel = <TPolygon>(
 
   for (const mesh of meshes) {
     deleteMesh(gl, mesh, extractor);
+  }
+};
+
+const directiveFormat = (value: GlShaderDirectiveValue): string => {
+  switch (value.type) {
+    case GlShaderDirectiveType.Boolean:
+      return value.value ? "1" : "0";
+
+    case GlShaderDirectiveType.Number:
+      return value.value.toString();
+
+    default:
+      return "0";
   }
 };
 
@@ -743,9 +768,9 @@ class GlShader<TSceneState, TPolygonState> {
 
   public constructor(
     runtime: GlRuntime,
-    vsSource: string,
-    fsSource: string,
-    directives: GlDirective[] = []
+    vertexShaderSource: string,
+    fragmentShaderSource: string,
+    directives: GlShaderDirective
   ) {
     const gl = runtime.context;
     const program = gl.createProgram();
@@ -759,18 +784,24 @@ class GlShader<TSceneState, TPolygonState> {
       "#ifdef GL_ES\n" +
       "precision highp float;\n" +
       "#endif\n" +
-      directives
-        .map((directive) => `#define ${directive.name} ${directive.value}\n`)
+      Object.entries(directives)
+        .map(([name, value]) => `#define ${name} ${directiveFormat(value)}\n`)
         .join("");
 
-    gl.attachShader(
-      program,
-      GlShader.compile(gl, gl.VERTEX_SHADER, header + vsSource)
+    const vertexShader = GlShader.compile(
+      gl,
+      gl.VERTEX_SHADER,
+      header + vertexShaderSource
     );
-    gl.attachShader(
-      program,
-      GlShader.compile(gl, gl.FRAGMENT_SHADER, header + fsSource)
+
+    const fragmentShader = GlShader.compile(
+      gl,
+      gl.FRAGMENT_SHADER,
+      header + fragmentShaderSource
     );
+
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
@@ -1318,6 +1349,17 @@ class GlTarget {
   }
 }
 
+const directive = {
+  boolean: (value: boolean): GlShaderDirectiveValue => ({
+    type: GlShaderDirectiveType.Boolean,
+    value,
+  }),
+  number: (value: number): GlShaderDirectiveValue => ({
+    type: GlShaderDirectiveType.Number,
+    value,
+  }),
+};
+
 const uniform = {
   blackQuadTexture: <TState>(
     getter: (state: TState) => GlTexture | undefined
@@ -1463,7 +1505,6 @@ const uniform = {
 };
 
 export {
-  type GlDirective,
   type GlMaterial,
   type GlMesh,
   type GlModel,
@@ -1473,7 +1514,10 @@ export {
   type GlRenderer,
   type GlRuntime,
   type GlScene,
+  type GlShaderDirective,
+  type GlShaderDirectiveValue,
   GlShader,
+  GlShaderDirectiveType,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
@@ -1485,5 +1529,6 @@ export {
   loadTextureQuad,
   runtimeCreate,
   defaultMaterial,
+  directive,
   uniform,
 };

@@ -27,6 +27,8 @@ import {
   GlTextureFormat,
   GlTextureType,
   uniform,
+  GlShaderDirective,
+  directive,
 } from "../../webgl";
 import {
   GlLightBillboard,
@@ -386,7 +388,7 @@ const loadGeometryShader = (
     runtime,
     geometryVertexShader,
     geometryFragmentShader,
-    []
+    {}
   );
 
   shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
@@ -455,7 +457,9 @@ const loadLightShader = <TSceneState extends LightState>(
   _: Configuration,
   type: DeferredLightingLightType
 ) => {
-  const directives = [{ name: "LIGHT_TYPE", value: type }];
+  const directives = {
+    LIGHT_TYPE: directive.number(type),
+  };
 
   // Setup light shader
   const shader = new GlShader<TSceneState, GlLightPolygon>(
@@ -556,22 +560,19 @@ const loadMaterialShader = (
   configuration: Configuration
 ) => {
   // Build directives from configuration
-  const directives = [];
+  const directives: GlShaderDirective = {};
 
   switch (configuration.lightModel) {
     case DeferredLightingLightModel.Phong:
-      directives.push({
-        name: "LIGHT_MODEL_AMBIENT",
-        value: configuration.lightModelPhongNoAmbient ? 0 : 1,
-      });
-      directives.push({
-        name: "LIGHT_MODEL_PHONG_DIFFUSE",
-        value: configuration.lightModelPhongNoDiffuse ? 0 : 1,
-      });
-      directives.push({
-        name: "LIGHT_MODEL_PHONG_SPECULAR",
-        value: configuration.lightModelPhongNoSpecular ? 0 : 1,
-      });
+      directives["LIGHT_MODEL_AMBIENT"] = directive.boolean(
+        !configuration.lightModelPhongNoAmbient
+      );
+      directives["LIGHT_MODEL_PHONG_DIFFUSE"] = directive.boolean(
+        !configuration.lightModelPhongNoDiffuse
+      );
+      directives["LIGHT_MODEL_PHONG_SPECULAR"] = directive.boolean(
+        !configuration.lightModelPhongNoSpecular
+      );
 
       break;
   }

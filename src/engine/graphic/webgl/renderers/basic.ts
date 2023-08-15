@@ -43,7 +43,8 @@ const load = (runtime: GlRuntime) => {
   const shader = new GlShader<SceneState, BasicPolygon>(
     runtime,
     vertexShader,
-    fragmentShader
+    fragmentShader,
+    {}
   );
 
   shader.setAttributePerPolygon("points", ({ points }) => points);

@@ -11,6 +11,7 @@ import {
   GlScene,
   GlShader,
   GlTarget,
+  directive,
   loadModel,
   uniform,
 } from "../../webgl";
@@ -143,12 +144,12 @@ type SceneState = {
 };
 
 const load = (runtime: GlRuntime, configuration: DebugTextureConfiguration) => {
-  const directives = [
-    { name: "FORMAT", value: configuration.format },
-    { name: "SELECT", value: configuration.select },
-    { name: "ZFAR", value: configuration.zFar },
-    { name: "ZNEAR", value: configuration.zNear },
-  ];
+  const directives = {
+    FORMAT: directive.number(configuration.format),
+    SELECT: directive.number(configuration.select),
+    ZFAR: directive.number(configuration.zFar),
+    ZNEAR: directive.number(configuration.zNear),
+  };
 
   const shader = new GlShader<SceneState, DebugTexturePolygon>(
     runtime,

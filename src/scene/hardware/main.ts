@@ -80,7 +80,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const shader = new GlShader<SceneState, GlPolygon>(
       runtime,
       vsSource,
-      fsSource
+      fsSource,
+      {}
     );
     const tweak = configure(configuration);
 

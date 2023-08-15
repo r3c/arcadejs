@@ -19,15 +19,17 @@ import * as phong from "./snippets/phong";
 import * as rgb from "./snippets/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
+  GlObject,
   GlPainter,
   GlRenderer,
   GlRuntime,
   GlScene,
   GlShader,
-  GlObject,
+  GlShaderDirective,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
+  directive,
   uniform,
 } from "../../webgl";
 import { GlPolygon } from "./objects/polygon";
@@ -371,44 +373,40 @@ const loadLight = (
   const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
   const maxPointLights = lightConfiguration.maxPointLights ?? 0;
 
-  const directives = [
-    { name: "LIGHT_MODEL", value: <number>lightConfiguration.model },
-    { name: "MAX_DIRECTIONAL_LIGHTS", value: maxDirectionalLights },
-    { name: "MAX_POINT_LIGHTS", value: maxPointLights },
-  ];
+  const directives: GlShaderDirective = {
+    ["LIGHT_MODEL"]: directive.number(<number>lightConfiguration.model),
+    ["MAX_DIRECTIONAL_LIGHTS"]: directive.number(maxDirectionalLights),
+    ["MAX_POINT_LIGHTS"]: directive.number(maxPointLights),
+  };
 
   switch (lightConfiguration.model) {
     case ForwardLightingLightModel.Phong:
-      directives.push({
-        name: "LIGHT_AMBIENT",
-        value: lightConfiguration.modelPhongNoAmbient ? 0 : 1,
-      });
-      directives.push({
-        name: "LIGHT_MODEL_PHONG_DIFFUSE",
-        value: lightConfiguration.modelPhongNoDiffuse ? 0 : 1,
-      });
-      directives.push({
-        name: "LIGHT_MODEL_PHONG_SPECULAR",
-        value: lightConfiguration.modelPhongNoSpecular ? 0 : 1,
-      });
+      directives["LIGHT_AMBIENT"] = directive.boolean(
+        !lightConfiguration.modelPhongNoAmbient
+      );
+      directives["LIGHT_MODEL_PHONG_DIFFUSE"] = directive.boolean(
+        !lightConfiguration.modelPhongNoDiffuse
+      );
+      directives["LIGHT_MODEL_PHONG_SPECULAR"] = directive.boolean(
+        !lightConfiguration.modelPhongNoSpecular
+      );
 
       break;
 
     case ForwardLightingLightModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
-        directives.push({ name: "LIGHT_MODEL_PBR_IBL", value: 1 });
+        directives["LIGHT_MODEL_PBR_IBL"] = directive.number(1);
       }
 
-      directives.push({
-        name: "LIGHT_AMBIENT",
-        value: lightConfiguration.modelPhysicalNoAmbient ? 0 : 1,
-      });
+      directives["LIGHT_AMBIENT"] = directive.boolean(
+        !lightConfiguration.modelPhysicalNoAmbient
+      );
 
       break;
   }
 
   if (!lightConfiguration.noShadow) {
-    directives.push({ name: "HAS_SHADOW", value: 1 });
+    directives["HAS_SHADOW"] = directive.number(1);
   }
 
   const shader = new GlShader<LightSceneState, GlPolygon>(
@@ -422,7 +420,10 @@ const loadLight = (
   shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
   shader.setAttributePerPolygon("normals", ({ normal }) => normal); // FIXME: remove plural
   shader.setAttributePerPolygon("position", ({ position }) => position);
-  shader.setAttributePerPolygon("tangents", ({ tangent: tangents }) => tangents);
+  shader.setAttributePerPolygon(
+    "tangents",
+    ({ tangent: tangents }) => tangents
+  );
 
   // Bind matrix uniforms
   shader.setUniformPerGeometry(
@@ -656,7 +657,8 @@ const loadShadowDirectional = (runtime: GlRuntime) => {
   const shader = new GlShader<ShadowSceneState, GlPolygon>(
     runtime,
     shadowDirectionalVertexShader,
-    shadowDirectionalFragmentShader
+    shadowDirectionalFragmentShader,
+    {}
   );
 
   shader.setAttributePerPolygon("position", ({ position }) => position);
@@ -681,7 +683,8 @@ const loadShadowPoint = (runtime: GlRuntime) => {
   return new GlShader<ShadowSceneState, GlPolygon>(
     runtime,
     shadowDirectionalVertexShader,
-    shadowDirectionalFragmentShader
+    shadowDirectionalFragmentShader,
+    {}
   );
 };
 
