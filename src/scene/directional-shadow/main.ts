@@ -20,7 +20,7 @@ import {
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import * as move from "../move";
+import { rotateDirection } from "../move";
 import { Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
 import {
@@ -47,6 +47,7 @@ const configuration = {
 interface ApplicationState {
   camera: Camera;
   input: Input;
+  lightDirection: Vector3;
   models: {
     cube: GlModel<GlPolygon>;
     ground: GlModel<GlPolygon>;
@@ -83,6 +84,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       input: new Input(screen.canvas),
+      lightDirection: Vector3.zero,
       models: {
         cube: loadModel(runtime, cubeModel),
         ground: loadModel(runtime, groundModel),
@@ -117,14 +119,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const { camera, models, renderers, target } = state;
 
     // Draw scene
-    const lightDirection = move.rotateDirection(-state.move * 10, 0);
     const lightRenderer =
       renderers.lights[bitfield.index(getOptions(state.tweak))];
-
-    const modelLightDirection = Vector3.fromObject(lightDirection);
-
-    modelLightDirection.normalize();
-    modelLightDirection.scale(10);
 
     const lightScene: GlScene<SceneState, ForwardLightingObject> = {
       state: {
@@ -132,7 +128,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         directionalLights: [
           {
             color: { x: 0.8, y: 0.8, z: 0.8 },
-            direction: lightDirection,
+            direction: state.lightDirection,
             shadow: true,
           },
         ],
@@ -148,7 +144,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           matrix: Matrix4.fromCustom([
             "rotate",
             { x: 0, y: 1, z: 1 },
-            state.move * 5,
+            state.move,
           ]),
           model: models.cube,
           noShadow: false,
@@ -159,7 +155,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           noShadow: false,
         },
         {
-          matrix: Matrix4.fromCustom(["translate", modelLightDirection]),
+          matrix: Matrix4.fromCustom(["translate", state.lightDirection]),
           model: models.light,
           noShadow: true,
         },
@@ -198,7 +194,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
   update(state, dt) {
     // Update animation state
-    if (state.tweak.animate) state.move += dt * 0.00003;
+    if (state.tweak.animate) {
+      state.move += dt * 0.0005;
+    }
+
+    const lightDirection = Vector3.fromObject(rotateDirection(-state.move, 0));
+
+    lightDirection.normalize();
+    lightDirection.scale(10);
+
+    state.lightDirection = lightDirection;
 
     // Move camera
     state.camera.move(state.input);

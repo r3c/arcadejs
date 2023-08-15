@@ -24,7 +24,7 @@ import {
   runtimeCreate,
   loadModel,
 } from "../../engine/graphic/webgl";
-import { orbitatePosition } from "../move";
+import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
@@ -36,7 +36,8 @@ import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon"
  */
 
 const configuration = {
-  nbLights: ["0", ".1", "2", "3"],
+  nbDirectionalLights: [".0", "1", "2", "3"],
+  nbPointLights: ["0", ".1", "2", "3"],
   animate: true,
   useAmbient: true,
   useDiffuse: true,
@@ -47,14 +48,15 @@ const configuration = {
 
 type ApplicationState = {
   camera: Camera;
+  directionalLightDirections: Vector3[];
   input: Input;
-  lightPositions: Vector3[];
   models: {
     cube: GlModel<GlPolygon>;
     ground: GlModel<GlPolygon>;
     light: GlModel<GlPolygon>;
   };
   move: number;
+  pointLightPositions: Vector3[];
   projectionMatrix: Matrix4;
   renderers: {
     lights: ForwardLightingRenderer[];
@@ -87,26 +89,27 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Create state
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      directionalLightDirections: range(3, () => Vector3.zero),
       input: new Input(screen.canvas),
-      lightPositions: range(3, () => Vector3.zero),
       models: {
         cube: loadModel(runtime, cubeModel),
         ground: loadModel(runtime, groundModel),
         light: loadModel(runtime, lightModel),
       },
       move: 0,
+      pointLightPositions: range(3, () => Vector3.zero),
       projectionMatrix: Matrix4.identity,
       renderers: {
         lights: bitfield.enumerate(getOptions(tweak)).map(
           (flags) =>
             new ForwardLightingRenderer(runtime, {
               light: {
+                maxDirectionalLights: 3,
                 maxPointLights: 3,
                 model: ForwardLightingLightModel.Phong,
                 modelPhongNoAmbient: !flags[0],
                 modelPhongNoDiffuse: !flags[1],
                 modelPhongNoSpecular: !flags[2],
-                noShadow: true,
               },
               material: {
                 noHeightMap: !flags[3],
@@ -123,8 +126,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
   render(state) {
     const {
       camera,
-      lightPositions,
+      directionalLightDirections,
       models,
+      pointLightPositions,
       projectionMatrix,
       renderers,
       target,
@@ -139,8 +143,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const lightScene: GlScene<SceneState, ForwardLightingObject> = {
       state: {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-        pointLights: lightPositions
-          .slice(0, tweak.nbLights)
+        directionalLights: directionalLightDirections
+          .slice(0, tweak.nbDirectionalLights)
+          .map((direction) => ({
+            color: { x: 0.8, y: 0.8, z: 0.8 },
+            direction,
+            shadow: true,
+          })),
+        pointLights: pointLightPositions
+          .slice(0, tweak.nbPointLights)
           .map((position) => ({
             color: { x: 0.8, y: 0.8, z: 0.8 },
             position,
@@ -164,13 +175,23 @@ const application: Application<WebGLScreen, ApplicationState> = {
           model: models.ground,
           noShadow: false,
         },
-      ].concat(
-        lightPositions.slice(0, tweak.nbLights).map((position) => ({
-          matrix: Matrix4.fromCustom(["translate", position]),
-          model: models.light,
-          noShadow: true,
-        }))
-      ),
+      ]
+        .concat(
+          pointLightPositions.slice(0, tweak.nbPointLights).map((position) => ({
+            matrix: Matrix4.fromCustom(["translate", position]),
+            model: models.light,
+            noShadow: true,
+          }))
+        )
+        .concat(
+          directionalLightDirections
+            .slice(0, tweak.nbDirectionalLights)
+            .map((direction) => ({
+              matrix: Matrix4.fromCustom(["translate", direction]),
+              model: models.light,
+              noShadow: true,
+            }))
+        ),
     };
 
     lightRenderer.render(target, lightScene);
@@ -196,8 +217,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
       state.move += dt * 0.0005;
     }
 
-    for (let i = 0; i < state.lightPositions.length; ++i) {
-      state.lightPositions[i] = orbitatePosition(state.move, i, 2, 2);
+    for (let i = 0; i < state.directionalLightDirections.length; ++i) {
+      const direction = Vector3.fromObject(rotateDirection(-state.move, i));
+
+      direction.normalize();
+      direction.scale(10);
+
+      state.directionalLightDirections[i] = direction;
+    }
+
+    for (let i = 0; i < state.pointLightPositions.length; ++i) {
+      state.pointLightPositions[i] = orbitatePosition(state.move, i, 2, 2);
     }
 
     // Move camera

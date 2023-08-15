@@ -2,7 +2,6 @@
 
 ## ToDo
 
-- Fix directional shadow scene
 - Fix deferred point lights bug when light is behind camera (due to quad not being drawn)
 - Strong typing for tweaks
 - Strong typing for snippets
@@ -17,6 +16,7 @@
 
 ## Done
 
+- Fix directional shadow scene
 - Provide `VectorN.fromXYZ(x, y, z)` and replace compatible usages of `VectorN.fromObject(o)`
 - Rename WebGL types and import them individually to avoid webgl.Type references
 - Draw lights using quads instead of spheres in deferred {shading,lighting}

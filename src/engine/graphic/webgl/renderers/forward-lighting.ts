@@ -113,7 +113,10 @@ type State = {
   viewMatrix: Matrix4;
 };
 
-const lightHeaderShader = `
+const lightHeaderShader = (
+  maxDirectionalLights: number,
+  maxPointLights: number
+) => `
 ${sourceDeclare("HAS_SHADOW")}
 
 const mat4 texUnitConverter = mat4(
@@ -126,17 +129,25 @@ const mat4 texUnitConverter = mat4(
 uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform ${sourceTypeDirectional} directionalLights[max(MAX_DIRECTIONAL_LIGHTS, 1)];
-uniform ${sourceTypePoint} pointLights[max(MAX_POINT_LIGHTS, 1)];
+uniform ${sourceTypeDirectional} directionalLights[${Math.max(
+  maxDirectionalLights,
+  1
+)}];
+uniform ${sourceTypePoint} pointLights[max(${Math.max(maxPointLights, 1)}, 1)];
 
 // FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
-#ifdef HAS_SHADOW
-uniform sampler2D directionalLightShadowMaps[max(MAX_DIRECTIONAL_LIGHTS, 1)];
-uniform sampler2D pointLightShadowMaps[max(MAX_POINT_LIGHTS, 1)];
-#endif`;
+uniform sampler2D directionalLightShadowMaps[${Math.max(
+  maxDirectionalLights,
+  1
+)}];
+uniform sampler2D pointLightShadowMaps[${Math.max(maxPointLights, 1)}];
+`;
 
-const lightVertexShader = `
-${lightHeaderShader}
+const lightVertexShader = (
+  maxDirectionalLights: number,
+  maxPointLights: number
+) => `
+${lightHeaderShader(maxDirectionalLights, maxPointLights)}
 
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
@@ -155,11 +166,11 @@ out vec3 eye; // Direction from point to eye in camera space
 out vec3 normal; // Normal at point in camera space
 out vec3 tangent; // Tangent at point in camera space
 
-out vec3 directionalLightDistances[max(MAX_DIRECTIONAL_LIGHTS, 1)];
-out vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+out vec3 directionalLightDistances[${Math.max(maxDirectionalLights, 1)}];
+out vec3 directionalLightShadows[${Math.max(maxDirectionalLights, 1)}];
 
-out vec3 pointLightDistances[max(MAX_POINT_LIGHTS, 1)];
-out vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
+out vec3 pointLightDistances[${Math.max(maxPointLights, 1)}];
+out vec3 pointLightShadows[${Math.max(maxPointLights, 1)}];
 
 vec3 toCameraDirection(in vec3 worldDirection) {
 	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
@@ -174,7 +185,7 @@ void main(void) {
 	vec4 pointCamera = viewMatrix * pointWorld;
 
 	// Process directional lights
-	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
+	for (int i = 0; i < ${maxDirectionalLights}; ++i) {
 		#ifdef HAS_SHADOW
 			if (directionalLights[i].castShadow) {
 				vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * pointWorld;
@@ -187,7 +198,7 @@ void main(void) {
 	}
 
 	// Process point lights
-	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
+	for (int i = 0; i < ${maxPointLights}; ++i) {
 		#ifdef HAS_SHADOW
 			// FIXME: shadow map code
 		#endif
@@ -204,8 +215,11 @@ void main(void) {
 	gl_Position = projectionMatrix * pointCamera;
 }`;
 
-const lightFragmentShader = `
-${lightHeaderShader}
+const lightFragmentShader = (
+  maxDirectionalLights: number,
+  maxPointLights: number
+) => `
+${lightHeaderShader(maxDirectionalLights, maxPointLights)}
 
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
@@ -260,11 +274,11 @@ in vec3 eye;
 in vec3 normal;
 in vec3 tangent;
 
-in vec3 directionalLightDistances[max(MAX_DIRECTIONAL_LIGHTS, 1)];
-in vec3 directionalLightShadows[max(MAX_DIRECTIONAL_LIGHTS, 1)];
+in vec3 directionalLightDistances[${Math.max(maxDirectionalLights, 1)}];
+in vec3 directionalLightShadows[${Math.max(maxDirectionalLights, 1)}];
 
-in vec3 pointLightDistances[max(MAX_POINT_LIGHTS, 1)];
-in vec3 pointLightShadows[max(MAX_POINT_LIGHTS, 1)];
+in vec3 pointLightDistances[${Math.max(maxPointLights, 1)}];
+in vec3 pointLightShadows[${Math.max(maxPointLights, 1)}];
 
 layout(location=0) out vec4 fragColor;
 
@@ -310,31 +324,46 @@ void main(void) {
   )} * ambientLightColor * float(LIGHT_AMBIENT);
 
 	// Apply components from directional lights
-	for (int i = 0; i < MAX_DIRECTIONAL_LIGHTS; ++i) {
-		#ifdef HAS_SHADOW
-			float shadowMapSample = texture(directionalLightShadowMaps[i], directionalLightShadows[i].xy).r;
+  ${range(
+    maxDirectionalLights,
+    (i) => `
+  #ifdef HAS_SHADOW
+  float shadowMapSample${i} = texture(directionalLightShadowMaps[${i}], directionalLightShadows[${i}].xy).r;
 
-			if (directionalLights[i].castShadow && shadowMapSample < directionalLightShadows[i].z)
-				continue;
-		#endif
+  if (!directionalLights[${i}].castShadow || shadowMapSample${i} >= directionalLightShadows[${i}].z) {
+  #endif
 
-		${sourceTypeResult} light = ${sourceInvokeDirectional(
-  "directionalLights[i]",
-  "directionalLightDistances[i]"
-)};
+    ${sourceTypeResult} light${i} = ${sourceInvokeDirectional(
+      `directionalLights[${i}]`,
+      `directionalLightDistances[${i}]`
+    )};
 
-		color += getLight(light, material, modifiedNormal, eyeDirection);
-	}
+    color += getLight(light${i}, material, modifiedNormal, eyeDirection);
+
+  #ifdef HAS_SHADOW
+  }
+  #endif`
+  ).join("\n")}
 
 	// Apply components from point lights
-	for (int i = 0; i < MAX_POINT_LIGHTS; ++i) {
-		${sourceTypeResult} light = ${sourceInvokePoint(
-  "pointLights[i]",
-  "pointLightDistances[i]"
-)};
+  ${range(
+    maxPointLights,
+    (i) => `
+  #ifdef HAS_SHADOW
+  if (true) { // FIXME
+  #endif
 
-		color += getLight(light, material, modifiedNormal, eyeDirection);
-	}
+    ${sourceTypeResult} light${i} = ${sourceInvokePoint(
+      `pointLights[${i}]`,
+      `pointLightDistances[${i}]`
+    )};
+
+    color += getLight(light${i}, material, modifiedNormal, eyeDirection);
+
+  #ifdef HAS_SHADOW
+  }
+  #endif`
+  ).join("\n")}
 
 	// Apply occlusion component
 	color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
@@ -375,8 +404,6 @@ const loadLight = (
 
   const directives: GlShaderDirective = {
     ["LIGHT_MODEL"]: directive.number(<number>lightConfiguration.model),
-    ["MAX_DIRECTIONAL_LIGHTS"]: directive.number(maxDirectionalLights),
-    ["MAX_POINT_LIGHTS"]: directive.number(maxPointLights),
   };
 
   switch (lightConfiguration.model) {
@@ -411,8 +438,8 @@ const loadLight = (
 
   const shader = new GlShader<LightSceneState, GlPolygon>(
     runtime,
-    lightVertexShader,
-    lightFragmentShader,
+    lightVertexShader(maxDirectionalLights, maxPointLights),
+    lightFragmentShader(maxDirectionalLights, maxPointLights),
     directives
   );
 
@@ -586,9 +613,8 @@ const loadLight = (
       shader.setUniformPerScene(
         `directionalLights[${index}].castShadow`,
         uniform.booleanScalar(
-          (state) =>
-            index < state.directionalLights.length &&
-            state.directionalLights[index].shadow
+          ({ directionalLights }) =>
+            index < directionalLights.length && directionalLights[index].shadow
         )
       );
       shader.setUniformPerScene(
@@ -601,8 +627,10 @@ const loadLight = (
       );
       shader.setUniformPerScene(
         `directionalLightShadowMaps[${index}]`,
-        uniform.blackQuadTexture(
-          ({ directionalLights }) => directionalLights[index].shadowMap
+        uniform.blackQuadTexture(({ directionalLights }) =>
+          index < directionalLights.length
+            ? directionalLights[index].shadowMap
+            : undefined
         )
       );
     }
