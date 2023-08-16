@@ -124,6 +124,7 @@ type GlPrimitive<TPolygon> = {
 };
 
 type GlRenderer<TSceneState, TObject> = {
+  dispose(): void;
   render(target: GlTarget, scene: GlScene<TSceneState, TObject>): void;
   resize(width: number, height: number): void;
 };

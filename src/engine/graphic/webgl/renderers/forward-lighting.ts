@@ -791,6 +791,8 @@ class ForwardLightingRenderer
     this.runtime = runtime;
   }
 
+  public dispose() {}
+
   public render(
     target: GlTarget,
     scene: GlScene<SceneState, ForwardLightingObject>

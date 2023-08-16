@@ -725,6 +725,8 @@ class DeferredLightingRenderer
     this.runtime = runtime;
   }
 
+  public dispose() {}
+
   public render(
     target: GlTarget,
     scene: GlScene<SceneState, GlObject<GlPolygon>>

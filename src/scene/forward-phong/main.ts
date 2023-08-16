@@ -4,7 +4,6 @@ import {
   configure,
   declare,
 } from "../../engine/application";
-import * as bitfield from "../bitfield";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
@@ -27,6 +26,7 @@ import {
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
+import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 
 /*
  ** What changed?
@@ -58,9 +58,7 @@ type ApplicationState = {
   move: number;
   pointLightPositions: Vector3[];
   projectionMatrix: Matrix4;
-  renderers: {
-    lights: ForwardLightingRenderer[];
-  };
+  rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   target: GlTarget;
   tweak: Tweak<typeof configuration>;
 };
@@ -99,25 +97,24 @@ const application: Application<WebGLScreen, ApplicationState> = {
       move: 0,
       pointLightPositions: range(3, () => Vector3.zero),
       projectionMatrix: Matrix4.identity,
-      renderers: {
-        lights: bitfield.enumerate(getOptions(tweak)).map(
-          (flags) =>
-            new ForwardLightingRenderer(runtime, {
-              light: {
-                maxDirectionalLights: 3,
-                maxPointLights: 3,
-                model: ForwardLightingLightModel.Phong,
-                modelPhongNoAmbient: !flags[0],
-                modelPhongNoDiffuse: !flags[1],
-                modelPhongNoSpecular: !flags[2],
-              },
-              material: {
-                noHeightMap: !flags[3],
-                noNormalMap: !flags[4],
-              },
-            })
-        ),
-      },
+      rendererMemo: memoize(
+        indexBooleans,
+        (flags) =>
+          new ForwardLightingRenderer(runtime, {
+            light: {
+              maxDirectionalLights: 3,
+              maxPointLights: 3,
+              model: ForwardLightingLightModel.Phong,
+              modelPhongNoAmbient: !flags[0],
+              modelPhongNoDiffuse: !flags[1],
+              modelPhongNoSpecular: !flags[2],
+            },
+            material: {
+              noHeightMap: !flags[3],
+              noNormalMap: !flags[4],
+            },
+          })
+      ),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
@@ -130,7 +127,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       models,
       pointLightPositions,
       projectionMatrix,
-      renderers,
+      rendererMemo,
       target,
       tweak,
     } = state;
@@ -139,8 +136,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     // Forward pass
-    const lightRenderer = renderers.lights[bitfield.index(getOptions(tweak))];
-    const lightScene: GlScene<SceneState, ForwardLightingObject> = {
+    const renderer = rendererMemo.get(getOptions(tweak));
+    const scene: GlScene<SceneState, ForwardLightingObject> = {
       state: {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
         directionalLights: directionalLightDirections
@@ -194,13 +191,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ),
     };
 
-    lightRenderer.render(target, lightScene);
+    renderer.render(target, scene);
   },
 
   resize(state, screen) {
-    for (const renderer of state.renderers.lights) {
-      renderer.resize(screen.getWidth(), screen.getHeight());
-    }
+    state.rendererMemo
+      .get(getOptions(state.tweak))
+      .resize(screen.getWidth(), screen.getHeight());
 
     state.projectionMatrix = Matrix4.fromPerspective(
       45,

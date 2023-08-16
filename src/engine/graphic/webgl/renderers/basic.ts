@@ -74,6 +74,8 @@ class BasicRenderer implements GlRenderer<SceneState, GlObject<BasicPolygon>> {
     this.runtime = runtime;
   }
 
+  public dispose() {}
+
   public render(
     target: GlTarget,
     scene: GlScene<SceneState, GlObject<BasicPolygon>>

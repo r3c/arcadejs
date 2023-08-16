@@ -4,7 +4,7 @@ import {
   configure,
   declare,
 } from "../../engine/application";
-import * as bitfield from "../bitfield";
+import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 import { Input } from "../../engine/io/controller";
 import {
   DebugTextureFormat,
@@ -46,6 +46,7 @@ const configuration = {
 
 interface ApplicationState {
   camera: Camera;
+  debugRenderer: DebugTextureRenderer;
   input: Input;
   lightDirection: Vector3;
   models: {
@@ -55,10 +56,7 @@ interface ApplicationState {
   };
   move: number;
   projectionMatrix: Matrix4;
-  renderers: {
-    debug: DebugTextureRenderer;
-    lights: ForwardLightingRenderer[];
-  };
+  sceneRendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   target: GlTarget;
   tweak: Tweak<typeof configuration>;
 }
@@ -83,6 +81,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Create state
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      debugRenderer: new DebugTextureRenderer(runtime, {
+        format: DebugTextureFormat.Monochrome,
+        select: DebugTextureSelect.Red,
+        zNear: 0.1,
+        zFar: 100,
+      }),
       input: new Input(screen.canvas),
       lightDirection: Vector3.zero,
       models: {
@@ -92,36 +96,26 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       projectionMatrix: Matrix4.identity,
-      renderers: {
-        debug: new DebugTextureRenderer(runtime, {
-          format: DebugTextureFormat.Monochrome,
-          select: DebugTextureSelect.Red,
-          zNear: 0.1,
-          zFar: 100,
-        }),
-        lights: bitfield.enumerate(getOptions(tweak)).map(
-          (flags) =>
-            new ForwardLightingRenderer(runtime, {
-              light: {
-                model: ForwardLightingLightModel.Phong,
-                maxDirectionalLights: 1,
-                noShadow: !flags[0],
-              },
-            })
-        ),
-      },
+      sceneRendererMemo: memoize(
+        indexBooleans,
+        (flags) =>
+          new ForwardLightingRenderer(runtime, {
+            light: {
+              model: ForwardLightingLightModel.Phong,
+              maxDirectionalLights: 1,
+              noShadow: !flags[0],
+            },
+          })
+      ),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },
 
   render(state) {
-    const { camera, models, renderers, target } = state;
+    const { camera, debugRenderer, models, sceneRendererMemo, target } = state;
 
     // Draw scene
-    const lightRenderer =
-      renderers.lights[bitfield.index(getOptions(state.tweak))];
-
     const lightScene: GlScene<SceneState, ForwardLightingObject> = {
       state: {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
@@ -164,13 +158,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    lightRenderer.render(target, lightScene);
+    const sceneRenderer = sceneRendererMemo.get(getOptions(state.tweak));
+
+    sceneRenderer.render(target, lightScene);
 
     // Draw texture debug
     if (state.tweak.showDebug) {
-      const debugRenderer = renderers.debug;
       const debugScene = DebugTextureRenderer.createScene(
-        lightRenderer.directionalShadowBuffers[0]
+        sceneRenderer.directionalShadowBuffers[0]
       );
 
       debugRenderer.render(target, debugScene);
@@ -178,9 +173,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   resize(state, screen) {
-    for (const renderer of state.renderers.lights) {
-      renderer.resize(screen.getWidth(), screen.getHeight());
-    }
+    state.debugRenderer.resize(screen.getWidth(), screen.getHeight());
+
+    state.sceneRendererMemo
+      .get(getOptions(state.tweak))
+      .resize(screen.getWidth(), screen.getHeight());
 
     state.projectionMatrix = Matrix4.fromPerspective(
       45,
@@ -188,7 +185,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
       0.1,
       100
     );
-    state.renderers.debug.resize(screen.getWidth(), screen.getHeight());
     state.target.resize(screen.getWidth(), screen.getHeight());
   },
 

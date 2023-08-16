@@ -4,7 +4,7 @@ import {
   configure,
   declare,
 } from "../../engine/application";
-import * as bitfield from "../bitfield";
+import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/functional";
@@ -67,9 +67,7 @@ type ApplicationState = {
   };
   move: number;
   projectionMatrix: Matrix4;
-  renderers: {
-    lights: ForwardLightingRenderer[];
-  };
+  rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   target: GlTarget;
   textures: {
     brdf: WebGLTexture;
@@ -149,26 +147,25 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       projectionMatrix: Matrix4.identity,
-      renderers: {
-        lights: bitfield.enumerate(getOptions(tweak)).map(
-          (flags) =>
-            new ForwardLightingRenderer(runtime, {
-              light: {
-                model: ForwardLightingLightModel.Physical,
-                modelPhysicalNoAmbient: !flags[0],
-                modelPhysicalNoIBL: !flags[3],
-                maxPointLights: 3,
-                noShadow: true,
-              },
-              material: {
-                noEmissiveMap: !flags[1],
-                noHeightMap: !flags[4],
-                noNormalMap: !flags[5],
-                noOcclusionMap: !flags[2],
-              },
-            })
-        ),
-      },
+      rendererMemo: memoize(
+        indexBooleans,
+        (flags) =>
+          new ForwardLightingRenderer(runtime, {
+            light: {
+              model: ForwardLightingLightModel.Physical,
+              modelPhysicalNoAmbient: !flags[0],
+              modelPhysicalNoIBL: !flags[3],
+              maxPointLights: 3,
+              noShadow: true,
+            },
+            material: {
+              noEmissiveMap: !flags[1],
+              noHeightMap: !flags[4],
+              noNormalMap: !flags[5],
+              noOcclusionMap: !flags[2],
+            },
+          })
+      ),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       textures: {
         brdf,
@@ -184,7 +181,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       camera,
       models,
       projectionMatrix,
-      renderers,
+      rendererMemo,
       target,
       textures,
       tweak,
@@ -241,13 +238,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
       objects: [cube, ground].concat(lights),
     };
 
-    renderers.lights[bitfield.index(getOptions(tweak))].render(target, scene);
+    rendererMemo.get(getOptions(tweak)).render(target, scene);
   },
 
   resize(state, screen) {
-    for (const renderer of state.renderers.lights) {
-      renderer.resize(screen.getWidth(), screen.getHeight());
-    }
+    state.rendererMemo
+      .get(getOptions(state.tweak))
+      .resize(screen.getWidth(), screen.getHeight());
 
     state.projectionMatrix = Matrix4.fromPerspective(
       45,

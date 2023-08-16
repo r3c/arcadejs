@@ -226,6 +226,8 @@ class DebugTextureRenderer
     this.scale = configuration.scale ?? 0.4;
   }
 
+  public dispose() {}
+
   public render(
     target: GlTarget,
     scene: GlScene<SceneState, GlObject<DebugTexturePolygon>>

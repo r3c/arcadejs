@@ -4,7 +4,12 @@ import {
   configure,
   declare,
 } from "../../engine/application";
-import * as bitfield from "../bitfield";
+import {
+  Memo,
+  indexBooleans,
+  indexNumber,
+  memoize,
+} from "../../engine/language/memo";
 import * as color from "../color";
 import { Input } from "../../engine/io/controller";
 import {
@@ -60,6 +65,33 @@ const configuration = {
   ],
 };
 
+const debugConfigurations = [
+  {
+    select: DebugTextureSelect.Red,
+    format: DebugTextureFormat.Depth,
+  },
+  {
+    select: DebugTextureSelect.RedGreen,
+    format: DebugTextureFormat.Spheremap,
+  },
+  {
+    select: DebugTextureSelect.Blue,
+    format: DebugTextureFormat.Monochrome,
+  },
+  {
+    select: DebugTextureSelect.Alpha,
+    format: DebugTextureFormat.Monochrome,
+  },
+  {
+    select: DebugTextureSelect.RedGreenBlue,
+    format: DebugTextureFormat.Logarithm,
+  },
+  {
+    select: DebugTextureSelect.Alpha,
+    format: DebugTextureFormat.Logarithm,
+  },
+];
+
 const directionalLightParameters = [
   { count: 0 },
   { count: 1 },
@@ -77,6 +109,7 @@ const pointLightParameters = [
 
 type ApplicationState = {
   camera: Camera;
+  debugRendererMemo: Memo<number, DebugTextureRenderer>;
   directionalLights: DirectionalLight[];
   input: Input;
   models: {
@@ -88,10 +121,7 @@ type ApplicationState = {
   move: number;
   pointLights: PointLight[];
   projectionMatrix: Matrix4;
-  renderers: {
-    debug: DebugTextureRenderer[];
-    scene: DeferredLightingRenderer[];
-  };
+  sceneRendererMemo: Memo<boolean[], DeferredLightingRenderer>;
   target: GlTarget;
   tweak: Tweak<typeof configuration>;
 };
@@ -126,6 +156,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Create state
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      debugRendererMemo: memoize(
+        indexNumber,
+        (index) =>
+          new DebugTextureRenderer(runtime, {
+            format: debugConfigurations[index].format,
+            select: debugConfigurations[index].select,
+            zNear: 0.1,
+            zFar: 100,
+          })
+      ),
       directionalLights: range(10, (i) => ({
         color: color.createBright(i),
         direction: Vector3.zero,
@@ -139,66 +179,38 @@ const application: Application<WebGLScreen, ApplicationState> = {
         pointLight: loadModel(runtime, pointLightModel),
       },
       move: 0,
-      projectionMatrix: Matrix4.identity,
-      renderers: {
-        debug: [
-          {
-            select: DebugTextureSelect.Red,
-            format: DebugTextureFormat.Depth,
-          },
-          {
-            select: DebugTextureSelect.RedGreen,
-            format: DebugTextureFormat.Spheremap,
-          },
-          {
-            select: DebugTextureSelect.Blue,
-            format: DebugTextureFormat.Monochrome,
-          },
-          {
-            select: DebugTextureSelect.Alpha,
-            format: DebugTextureFormat.Monochrome,
-          },
-          {
-            select: DebugTextureSelect.RedGreenBlue,
-            format: DebugTextureFormat.Logarithm,
-          },
-          {
-            select: DebugTextureSelect.Alpha,
-            format: DebugTextureFormat.Logarithm,
-          },
-        ].map(
-          (configuration) =>
-            new DebugTextureRenderer(runtime, {
-              format: configuration.format,
-              select: configuration.select,
-              zNear: 0.1,
-              zFar: 100,
-            })
-        ),
-        scene: bitfield.enumerate(getOptions(tweak)).map(
-          (flags) =>
-            new DeferredLightingRenderer(runtime, {
-              lightModel: DeferredLightingLightModel.Phong,
-              lightModelPhongNoAmbient: !flags[0],
-              lightModelPhongNoDiffuse: !flags[1],
-              lightModelPhongNoSpecular: !flags[2],
-              useHeightMap: true,
-              useNormalMap: true,
-            })
-        ),
-      },
       pointLights: range(2000, (i) => ({
         color: color.createBright(i),
         position: Vector3.zero,
         radius: 0,
       })),
+      projectionMatrix: Matrix4.identity,
+      sceneRendererMemo: memoize(
+        indexBooleans,
+        (flags) =>
+          new DeferredLightingRenderer(runtime, {
+            lightModel: DeferredLightingLightModel.Phong,
+            lightModelPhongNoAmbient: !flags[0],
+            lightModelPhongNoDiffuse: !flags[1],
+            lightModelPhongNoSpecular: !flags[2],
+            useHeightMap: true,
+            useNormalMap: true,
+          })
+      ),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
       tweak,
     };
   },
 
   render(state) {
-    const { camera, models, renderers, target, tweak } = state;
+    const {
+      camera,
+      debugRendererMemo,
+      models,
+      sceneRendererMemo,
+      target,
+      tweak,
+    } = state;
 
     // Pick active lights
     const directionalLights = state.directionalLights.slice(
@@ -211,8 +223,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
 
     // Draw scene
-    const deferredRenderer = renderers.scene[bitfield.index(getOptions(tweak))];
-    const deferredScene: GlScene<SceneState, GlObject<GlPolygon>> = {
+    const sceneRenderer = sceneRendererMemo.get(getOptions(tweak));
+    const scene: GlScene<SceneState, GlObject<GlPolygon>> = {
       state: {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
         directionalLights,
@@ -277,19 +289,19 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    deferredRenderer.render(target, deferredScene);
+    sceneRenderer.render(target, scene);
 
     // Draw debug
     if (tweak.debugMode !== 0) {
-      const debugRenderer = renderers.debug[tweak.debugMode - 1];
+      const debugRenderer = debugRendererMemo.get(tweak.debugMode - 1);
       const debugScene = DebugTextureRenderer.createScene(
         [
-          deferredRenderer.depthBuffer,
-          deferredRenderer.normalAndGlossinessBuffer,
-          deferredRenderer.normalAndGlossinessBuffer,
-          deferredRenderer.normalAndGlossinessBuffer,
-          deferredRenderer.lightBuffer,
-          deferredRenderer.lightBuffer,
+          sceneRenderer.depthBuffer,
+          sceneRenderer.normalAndGlossinessBuffer,
+          sceneRenderer.normalAndGlossinessBuffer,
+          sceneRenderer.normalAndGlossinessBuffer,
+          sceneRenderer.lightBuffer,
+          sceneRenderer.lightBuffer,
         ][tweak.debugMode - 1]
       );
 
@@ -298,13 +310,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   resize(state, screen) {
-    for (const renderer of state.renderers.debug) {
-      renderer.resize(screen.getWidth(), screen.getHeight());
+    if (state.tweak.debugMode !== 0) {
+      state.debugRendererMemo
+        .get(state.tweak.debugMode - 1)
+        .resize(screen.getWidth(), screen.getHeight());
     }
 
-    for (const renderer of state.renderers.scene) {
-      renderer.resize(screen.getWidth(), screen.getHeight());
-    }
+    state.sceneRendererMemo
+      .get(getOptions(state.tweak))
+      .resize(screen.getWidth(), screen.getHeight());
 
     state.projectionMatrix = Matrix4.fromPerspective(
       45,
