@@ -14,6 +14,8 @@ html {
 .console {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
   padding: 16px;
 }
 
@@ -29,10 +31,16 @@ html {
   flex: auto;
 }
 
+.control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .control input,
 .control select {
   padding: 4px 8px;
-  margin: 4px;
   border-color: #bcd #89a #89a #bcd;
   border-radius: 8px;
   border-style: solid;
@@ -46,8 +54,10 @@ html {
 }
 
 .control .container {
-  display: inline-block;
-  margin: 0 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .display {
