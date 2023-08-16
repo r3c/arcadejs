@@ -368,23 +368,18 @@ class SoftwareRenderer implements Renderer<SceneState> {
   public render(scene: SoftwareScene<SceneState>) {
     const { objects, state } = scene;
     const screen = this.screen;
+    const height = screen.getHeight();
+    const width = screen.getWidth();
 
-    // FIXME: reuse a blank image data buffer rather than following lines
-    screen.context.fillStyle = "black";
-    screen.context.fillRect(0, 0, screen.getWidth(), screen.getHeight());
-
-    const capture = screen.context.getImageData(
-      0,
-      0,
-      screen.getWidth(),
-      screen.getHeight()
-    );
+    if (height === 0 && width === 0) {
+      return;
+    }
 
     const image = {
-      colors: capture.data,
-      depths: new Float32Array(capture.width * capture.height),
-      height: capture.height,
-      width: capture.width,
+      colors: new Uint8ClampedArray(width * height * 4),
+      depths: new Float32Array(width * height),
+      height,
+      width,
     };
 
     image.depths.fill(Math.pow(2, 127));
@@ -401,7 +396,11 @@ class SoftwareRenderer implements Renderer<SceneState> {
       drawMeshes(image, model.meshes, modelViewProjection, this.drawMode);
     }
 
-    screen.context.putImageData(capture, 0, 0);
+    screen.context.putImageData(
+      new ImageData(image.colors, image.width, image.height),
+      0,
+      0
+    );
   }
 
   public resize(_width: number, _height: number) {
