@@ -447,10 +447,7 @@ const loadLight = (
   shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
   shader.setAttributePerPolygon("normals", ({ normal }) => normal); // FIXME: remove plural
   shader.setAttributePerPolygon("position", ({ position }) => position);
-  shader.setAttributePerPolygon(
-    "tangents",
-    ({ tangent: tangents }) => tangents
-  );
+  shader.setAttributePerPolygon("tangents", ({ tangent }) => tangent);
 
   // Bind matrix uniforms
   shader.setUniformPerGeometry(

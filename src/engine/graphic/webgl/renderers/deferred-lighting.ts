@@ -394,10 +394,7 @@ const loadGeometryShader = (
   shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
   shader.setAttributePerPolygon("normals", ({ normal }) => normal);
   shader.setAttributePerPolygon("position", ({ position }) => position);
-  shader.setAttributePerPolygon(
-    "tangents",
-    ({ tangent: tangents }) => tangents
-  );
+  shader.setAttributePerPolygon("tangents", ({ tangent }) => tangent);
 
   shader.setUniformPerGeometry(
     "modelMatrix",
@@ -586,12 +583,9 @@ const loadMaterialShader = (
   );
 
   shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
-  shader.setAttributePerPolygon("normals", ({ normal: normals }) => normals);
+  shader.setAttributePerPolygon("normals", ({ normal }) => normal);
   shader.setAttributePerPolygon("position", ({ position }) => position);
-  shader.setAttributePerPolygon(
-    "tangents",
-    ({ tangent: tangents }) => tangents
-  );
+  shader.setAttributePerPolygon("tangents", ({ tangent }) => tangent);
 
   shader.setUniformPerGeometry(
     "modelMatrix",

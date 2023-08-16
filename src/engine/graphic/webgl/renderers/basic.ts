@@ -17,10 +17,10 @@ uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec4 points;
+in vec4 position;
 
 void main(void) {
-	gl_Position = projectionMatrix * viewMatrix * modelMatrix * points;
+	gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
 }`;
 
 const fragmentShader = `
@@ -31,7 +31,7 @@ void main(void) {
 }`;
 
 type BasicPolygon = {
-  points: GlAttribute;
+  position: GlAttribute;
 };
 
 type SceneState = {
@@ -47,7 +47,7 @@ const load = (runtime: GlRuntime) => {
     {}
   );
 
-  shader.setAttributePerPolygon("points", ({ points }) => points);
+  shader.setAttributePerPolygon("position", ({ position }) => position);
 
   shader.setUniformPerGeometry(
     "modelMatrix",

@@ -32,19 +32,19 @@ uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-out vec4 color;
-out vec2 coord;
+out vec2 fragCoordinate;
+out vec4 fragTint;
 
 void main(void) {
-	color = tint;
-	coord = coordinate;
+	fragCoordinate = coordinate;
+	fragTint = tint;
 
 	gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
 }`;
 
 const fsSource = `
-in vec4 color;
-in vec2 coord;
+in vec2 fragCoordinate;
+in vec4 fragTint;
 
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
@@ -52,7 +52,7 @@ uniform sampler2D albedoMap;
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-	fragColor = color * albedoFactor * texture(albedoMap, coord);
+	fragColor = fragTint * albedoFactor * texture(albedoMap, fragCoordinate);
 }`;
 
 type ApplicationState = {
