@@ -30,6 +30,7 @@ import {
   uniform,
   GlShaderDirective,
   directive,
+  GlTexture,
 } from "../../webgl";
 import {
   GlLightBillboard,
@@ -312,15 +313,15 @@ type State = {
 type AmbientLightPolygon = Pick<GlPolygon, "position">;
 
 type AmbientLightState = State & {
-  albedoAndShininessBuffer: WebGLTexture;
+  albedoAndShininessBuffer: GlTexture;
   ambientLightColor: Vector3;
 };
 
 type LightState = State & {
-  albedoAndShininessBuffer: WebGLTexture;
+  albedoAndShininessBuffer: GlTexture;
   billboardMatrix: Matrix4;
-  depthBuffer: WebGLTexture;
-  normalAndGlossinessBuffer: WebGLTexture;
+  depthBuffer: GlTexture;
+  normalAndGlossinessBuffer: GlTexture;
   viewportSize: Vector2;
 };
 
@@ -586,9 +587,9 @@ const loadPointLightShader = (
 class DeferredShadingRenderer
   implements GlRenderer<SceneState, GlObject<GlPolygon>>
 {
-  public readonly albedoAndShininessBuffer: WebGLTexture;
-  public readonly depthBuffer: WebGLTexture;
-  public readonly normalAndGlossinessBuffer: WebGLTexture;
+  public readonly albedoAndShininessBuffer: GlTexture;
+  public readonly depthBuffer: GlTexture;
+  public readonly normalAndGlossinessBuffer: GlTexture;
 
   private readonly ambientLightPainter: GlPainter<
     AmbientLightState,

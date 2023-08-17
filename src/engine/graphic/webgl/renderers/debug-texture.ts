@@ -11,6 +11,7 @@ import {
   GlScene,
   GlShader,
   GlTarget,
+  GlTexture,
   directive,
   loadModel,
   uniform,
@@ -140,7 +141,7 @@ const enum DebugTextureSelect {
 }
 
 type SceneState = {
-  source: WebGLTexture;
+  source: GlTexture;
 };
 
 const load = (runtime: GlRuntime, configuration: DebugTextureConfiguration) => {
@@ -188,7 +189,7 @@ class DebugTextureRenderer
    ** by "process" method easily.
    */
   public static createScene(
-    source: WebGLTexture
+    source: GlTexture
   ): GlScene<SceneState, GlObject<DebugTexturePolygon>> {
     return {
       objects: [

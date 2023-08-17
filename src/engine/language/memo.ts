@@ -43,4 +43,4 @@ const memoize = <TKey, TValue extends Disposable>(
   };
 };
 
-export { type Disposable, type Memo, indexBooleans, indexNumber, memoize };
+export { type Memo, indexBooleans, indexNumber, memoize };

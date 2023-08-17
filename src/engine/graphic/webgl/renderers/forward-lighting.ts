@@ -27,6 +27,7 @@ import {
   GlShader,
   GlShaderDirective,
   GlTarget,
+  GlTexture,
   GlTextureFormat,
   GlTextureType,
   directive,
@@ -50,14 +51,14 @@ type ForwardLightingObject = GlObject<GlPolygon> & {
 };
 
 type ShadowDirectionalLight = DirectionalLight & {
-  shadowMap: WebGLTexture;
+  shadowMap: GlTexture;
   shadowViewMatrix: Matrix4;
 };
 
 type EnvironmentLight = {
-  brdf: WebGLTexture;
-  diffuse: WebGLTexture;
-  specular: WebGLTexture;
+  brdf: GlTexture;
+  diffuse: GlTexture;
+  specular: GlTexture;
 };
 
 type LightConfiguration = {
@@ -85,9 +86,9 @@ type LightSceneState = State & {
   ambientLightColor: Vector3;
   directionalLights: ShadowDirectionalLight[];
   environmentLight?: {
-    brdf: WebGLTexture;
-    diffuse: WebGLTexture;
-    specular: WebGLTexture;
+    brdf: GlTexture;
+    diffuse: GlTexture;
+    specular: GlTexture;
   };
   pointLights: PointLight[]; // FIXME: extend PointLight with extra properties
   projectionMatrix: Matrix4;
@@ -716,8 +717,8 @@ const loadShadowPoint = (runtime: GlRuntime) => {
 class ForwardLightingRenderer
   implements GlRenderer<SceneState, ForwardLightingObject>
 {
-  public readonly directionalShadowBuffers: WebGLTexture[];
-  public readonly pointShadowBuffers: WebGLTexture[];
+  public readonly directionalShadowBuffers: GlTexture[];
+  public readonly pointShadowBuffers: GlTexture[];
 
   private readonly directionalShadowPainter: GlPainter<
     ShadowSceneState,

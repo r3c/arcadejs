@@ -23,6 +23,7 @@ import {
   loadModel,
   loadTextureCube,
   loadTextureQuad,
+  GlTexture,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Camera } from "../view";
@@ -70,9 +71,9 @@ type ApplicationState = {
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   target: GlTarget;
   textures: {
-    brdf: WebGLTexture;
-    diffuse: WebGLTexture;
-    specular: WebGLTexture;
+    brdf: GlTexture;
+    diffuse: GlTexture;
+    specular: GlTexture;
   };
   tweak: Tweak<typeof configuration>;
 };

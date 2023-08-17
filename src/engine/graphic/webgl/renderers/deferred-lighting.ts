@@ -29,6 +29,7 @@ import {
   uniform,
   GlShaderDirective,
   directive,
+  GlTexture,
 } from "../../webgl";
 import {
   GlLightBillboard,
@@ -360,8 +361,8 @@ type State = {
 
 type LightState = State & {
   billboardMatrix: Matrix4;
-  depthBuffer: WebGLTexture;
-  normalAndGlossinessBuffer: WebGLTexture;
+  depthBuffer: GlTexture;
+  normalAndGlossinessBuffer: GlTexture;
   viewportSize: Vector2;
 };
 
@@ -371,7 +372,7 @@ type DirectionalLightState = LightState & {
 
 type MaterialState = State & {
   ambientLightColor: Vector3;
-  lightBuffer: WebGLTexture;
+  lightBuffer: GlTexture;
 };
 
 type SceneState = State & {
@@ -654,9 +655,9 @@ const loadMaterialShader = (
 class DeferredLightingRenderer
   implements GlRenderer<SceneState, GlObject<GlPolygon>>
 {
-  public readonly depthBuffer: WebGLTexture;
-  public readonly lightBuffer: WebGLTexture;
-  public readonly normalAndGlossinessBuffer: WebGLTexture;
+  public readonly depthBuffer: GlTexture;
+  public readonly lightBuffer: GlTexture;
+  public readonly normalAndGlossinessBuffer: GlTexture;
 
   private readonly directionalLightPainter: GlPainter<
     DirectionalLightState,

@@ -20,6 +20,7 @@ import {
   bufferCreate,
 } from "./webgl/resource";
 import { GlPolygon } from "./webgl/renderers/objects/polygon";
+import { Disposable } from "../language/lifecycle";
 
 type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -45,7 +46,7 @@ type GlBinder<TState> = (state: TState) => void;
 
 type GlBinderMap<TState> = Map<string, GlBinder<TState>>;
 
-type GlDefault = {
+type GlDefault = Disposable & {
   blackTexture: GlTexture;
   whiteTexture: GlTexture;
 };
@@ -123,13 +124,12 @@ type GlPrimitive<TPolygon> = {
   polygon: TPolygon;
 };
 
-type GlRenderer<TSceneState, TObject> = {
-  dispose(): void;
+type GlRenderer<TSceneState, TObject> = Disposable & {
   render(target: GlTarget, scene: GlScene<TSceneState, TObject>): void;
   resize(width: number, height: number): void;
 };
 
-type GlRuntime = {
+type GlRuntime = Disposable & {
   context: GlContext;
   default: GlDefault;
 };
@@ -156,7 +156,14 @@ type GlShaderDirectiveValue =
       value: number;
     };
 
-type GlTexture = WebGLTexture;
+/**
+ * Disposable WebGL texture, also circumvent native `WebGLTexture` type being
+ * defined as an opaque empty object and therefore being compatible with any
+ * unrelated object.
+ */
+type GlTexture = Disposable & {
+  handle: WebGLTexture;
+};
 
 const enum GlTextureFormat {
   Depth16,
@@ -219,29 +226,40 @@ const materialExtractors: GlMaterialExtractor[] = [
 ];
 
 const runtimeCreate = (context: GlContext): GlRuntime => {
+  const blackTexture = textureCreate(
+    context,
+    undefined,
+    GlTextureType.Quad,
+    1,
+    1,
+    GlTextureFormat.RGBA8,
+    defaultFilter,
+    new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
+  );
+
+  const whiteTexture = textureCreate(
+    context,
+    undefined,
+    GlTextureType.Quad,
+    1,
+    1,
+    GlTextureFormat.RGBA8,
+    defaultFilter,
+    new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
+  );
+
+  const dispose = () => {
+    blackTexture.dispose();
+    whiteTexture.dispose();
+  };
+
   return {
+    dispose,
     context,
     default: {
-      blackTexture: textureCreate(
-        context,
-        undefined,
-        GlTextureType.Quad,
-        1,
-        1,
-        GlTextureFormat.RGBA8,
-        defaultFilter,
-        new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
-      ),
-      whiteTexture: textureCreate(
-        context,
-        undefined,
-        GlTextureType.Quad,
-        1,
-        1,
-        GlTextureFormat.RGBA8,
-        defaultFilter,
-        new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
-      ),
+      dispose,
+      blackTexture,
+      whiteTexture,
     },
   };
 };
@@ -400,7 +418,7 @@ const textureCreate = (
 ): GlTexture => {
   const target = textureGetTarget(gl, type);
 
-  let texture: GlTexture;
+  let handle: WebGLTexture;
 
   if (previousTexture === undefined) {
     const newTexture = gl.createTexture();
@@ -409,12 +427,12 @@ const textureCreate = (
       throw Error("could not create texture");
     }
 
-    texture = newTexture;
+    handle = newTexture;
   } else {
-    texture = previousTexture;
+    handle = previousTexture.handle;
   }
 
-  gl.bindTexture(target, texture);
+  gl.bindTexture(target, handle);
 
   // Define texture format, filtering & wrapping parameters
   const magnifierFilter =
@@ -485,7 +503,12 @@ const textureCreate = (
 
   gl.bindTexture(target, null);
 
-  return texture;
+  return {
+    dispose: () => {
+      gl.deleteTexture(handle);
+    },
+    handle,
+  };
 };
 
 const textureGetTarget = (gl: GlContext, type: GlTextureType) => {
@@ -745,14 +768,14 @@ const textureUniform = <TState>(
   target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"]
 ): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
   allocateTexture: true,
-  createValue: () => ({ target, texture: {} }),
+  createValue: () => ({ target, texture: { dispose: () => {}, handle: {} } }),
   readValue: (state, { target }, defaultValue) => ({
     target,
     texture: primaryGetter(state) ?? defaultGetter(defaultValue),
   }),
   setUniform: (gl, location, { target, texture }, textureIndex) => {
     gl.activeTexture(gl.TEXTURE0 + textureIndex);
-    gl.bindTexture(target, texture);
+    gl.bindTexture(target, texture.handle);
     gl.uniform1i(location, textureIndex);
   },
 });
@@ -1324,7 +1347,7 @@ class GlTarget {
         gl.FRAMEBUFFER,
         this.getAttachment(framebufferTarget, offset - 1),
         textureTarget,
-        texture,
+        texture.handle,
         0
       );
 
@@ -1517,6 +1540,7 @@ export {
   type GlScene,
   type GlShaderDirective,
   type GlShaderDirectiveValue,
+  type GlTexture,
   GlShader,
   GlShaderDirectiveType,
   GlTarget,

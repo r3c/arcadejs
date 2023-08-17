@@ -1,3 +1,5 @@
+import { Disposable } from "../../language/lifecycle";
+
 type GlArray =
   | Float32Array
   | Int8Array
@@ -7,15 +9,13 @@ type GlArray =
   | Uint16Array
   | Uint32Array;
 
-type GlAttribute = {
-  dispose: () => void;
-  buffer: Omit<GlBuffer, "dispose">;
+type GlAttribute = Disposable & {
+  buffer: GlBuffer;
   size: number;
   stride: number;
 };
 
-type GlBuffer = {
-  dispose: () => void;
+type GlBuffer = Disposable & {
   set: (data: GlArray) => void;
   buffer: WebGLBuffer;
   count: number;
