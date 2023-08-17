@@ -2,7 +2,7 @@
 
 ## ToDo
 
-- Fix deferred point lights bug when light is behind camera (due to quad not being drawn)
+- Fix deferred point lights bug when light is behind camera (due to quad not being drawn) [billboard-hack]
 - Strong typing for tweaks
 - Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}

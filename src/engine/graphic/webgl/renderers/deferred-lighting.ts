@@ -172,7 +172,7 @@ void main(void) {
 
 	gl_Position =
 		projectionMatrix * viewMatrix * modelMatrix * vec4(lightPosition, 1.0) +
-		projectionMatrix * billboardMatrix * modelMatrix * vec4(lightCorner, 0.0, 0.0);
+		projectionMatrix * billboardMatrix * modelMatrix * vec4(lightCorner * 1.5, -lightRadius, 0.0); // FIXME: remove x1.5 & lightRadius hack [billboard-hack]
 }`;
 
 const lightFragmentShader = `
