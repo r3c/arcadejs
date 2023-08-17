@@ -16,9 +16,9 @@ type GlAttribute = Disposable & {
 };
 
 type GlBuffer = Disposable & {
-  set: (data: GlArray) => void;
+  set: (data: GlArray, length: number) => void;
   buffer: WebGLBuffer;
-  count: number;
+  length: number;
   type: GlBufferType;
 };
 
@@ -37,26 +37,43 @@ type GlBufferType =
 
 type GlContext = WebGL2RenderingContext;
 
-const attributeCreate = (
+const attribute = (
   gl: GlContext,
-  source: GlArray,
+  data: GlArray,
+  length: number,
   stride: number,
   isDynamic: boolean
 ): GlAttribute => {
-  const buffer = bufferCreate(gl, gl.ARRAY_BUFFER, source, isDynamic);
+  const buffer = arrayBuffer(gl, data, length, isDynamic);
 
   return {
     dispose: buffer.dispose,
     buffer,
     size: stride,
-    stride: stride * source.BYTES_PER_ELEMENT,
+    stride: stride * data.BYTES_PER_ELEMENT,
   };
 };
+
+const arrayBuffer = (
+  gl: GlContext,
+  data: GlArray,
+  length: number,
+  isDynamic: boolean
+): GlBuffer => bufferCreate(gl, gl.ARRAY_BUFFER, data, length, isDynamic);
+
+const indexBuffer = (
+  gl: GlContext,
+  data: GlArray,
+  length: number,
+  isDynamic: boolean
+): GlBuffer =>
+  bufferCreate(gl, gl.ELEMENT_ARRAY_BUFFER, data, length, isDynamic);
 
 const bufferCreate = (
   gl: GlContext,
   bufferTarget: GlBufferTarget,
-  source: GlArray,
+  data: GlArray,
+  length: number,
   isDynamic: boolean
 ): GlBuffer => {
   const buffer = gl.createBuffer();
@@ -66,25 +83,29 @@ const bufferCreate = (
   }
 
   const usage = isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+  const set = (data: GlArray, length: number) => {
+    if (length > data.length) {
+      throw new Error("not enough data in source array");
+    }
 
-  gl.bindBuffer(bufferTarget, buffer);
-  gl.bufferData(bufferTarget, source, usage);
+    gl.bindBuffer(bufferTarget, buffer);
+    gl.bufferData(bufferTarget, data, usage, 0, length);
 
-  const result = {
+    result.length = length;
+    result.type = bufferType(gl, data);
+  };
+
+  const result: GlBuffer = {
     dispose: () => {
       gl.deleteBuffer(buffer);
     },
-    set: (source: GlArray) => {
-      gl.bindBuffer(bufferTarget, buffer);
-      gl.bufferData(bufferTarget, source, usage);
-
-      result.count = source.length;
-      result.type = bufferType(gl, source);
-    },
+    set,
     buffer,
-    count: source.length,
-    type: bufferType(gl, source),
+    length: 0,
+    type: gl.BYTE,
   };
+
+  set(data, length);
 
   return result;
 };
@@ -117,6 +138,7 @@ export {
   type GlAttribute,
   type GlBuffer,
   type GlContext,
-  attributeCreate,
-  bufferCreate,
+  arrayBuffer,
+  attribute,
+  indexBuffer,
 };

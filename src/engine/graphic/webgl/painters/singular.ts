@@ -27,7 +27,7 @@ const draw = <TSceneState, TPolygon>(
 
       shader.bindMaterial(material);
       shader.bindPolygon(polygon);
-      target.draw(0, index.buffer, index.count, index.type);
+      target.draw(0, index.buffer, index.length, index.type);
     }
   }
 };

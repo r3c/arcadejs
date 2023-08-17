@@ -16,8 +16,8 @@ import {
   GlAttribute,
   GlBuffer,
   GlContext,
-  attributeCreate,
-  bufferCreate,
+  attribute,
+  indexBuffer,
 } from "./webgl/resource";
 import { GlPolygon } from "./webgl/renderers/objects/polygon";
 import { Disposable } from "../language/lifecycle";
@@ -660,10 +660,10 @@ const loadPrimitive = (
 ): GlPrimitive<GlPolygon> => {
   const { materials } = library;
 
-  const index = bufferCreate(
+  const index = indexBuffer(
     gl,
-    gl.ELEMENT_ARRAY_BUFFER,
     new Uint32Array(polygon.indices),
+    polygon.indices.length,
     isDynamic
   );
 
@@ -674,41 +674,46 @@ const loadPrimitive = (
         ? materials.get(polygon.material) ?? defaultMaterial
         : defaultMaterial,
     polygon: {
-      tint: map(polygon.tints, (tints) =>
-        attributeCreate(
-          gl,
-          new Float32Array(tints.flatMap(Vector4.toArray)),
-          4,
-          isDynamic
-        )
-      ),
       coordinate: map(polygon.coordinates, (coordinates) =>
-        attributeCreate(
+        attribute(
           gl,
           new Float32Array(coordinates.flatMap(Vector2.toArray)),
+          coordinates.length * 2,
           2,
           isDynamic
         )
       ),
       normal: map(polygon.normals, (normals) =>
-        attributeCreate(
+        attribute(
           gl,
           new Float32Array(normals.flatMap(Vector3.toArray)),
+          normals.length * 3,
           3,
           isDynamic
         )
       ),
-      position: attributeCreate(
+      position: attribute(
         gl,
         new Float32Array(polygon.positions.flatMap(Vector3.toArray)),
+        polygon.positions.length * 3,
         3,
         isDynamic
       ),
       tangent: map(polygon.tangents, (tangents) =>
-        attributeCreate(
+        attribute(
           gl,
           new Float32Array(tangents.flatMap(Vector3.toArray)),
+          tangents.length * 3,
           3,
+          isDynamic
+        )
+      ),
+      tint: map(polygon.tints, (tints) =>
+        attribute(
+          gl,
+          new Float32Array(tints.flatMap(Vector4.toArray)),
+          tints.length * 4,
+          4,
           isDynamic
         )
       ),

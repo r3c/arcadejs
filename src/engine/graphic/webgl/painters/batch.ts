@@ -70,7 +70,7 @@ const paint = <TSceneState, TPolygon>(
     for (const { index, polygon, modelMatrix, normalMatrix } of meshBatches) {
       shader.bindGeometry({ normalMatrix, modelMatrix });
       shader.bindPolygon(polygon);
-      target.draw(0, index.buffer, index.count, index.type);
+      target.draw(0, index.buffer, index.length, index.type);
     }
   }
 };
