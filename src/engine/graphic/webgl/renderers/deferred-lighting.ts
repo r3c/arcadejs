@@ -139,9 +139,9 @@ uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
 in vec3 lightColor;
-in vec2 lightCorner;
 in vec3 lightPosition;
 in float lightRadius;
+in vec3 lightShift;
 
 #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 out vec3 lightDistanceCamera;
@@ -172,7 +172,7 @@ void main(void) {
 
 	gl_Position =
 		projectionMatrix * viewMatrix * modelMatrix * vec4(lightPosition, 1.0) +
-		projectionMatrix * billboardMatrix * modelMatrix * vec4(lightCorner * 1.5, -lightRadius, 0.0); // FIXME: remove x1.5 & lightRadius hack [billboard-hack]
+		projectionMatrix * billboardMatrix * modelMatrix * vec4(lightShift, 0.0);
 }`;
 
 const lightFragmentShader = `
@@ -469,9 +469,9 @@ const loadLightShader = <TSceneState extends LightState>(
 
   if (type === DeferredLightingLightType.Point) {
     shader.setAttributePerPolygon("lightColor", (p) => p.lightColor);
-    shader.setAttributePerPolygon("lightCorner", (p) => p.lightCorner);
     shader.setAttributePerPolygon("lightPosition", (p) => p.lightPosition);
     shader.setAttributePerPolygon("lightRadius", (p) => p.lightRadius);
+    shader.setAttributePerPolygon("lightShift", (p) => p.lightShift);
   }
 
   shader.setUniformPerScene(

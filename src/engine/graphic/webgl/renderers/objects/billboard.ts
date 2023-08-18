@@ -5,6 +5,7 @@ import { PointLight } from "../snippets/light";
 
 const emptyFloat32s = new Float32Array();
 const emptyInt32s = new Uint32Array();
+const sqrt2 = Math.sqrt(2);
 
 type GlLightBillboard = {
   dispose: () => void;
@@ -14,13 +15,15 @@ type GlLightBillboard = {
 
 type GlLightPolygon = {
   lightColor: GlAttribute;
-  lightCorner: GlAttribute;
   lightPosition: GlAttribute;
   lightRadius: GlAttribute;
+  lightShift: GlAttribute;
 };
 
-// Try to reuse given array if length is close enough from required one to
-// reduce number of buffer allocations
+/**
+ * Try to reuse given array if length is close enough from required one to
+ * reduce number of buffer allocations
+ */
 const recycleArray = <TArray extends Float32Array | Uint32Array>(
   constructor: { new (length: number): TArray },
   array: TArray,
@@ -31,44 +34,48 @@ const recycleArray = <TArray extends Float32Array | Uint32Array>(
     : array;
 };
 
+/**
+ * Build billboard mask suitable for rendering point lights. For each point
+ * light a pyramid is built. This pyramid has a base size of
+ * `light radius * sqrt(2)` so it fully covers the light influence sphere but
+ * requires only 5 vertices for being drawn. It's intended to be displayed with
+ * its base always facing camera, using a custom view matrix with no rotation.
+ */
 const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
   const index = indexBuffer(gl, emptyInt32s, 0, true);
   const lightColor = attribute(gl, emptyFloat32s, 0, 3, true);
-  const lightCorner = attribute(gl, emptyFloat32s, 0, 2, true);
   const lightPosition = attribute(gl, emptyFloat32s, 0, 3, true);
   const lightRadius = attribute(gl, emptyFloat32s, 0, 1, true);
+  const lightShift = attribute(gl, emptyFloat32s, 0, 3, true);
 
   let indexArray = new Uint32Array();
   let lightColorArray = new Float32Array();
-  let lightCornerArray = new Float32Array();
   let lightPositionArray = new Float32Array();
   let lightRadiusArray = new Float32Array();
+  let lightShiftArray = new Float32Array();
 
   return {
     dispose: () => {
       lightColor.dispose();
-      lightCorner.dispose();
       lightPosition.dispose();
       lightRadius.dispose();
+      lightShift.dispose();
       index.dispose();
     },
     set: (lights) => {
-      const indexLength = lights.length * 6;
-      const lightColorLength = lights.length * 3 * 4; // 3 components & 4 vertices
-      const lightCornerLength = lights.length * 2 * 4; // 2 coordinates & 4 vertices
-      const lightPositionLength = lights.length * 3 * 4; // 3 dimensions & 4 vertices
-      const lightRadiusLength = lights.length * 4; // 4 vertices
+      const nbIndex = 12;
+      const nbVertex = 5;
+      const indexLength = lights.length * nbIndex;
+      const lightColorLength = lights.length * 3 * nbVertex;
+      const lightPositionLength = lights.length * 3 * nbVertex;
+      const lightRadiusLength = lights.length * nbVertex;
+      const lightShiftLength = lights.length * 3 * nbVertex;
 
       indexArray = recycleArray(Uint32Array, indexArray, indexLength);
       lightColorArray = recycleArray(
         Float32Array,
         lightColorArray,
         lightColorLength
-      );
-      lightCornerArray = recycleArray(
-        Float32Array,
-        lightCornerArray,
-        lightCornerLength
       );
       lightPositionArray = recycleArray(
         Float32Array,
@@ -80,43 +87,73 @@ const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
         lightRadiusArray,
         lightRadiusLength
       );
+      lightShiftArray = recycleArray(
+        Float32Array,
+        lightShiftArray,
+        lightShiftLength
+      );
 
       for (let i = 0; i < lights.length; ++i) {
         const { color, position, radius } = lights[i];
-        const start = i * 4;
+        const indexOffset = i * nbIndex;
+        const vertexOffset = i * nbVertex;
+        const shift = radius * sqrt2;
 
-        indexArray[i * 6 + 0] = start + 0;
-        indexArray[i * 6 + 1] = start + 1;
-        indexArray[i * 6 + 2] = start + 2;
-        indexArray[i * 6 + 3] = start + 0;
-        indexArray[i * 6 + 4] = start + 2;
-        indexArray[i * 6 + 5] = start + 3;
-
-        for (let vertex = 0; vertex < 4; ++vertex) {
-          lightColorArray[(start + vertex) * 3 + 0] = color.x;
-          lightColorArray[(start + vertex) * 3 + 1] = color.y;
-          lightColorArray[(start + vertex) * 3 + 2] = color.z;
-          lightPositionArray[(start + vertex) * 3 + 0] = position.x;
-          lightPositionArray[(start + vertex) * 3 + 1] = position.y;
-          lightPositionArray[(start + vertex) * 3 + 2] = position.z;
-          lightRadiusArray[start + vertex] = radius;
+        for (let vertex = 0; vertex < nbVertex; ++vertex) {
+          lightColorArray[(vertexOffset + vertex) * 3 + 0] = color.x;
+          lightColorArray[(vertexOffset + vertex) * 3 + 1] = color.y;
+          lightColorArray[(vertexOffset + vertex) * 3 + 2] = color.z;
+          lightPositionArray[(vertexOffset + vertex) * 3 + 0] = position.x;
+          lightPositionArray[(vertexOffset + vertex) * 3 + 1] = position.y;
+          lightPositionArray[(vertexOffset + vertex) * 3 + 2] = position.z;
+          lightRadiusArray[vertexOffset + vertex] = radius;
         }
 
-        lightCornerArray[start * 2 + 0] = -radius;
-        lightCornerArray[start * 2 + 1] = -radius;
-        lightCornerArray[start * 2 + 2] = radius;
-        lightCornerArray[start * 2 + 3] = -radius;
-        lightCornerArray[start * 2 + 4] = radius;
-        lightCornerArray[start * 2 + 5] = radius;
-        lightCornerArray[start * 2 + 6] = -radius;
-        lightCornerArray[start * 2 + 7] = radius;
+        indexArray.set(
+          [
+            vertexOffset + 0,
+            vertexOffset + 1,
+            vertexOffset + 4,
+            vertexOffset + 1,
+            vertexOffset + 2,
+            vertexOffset + 4,
+            vertexOffset + 2,
+            vertexOffset + 3,
+            vertexOffset + 4,
+            vertexOffset + 3,
+            vertexOffset + 0,
+            vertexOffset + 4,
+          ],
+          indexOffset
+        );
+
+        lightShiftArray.set(
+          [
+            -shift,
+            -shift,
+            0,
+            shift,
+            -shift,
+            0,
+            shift,
+            shift,
+            0,
+            -shift,
+            shift,
+            0,
+            0,
+            0,
+            -shift,
+          ],
+          vertexOffset * 3
+        );
       }
 
       index.set(indexArray, indexLength);
       lightColor.buffer.set(lightColorArray, lightColorLength);
-      lightCorner.buffer.set(lightCornerArray, lightCornerLength);
       lightPosition.buffer.set(lightPositionArray, lightPositionLength);
       lightRadius.buffer.set(lightRadiusArray, lightRadiusLength);
+      lightShift.buffer.set(lightShiftArray, lightShiftLength);
     },
     model: {
       library: undefined,
@@ -127,7 +164,12 @@ const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
             {
               index,
               material: defaultMaterial,
-              polygon: { lightColor, lightCorner, lightPosition, lightRadius },
+              polygon: {
+                lightColor,
+                lightPosition,
+                lightRadius,
+                lightShift,
+              },
             },
           ],
           transform: Matrix4.identity,

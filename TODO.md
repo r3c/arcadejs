@@ -2,7 +2,6 @@
 
 ## ToDo
 
-- Fix deferred point lights bug when light is behind camera (due to quad not being drawn) [billboard-hack]
 - Strong typing for tweaks
 - Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}
@@ -16,6 +15,7 @@
 
 ## Done
 
+- Fix deferred point lights bug when light is behind camera (due to quad not being drawn) [billboard-hack]
 - Fix directional shadow scene
 - Provide `VectorN.fromXYZ(x, y, z)` and replace compatible usages of `VectorN.fromObject(o)`
 - Rename WebGL types and import them individually to avoid webgl.Type references
