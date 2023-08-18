@@ -5,7 +5,6 @@ import { PointLight } from "../snippets/light";
 
 const emptyFloat32s = new Float32Array();
 const emptyInt32s = new Uint32Array();
-const sqrt2 = Math.sqrt(2);
 
 type GlLightBillboard = {
   dispose: () => void;
@@ -36,10 +35,9 @@ const recycleArray = <TArray extends Float32Array | Uint32Array>(
 
 /**
  * Build billboard mask suitable for rendering point lights. For each point
- * light a pyramid is built. This pyramid has a base size of
- * `light radius * sqrt(2)` so it fully covers the light influence sphere but
- * requires only 5 vertices for being drawn. It's intended to be displayed with
- * its base always facing camera, using a custom view matrix with no rotation.
+ * light half a cube is built to cover the light influence sphere. It's
+ * intended to be displayed always facing camera using a custom view matrix
+ * with no rotation.
  */
 const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
   const index = indexBuffer(gl, emptyInt32s, 0, true);
@@ -63,8 +61,8 @@ const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
       index.dispose();
     },
     set: (lights) => {
-      const nbIndex = 12;
-      const nbVertex = 5;
+      const nbIndex = 30;
+      const nbVertex = 8;
       const indexLength = lights.length * nbIndex;
       const lightColorLength = lights.length * 3 * nbVertex;
       const lightPositionLength = lights.length * 3 * nbVertex;
@@ -97,7 +95,6 @@ const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
         const { color, position, radius } = lights[i];
         const indexOffset = i * nbIndex;
         const vertexOffset = i * nbVertex;
-        const shift = radius * sqrt2;
 
         for (let vertex = 0; vertex < nbVertex; ++vertex) {
           lightColorArray[(vertexOffset + vertex) * 3 + 0] = color.x;
@@ -112,38 +109,65 @@ const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
         indexArray.set(
           [
             vertexOffset + 0,
-            vertexOffset + 1,
-            vertexOffset + 4,
-            vertexOffset + 1,
-            vertexOffset + 2,
-            vertexOffset + 4,
-            vertexOffset + 2,
+            vertexOffset + 7,
             vertexOffset + 3,
             vertexOffset + 4,
-            vertexOffset + 3,
+            vertexOffset + 7,
             vertexOffset + 0,
+            vertexOffset + 2,
+            vertexOffset + 5,
+            vertexOffset + 1,
+            vertexOffset + 6,
+            vertexOffset + 5,
+            vertexOffset + 2,
+            vertexOffset + 0,
+            vertexOffset + 1,
             vertexOffset + 4,
+            vertexOffset + 5,
+            vertexOffset + 4,
+            vertexOffset + 1,
+            vertexOffset + 2,
+            vertexOffset + 3,
+            vertexOffset + 6,
+            vertexOffset + 7,
+            vertexOffset + 6,
+            vertexOffset + 3,
+            vertexOffset + 4,
+            vertexOffset + 5,
+            vertexOffset + 7,
+            vertexOffset + 5,
+            vertexOffset + 6,
+            vertexOffset + 7,
           ],
           indexOffset
         );
 
         lightShiftArray.set(
           [
-            -shift,
-            -shift,
+            -radius,
+            -radius,
             0,
-            shift,
-            -shift,
+            radius,
+            -radius,
             0,
-            shift,
-            shift,
+            radius,
+            radius,
             0,
-            -shift,
-            shift,
+            -radius,
+            radius,
             0,
-            0,
-            0,
-            -shift,
+            -radius,
+            -radius,
+            -radius,
+            radius,
+            -radius,
+            -radius,
+            radius,
+            radius,
+            -radius,
+            -radius,
+            radius,
+            -radius,
           ],
           vertexOffset * 3
         );
