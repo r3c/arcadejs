@@ -79,7 +79,9 @@ class WebGLScreen extends Screen {
   public constructor(container: HTMLElement) {
     super(container);
 
-    const contextOrNull = this.canvas.getContext("webgl2");
+    const contextOrNull = this.canvas.getContext("webgl2", {
+      premultipliedAlpha: false,
+    });
 
     if (contextOrNull === null) {
       throw Error("cannot get WebGL context");
