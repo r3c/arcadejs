@@ -10,7 +10,6 @@ import {
   indexNumber,
   memoize,
 } from "../../engine/language/memo";
-import * as color from "../color";
 import { Input } from "../../engine/io/controller";
 import {
   DebugTextureFormat,
@@ -42,6 +41,7 @@ import {
   PointLight,
 } from "../../engine/graphic/webgl/renderers/snippets/light";
 import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
+import { brightColor } from "../../engine/graphic/color";
 
 /*
  ** What changed?
@@ -155,7 +155,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           })
       ),
       directionalLights: range(10, (i) => ({
-        color: color.createBright(i),
+        color: brightColor(i),
         direction: Vector3.zero,
         shadow: false,
       })),
@@ -168,7 +168,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       pointLights: range(2000, (i) => ({
-        color: color.createBright(i),
+        color: brightColor(i),
         position: Vector3.zero,
         radius: 0,
       })),
