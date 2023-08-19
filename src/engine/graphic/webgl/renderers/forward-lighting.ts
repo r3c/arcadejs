@@ -16,12 +16,7 @@ import { perturbNormal } from "../shaders/normal";
 import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
-import {
-  linearToStandardDeclare,
-  linearToStandardInvoke,
-  standardToLinearDeclare,
-  standardToLinearInvoke,
-} from "./snippets/rgb";
+import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
   GlObject,
@@ -249,8 +244,8 @@ uniform sampler2D environmentBrdfMap;
 uniform samplerCube environmentDiffuseMap;
 uniform samplerCube environmentSpecularMap;
 
-${linearToStandardDeclare()}
-${standardToLinearDeclare()}
+${linearToStandard.declare()}
+${standardToLinear.declare()}
 
 ${sampleDeclare(
   "albedoMap",
@@ -318,7 +313,13 @@ void main(void) {
     "b",
     "n"
   )};
-	vec3 modifiedNormal = ${perturbNormal.invoke("normalMap", "coordParallax", "t", "b", "n")};
+	vec3 modifiedNormal = ${perturbNormal.invoke(
+    "normalMap",
+    "coordParallax",
+    "t",
+    "b",
+    "n"
+  )};
 
 	${sampleType} material = ${sampleInvoke("coordParallax")};
 
@@ -375,11 +376,11 @@ void main(void) {
 	color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
 	// Apply emissive component
-  color += emissiveFactor.rgb * ${standardToLinearInvoke(
+  color += emissiveFactor.rgb * ${standardToLinear.invoke(
     "texture(emissiveMap, coordParallax).rgb"
   )};
 
-	fragColor = vec4(${linearToStandardInvoke("color")}, 1.0);
+	fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
 
 const shadowDirectionalVertexShader = `

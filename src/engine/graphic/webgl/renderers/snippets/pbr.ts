@@ -1,6 +1,6 @@
 import { sourceTypeResult } from "./light";
 import { sampleType } from "./material";
-import { standardToLinearInvoke } from "./rgb";
+import { standardToLinear } from "../../shaders/rgb";
 
 // Heavily based on Khronos PBR in glTF 2.0 using WebGL:
 // https://github.com/KhronosGroup/glTF-WebGL-PBR
@@ -50,18 +50,18 @@ vec3 pbrEnvironment(in ${sampleType} material, in vec3 normal, in vec3 eyeDirect
 		vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
 		vec3 specularColor = mix(PBR_F0, material.albedo, material.metalness);
 
-		vec3 diffuseLight = ${standardToLinearInvoke(
+		vec3 diffuseLight = ${standardToLinear.invoke(
       `texture(${environmentDiffuseMap}, normal).rgb`
     )};
 		vec3 diffuse = diffuseLight * diffuseColor;
 
 		float NdotV = abs(dot(normal, eyeDirection)) + 0.001;
-		vec3 brdf = ${standardToLinearInvoke(
+		vec3 brdf = ${standardToLinear.invoke(
       `texture(${environmentBrdfMap}, vec2(NdotV, 1.0 - material.roughness)).rgb`
     )};
 		vec3 reflection = -normalize(reflect(eyeDirection, normal));
 
-		vec3 specularLight = ${standardToLinearInvoke(
+		vec3 specularLight = ${standardToLinear.invoke(
       `texture(${environmentSpecularMap}, reflection).rgb`
     )};
 		vec3 specular = specularLight * (specularColor * brdf.x + brdf.y);

@@ -2,6 +2,7 @@
 
 ## ToDo
 
+- Fix sRGB/RGB not applied in deferred shading
 - Strong typing for tweaks
 - Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}

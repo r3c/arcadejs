@@ -1,4 +1,4 @@
-import { standardToLinearInvoke } from "./rgb";
+import { standardToLinear } from "../../shaders/rgb";
 
 const sampleType = "MaterialSample";
 
@@ -22,7 +22,7 @@ struct ${sampleType} {
 };
 
 ${sampleType} materialSample(vec2 coord) {
-	vec3 albedo = ${albedoFactor}.rgb * ${standardToLinearInvoke(
+	vec3 albedo = ${albedoFactor}.rgb * ${standardToLinear.invoke(
   `texture(${albedoSampler}, coord).rgb`
 )};
 	float glossiness = ${glossinessFactor} * texture(${glossinessSampler}, coord).r;
