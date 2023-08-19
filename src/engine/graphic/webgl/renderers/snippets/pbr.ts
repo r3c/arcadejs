@@ -5,7 +5,7 @@ import { standardToLinear } from "../../shaders/rgb";
 // Heavily based on Khronos PBR in glTF 2.0 using WebGL:
 // https://github.com/KhronosGroup/glTF-WebGL-PBR
 
-const declare = (
+const pbrDeclare = (
   environmentEnableDirective: string,
   environmentBrdfMap: string,
   environmentDiffuseMap: string,
@@ -104,17 +104,17 @@ vec3 pbrLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 n
 	return light.color * light.power * NdotL * (diffuseContrib + specularContrib);
 }`;
 
-const environmentInvoke = (
+const pbrEnvironmentInvoke = (
   material: string,
   normal: string,
   eyeDirection: string
 ): string => `pbrEnvironment(${material}, ${normal}, ${eyeDirection})`;
 
-const lightInvoke = (
+const pbrLightInvoke = (
   light: string,
   material: string,
   normal: string,
   eyeDirection: string
 ): string => `pbrLight(${light}, ${material}, ${normal}, ${eyeDirection})`;
 
-export { declare, environmentInvoke, lightInvoke };
+export { pbrDeclare, pbrEnvironmentInvoke, pbrLightInvoke };

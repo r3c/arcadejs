@@ -14,8 +14,12 @@ import { SingularPainter } from "../painters/singular";
 import { Matrix4 } from "../../../math/matrix";
 import { perturbNormal } from "../shaders/normal";
 import { parallaxPerturb } from "../shaders/parallax";
-import * as pbr from "./snippets/pbr";
-import * as phong from "./snippets/phong";
+import {
+  pbrDeclare,
+  pbrEnvironmentInvoke,
+  pbrLightInvoke,
+} from "./snippets/pbr";
+import { lightDeclare, lightInvoke } from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
@@ -261,8 +265,8 @@ ${sampleDeclare(
 
 ${perturbNormal.declare()}
 ${parallaxPerturb.declare()}
-${phong.lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
-${pbr.declare(
+${lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
+${pbrDeclare(
   "LIGHT_MODEL_PBR_IBL",
   "environmentBrdfMap",
   "environmentDiffuseMap",
@@ -285,7 +289,7 @@ layout(location=0) out vec4 fragColor;
 
 vec3 getLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
 	#if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
-		return ${phong.lightInvoke(
+		return ${lightInvoke(
       "light",
       "material.albedo.rgb",
       "material.glossiness",
@@ -294,7 +298,7 @@ vec3 getLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 n
       "eyeDirection"
     )};
 	#elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
-		return ${pbr.lightInvoke("light", "material", "normal", "eyeDirection")};
+		return ${pbrLightInvoke("light", "material", "normal", "eyeDirection")};
 	#endif
 }
 
@@ -325,7 +329,7 @@ void main(void) {
 	${sampleType} material = ${sampleInvoke("coordParallax")};
 
 	// Apply environment (ambient or influence-based) lighting
-	vec3 color = ${pbr.environmentInvoke(
+	vec3 color = ${pbrEnvironmentInvoke(
     "material",
     "normal",
     "eyeDirection"

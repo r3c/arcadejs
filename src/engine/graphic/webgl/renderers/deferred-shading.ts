@@ -12,7 +12,7 @@ import { Matrix4 } from "../../../math/matrix";
 import { encodeNormal, perturbNormal, decodeNormal } from "../shaders/normal";
 import { SingularPainter } from "../painters/singular";
 import { parallaxPerturb } from "../shaders/parallax";
-import * as phong from "./snippets/phong";
+import { lightDeclare, lightInvoke } from "./snippets/phong";
 import { model as quadModel } from "./resources/quad";
 import { decodeShininess, encodeShininess } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -238,7 +238,7 @@ uniform sampler2D depth;
 uniform sampler2D normalAndGlossiness;
 
 ${decodeNormal.declare()}
-${phong.lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
+${lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 ${decodeShininess.declare()}
 
 #if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
@@ -291,7 +291,7 @@ void main(void) {
 )};
 	#endif
 
-	vec3 color = ${phong.lightInvoke(
+	vec3 color = ${lightInvoke(
     "light",
     "albedo",
     "glossiness",

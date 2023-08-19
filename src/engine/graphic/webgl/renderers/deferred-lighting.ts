@@ -12,7 +12,11 @@ import { Matrix4 } from "../../../math/matrix";
 import { encodeNormal, perturbNormal, decodeNormal } from "../shaders/normal";
 import { SingularPainter } from "../painters/singular";
 import { parallaxPerturb } from "../shaders/parallax";
-import * as phong from "./snippets/phong";
+import {
+  lightDeclare,
+  lightInvokeDiffusePower,
+  lightInvokeSpecularPower,
+} from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { decodeShininess, encodeShininess } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -194,7 +198,7 @@ uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossinessBuffer;
 
 ${decodeNormal.declare()}
-${phong.lightDeclare("ZERO", "ZERO")}
+${lightDeclare("ZERO", "ZERO")}
 ${decodeShininess.declare()}
 
 #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
@@ -247,8 +251,8 @@ void main(void) {
 )};
 	#endif
 
-	float lightDiffusePower = ${phong.lightInvokeDiffusePower("light", "normal")};
-	float lightSpecularPower = ${phong.lightInvokeSpecularPower(
+	float lightDiffusePower = ${lightInvokeDiffusePower("light", "normal")};
+	float lightSpecularPower = ${lightInvokeSpecularPower(
     "light",
     "glossiness",
     "shininess",
