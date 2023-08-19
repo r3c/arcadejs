@@ -1,4 +1,4 @@
-import * as rgb from "./rgb";
+import { standardToLinearInvoke } from "./rgb";
 
 const sampleType = "MaterialSample";
 
@@ -22,7 +22,7 @@ struct ${sampleType} {
 };
 
 ${sampleType} materialSample(vec2 coord) {
-	vec3 albedo = ${albedoFactor}.rgb * ${rgb.standardToLinearInvoke(
+	vec3 albedo = ${albedoFactor}.rgb * ${standardToLinearInvoke(
   `texture(${albedoSampler}, coord).rgb`
 )};
 	float glossiness = ${glossinessFactor} * texture(${glossinessSampler}, coord).r;

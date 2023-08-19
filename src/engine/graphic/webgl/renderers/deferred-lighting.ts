@@ -13,7 +13,12 @@ import * as normal from "./snippets/normal";
 import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
-import * as rgb from "./snippets/rgb";
+import {
+  linearToStandardDeclare,
+  linearToStandardInvoke,
+  standardToLinearDeclare,
+  standardToLinearInvoke,
+} from "./snippets/rgb";
 import * as shininess from "./snippets/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
@@ -297,8 +302,8 @@ uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 
 ${parallax.perturbDeclare("heightMap")}
-${rgb.linearToStandardDeclare()}
-${rgb.standardToLinearDeclare()}
+${linearToStandardDeclare()}
+${standardToLinearDeclare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -333,7 +338,7 @@ void main(void) {
     "n"
   )};
 
-	vec3 albedo = albedoFactor.rgb * ${rgb.standardToLinearInvoke(
+	vec3 albedo = albedoFactor.rgb * ${standardToLinearInvoke(
     "texture(albedoMap, coordParallax).rgb"
   )};
 	float glossiness = glossinessFactor * texture(glossinessMap, coordParallax).r;
@@ -342,7 +347,7 @@ void main(void) {
 	// FIXME: duplicate of "phong.lightInvoke" code
 	vec3 color = albedo * (ambientLight + diffuseLight) + glossiness * specularLight;
 
-	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
+	fragColor = vec4(${linearToStandardInvoke("color")}, 1.0);
 }`;
 
 type Configuration = {

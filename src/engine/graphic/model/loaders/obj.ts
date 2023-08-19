@@ -1,4 +1,4 @@
-import * as image from "../../image";
+import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
   Interpolation,
@@ -8,8 +8,8 @@ import {
   Texture,
   Wrap,
 } from "../definition";
-import * as path from "../../../fs/path";
-import * as stream from "../../../io/stream";
+import { combinePath, getPathDirectory } from "../../../fs/path";
+import { StringFormat, readURL } from "../../../io/stream";
 import { Vector2, Vector3 } from "../../../math/vector";
 
 /*
@@ -42,7 +42,7 @@ const invalidLine = (file: string, line: number, description: string) => {
 };
 
 const load = async (url: string): Promise<Model> => {
-  const data = await stream.readURL(stream.StringFormat, url);
+  const data = await readURL(StringFormat, url);
 
   return loadObject(data, url);
 };
@@ -179,12 +179,12 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
           throw invalidLine(fileName, line, "material library reference");
         }
 
-        const directory = path.directory(fileName);
-        const library = path.combine(directory, fields[1]);
+        const directory = getPathDirectory(fileName);
+        const library = combinePath(directory, fields[1]);
 
-        await stream
-          .readURL(stream.StringFormat, library)
-          .then((data) => loadMaterial(materials, data, library));
+        await readURL(StringFormat, library).then((data) =>
+          loadMaterial(materials, data, library)
+        );
 
         break;
 
@@ -331,9 +331,7 @@ const loadTexture = async (
     mipmap: true,
     wrap: Wrap.Repeat,
   },
-  image: await image.loadFromURL(
-    path.combine(path.directory(fileName), textureName)
-  ),
+  image: await loadFromURL(combinePath(getPathDirectory(fileName), textureName)),
 });
 
 const parseFace = (face: string) => {

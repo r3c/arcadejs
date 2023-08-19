@@ -9,8 +9,8 @@ import {
   Texture,
   Wrap,
 } from "../definition";
-import * as path from "../../../fs/path";
-import * as stream from "../../../io/stream";
+import { combinePath, getPathDirectory } from "../../../fs/path";
+import { JSONFormat, readURL } from "../../../io/stream";
 import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
 interface JsonConfiguration {
@@ -36,8 +36,8 @@ const load = async (
   let root: any;
 
   if (typeof urlOrData === "string") {
-    directory = path.directory(urlOrData);
-    root = await stream.readURL(stream.JSONFormat, urlOrData);
+    directory = getPathDirectory(urlOrData);
+    root = await readURL(JSONFormat, urlOrData);
   } else if (typeof urlOrData === "object") {
     directory = "";
     root = urlOrData;
@@ -258,7 +258,7 @@ const toPath = (
     instance
   );
 
-  return path.combine(state.directory, tail);
+  return combinePath(state.directory, tail);
 };
 
 const toPolygon = (

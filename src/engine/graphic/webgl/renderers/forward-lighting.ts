@@ -16,7 +16,12 @@ import * as normal from "./snippets/normal";
 import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
-import * as rgb from "./snippets/rgb";
+import {
+  linearToStandardDeclare,
+  linearToStandardInvoke,
+  standardToLinearDeclare,
+  standardToLinearInvoke,
+} from "./snippets/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
   GlObject,
@@ -244,8 +249,8 @@ uniform sampler2D environmentBrdfMap;
 uniform samplerCube environmentDiffuseMap;
 uniform samplerCube environmentSpecularMap;
 
-${rgb.linearToStandardDeclare()}
-${rgb.standardToLinearDeclare()}
+${linearToStandardDeclare()}
+${standardToLinearDeclare()}
 
 ${sampleDeclare(
   "albedoMap",
@@ -370,11 +375,11 @@ void main(void) {
 	color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
 	// Apply emissive component
-  color += emissiveFactor.rgb * ${rgb.standardToLinearInvoke(
+  color += emissiveFactor.rgb * ${standardToLinearInvoke(
     "texture(emissiveMap, coordParallax).rgb"
   )};
 
-	fragColor = vec4(${rgb.linearToStandardInvoke("color")}, 1.0);
+	fragColor = vec4(${linearToStandardInvoke("color")}, 1.0);
 }`;
 
 const shadowDirectionalVertexShader = `

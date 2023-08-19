@@ -1,5 +1,5 @@
 import { type Codec, asciiCodec } from "../../../text/encoding";
-import * as image from "../../image";
+import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
   defaultColor,
@@ -9,8 +9,13 @@ import {
   Texture,
   Wrap,
 } from "../definition";
-import * as path from "../../../fs/path";
-import * as stream from "../../../io/stream";
+import { combinePath, getPathDirectory } from "../../../fs/path";
+import {
+  BinaryFormat,
+  BinaryReader,
+  Endian,
+  readURL,
+} from "../../../io/stream";
 import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
 /*
@@ -23,7 +28,7 @@ interface Context {
   codec: Codec;
   directory: string;
   file: string;
-  reader: stream.BinaryReader;
+  reader: BinaryReader;
 }
 
 interface RawMaterial {
@@ -50,12 +55,9 @@ const invalidChunk = (file: string, chunk: number, description: string) => {
 const load = async (url: string): Promise<Model> => {
   const context = {
     codec: asciiCodec,
-    directory: path.directory(url),
+    directory: getPathDirectory(url),
     file: url,
-    reader: new stream.BinaryReader(
-      await stream.readURL(stream.BinaryFormat, url),
-      stream.Endian.Little
-    ),
+    reader: new BinaryReader(await readURL(BinaryFormat, url), Endian.Little),
   };
 
   const model = await scan(context, context.reader.getLength(), readRoot, {
@@ -240,8 +242,8 @@ const readMaterialMap = async (
           mipmap: true,
           wrap: Wrap.Repeat,
         },
-        image: await image.loadFromURL(
-          path.combine(
+        image: await loadFromURL(
+          combinePath(
             context.directory,
             context.codec.decode(context.reader.readBufferZero())
           )

@@ -4,7 +4,7 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import * as view from "../view";
+import { Camera } from "../view";
 import {
   GlModel,
   GlPainter,
@@ -56,7 +56,7 @@ void main(void) {
 }`;
 
 type ApplicationState = {
-  camera: view.Camera;
+  camera: Camera;
   gl: WebGLRenderingContext;
   input: Input;
   model: GlModel<GlPolygon>;
@@ -113,7 +113,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
 
     return {
-      camera: new view.Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       gl: runtime.context,
       input: new Input(screen.canvas),
       model: loadModel(

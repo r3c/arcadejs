@@ -1,6 +1,6 @@
 import { asciiCodec } from "../../../text/encoding";
 import { map } from "../../../language/functional";
-import * as image from "../../image";
+import { Channel, loadFromURL, mapChannels } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
   Interpolation,
@@ -10,8 +10,13 @@ import {
   Polygon,
   Wrap,
 } from "../definition";
-import * as path from "../../../fs/path";
-import * as stream from "../../../io/stream";
+import { combinePath, getPathDirectory } from "../../../fs/path";
+import {
+  BinaryFormat,
+  BinaryReader,
+  Endian,
+  readURL,
+} from "../../../io/stream";
 import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
 /*
@@ -195,7 +200,7 @@ const expandAccessor = <T>(
 const expandMaterial = (material: TfMaterial): Material => {
   const toMap = (
     textureOrUndefined: TfTexture | undefined,
-    channels?: image.Channel[]
+    channels?: Channel[]
   ) =>
     map(textureOrUndefined, (texture) => ({
       filter: {
@@ -206,7 +211,7 @@ const expandMaterial = (material: TfMaterial): Material => {
       },
       image:
         channels !== undefined
-          ? image.mapChannels(texture.image, channels)
+          ? mapChannels(texture.image, channels)
           : texture.image,
     }));
 
@@ -215,9 +220,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     albedoMap: toMap(material.baseColorTexture),
     emissiveFactor: material.emissiveFactor,
     emissiveMap: toMap(material.emissiveTexture),
-    metalnessMap: toMap(material.metallicRoughnessTexture, [
-      image.Channel.Blue,
-    ]),
+    metalnessMap: toMap(material.metallicRoughnessTexture, [Channel.Blue]),
     metalnessStrength: material.metallicFactor,
     //normalFactor: material.normalFactor, // FIXME: normalFactor is not supported yet
     normalMap: toMap(material.normalTexture),
@@ -225,9 +228,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     occlusionStrength: map(material.occlusionFactor, (factor) =>
       Math.max(factor.x, factor.y, factor.z, factor.w)
     ),
-    roughnessMap: toMap(material.metallicRoughnessTexture, [
-      image.Channel.Green,
-    ]),
+    roughnessMap: toMap(material.metallicRoughnessTexture, [Channel.Green]),
     roughnessStrength: material.roughnessFactor,
   };
 };
@@ -408,9 +409,9 @@ const loadBuffer = async (
   let arrayBuffer: ArrayBuffer;
 
   if (buffer.uri !== undefined)
-    arrayBuffer = await stream.readURL(
-      stream.BinaryFormat,
-      path.combine(path.directory(url), buffer.uri)
+    arrayBuffer = await readURL(
+      BinaryFormat,
+      combinePath(getPathDirectory(url), buffer.uri)
     );
   else if (embedded !== undefined) arrayBuffer = embedded;
   else
@@ -463,9 +464,7 @@ const loadImage = async (
   index: number
 ): Promise<ImageData> => {
   if (definition.uri !== undefined)
-    return await image.loadFromURL(
-      path.combine(path.directory(url), definition.uri)
-    );
+    return await loadFromURL(combinePath(getPathDirectory(url), definition.uri));
 
   const source = `image[${index}]`;
 
@@ -482,7 +481,7 @@ const loadImage = async (
     const blob = new Blob([bufferView.buffer], { type: definition.mimeType });
     const uri = window.URL.createObjectURL(blob);
 
-    return image.loadFromURL(uri);
+    return loadFromURL(uri);
   }
 
   throw invalidData(url, source + " specifies no URI nor buffer data");
@@ -865,9 +864,9 @@ const loadTexture = (
 };
 
 const load = async (url: string): Promise<Model> => {
-  const buffer = await stream.readURL(stream.BinaryFormat, url);
+  const buffer = await readURL(BinaryFormat, url);
   const codec = asciiCodec;
-  const reader = new stream.BinaryReader(buffer, stream.Endian.Little);
+  const reader = new BinaryReader(buffer, Endian.Little);
   const first = String.fromCharCode(reader.readInt8u());
 
   let structure: any;

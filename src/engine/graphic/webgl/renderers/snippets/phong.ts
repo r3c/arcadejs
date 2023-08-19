@@ -1,21 +1,17 @@
 import { getDirectiveOrValue } from "./compiler";
-import * as light from "./light";
+import { sourceTypeResult } from "./light";
 
 const lightDeclare = (
   diffuseDirective: string,
   specularDirective: string
 ): string => `
-float phongLightDiffusePower(in ${
-  light.sourceTypeResult
-} light, in vec3 normal) {
+float phongLightDiffusePower(in ${sourceTypeResult} light, in vec3 normal) {
 	float lightNormalCosine = dot(normal, light.direction);
 
 	return clamp(lightNormalCosine, 0.0, 1.0);
 }
 
-float phongLightSpecularPower(in ${
-  light.sourceTypeResult
-} light, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
+float phongLightSpecularPower(in ${sourceTypeResult} light, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
 	float lightNormalCosine = dot(normal, light.direction);
 	float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
@@ -34,9 +30,7 @@ float phongLightSpecularPower(in ${
 	return materialGlossiness * pow(lightCosine, materialShininess) * lightVisible;
 }
 
-vec3 phongLight(in ${
-  light.sourceTypeResult
-} light, in vec3 materialAlbedo, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
+vec3 phongLight(in ${sourceTypeResult} light, in vec3 materialAlbedo, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eyeDirection) {
 	return light.power * (
 		phongLightDiffusePower(light, normal) * light.color * materialAlbedo * float(${getDirectiveOrValue(
       diffuseDirective,

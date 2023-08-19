@@ -6,9 +6,9 @@ import {
 } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { Context2DScreen } from "../../engine/graphic/display";
-import { loadModelFromJson } from "../../engine/graphic/model";
+import { Model, loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import * as model from "../../engine/graphic/model";
+import {} from "../../engine/graphic/model";
 import {
   SoftwareDrawMode,
   SoftwareRenderer,
@@ -31,8 +31,8 @@ const configuration = {
 
 type ApplicationState = {
   camera: Camera;
-  cubeWithColor: model.Model;
-  cubeWithTexture: model.Model;
+  cubeWithColor: Model;
+  cubeWithTexture: Model;
   input: Input;
   projection: Matrix4;
   rendererDefault: SoftwareRenderer;

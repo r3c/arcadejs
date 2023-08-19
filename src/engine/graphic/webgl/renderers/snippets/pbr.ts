@@ -1,6 +1,6 @@
-import * as light from "./light";
-import * as material from "./material";
-import * as rgb from "./rgb";
+import { sourceTypeResult } from "./light";
+import { sampleType } from "./material";
+import { standardToLinearInvoke } from "./rgb";
 
 // Heavily based on Khronos PBR in glTF 2.0 using WebGL:
 // https://github.com/KhronosGroup/glTF-WebGL-PBR
@@ -45,25 +45,23 @@ vec3 pbrSpecularReflection(vec3 reflectance0, vec3 reflectance90, float VdotH) {
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
 // See our README.md on Environment Maps [3] for additional discussion.
-vec3 pbrEnvironment(in ${
-  material.sampleType
-} material, in vec3 normal, in vec3 eyeDirection) {
+vec3 pbrEnvironment(in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
 	#ifdef ${environmentEnableDirective}
 		vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
 		vec3 specularColor = mix(PBR_F0, material.albedo, material.metalness);
 
-		vec3 diffuseLight = ${rgb.standardToLinearInvoke(
+		vec3 diffuseLight = ${standardToLinearInvoke(
       `texture(${environmentDiffuseMap}, normal).rgb`
     )};
 		vec3 diffuse = diffuseLight * diffuseColor;
 
 		float NdotV = abs(dot(normal, eyeDirection)) + 0.001;
-		vec3 brdf = ${rgb.standardToLinearInvoke(
+		vec3 brdf = ${standardToLinearInvoke(
       `texture(${environmentBrdfMap}, vec2(NdotV, 1.0 - material.roughness)).rgb`
     )};
 		vec3 reflection = -normalize(reflect(eyeDirection, normal));
 
-		vec3 specularLight = ${rgb.standardToLinearInvoke(
+		vec3 specularLight = ${standardToLinearInvoke(
       `texture(${environmentSpecularMap}, reflection).rgb`
     )};
 		vec3 specular = specularLight * (specularColor * brdf.x + brdf.y);
@@ -74,9 +72,7 @@ vec3 pbrEnvironment(in ${
 	#endif
 }
 
-vec3 pbrLight(in ${light.sourceTypeResult} light, in ${
-  material.sampleType
-} material, in vec3 normal, in vec3 eyeDirection) {
+vec3 pbrLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
 	vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
 	vec3 specularColor = mix(PBR_F0, material.albedo, material.metalness);
 

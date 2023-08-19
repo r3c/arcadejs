@@ -8,7 +8,7 @@ import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/functional";
-import * as image from "../../engine/graphic/image";
+import { loadFromURL } from "../../engine/graphic/image";
 import {
   loadModelFromGltf,
   loadModelFromJson,
@@ -111,27 +111,27 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Load textures
     const brdf = loadTextureQuad(
       gl,
-      await image.loadFromURL("model/ibl/ibl_brdf_lut.webp")
+      await loadFromURL("model/ibl/ibl_brdf_lut.webp")
     );
 
     const diffuse = loadTextureCube(
       gl,
-      await image.loadFromURL("model/papermill/diffuse_right_0.jpg"),
-      await image.loadFromURL("model/papermill/diffuse_left_0.jpg"),
-      await image.loadFromURL("model/papermill/diffuse_top_0.jpg"),
-      await image.loadFromURL("model/papermill/diffuse_bottom_0.jpg"),
-      await image.loadFromURL("model/papermill/diffuse_front_0.jpg"),
-      await image.loadFromURL("model/papermill/diffuse_back_0.jpg")
+      await loadFromURL("model/papermill/diffuse_right_0.jpg"),
+      await loadFromURL("model/papermill/diffuse_left_0.jpg"),
+      await loadFromURL("model/papermill/diffuse_top_0.jpg"),
+      await loadFromURL("model/papermill/diffuse_bottom_0.jpg"),
+      await loadFromURL("model/papermill/diffuse_front_0.jpg"),
+      await loadFromURL("model/papermill/diffuse_back_0.jpg")
     );
 
     const specular = loadTextureCube(
       gl,
-      await image.loadFromURL("model/papermill/specular_right_0.jpg"),
-      await image.loadFromURL("model/papermill/specular_left_0.jpg"),
-      await image.loadFromURL("model/papermill/specular_top_0.jpg"),
-      await image.loadFromURL("model/papermill/specular_bottom_0.jpg"),
-      await image.loadFromURL("model/papermill/specular_front_0.jpg"),
-      await image.loadFromURL("model/papermill/specular_back_0.jpg")
+      await loadFromURL("model/papermill/specular_right_0.jpg"),
+      await loadFromURL("model/papermill/specular_left_0.jpg"),
+      await loadFromURL("model/papermill/specular_top_0.jpg"),
+      await loadFromURL("model/papermill/specular_bottom_0.jpg"),
+      await loadFromURL("model/papermill/specular_front_0.jpg"),
+      await loadFromURL("model/papermill/specular_back_0.jpg")
     );
 
     // Create state
