@@ -9,7 +9,7 @@ import {
   sourceTypeResult,
 } from "./snippets/light";
 import { Matrix4 } from "../../../math/matrix";
-import { encodeNormal, perturbNormal, decodeNormal } from "../shaders/normal";
+import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
 import { SingularPainter } from "../painters/singular";
 import { parallaxPerturb } from "../shaders/parallax";
 import {
@@ -18,7 +18,7 @@ import {
   lightInvokeSpecularPower,
 } from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
-import { decodeShininess, encodeShininess } from "../shaders/shininess";
+import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlPainter,
@@ -90,10 +90,10 @@ uniform float heightParallaxScale;
 uniform sampler2D normalMap;
 uniform float shininess;
 
-${encodeNormal.declare()}
-${perturbNormal.declare()}
+${normalEncode.declare()}
+${normalPerturb.declare()}
 ${parallaxPerturb.declare()}
-${encodeShininess.declare()}
+${shininessEncode.declare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -121,17 +121,17 @@ void main(void) {
   )};
 
 	// Color target: [normal, normal, shininess, glossiness]
-	vec3 normalModified = ${perturbNormal.invoke(
+	vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
     "t",
     "b",
     "n"
   )};
-	vec2 normalPack = ${encodeNormal.invoke("normalModified")};
+	vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
 	float glossiness = texture(glossinessMap, coordParallax).r;
-	float shininessPack = ${encodeShininess.invoke("shininess")};
+	float shininessPack = ${shininessEncode.invoke("shininess")};
 
 	normalAndGlossiness = vec4(normalPack, shininessPack, glossiness);
 }`;
@@ -197,9 +197,9 @@ uniform vec2 viewportSize;
 uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossinessBuffer;
 
-${decodeNormal.declare()}
+${normalDecode.declare()}
 ${lightDeclare("ZERO", "ZERO")}
-${decodeShininess.declare()}
+${shininessDecode.declare()}
 
 #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 in vec3 lightDistanceCamera;
@@ -227,11 +227,11 @@ void main(void) {
 	vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
 	// Decode geometry
-	vec3 normal = ${decodeNormal.invoke("normalAndGlossinessSample.rg")};
+	vec3 normal = ${normalDecode.invoke("normalAndGlossinessSample.rg")};
 
 	// Decode material properties
 	float glossiness = normalAndGlossinessSample.a;
-	float shininess = ${decodeShininess.invoke("normalAndGlossinessSample.b")};
+	float shininess = ${shininessDecode.invoke("normalAndGlossinessSample.b")};
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);

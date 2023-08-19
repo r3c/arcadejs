@@ -1,6 +1,21 @@
 import { GlShaderFunction } from "../shader";
 
-const encodeNormal: GlShaderFunction<[string]> = {
+const normalDecode: GlShaderFunction<[string]> = {
+  declare: (): string => `
+  vec3 normalDecode(in vec2 normalPack) {
+	  // Spheremap transform
+	  // See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
+	  vec2 fenc = normalPack * 4.0 - 2.0;
+	  float f = dot(fenc, fenc);
+	  float g = sqrt(1.0 - f * 0.25);
+  
+	  return normalize(vec3(fenc * g, 1.0 - f * 0.5));
+  }`,
+
+  invoke: (packedNormal: string): string => `normalDecode(${packedNormal})`,
+};
+
+const normalEncode: GlShaderFunction<[string]> = {
   declare: (): string => `
 vec2 normalEncode(in vec3 decoded) {
 	// Spheremap transform
@@ -11,7 +26,7 @@ vec2 normalEncode(in vec3 decoded) {
   invoke: (decoded: string): string => `normalEncode(${decoded})`,
 };
 
-const perturbNormal: GlShaderFunction<
+const normalPerturb: GlShaderFunction<
   [string, string, string, string, string]
 > = {
   declare: (): string => `
@@ -31,19 +46,4 @@ const perturbNormal: GlShaderFunction<
   ): string => `normalPerturb(${sampler}, ${coord}, ${t}, ${b}, ${n})`,
 };
 
-const decodeNormal: GlShaderFunction<[string]> = {
-  declare: (): string => `
-vec3 normalDecode(in vec2 normalPack) {
-	// Spheremap transform
-	// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-	vec2 fenc = normalPack * 4.0 - 2.0;
-	float f = dot(fenc, fenc);
-	float g = sqrt(1.0 - f * 0.25);
-
-	return normalize(vec3(fenc * g, 1.0 - f * 0.5));
-}`,
-
-  invoke: (packedNormal: string): string => `normalDecode(${packedNormal})`,
-};
-
-export { decodeNormal, encodeNormal, perturbNormal };
+export { normalDecode, normalEncode, normalPerturb };

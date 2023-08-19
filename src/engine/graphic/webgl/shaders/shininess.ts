@@ -1,6 +1,6 @@
 import { GlShaderFunction } from "../shader";
 
-const decodeShininess: GlShaderFunction<[string]> = {
+const shininessDecode: GlShaderFunction<[string]> = {
   declare: (): string => `
 float shininessDecode(in float encoded) {
 	return 1.0 / encoded;
@@ -9,7 +9,7 @@ float shininessDecode(in float encoded) {
   invoke: (encoded: string): string => `shininessDecode(${encoded})`,
 };
 
-const encodeShininess: GlShaderFunction<[string]> = {
+const shininessEncode: GlShaderFunction<[string]> = {
   declare: (): string => `
 float shininessEncode(in float decoded) {
 	return 1.0 / max(decoded, 1.0);
@@ -18,4 +18,4 @@ float shininessEncode(in float decoded) {
   invoke: (decoded: string): string => `shininessEncode(${decoded})`,
 };
 
-export { decodeShininess, encodeShininess };
+export { shininessDecode, shininessEncode };

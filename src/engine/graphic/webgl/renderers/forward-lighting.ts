@@ -12,7 +12,7 @@ import {
 import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
 import { SingularPainter } from "../painters/singular";
 import { Matrix4 } from "../../../math/matrix";
-import { perturbNormal } from "../shaders/normal";
+import { normalPerturb } from "../shaders/normal";
 import { parallaxPerturb } from "../shaders/parallax";
 import {
   pbrDeclare,
@@ -263,7 +263,7 @@ ${sampleDeclare(
   "shininess"
 )}
 
-${perturbNormal.declare()}
+${normalPerturb.declare()}
 ${parallaxPerturb.declare()}
 ${lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 ${pbrDeclare(
@@ -318,7 +318,7 @@ void main(void) {
     "b",
     "n"
   )};
-	vec3 modifiedNormal = ${perturbNormal.invoke(
+	vec3 modifiedNormal = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
     "t",
