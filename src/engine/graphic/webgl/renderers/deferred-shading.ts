@@ -14,7 +14,7 @@ import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import { model as quadModel } from "./resources/quad";
-import * as shininess from "./snippets/shininess";
+import { decodeShininess, encodeShininess } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlPainter,
@@ -92,7 +92,7 @@ uniform float shininess;
 ${encodeNormal.declare()}
 ${perturbNormal.declare()}
 ${parallax.perturbDeclare("heightMap")}
-${shininess.encodeDeclare()}
+${encodeShininess.declare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -121,7 +121,7 @@ void main(void) {
 
 	// Color target 1: [albedo.rgb, shininess]
 	vec3 albedo = albedoFactor.rgb * texture(albedoMap, coordParallax).rgb;
-	float shininessPack = ${shininess.encodeInvoke("shininess")};
+	float shininessPack = ${encodeShininess.invoke("shininess")};
 
 	albedoAndShininess = vec4(albedo, shininessPack);
 
@@ -238,7 +238,7 @@ uniform sampler2D normalAndGlossiness;
 
 ${decodeNormal.declare()}
 ${phong.lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
-${shininess.decodeDeclare()}
+${decodeShininess.declare()}
 
 #if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
 in vec3 lightDistanceCamera;
@@ -270,7 +270,7 @@ void main(void) {
 	vec3 albedo = albedoAndShininessSample.rgb;
 	vec3 normal = ${decodeNormal.invoke("normalAndGlossinessSample.rg")};
 	float glossiness = normalAndGlossinessSample.a;
-	float shininess = ${shininess.decodeInvoke("albedoAndShininessSample.a")};
+	float shininess = ${decodeShininess.invoke("albedoAndShininessSample.a")};
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(depthSample.r);

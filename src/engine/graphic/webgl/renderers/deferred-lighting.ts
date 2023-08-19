@@ -14,7 +14,7 @@ import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
-import * as shininess from "./snippets/shininess";
+import { decodeShininess, encodeShininess } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlPainter,
@@ -89,7 +89,7 @@ uniform float shininess;
 ${encodeNormal.declare()}
 ${perturbNormal.declare()}
 ${parallax.perturbDeclare("heightMap")}
-${shininess.encodeDeclare()}
+${encodeShininess.declare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -126,7 +126,7 @@ void main(void) {
 	vec2 normalPack = ${encodeNormal.invoke("normalModified")};
 
 	float glossiness = texture(glossinessMap, coordParallax).r;
-	float shininessPack = ${shininess.encodeInvoke("shininess")};
+	float shininessPack = ${encodeShininess.invoke("shininess")};
 
 	normalAndGlossiness = vec4(normalPack, shininessPack, glossiness);
 }`;
@@ -194,7 +194,7 @@ uniform sampler2D normalAndGlossinessBuffer;
 
 ${decodeNormal.declare()}
 ${phong.lightDeclare("ZERO", "ZERO")}
-${shininess.decodeDeclare()}
+${decodeShininess.declare()}
 
 #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
 in vec3 lightDistanceCamera;
@@ -226,7 +226,7 @@ void main(void) {
 
 	// Decode material properties
 	float glossiness = normalAndGlossinessSample.a;
-	float shininess = ${shininess.decodeInvoke("normalAndGlossinessSample.b")};
+	float shininess = ${decodeShininess.invoke("normalAndGlossinessSample.b")};
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
