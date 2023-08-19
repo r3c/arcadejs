@@ -12,7 +12,7 @@ import {
 import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
 import { SingularPainter } from "../painters/singular";
 import { Matrix4 } from "../../../math/matrix";
-import * as normal from "./snippets/normal";
+import { perturbNormal } from "../shaders/normal";
 import * as parallax from "./snippets/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
@@ -264,7 +264,7 @@ ${sampleDeclare(
   "shininess"
 )}
 
-${normal.perturbDeclare("normalMap")}
+${perturbNormal.declare()}
 ${parallax.perturbDeclare("heightMap")}
 ${phong.lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 ${pbr.declare(
@@ -318,7 +318,7 @@ void main(void) {
     "b",
     "n"
   )};
-	vec3 modifiedNormal = ${normal.perturbInvoke("coordParallax", "t", "b", "n")};
+	vec3 modifiedNormal = ${perturbNormal.invoke("normalMap", "coordParallax", "t", "b", "n")};
 
 	${sampleType} material = ${sampleInvoke("coordParallax")};
 

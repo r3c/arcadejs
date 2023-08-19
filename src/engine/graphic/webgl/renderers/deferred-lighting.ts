@@ -9,7 +9,7 @@ import {
   sourceTypeResult,
 } from "./snippets/light";
 import { Matrix4 } from "../../../math/matrix";
-import * as normal from "./snippets/normal";
+import { encodeNormal, perturbNormal, decodeNormal } from "../shaders/normal";
 import { SingularPainter } from "../painters/singular";
 import * as parallax from "./snippets/parallax";
 import * as phong from "./snippets/phong";
@@ -91,8 +91,8 @@ uniform float heightParallaxScale;
 uniform sampler2D normalMap;
 uniform float shininess;
 
-${normal.encodeDeclare()}
-${normal.perturbDeclare("normalMap")}
+${encodeNormal.declare()}
+${perturbNormal.declare()}
 ${parallax.perturbDeclare("heightMap")}
 ${shininess.encodeDeclare()}
 
@@ -121,8 +121,14 @@ void main(void) {
   )};
 
 	// Color target: [normal, normal, shininess, glossiness]
-	vec3 normalModified = ${normal.perturbInvoke("coordParallax", "t", "b", "n")};
-	vec2 normalPack = ${normal.encodeInvoke("normalModified")};
+	vec3 normalModified = ${perturbNormal.invoke(
+    "normalMap",
+    "coordParallax",
+    "t",
+    "b",
+    "n"
+  )};
+	vec2 normalPack = ${encodeNormal.invoke("normalModified")};
 
 	float glossiness = texture(glossinessMap, coordParallax).r;
 	float shininessPack = ${shininess.encodeInvoke("shininess")};
@@ -191,7 +197,7 @@ uniform vec2 viewportSize;
 uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossinessBuffer;
 
-${normal.decodeDeclare()}
+${decodeNormal.declare()}
 ${phong.lightDeclare("ZERO", "ZERO")}
 ${shininess.decodeDeclare()}
 
@@ -221,7 +227,7 @@ void main(void) {
 	vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
 	// Decode geometry
-	vec3 normal = ${normal.decodeInvoke("normalAndGlossinessSample.rg")};
+	vec3 normal = ${decodeNormal.invoke("normalAndGlossinessSample.rg")};
 
 	// Decode material properties
 	float glossiness = normalAndGlossinessSample.a;
