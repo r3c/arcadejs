@@ -11,7 +11,7 @@ import {
 import { Matrix4 } from "../../../math/matrix";
 import { encodeNormal, perturbNormal, decodeNormal } from "../shaders/normal";
 import { SingularPainter } from "../painters/singular";
-import * as parallax from "./snippets/parallax";
+import { parallaxPerturb } from "../shaders/parallax";
 import * as phong from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { decodeShininess, encodeShininess } from "../shaders/shininess";
@@ -88,7 +88,7 @@ uniform float shininess;
 
 ${encodeNormal.declare()}
 ${perturbNormal.declare()}
-${parallax.perturbDeclare("heightMap")}
+${parallaxPerturb.declare()}
 ${encodeShininess.declare()}
 
 in vec3 bitangent;
@@ -105,7 +105,8 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke(
+	vec2 coordParallax = ${parallaxPerturb.invoke(
+    "heightMap",
     "coord",
     "eyeDirection",
     "heightParallaxScale",
@@ -302,7 +303,7 @@ uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 
-${parallax.perturbDeclare("heightMap")}
+${parallaxPerturb.declare()}
 ${linearToStandard.declare()}
 ${standardToLinear.declare()}
 
@@ -329,7 +330,8 @@ void main(void) {
 	vec3 n = normalize(normal);
 
 	vec3 eyeDirection = normalize(-point);
-	vec2 coordParallax = ${parallax.perturbInvoke(
+	vec2 coordParallax = ${parallaxPerturb.invoke(
+    "heightMap",
     "coord",
     "eyeDirection",
     "heightParallaxScale",

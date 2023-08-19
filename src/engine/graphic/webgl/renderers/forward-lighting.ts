@@ -13,7 +13,7 @@ import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
 import { SingularPainter } from "../painters/singular";
 import { Matrix4 } from "../../../math/matrix";
 import { perturbNormal } from "../shaders/normal";
-import * as parallax from "./snippets/parallax";
+import { parallaxPerturb } from "../shaders/parallax";
 import * as pbr from "./snippets/pbr";
 import * as phong from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
@@ -260,7 +260,7 @@ ${sampleDeclare(
 )}
 
 ${perturbNormal.declare()}
-${parallax.perturbDeclare("heightMap")}
+${parallaxPerturb.declare()}
 ${phong.lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 ${pbr.declare(
   "LIGHT_MODEL_PBR_IBL",
@@ -304,7 +304,8 @@ void main(void) {
 	vec3 t = normalize(tangent);
 
 	vec3 eyeDirection = normalize(eye);
-	vec2 coordParallax = ${parallax.perturbInvoke(
+	vec2 coordParallax = ${parallaxPerturb.invoke(
+    "heightMap",
     "coord",
     "eyeDirection",
     "heightParallaxScale",
