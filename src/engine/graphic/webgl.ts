@@ -21,6 +21,16 @@ import {
 } from "./webgl/resource";
 import { GlPolygon } from "./webgl/renderers/objects/polygon";
 import { Disposable } from "../language/lifecycle";
+import {
+  GlDefaultTexture,
+  GlTexture,
+  GlTextureFormat,
+  GlTextureType,
+  defaultTexture,
+  renderbufferConfigure,
+  renderbufferCreate,
+  textureCreate,
+} from "./webgl/texture";
 
 type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -45,11 +55,6 @@ type GlAttachmentTexture = {
 type GlBinder<TState> = (state: TState) => void;
 
 type GlBinderMap<TState> = Map<string, GlBinder<TState>>;
-
-type GlDefault = Disposable & {
-  blackTexture: GlTexture;
-  whiteTexture: GlTexture;
-};
 
 type GlGeometry = {
   modelMatrix: Matrix4;
@@ -98,12 +103,6 @@ type GlModelConfiguration = {
   library?: GlLibrary;
 };
 
-type GlNativeFormat = {
-  format: number;
-  internal: number;
-  type: number;
-};
-
 type GlObject<TPolygon> = {
   matrix: Matrix4;
   model: GlModel<TPolygon>;
@@ -131,7 +130,7 @@ type GlRenderer<TSceneState, TObject> = Disposable & {
 
 type GlRuntime = Disposable & {
   context: GlContext;
-  default: GlDefault;
+  defaultTexture: GlDefaultTexture;
 };
 
 type GlScene<TSceneState, TObject> = {
@@ -156,32 +155,13 @@ type GlShaderDirectiveValue =
       value: number;
     };
 
-/**
- * Disposable WebGL texture, also circumvent native `WebGLTexture` type being
- * defined as an opaque empty object and therefore being compatible with any
- * unrelated object.
- */
-type GlTexture = Disposable & {
-  handle: WebGLTexture;
-};
-
-const enum GlTextureFormat {
-  Depth16,
-  RGBA8,
-}
-
-const enum GlTextureType {
-  Quad,
-  Cube,
-}
-
 type GlUniformAccessor<TState, TValue> = {
   allocateTexture: boolean;
   createValue: (gl: GlContext) => TValue;
   readValue: (
     state: TState,
     currentValue: TValue,
-    defaultValue: GlDefault
+    defaultTexture: GlDefaultTexture
   ) => TValue;
   setUniform: (
     gl: GlContext,
@@ -226,37 +206,12 @@ const materialExtractors: GlMaterialExtractor[] = [
 ];
 
 const runtimeCreate = (context: GlContext): GlRuntime => {
-  const blackTexture = textureCreate(
-    context,
-    undefined,
-    GlTextureType.Quad,
-    1,
-    1,
-    GlTextureFormat.RGBA8,
-    defaultFilter,
-    new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
-  );
-
-  const whiteTexture = textureCreate(
-    context,
-    undefined,
-    GlTextureType.Quad,
-    1,
-    1,
-    GlTextureFormat.RGBA8,
-    defaultFilter,
-    new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
-  );
-
-  const dispose = () => {
-    blackTexture.dispose();
-    whiteTexture.dispose();
-  };
+  const { dispose, blackTexture, whiteTexture } = defaultTexture(context);
 
   return {
     dispose,
     context,
-    default: {
+    defaultTexture: {
       dispose,
       blackTexture,
       whiteTexture,
@@ -332,211 +287,6 @@ const directiveFormat = (value: GlShaderDirectiveValue): string => {
 
     default:
       return "0";
-  }
-};
-
-/*
- ** Convert texture format into native WebGL format parameters.
- */
-const formatGetNative = (
-  gl: GlContext,
-  format: GlTextureFormat
-): GlNativeFormat => {
-  switch (format) {
-    case GlTextureFormat.Depth16:
-      return {
-        format: gl.DEPTH_COMPONENT,
-        internal: gl.DEPTH_COMPONENT16,
-        type: gl.UNSIGNED_SHORT,
-      };
-
-    case GlTextureFormat.RGBA8:
-      return {
-        format: gl.RGBA,
-        internal: gl.RGBA8,
-        type: gl.UNSIGNED_BYTE,
-      };
-
-    default:
-      throw Error(`invalid texture format ${format}`);
-  }
-};
-
-const renderbufferConfigure = (
-  gl: GlContext,
-  renderbuffer: WebGLRenderbuffer,
-  width: number,
-  height: number,
-  format: GlTextureFormat,
-  samples: number
-) => {
-  const nativeFormat = formatGetNative(gl, format);
-
-  gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
-
-  if (samples > 1) {
-    gl.renderbufferStorageMultisample(
-      gl.RENDERBUFFER,
-      samples,
-      nativeFormat.internal,
-      width,
-      height
-    );
-  } else {
-    gl.renderbufferStorage(
-      gl.RENDERBUFFER,
-      nativeFormat.internal,
-      width,
-      height
-    );
-  }
-
-  gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-
-  return renderbuffer;
-};
-
-const renderbufferCreate = (gl: GlContext) => {
-  const renderbuffer = gl.createRenderbuffer();
-
-  if (renderbuffer === null) {
-    throw Error("could not create renderbuffer");
-  }
-
-  return renderbuffer;
-};
-
-const textureCreate = (
-  gl: GlContext,
-  previousTexture: GlTexture | undefined,
-  type: GlTextureType,
-  width: number,
-  height: number,
-  format: GlTextureFormat,
-  filter: Filter,
-  image: ImageData | ImageData[] | undefined
-): GlTexture => {
-  const target = textureGetTarget(gl, type);
-
-  let handle: WebGLTexture;
-
-  if (previousTexture === undefined) {
-    const newTexture = gl.createTexture();
-
-    if (newTexture === null) {
-      throw Error("could not create texture");
-    }
-
-    handle = newTexture;
-  } else {
-    handle = previousTexture.handle;
-  }
-
-  gl.bindTexture(target, handle);
-
-  // Define texture format, filtering & wrapping parameters
-  const magnifierFilter =
-    filter.magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
-  const minifierFilter =
-    filter.minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
-  const mipmapFilter =
-    filter.minifier === Interpolation.Linear
-      ? gl.NEAREST_MIPMAP_LINEAR
-      : gl.NEAREST_MIPMAP_NEAREST;
-  const nativeFormat = formatGetNative(gl, format);
-  const wrap = textureGetWrap(gl, filter.wrap);
-
-  gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
-  gl.texParameteri(
-    target,
-    gl.TEXTURE_MIN_FILTER,
-    filter !== undefined && filter.mipmap ? mipmapFilter : minifierFilter
-  );
-  gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
-  gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
-
-  if (image === undefined) {
-    gl.texImage2D(
-      target,
-      0,
-      nativeFormat.internal,
-      width,
-      height,
-      0,
-      nativeFormat.format,
-      nativeFormat.type,
-      null
-    );
-  } else if ((<ImageData>image).data) {
-    gl.texImage2D(
-      target,
-      0,
-      nativeFormat.internal,
-      width,
-      height,
-      0,
-      nativeFormat.format,
-      nativeFormat.type,
-      (<ImageData>image).data
-    );
-  } else if ((<ImageData[]>image).length !== undefined) {
-    const images = <ImageData[]>image;
-
-    for (let i = 0; i < 6; ++i) {
-      gl.texImage2D(
-        gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
-        0,
-        nativeFormat.internal,
-        width,
-        height,
-        0,
-        nativeFormat.format,
-        nativeFormat.type,
-        new Uint8Array((<ImageData>images[i]).data)
-      );
-    }
-  }
-
-  if (filter.mipmap) {
-    gl.generateMipmap(target);
-  }
-
-  gl.bindTexture(target, null);
-
-  return {
-    dispose: () => {
-      gl.deleteTexture(handle);
-    },
-    handle,
-  };
-};
-
-const textureGetTarget = (gl: GlContext, type: GlTextureType) => {
-  switch (type) {
-    case GlTextureType.Cube:
-      return gl.TEXTURE_CUBE_MAP;
-
-    case GlTextureType.Quad:
-      return gl.TEXTURE_2D;
-
-    default:
-      throw Error(`unknown texture type ${type}`);
-  }
-};
-
-const textureGetWrap = (gl: GlContext, wrap: Wrap) => {
-  switch (wrap) {
-    case Wrap.Clamp:
-      return gl.CLAMP_TO_EDGE;
-
-    case Wrap.Mirror:
-      return gl.MIRRORED_REPEAT;
-
-    case Wrap.Repeat:
-      return gl.REPEAT;
-
-    default:
-      throw Error(`unknown texture wrap mode ${wrap}`);
   }
 };
 
@@ -769,7 +519,7 @@ const loadTextureQuad = (
 
 const textureUniform = <TState>(
   primaryGetter: (state: TState) => GlTexture | undefined,
-  defaultGetter: (defaultValue: GlDefault) => GlTexture,
+  defaultGetter: (defaultTexture: GlDefaultTexture) => GlTexture,
   target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"]
 ): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
   allocateTexture: true,
@@ -961,7 +711,7 @@ class GlShader<TSceneState, TPolygonState> {
     const { allocateTexture, createValue, readValue, setUniform } = accessor;
     const gl = this.runtime.context;
     const currentValue = createValue(gl);
-    const defaultValue = this.runtime.default;
+    const defaultTexture = this.runtime.defaultTexture;
     const textureIndex = this.textureIndex;
 
     if (allocateTexture) {
@@ -975,7 +725,7 @@ class GlShader<TSceneState, TPolygonState> {
     }
 
     target.set(name, (state: TInput) => {
-      const uniform = readValue(state, currentValue, defaultValue);
+      const uniform = readValue(state, currentValue, defaultTexture);
 
       setUniform(gl, location, uniform, textureIndex);
     });
