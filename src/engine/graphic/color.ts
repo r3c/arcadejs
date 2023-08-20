@@ -5,8 +5,8 @@ import { Vector4 } from "../math/vector";
  */
 const brightColor = (seed: number): Vector4 => {
   const y = 0.8;
-  const u = (((seed * 1.17) % 2) - 1) * 0.436;
-  const v = (((seed * 1.43) % 2) - 1) * 0.615;
+  const u = (((seed * 277) % 2) - 1) * 0.436;
+  const v = (((seed * 859) % 2) - 1) * 0.615;
 
   return {
     x: Math.min(y + 1.13983 * v, 1),
