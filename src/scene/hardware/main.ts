@@ -17,6 +17,7 @@ import {
 import { BatchPainter } from "../../engine/graphic/webgl/painters/batch";
 import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 import { shaderUniform } from "../../engine/graphic/webgl/shader";
+import { SingularScene } from "../../engine/graphic/webgl/painters/singular";
 
 /*
  ** What changed?
@@ -61,7 +62,7 @@ type ApplicationState = {
   gl: WebGLRenderingContext;
   input: Input;
   model: GlModel<GlPolygon>;
-  painter: GlPainter<SceneState, GlPolygon>;
+  painter: GlPainter<SingularScene<SceneState, GlPolygon>>;
   projectionMatrix: Matrix4;
   target: GlTarget;
 };
@@ -164,8 +165,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    painter.paint(target, [cube], viewMatrix, {
-      projectionMatrix,
+    painter.paint(target, {
+      objects: [cube],
+      state: {
+        projectionMatrix,
+        viewMatrix,
+      },
       viewMatrix,
     });
   },

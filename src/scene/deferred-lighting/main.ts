@@ -294,7 +294,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Draw debug
     if (tweak.debugMode !== 0) {
       const debugRenderer = debugRendererMemo.get(tweak.debugMode - 1);
-      const debugScene = DebugTextureRenderer.createScene(
+
+      debugRenderer.render(
+        target,
         [
           sceneRenderer.depthBuffer,
           sceneRenderer.normalAndGlossinessBuffer,
@@ -304,8 +306,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
           sceneRenderer.lightBuffer,
         ][tweak.debugMode - 1]
       );
-
-      debugRenderer.render(target, debugScene);
     }
   },
 

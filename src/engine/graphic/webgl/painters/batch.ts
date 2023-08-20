@@ -10,6 +10,12 @@ import {
 import { GlBuffer } from "../resource";
 import { GlShaderBinding } from "../shader";
 
+type BatchScene<TSceneState, TPolygonState> = {
+  objects: Iterable<GlObject<TPolygonState>>;
+  state: TSceneState;
+  viewMatrix: Matrix4;
+};
+
 type MeshBatch<TPolygon> = {
   index: GlBuffer;
   modelMatrix: Matrix4;
@@ -75,7 +81,7 @@ const paint = <TPolygonState>(
 };
 
 class BatchPainter<TSceneState, TPolygonState>
-  implements GlPainter<TSceneState, TPolygonState>
+  implements GlPainter<BatchScene<TSceneState, TPolygonState>>
 {
   private readonly geometryBinding: GlShaderBinding<GlGeometry>;
   private readonly materialBinding: GlShaderBinding<GlMaterial>;
@@ -96,14 +102,13 @@ class BatchPainter<TSceneState, TPolygonState>
 
   public paint(
     target: GlTarget,
-    objects: Iterable<GlObject<TPolygonState>>,
-    view: Matrix4,
-    state: TSceneState
+    scene: BatchScene<TSceneState, TPolygonState>
   ): void {
+    const { objects, state, viewMatrix } = scene;
     const materialMap: MaterialMap<TPolygonState> = new Map();
 
     for (const { matrix, model } of objects) {
-      group(materialMap, view, matrix, model.meshes);
+      group(materialMap, viewMatrix, matrix, model.meshes);
     }
 
     this.sceneBinding.bind(state);
@@ -118,4 +123,4 @@ class BatchPainter<TSceneState, TPolygonState>
   }
 }
 
-export { BatchPainter };
+export { type BatchScene, BatchPainter };

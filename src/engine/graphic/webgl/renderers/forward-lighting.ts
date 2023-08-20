@@ -10,7 +10,7 @@ import {
   sourceTypeResult,
 } from "./snippets/light";
 import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
-import { SingularPainter } from "../painters/singular";
+import { SingularPainter, SingularScene } from "../painters/singular";
 import { Matrix4 } from "../../../math/matrix";
 import { normalPerturb } from "../shaders/normal";
 import { parallaxPerturb } from "../shaders/parallax";
@@ -758,15 +758,18 @@ class ForwardLightingRenderer
   public readonly pointShadowBuffers: GlTexture[];
 
   private readonly directionalShadowPainter: GlPainter<
-    ShadowSceneState,
-    GlPolygon
+    SingularScene<ShadowSceneState, GlPolygon>
   >;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: GlTarget[];
-  private readonly lightPainter: GlPainter<LightSceneState, GlPolygon>;
+  private readonly lightPainter: GlPainter<
+    SingularScene<LightSceneState, GlPolygon>
+  >;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
-  private readonly pointShadowPainter: GlPainter<ShadowSceneState, GlPolygon>;
+  private readonly pointShadowPainter: GlPainter<
+    SingularScene<ShadowSceneState, GlPolygon>
+  >;
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
   private readonly runtime: GlRuntime;
@@ -882,10 +885,12 @@ class ForwardLightingRenderer
       this.directionalShadowTargets[bufferIndex].clear(0);
       this.directionalShadowPainter.paint(
         this.directionalShadowTargets[bufferIndex],
-        obstacles,
-        viewMatrix,
         {
-          projectionMatrix: this.directionalShadowProjectionMatrix,
+          objects: obstacles,
+          state: {
+            projectionMatrix: this.directionalShadowProjectionMatrix,
+            viewMatrix,
+          },
           viewMatrix,
         }
       );
@@ -911,13 +916,17 @@ class ForwardLightingRenderer
     gl.colorMask(true, true, true, true);
     gl.cullFace(gl.BACK);
 
-    this.lightPainter.paint(target, objects, state.viewMatrix, {
-      ambientLightColor: state.ambientLightColor ?? Vector3.zero,
-      directionalLights: directionalLightStates,
-      environmentLight: state.environmentLight,
-      pointLights,
-      projectionMatrix: state.projectionMatrix,
-      shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
+    this.lightPainter.paint(target, {
+      objects,
+      state: {
+        ambientLightColor: state.ambientLightColor ?? Vector3.zero,
+        directionalLights: directionalLightStates,
+        environmentLight: state.environmentLight,
+        pointLights,
+        projectionMatrix: state.projectionMatrix,
+        shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
+        viewMatrix: state.viewMatrix,
+      },
       viewMatrix: state.viewMatrix,
     });
   }

@@ -164,11 +164,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Draw texture debug
     if (state.tweak.showDebug) {
-      const debugScene = DebugTextureRenderer.createScene(
-        sceneRenderer.directionalShadowBuffers[0]
-      );
-
-      debugRenderer.render(target, debugScene);
+      debugRenderer.render(target, sceneRenderer.directionalShadowBuffers[0]);
     }
   },
 

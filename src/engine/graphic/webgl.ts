@@ -103,13 +103,8 @@ type GlObject<TPolygon> = {
   model: GlModel<TPolygon>;
 };
 
-type GlPainter<TSceneState, TPolygon> = {
-  paint(
-    target: GlTarget,
-    objects: Iterable<GlObject<TPolygon>>,
-    view: Matrix4,
-    state: TSceneState
-  ): void;
+type GlPainter<TScene> = {
+  paint(target: GlTarget, scene: TScene): void;
 };
 
 type GlPrimitive<TPolygon> = {

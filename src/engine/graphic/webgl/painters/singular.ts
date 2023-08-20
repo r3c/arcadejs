@@ -9,6 +9,12 @@ import {
 } from "../../webgl";
 import { GlShaderBinding } from "../shader";
 
+type SingularScene<TSceneState, TPolygonState> = {
+  objects: Iterable<GlObject<TPolygonState>>;
+  state: TSceneState;
+  viewMatrix: Matrix4;
+};
+
 const draw = <TPolygon>(
   geometryBinding: GlShaderBinding<GlGeometry> | undefined,
   materialBinding: GlShaderBinding<GlMaterial> | undefined,
@@ -51,7 +57,7 @@ const draw = <TPolygon>(
 };
 
 class SingularPainter<TSceneState, TPolygonState>
-  implements GlPainter<TSceneState, TPolygonState>
+  implements GlPainter<SingularScene<TSceneState, TPolygonState>>
 {
   private readonly geometryBinding: GlShaderBinding<GlGeometry> | undefined;
   private readonly materialBinding: GlShaderBinding<GlMaterial> | undefined;
@@ -72,10 +78,9 @@ class SingularPainter<TSceneState, TPolygonState>
 
   public paint(
     target: GlTarget,
-    objects: Iterable<GlObject<TPolygonState>>,
-    view: Matrix4,
-    state: TSceneState
+    scene: SingularScene<TSceneState, TPolygonState>
   ): void {
+    const { objects, state, viewMatrix } = scene;
     this.sceneBinding?.bind(state);
 
     for (const { matrix, model } of objects) {
@@ -86,10 +91,10 @@ class SingularPainter<TSceneState, TPolygonState>
         target,
         model.meshes,
         matrix,
-        view
+        viewMatrix
       );
     }
   }
 }
 
-export { SingularPainter };
+export { type SingularScene, SingularPainter };

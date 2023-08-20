@@ -1,21 +1,16 @@
 import { Matrix4 } from "../../../math/matrix";
-import { SingularPainter } from "../painters/singular";
 import { model } from "./resources/quad";
 import {
-  GlGeometry,
   GlModel,
-  GlObject,
-  GlPainter,
-  GlPrimitive,
-  GlRenderer,
   GlRuntime,
-  GlScene,
   GlTarget,
   GlTexture,
   loadModel,
 } from "../../webgl";
 import { GlPolygon } from "./objects/polygon";
-import { shaderDirective, shaderUniform } from "../shader";
+import { GlShaderAttribute, shaderDirective, shaderUniform } from "../shader";
+import { SinglePainter } from "../painters/single";
+import { GlBuffer } from "../resource";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -124,8 +119,6 @@ const enum DebugTextureFormat {
   Logarithm,
 }
 
-type DebugTexturePolygon = Pick<GlPolygon, "coordinate" | "position">;
-
 const enum DebugTextureSelect {
   Identity,
   RedGreenBlue,
@@ -139,11 +132,18 @@ const enum DebugTextureSelect {
   Alpha,
 }
 
-type SceneState = {
+type DebugTextureScene = {
+  coordinate: GlShaderAttribute;
+  index: GlBuffer;
+  modelMatrix: Matrix4;
+  position: GlShaderAttribute;
   source: GlTexture;
 };
 
-const load = (runtime: GlRuntime, configuration: DebugTextureConfiguration) => {
+const loadPainter = (
+  runtime: GlRuntime,
+  configuration: DebugTextureConfiguration
+) => {
   const shader = runtime.shader(vertexSource, fragmentSource, {
     FORMAT: shaderDirective.number(configuration.format),
     SELECT: shaderDirective.number(configuration.select),
@@ -151,86 +151,34 @@ const load = (runtime: GlRuntime, configuration: DebugTextureConfiguration) => {
     ZNEAR: shaderDirective.number(configuration.zNear),
   });
 
-  const geometryBinding = shader.declare<GlGeometry>();
+  const binding = shader.declare<DebugTextureScene>();
 
-  geometryBinding.setUniform(
+  binding.setAttribute("coordinate", ({ coordinate }) => coordinate);
+  binding.setAttribute("position", ({ position }) => position);
+  binding.setUniform(
     "modelMatrix",
     shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-
-  const polygonBinding = shader.declare<GlPolygon>();
-
-  polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
-  polygonBinding.setAttribute("position", ({ position }) => position);
-
-  const sceneBinding = shader.declare<SceneState>();
-
-  sceneBinding.setUniform(
+  binding.setUniform(
     "source",
     shaderUniform.blackQuadTexture(({ source }) => source)
   );
 
-  return { geometryBinding, polygonBinding, sceneBinding };
+  return new SinglePainter(binding);
 };
 
-class DebugTextureRenderer
-  implements GlRenderer<SceneState, GlObject<DebugTexturePolygon>>
-{
-  private readonly painter: GlPainter<SceneState, DebugTexturePolygon>;
-  private readonly quad: GlModel<DebugTexturePolygon>;
+class DebugTextureRenderer {
+  //implements GlRenderer<DebugTextureState, GlObject<DebugTexturePolygon>>
+  private readonly painter: SinglePainter<DebugTextureScene>;
+  private readonly quad: GlModel<GlPolygon>;
   private readonly runtime: GlRuntime;
   private readonly scale: number;
-
-  /*
-   ** Helper function used to build fake scene with a single object using
-   ** given texture. It allows easy construction of "scene" parameter expected
-   ** by "process" method easily.
-   */
-  public static createScene(
-    source: GlTexture
-  ): GlScene<SceneState, GlObject<DebugTexturePolygon>> {
-    return {
-      objects: [
-        {
-          matrix: Matrix4.identity,
-          model: {
-            library: undefined,
-            meshes: [
-              {
-                children: [],
-                primitives: [
-                  {
-                    material: { albedoMap: source },
-                  } as GlPrimitive<DebugTexturePolygon>,
-                ],
-                transform: Matrix4.identity,
-              },
-            ],
-          },
-        },
-      ],
-      state: {
-        source,
-      },
-    };
-  }
 
   public constructor(
     runtime: GlRuntime,
     configuration: DebugTextureConfiguration
   ) {
-    const { geometryBinding, polygonBinding, sceneBinding } = load(
-      runtime,
-      configuration
-    );
-
-    this.painter = new SingularPainter(
-      sceneBinding,
-      geometryBinding,
-      undefined,
-      polygonBinding
-    );
-
+    this.painter = loadPainter(runtime, configuration);
     this.quad = loadModel(runtime, model);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
@@ -238,10 +186,7 @@ class DebugTextureRenderer
 
   public dispose() {}
 
-  public render(
-    target: GlTarget,
-    scene: GlScene<SceneState, GlObject<DebugTexturePolygon>>
-  ) {
+  public render(target: GlTarget, source: GlTexture) {
     const gl = this.runtime.context;
 
     gl.disable(gl.BLEND);
@@ -250,30 +195,19 @@ class DebugTextureRenderer
     gl.enable(gl.CULL_FACE);
     gl.cullFace(gl.BACK);
 
-    const objects: GlObject<DebugTexturePolygon>[] = [
-      {
-        matrix: Matrix4.fromCustom(
-          ["translate", { x: 1 - this.scale, y: this.scale - 1, z: 0 }],
-          ["scale", { x: this.scale, y: this.scale, z: 0 }]
-        ),
-        model: this.quad,
-      },
-    ];
+    // FIXME: create dedicated mesh
+    const primitive = this.quad.meshes[0].primitives[0];
 
-    // Hack: find first defined albedo map from object models and use it as debug source
-    for (const { model } of scene.objects) {
-      for (const mesh of model.meshes) {
-        for (const { material } of mesh.primitives) {
-          if (material.albedoMap !== undefined) {
-            this.painter.paint(target, objects, Matrix4.identity, {
-              source: material.albedoMap,
-            });
-
-            return;
-          }
-        }
-      }
-    }
+    this.painter.paint(target, {
+      coordinate: primitive.polygon.coordinate!,
+      index: primitive.index,
+      modelMatrix: Matrix4.fromCustom(
+        ["translate", { x: 1 - this.scale, y: this.scale - 1, z: 0 }],
+        ["scale", { x: this.scale, y: this.scale, z: 0 }]
+      ),
+      position: primitive.polygon.position,
+      source,
+    });
   }
 
   public resize(_width: number, _height: number) {}

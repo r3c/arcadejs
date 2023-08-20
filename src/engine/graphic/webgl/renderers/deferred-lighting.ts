@@ -10,7 +10,7 @@ import {
 } from "./snippets/light";
 import { Matrix4 } from "../../../math/matrix";
 import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
-import { SingularPainter } from "../painters/singular";
+import { SingularPainter, SingularScene } from "../painters/singular";
 import { parallaxPerturb } from "../shaders/parallax";
 import {
   lightDeclare,
@@ -717,17 +717,20 @@ class DeferredLightingRenderer
   public readonly normalAndGlossinessBuffer: GlTexture;
 
   private readonly directionalLightPainter: GlPainter<
-    DirectionalLightState,
-    GlLightPolygon
+    SingularScene<DirectionalLightState, GlLightPolygon>
   >;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: GlPainter<State, GlPolygon>;
+  private readonly geometryPainter: GlPainter<SingularScene<State, GlPolygon>>;
   private readonly geometryTarget: GlTarget;
   private readonly lightBillboard: GlLightBillboard;
   private readonly lightObjects: GlObject<GlLightPolygon>[];
   private readonly lightTarget: GlTarget;
-  private readonly materialPainter: GlPainter<MaterialState, GlPolygon>;
-  private readonly pointLightPainter: GlPainter<LightState, GlLightPolygon>;
+  private readonly materialPainter: GlPainter<
+    SingularScene<MaterialState, GlPolygon>
+  >;
+  private readonly pointLightPainter: GlPainter<
+    SingularScene<LightState, GlLightPolygon>
+  >;
   private readonly runtime: GlRuntime;
 
   public constructor(runtime: GlRuntime, configuration: Configuration) {
@@ -809,12 +812,11 @@ class DeferredLightingRenderer
     gl.depthMask(true);
 
     this.geometryTarget.clear(0);
-    this.geometryPainter.paint(
-      this.geometryTarget,
+    this.geometryPainter.paint(this.geometryTarget, {
       objects,
-      state.viewMatrix,
-      state
-    );
+      state,
+      viewMatrix: state.viewMatrix,
+    });
 
     // Render lights to light buffer
     gl.disable(gl.DEPTH_TEST);
@@ -839,11 +841,9 @@ class DeferredLightingRenderer
       this.lightObjects[0].matrix = objectMatrix;
 
       for (const directionalLight of state.directionalLights) {
-        this.directionalLightPainter.paint(
-          this.lightTarget,
-          this.lightObjects,
-          state.viewMatrix,
-          {
+        this.directionalLightPainter.paint(this.lightTarget, {
+          objects: this.lightObjects,
+          state: {
             depthBuffer: this.depthBuffer,
             directionalLight,
             normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
@@ -851,8 +851,9 @@ class DeferredLightingRenderer
             viewMatrix: state.viewMatrix,
             viewportSize,
             billboardMatrix: Matrix4.identity, // FIXME: unused
-          }
-        );
+          },
+          viewMatrix: state.viewMatrix,
+        });
       }
     }
 
@@ -862,19 +863,18 @@ class DeferredLightingRenderer
       this.lightObjects[0].matrix = Matrix4.identity;
       this.lightBillboard.set(state.pointLights);
 
-      this.pointLightPainter.paint(
-        this.lightTarget,
-        this.lightObjects,
-        state.viewMatrix,
-        {
+      this.pointLightPainter.paint(this.lightTarget, {
+        objects: this.lightObjects,
+        state: {
           billboardMatrix,
           depthBuffer: this.depthBuffer,
           normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
           projectionMatrix: state.projectionMatrix,
           viewMatrix: state.viewMatrix,
           viewportSize,
-        }
-      );
+        },
+        viewMatrix: state.viewMatrix,
+      });
     }
 
     // Render materials to output
@@ -883,10 +883,14 @@ class DeferredLightingRenderer
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
 
-    this.materialPainter.paint(target, objects, state.viewMatrix, {
-      ambientLightColor: state.ambientLightColor ?? Vector3.zero,
-      lightBuffer: this.lightBuffer,
-      projectionMatrix: state.projectionMatrix,
+    this.materialPainter.paint(target, {
+      objects,
+      state: {
+        ambientLightColor: state.ambientLightColor ?? Vector3.zero,
+        lightBuffer: this.lightBuffer,
+        projectionMatrix: state.projectionMatrix,
+        viewMatrix: state.viewMatrix,
+      },
       viewMatrix: state.viewMatrix,
     });
   }
