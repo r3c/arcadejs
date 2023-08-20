@@ -21,16 +21,14 @@ import {
   GlRenderer,
   GlRuntime,
   GlScene,
-  GlShader,
   GlObject,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
   loadModel,
-  uniform,
-  GlShaderDirective,
-  directive,
   GlTexture,
+  GlGeometry,
+  GlMaterial,
 } from "../../webgl";
 import {
   GlLightBillboard,
@@ -38,6 +36,7 @@ import {
   pointLightBillboard,
 } from "./objects/billboard";
 import { GlPolygon } from "./objects/polygon";
+import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
 
 const enum DeferredShadingLightModel {
   None,
@@ -342,16 +341,16 @@ type SceneState = State & {
   pointLights?: PointLight[];
 };
 
-const loadAmbientShader = (
+const loadAmbientPainter = (
   runtime: GlRuntime,
   configuration: Configuration
-): GlShader<AmbientLightState, AmbientLightPolygon> => {
+): GlPainter<AmbientLightState, AmbientLightPolygon> => {
   // Build directives from configuration
-  const directives: GlShaderDirective = {};
+  const directives: GlShaderDirectives = {};
 
   switch (configuration.lightModel) {
     case DeferredShadingLightModel.Phong:
-      directives["LIGHT_MODEL_AMBIENT"] = directive.boolean(
+      directives["LIGHT_MODEL_AMBIENT"] = shaderDirective.boolean(
         !configuration.lightModelPhongNoAmbient
       );
 
@@ -359,135 +358,160 @@ const loadAmbientShader = (
   }
 
   // Setup light shader
-  const shader = new GlShader<AmbientLightState, AmbientLightPolygon>(
-    runtime,
+  const shader = runtime.shader(
     ambientVertexShader,
     ambientFragmentShader,
     directives
   );
 
-  shader.setAttributePerPolygon("position", ({ position }) => position);
+  const polygonBinding = shader.declare<AmbientLightPolygon>();
 
-  shader.setUniformPerGeometry(
+  polygonBinding.setAttribute("position", ({ position }) => position);
+
+  const geometryBinding = shader.declare<GlGeometry>();
+
+  geometryBinding.setUniform(
     "modelMatrix",
-    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+    shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
 
-  shader.setUniformPerScene(
+  const sceneBinding = shader.declare<AmbientLightState>();
+
+  sceneBinding.setUniform(
     "projectionMatrix",
-    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+    shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "viewMatrix",
-    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+    shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
-
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "albedoAndShininess",
-    uniform.blackQuadTexture((state) => state.albedoAndShininessBuffer)
+    shaderUniform.blackQuadTexture((state) => state.albedoAndShininessBuffer)
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "ambientLightColor",
-    uniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
+    shaderUniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
   );
 
-  return shader;
+  return new SingularPainter(
+    sceneBinding,
+    geometryBinding,
+    undefined,
+    polygonBinding
+  );
 };
 
-const loadGeometryShader = (
+const loadGeometryPainter = (
   runtime: GlRuntime,
   configuration: Configuration
-): GlShader<State, GlPolygon> => {
+): GlPainter<State, GlPolygon> => {
   // Setup geometry shader
-  const shader = new GlShader<State, GlPolygon>(
-    runtime,
+  const shader = runtime.shader(
     geometryVertexShader,
     geometryFragmentShader,
     {}
   );
 
-  shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
-  shader.setAttributePerPolygon("normals", ({ normal }) => normal); // FIXME: remove plural
-  shader.setAttributePerPolygon("position", ({ position }) => position);
-  shader.setAttributePerPolygon("tangents", ({ tangent }) => tangent);
+  const polygonBinding = shader.declare<GlPolygon>();
 
-  shader.setUniformPerGeometry(
+  polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
+  polygonBinding.setAttribute("normals", ({ normal }) => normal); // FIXME: remove plural
+  polygonBinding.setAttribute("position", ({ position }) => position);
+  polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
+
+  const geometryBinding = shader.declare<GlGeometry>();
+
+  geometryBinding.setUniform(
     "modelMatrix",
-    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+    shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerGeometry(
+  geometryBinding.setUniform(
     "normalMatrix",
-    uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
-  );
-  shader.setUniformPerScene(
-    "projectionMatrix",
-    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
-  );
-  shader.setUniformPerScene(
-    "viewMatrix",
-    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+    shaderUniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
 
-  shader.setUniformPerMaterial(
-    "albedoFactor",
-    uniform.numberArray4(({ albedoFactor }) => albedoFactor)
+  const sceneBinding = shader.declare<State>();
+
+  sceneBinding.setUniform(
+    "projectionMatrix",
+    shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerMaterial(
+  sceneBinding.setUniform(
+    "viewMatrix",
+    shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+  );
+
+  const materialBinding = shader.declare<GlMaterial>();
+
+  materialBinding.setUniform(
+    "albedoFactor",
+    shaderUniform.numberArray4(({ albedoFactor }) => albedoFactor)
+  );
+  materialBinding.setUniform(
     "albedoMap",
-    uniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
+    shaderUniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
   );
 
   if (configuration.lightModel === DeferredShadingLightModel.Phong) {
-    shader.setUniformPerMaterial(
+    materialBinding.setUniform(
       "glossinessMap",
-      uniform.blackQuadTexture(({ glossMap }) => glossMap)
+      shaderUniform.blackQuadTexture(({ glossMap }) => glossMap)
     );
-    shader.setUniformPerMaterial(
+    materialBinding.setUniform(
       "shininess",
-      uniform.numberScalar(({ shininess }) => shininess)
+      shaderUniform.numberScalar(({ shininess }) => shininess)
     );
   }
 
   if (configuration.useHeightMap) {
-    shader.setUniformPerMaterial(
+    materialBinding.setUniform(
       "heightMap",
-      uniform.blackQuadTexture(({ heightMap }) => heightMap)
+      shaderUniform.blackQuadTexture(({ heightMap }) => heightMap)
     );
-    shader.setUniformPerMaterial(
+    materialBinding.setUniform(
       "heightParallaxBias",
-      uniform.numberScalar(({ heightParallaxBias }) => heightParallaxBias)
+      shaderUniform.numberScalar(({ heightParallaxBias }) => heightParallaxBias)
     );
-    shader.setUniformPerMaterial(
+    materialBinding.setUniform(
       "heightParallaxScale",
-      uniform.numberScalar(({ heightParallaxScale }) => heightParallaxScale)
+      shaderUniform.numberScalar(
+        ({ heightParallaxScale }) => heightParallaxScale
+      )
     );
   }
 
-  if (configuration.useNormalMap)
-    shader.setUniformPerMaterial(
+  if (configuration.useNormalMap) {
+    materialBinding.setUniform(
       "normalMap",
-      uniform.blackQuadTexture(({ normalMap }) => normalMap)
+      shaderUniform.blackQuadTexture(({ normalMap }) => normalMap)
     );
+  }
 
-  return shader;
+  return new SingularPainter(
+    sceneBinding,
+    geometryBinding,
+    materialBinding,
+    polygonBinding
+  );
 };
 
-const loadLightShader = <TSceneState extends LightState>(
+const loadLightBinding = <TSceneState extends LightState>(
   runtime: GlRuntime,
   configuration: Configuration,
   type: DeferredShadingLightType
-): GlShader<TSceneState, GlLightPolygon> => {
+) => {
   // Build directives from configuration
-  const directives: GlShaderDirective = {
-    LIGHT_TYPE: directive.number(type),
+  const directives: GlShaderDirectives = {
+    LIGHT_TYPE: shaderDirective.number(type),
   };
 
   switch (configuration.lightModel) {
     case DeferredShadingLightModel.Phong:
-      directives["LIGHT_MODEL_PHONG_DIFFUSE"] = directive.boolean(
+      directives["LIGHT_MODEL_PHONG_DIFFUSE"] = shaderDirective.boolean(
         !configuration.lightModelPhongNoDiffuse
       );
-      directives["LIGHT_MODEL_PHONG_SPECULAR"] = directive.boolean(
+      directives["LIGHT_MODEL_PHONG_SPECULAR"] = shaderDirective.boolean(
         !configuration.lightModelPhongNoSpecular
       );
 
@@ -495,31 +519,37 @@ const loadLightShader = <TSceneState extends LightState>(
   }
 
   // Setup light shader
-  const shader = new GlShader<TSceneState, GlLightPolygon>(
-    runtime,
+  const shader = runtime.shader(
     lightVertexShader,
     lightFragmentShader,
     directives
   );
 
+  const polygonBinding = shader.declare<GlLightPolygon>();
+
   if (type === DeferredShadingLightType.Point) {
-    shader.setAttributePerPolygon("lightColor", (p) => p.lightColor);
-    shader.setAttributePerPolygon("lightPosition", (p) => p.lightPosition);
-    shader.setAttributePerPolygon("lightRadius", (p) => p.lightRadius);
-    shader.setAttributePerPolygon("lightShift", (p) => p.lightShift);
+    polygonBinding.setAttribute("lightColor", (p) => p.lightColor);
+    polygonBinding.setAttribute("lightPosition", (p) => p.lightPosition);
+    polygonBinding.setAttribute("lightRadius", (p) => p.lightRadius);
+    polygonBinding.setAttribute("lightShift", (p) => p.lightShift);
   }
 
-  shader.setUniformPerScene(
-    "billboardMatrix",
-    uniform.numberMatrix4(({ billboardMatrix }) => billboardMatrix)
-  );
-  shader.setUniformPerGeometry(
+  const geometryBinding = shader.declare<GlGeometry>();
+
+  geometryBinding.setUniform(
     "modelMatrix",
-    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+    shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerScene(
+
+  const sceneBinding = shader.declare<TSceneState>();
+
+  sceneBinding.setUniform(
+    "billboardMatrix",
+    shaderUniform.numberMatrix4(({ billboardMatrix }) => billboardMatrix)
+  );
+  sceneBinding.setUniform(
     "inverseProjectionMatrix",
-    uniform.numberMatrix4(({ projectionMatrix }) => {
+    shaderUniform.numberMatrix4(({ projectionMatrix }) => {
       const inverseProjectionMatrix = Matrix4.fromObject(projectionMatrix);
 
       inverseProjectionMatrix.invert();
@@ -527,68 +557,83 @@ const loadLightShader = <TSceneState extends LightState>(
       return inverseProjectionMatrix;
     })
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "projectionMatrix",
-    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+    shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "viewMatrix",
-    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+    shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "viewportSize",
-    uniform.numberVector2(({ viewportSize }) => viewportSize)
+    shaderUniform.numberVector2(({ viewportSize }) => viewportSize)
   );
-
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "albedoAndShininess",
-    uniform.blackQuadTexture((state) => state.albedoAndShininessBuffer)
+    shaderUniform.blackQuadTexture((state) => state.albedoAndShininessBuffer)
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "depth",
-    uniform.blackQuadTexture(({ depthBuffer }) => depthBuffer)
+    shaderUniform.blackQuadTexture(({ depthBuffer }) => depthBuffer)
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "normalAndGlossiness",
-    uniform.blackQuadTexture((state) => state.normalAndGlossinessBuffer)
+    shaderUniform.blackQuadTexture((state) => state.normalAndGlossinessBuffer)
   );
 
-  return shader;
+  return { geometryBinding, polygonBinding, sceneBinding };
 };
 
-const loadDirectionalLightShader = (
+const loadDirectionalLightPainter = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const shader = loadLightShader<DirectionalLightState>(
-    runtime,
-    configuration,
-    DeferredShadingLightType.Directional
-  );
+  const { geometryBinding, polygonBinding, sceneBinding } =
+    loadLightBinding<DirectionalLightState>(
+      runtime,
+      configuration,
+      DeferredShadingLightType.Directional
+    );
 
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "directionalLight.color",
-    uniform.numberVector3(({ directionalLight }) => directionalLight.color)
+    shaderUniform.numberVector3(
+      ({ directionalLight }) => directionalLight.color
+    )
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "directionalLight.direction",
-    uniform.numberVector3(({ directionalLight }) => directionalLight.direction)
+    shaderUniform.numberVector3(
+      ({ directionalLight }) => directionalLight.direction
+    )
   );
 
-  return shader;
+  return new SingularPainter<DirectionalLightState, GlLightPolygon>(
+    sceneBinding,
+    geometryBinding,
+    undefined,
+    polygonBinding
+  );
 };
 
-const loadPointLightShader = (
+const loadPointLightPainter = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const shader = loadLightShader<LightState>(
-    runtime,
-    configuration,
-    DeferredShadingLightType.Point
-  );
+  const { geometryBinding, polygonBinding, sceneBinding } =
+    loadLightBinding<LightState>(
+      runtime,
+      configuration,
+      DeferredShadingLightType.Point
+    );
 
-  return shader;
+  return new SingularPainter<LightState, GlLightPolygon>(
+    sceneBinding,
+    geometryBinding,
+    undefined,
+    polygonBinding
+  );
 };
 
 class DeferredShadingRenderer
@@ -628,21 +673,18 @@ class DeferredShadingRenderer
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
-    this.ambientLightPainter = new SingularPainter(
-      loadAmbientShader(runtime, configuration)
-    );
+    this.ambientLightPainter = loadAmbientPainter(runtime, configuration);
     this.ambientLightObjects = [{ matrix: Matrix4.identity, model: quad }];
     this.depthBuffer = geometry.setupDepthTexture(
       GlTextureFormat.Depth16,
       GlTextureType.Quad
     );
-    this.directionalLightPainter = new SingularPainter(
-      loadDirectionalLightShader(runtime, configuration)
+    this.directionalLightPainter = loadDirectionalLightPainter(
+      runtime,
+      configuration
     );
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
-    this.geometryPainter = new SingularPainter(
-      loadGeometryShader(runtime, configuration)
-    );
+    this.geometryPainter = loadGeometryPainter(runtime, configuration);
     this.geometryTarget = geometry;
     this.lightBillboard = pointLightBillboard(gl);
     this.lightObjects = [
@@ -652,9 +694,7 @@ class DeferredShadingRenderer
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
-    this.pointLightPainter = new SingularPainter(
-      loadPointLightShader(runtime, configuration)
-    );
+    this.pointLightPainter = loadPointLightPainter(runtime, configuration);
     this.runtime = runtime;
   }
 

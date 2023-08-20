@@ -23,21 +23,20 @@ import { lightDeclare, lightInvoke } from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
+  GlGeometry,
+  GlMaterial,
   GlObject,
   GlPainter,
   GlRenderer,
   GlRuntime,
   GlScene,
-  GlShader,
-  GlShaderDirective,
   GlTarget,
   GlTexture,
   GlTextureFormat,
   GlTextureType,
-  directive,
-  uniform,
 } from "../../webgl";
 import { GlPolygon } from "./objects/polygon";
+import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
 
 type ForwardLightingConfiguration = {
   light?: LightConfiguration;
@@ -406,7 +405,7 @@ void main(void) {
 	fragColor = vec4(1, 1, 1, 1);
 }`;
 
-const loadLight = (
+const loadLightPainter = (
   runtime: GlRuntime,
   materialConfiguration: MaterialConfiguration,
   lightConfiguration: LightConfiguration
@@ -414,19 +413,19 @@ const loadLight = (
   const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
   const maxPointLights = lightConfiguration.maxPointLights ?? 0;
 
-  const directives: GlShaderDirective = {
-    ["LIGHT_MODEL"]: directive.number(<number>lightConfiguration.model),
+  const directives: GlShaderDirectives = {
+    ["LIGHT_MODEL"]: shaderDirective.number(<number>lightConfiguration.model),
   };
 
   switch (lightConfiguration.model) {
     case ForwardLightingLightModel.Phong:
-      directives["LIGHT_AMBIENT"] = directive.boolean(
+      directives["LIGHT_AMBIENT"] = shaderDirective.boolean(
         !lightConfiguration.modelPhongNoAmbient
       );
-      directives["LIGHT_MODEL_PHONG_DIFFUSE"] = directive.boolean(
+      directives["LIGHT_MODEL_PHONG_DIFFUSE"] = shaderDirective.boolean(
         !lightConfiguration.modelPhongNoDiffuse
       );
-      directives["LIGHT_MODEL_PHONG_SPECULAR"] = directive.boolean(
+      directives["LIGHT_MODEL_PHONG_SPECULAR"] = shaderDirective.boolean(
         !lightConfiguration.modelPhongNoSpecular
       );
 
@@ -434,10 +433,10 @@ const loadLight = (
 
     case ForwardLightingLightModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
-        directives["LIGHT_MODEL_PBR_IBL"] = directive.number(1);
+        directives["LIGHT_MODEL_PBR_IBL"] = shaderDirective.number(1);
       }
 
-      directives["LIGHT_AMBIENT"] = directive.boolean(
+      directives["LIGHT_AMBIENT"] = shaderDirective.boolean(
         !lightConfiguration.modelPhysicalNoAmbient
       );
 
@@ -445,164 +444,173 @@ const loadLight = (
   }
 
   if (!lightConfiguration.noShadow) {
-    directives["HAS_SHADOW"] = directive.number(1);
+    directives["HAS_SHADOW"] = shaderDirective.number(1);
   }
 
-  const shader = new GlShader<LightSceneState, GlPolygon>(
-    runtime,
+  const shader = runtime.shader(
     lightVertexShader(maxDirectionalLights, maxPointLights),
     lightFragmentShader(maxDirectionalLights, maxPointLights),
     directives
   );
 
   // Bind geometry attributes
-  shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
-  shader.setAttributePerPolygon("normals", ({ normal }) => normal); // FIXME: remove plural
-  shader.setAttributePerPolygon("position", ({ position }) => position);
-  shader.setAttributePerPolygon("tangents", ({ tangent }) => tangent);
+  const polygonBinding = shader.declare<GlPolygon>();
+
+  polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
+  polygonBinding.setAttribute("normals", ({ normal }) => normal); // FIXME: remove plural
+  polygonBinding.setAttribute("position", ({ position }) => position);
+  polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
 
   // Bind matrix uniforms
-  shader.setUniformPerGeometry(
+  const geometryBinding = shader.declare<GlGeometry>();
+
+  geometryBinding.setUniform(
     "modelMatrix",
-    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+    shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-  shader.setUniformPerGeometry(
+  geometryBinding.setUniform(
     "normalMatrix",
-    uniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
+    shaderUniform.numberMatrix3(({ normalMatrix }) => normalMatrix)
   );
-  shader.setUniformPerScene(
+
+  const sceneBinding = shader.declare<LightSceneState>();
+
+  sceneBinding.setUniform(
     "projectionMatrix",
-    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+    shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "viewMatrix",
-    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+    shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
 
   if (!lightConfiguration.noShadow) {
-    shader.setUniformPerScene(
+    sceneBinding.setUniform(
       "shadowProjectionMatrix",
-      uniform.numberMatrix4(
+      shaderUniform.numberMatrix4(
         ({ shadowProjectionMatrix }) => shadowProjectionMatrix
       )
     );
   }
 
   // Bind material uniforms
-  shader.setUniformPerMaterial(
+  const materialBinding = shader.declare<GlMaterial>();
+
+  materialBinding.setUniform(
     "albedoMap",
     materialConfiguration.noAlbedoMap !== true
-      ? uniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
-      : uniform.whiteQuadTexture(() => undefined)
+      ? shaderUniform.whiteQuadTexture(({ albedoMap }) => albedoMap)
+      : shaderUniform.whiteQuadTexture(() => undefined)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "albedoFactor",
-    uniform.numberArray4(({ albedoFactor }) => albedoFactor)
+    shaderUniform.numberArray4(({ albedoFactor }) => albedoFactor)
   );
 
   switch (lightConfiguration.model) {
     case ForwardLightingLightModel.Phong:
-      shader.setUniformPerMaterial(
+      materialBinding.setUniform(
         "glossinessMap",
         materialConfiguration.noGlossMap !== true
-          ? uniform.blackQuadTexture(({ glossMap }) => glossMap)
-          : uniform.blackQuadTexture(() => undefined)
+          ? shaderUniform.blackQuadTexture(({ glossMap }) => glossMap)
+          : shaderUniform.blackQuadTexture(() => undefined)
       );
-      shader.setUniformPerMaterial(
+      materialBinding.setUniform(
         "glossinessStrength",
-        uniform.numberScalar(({ glossFactor }) => glossFactor[0])
+        shaderUniform.numberScalar(({ glossFactor }) => glossFactor[0])
       );
-      shader.setUniformPerMaterial(
+      materialBinding.setUniform(
         "shininess",
-        uniform.numberScalar(({ shininess }) => shininess)
+        shaderUniform.numberScalar(({ shininess }) => shininess)
       );
 
       break;
 
     case ForwardLightingLightModel.Physical:
       if (!lightConfiguration.modelPhysicalNoIBL) {
-        shader.setUniformPerScene(
+        sceneBinding.setUniform(
           "environmentBrdfMap",
-          uniform.blackQuadTexture(
+          shaderUniform.blackQuadTexture(
             ({ environmentLight }) => environmentLight?.brdf
           )
         );
-        shader.setUniformPerScene(
+        sceneBinding.setUniform(
           "environmentDiffuseMap",
-          uniform.cubeTexture(
+          shaderUniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.diffuse
           )
         );
-        shader.setUniformPerScene(
+        sceneBinding.setUniform(
           "environmentSpecularMap",
-          uniform.cubeTexture(
+          shaderUniform.cubeTexture(
             ({ environmentLight }) => environmentLight?.specular
           )
         );
       }
-      shader.setUniformPerMaterial(
+
+      materialBinding.setUniform(
         "metalnessMap",
         materialConfiguration.noMetalnessMap !== true
-          ? uniform.blackQuadTexture(({ metalnessMap }) => metalnessMap)
-          : uniform.blackQuadTexture(() => undefined)
+          ? shaderUniform.blackQuadTexture(({ metalnessMap }) => metalnessMap)
+          : shaderUniform.blackQuadTexture(() => undefined)
       );
-      shader.setUniformPerMaterial(
+      materialBinding.setUniform(
         "roughnessMap",
         materialConfiguration.noRoughnessMap !== true
-          ? uniform.blackQuadTexture(({ roughnessMap }) => roughnessMap)
-          : uniform.blackQuadTexture(() => undefined)
+          ? shaderUniform.blackQuadTexture(({ roughnessMap }) => roughnessMap)
+          : shaderUniform.blackQuadTexture(() => undefined)
       );
-      shader.setUniformPerMaterial(
+      materialBinding.setUniform(
         "metalnessStrength",
-        uniform.numberScalar(({ metalnessStrength }) => metalnessStrength)
+        shaderUniform.numberScalar(({ metalnessStrength }) => metalnessStrength)
       );
-      shader.setUniformPerMaterial(
+      materialBinding.setUniform(
         "roughnessStrength",
-        uniform.numberScalar(({ roughnessStrength }) => roughnessStrength)
+        shaderUniform.numberScalar(({ roughnessStrength }) => roughnessStrength)
       );
 
       break;
   }
 
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "emissiveMap",
     materialConfiguration.noEmissiveMap !== true
-      ? uniform.blackQuadTexture(({ emissiveMap }) => emissiveMap)
-      : uniform.blackQuadTexture(() => undefined)
+      ? shaderUniform.blackQuadTexture(({ emissiveMap }) => emissiveMap)
+      : shaderUniform.blackQuadTexture(() => undefined)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "emissiveFactor",
-    uniform.numberArray4(({ emissiveFactor }) => emissiveFactor)
+    shaderUniform.numberArray4(({ emissiveFactor }) => emissiveFactor)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "heightMap",
     materialConfiguration.noHeightMap !== true
-      ? uniform.blackQuadTexture(({ heightMap }) => heightMap)
-      : uniform.blackQuadTexture(() => undefined)
+      ? shaderUniform.blackQuadTexture(({ heightMap }) => heightMap)
+      : shaderUniform.blackQuadTexture(() => undefined)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "heightParallaxBias",
-    uniform.numberScalar(({ heightParallaxBias }) => heightParallaxBias)
+    shaderUniform.numberScalar(({ heightParallaxBias }) => heightParallaxBias)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "heightParallaxScale",
-    uniform.numberScalar(({ heightParallaxScale }) => heightParallaxScale)
+    shaderUniform.numberScalar(({ heightParallaxScale }) => heightParallaxScale)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "normalMap",
     materialConfiguration.noNormalMap !== true
-      ? uniform.blackQuadTexture(({ normalMap }) => normalMap)
-      : uniform.blackQuadTexture(() => undefined)
+      ? shaderUniform.blackQuadTexture(({ normalMap }) => normalMap)
+      : shaderUniform.blackQuadTexture(() => undefined)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "occlusionMap",
     materialConfiguration.noOcclusionMap !== true
-      ? uniform.blackQuadTexture(({ occlusionMap }) => occlusionMap)
-      : uniform.blackQuadTexture(() => undefined)
+      ? shaderUniform.blackQuadTexture(({ occlusionMap }) => occlusionMap)
+      : shaderUniform.blackQuadTexture(() => undefined)
   );
-  shader.setUniformPerMaterial(
+  materialBinding.setUniform(
     "occlusionStrength",
-    uniform.numberScalar(({ occlusionStrength }) => occlusionStrength)
+    shaderUniform.numberScalar(({ occlusionStrength }) => occlusionStrength)
   );
 
   // Bind light uniforms
@@ -610,33 +618,33 @@ const loadLight = (
   const defaultDirection = { x: 1, y: 0, z: 0 };
   const defaultPosition = Vector3.zero;
 
-  shader.setUniformPerScene(
+  sceneBinding.setUniform(
     "ambientLightColor",
-    uniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
+    shaderUniform.numberVector3(({ ambientLightColor }) => ambientLightColor)
   );
 
   for (let i = 0; i < maxDirectionalLights; ++i) {
     const index = i;
 
     if (!lightConfiguration.noShadow) {
-      shader.setUniformPerScene(
+      sceneBinding.setUniform(
         `directionalLights[${index}].castShadow`,
-        uniform.booleanScalar(
+        shaderUniform.booleanScalar(
           ({ directionalLights }) =>
             index < directionalLights.length && directionalLights[index].shadow
         )
       );
-      shader.setUniformPerScene(
+      sceneBinding.setUniform(
         `directionalLights[${index}].shadowViewMatrix`,
-        uniform.numberMatrix4(({ directionalLights }) =>
+        shaderUniform.numberMatrix4(({ directionalLights }) =>
           index < directionalLights.length
             ? directionalLights[index].shadowViewMatrix
             : Matrix4.identity
         )
       );
-      shader.setUniformPerScene(
+      sceneBinding.setUniform(
         `directionalLightShadowMaps[${index}]`,
-        uniform.blackQuadTexture(({ directionalLights }) =>
+        shaderUniform.blackQuadTexture(({ directionalLights }) =>
           index < directionalLights.length
             ? directionalLights[index].shadowMap
             : undefined
@@ -644,17 +652,17 @@ const loadLight = (
       );
     }
 
-    shader.setUniformPerScene(
+    sceneBinding.setUniform(
       `directionalLights[${i}].color`,
-      uniform.numberVector3(({ directionalLights }) =>
+      shaderUniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].color
           : defaultColor
       )
     );
-    shader.setUniformPerScene(
+    sceneBinding.setUniform(
       `directionalLights[${i}].direction`,
-      uniform.numberVector3(({ directionalLights }) =>
+      shaderUniform.numberVector3(({ directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].direction
           : defaultDirection
@@ -665,64 +673,82 @@ const loadLight = (
   for (let i = 0; i < maxPointLights; ++i) {
     const index = i;
 
-    shader.setUniformPerScene(
+    sceneBinding.setUniform(
       `pointLights[${i}].color`,
-      uniform.numberVector3(({ pointLights }) =>
+      shaderUniform.numberVector3(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].color : defaultColor
       )
     );
-    shader.setUniformPerScene(
+    sceneBinding.setUniform(
       `pointLights[${i}].position`,
-      uniform.numberVector3(({ pointLights }) =>
+      shaderUniform.numberVector3(({ pointLights }) =>
         index < pointLights.length
           ? pointLights[index].position
           : defaultPosition
       )
     );
-    shader.setUniformPerScene(
+    sceneBinding.setUniform(
       `pointLights[${i}].radius`,
-      uniform.numberScalar(({ pointLights }) =>
+      shaderUniform.numberScalar(({ pointLights }) =>
         index < pointLights.length ? pointLights[index].radius : 0
       )
     );
   }
 
-  return shader;
+  return new SingularPainter(
+    sceneBinding,
+    geometryBinding,
+    materialBinding,
+    polygonBinding
+  );
 };
 
-const loadShadowDirectional = (runtime: GlRuntime) => {
-  const shader = new GlShader<ShadowSceneState, GlPolygon>(
-    runtime,
+const loadShadowDirectionalPainter = (runtime: GlRuntime) => {
+  const shader = runtime.shader(
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader,
     {}
   );
 
-  shader.setAttributePerPolygon("position", ({ position }) => position);
-  shader.setUniformPerGeometry(
+  const polygonBinding = shader.declare<GlPolygon>();
+
+  polygonBinding.setAttribute("position", ({ position }) => position);
+
+  const geometryBinding = shader.declare<GlGeometry>();
+
+  geometryBinding.setUniform(
     "modelMatrix",
-    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
-  );
-  shader.setUniformPerScene(
-    "projectionMatrix",
-    uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
-  );
-  shader.setUniformPerScene(
-    "viewMatrix",
-    uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+    shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
 
-  return shader;
+  const sceneBinding = shader.declare<ShadowSceneState>();
+
+  sceneBinding.setUniform(
+    "projectionMatrix",
+    shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+  );
+  sceneBinding.setUniform(
+    "viewMatrix",
+    shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+  );
+
+  return new SingularPainter(
+    sceneBinding,
+    geometryBinding,
+    undefined,
+    polygonBinding
+  );
 };
 
-const loadShadowPoint = (runtime: GlRuntime) => {
+const loadShadowPointPainter = (runtime: GlRuntime) => {
   // Not implemented
-  return new GlShader<ShadowSceneState, GlPolygon>(
-    runtime,
+  runtime.shader(
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader,
     {}
   );
+
+  return new SingularPainter(undefined, undefined, undefined, undefined);
 };
 
 class ForwardLightingRenderer
@@ -769,9 +795,7 @@ class ForwardLightingRenderer
     this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
-    this.directionalShadowPainter = new SingularPainter(
-      loadShadowDirectional(runtime)
-    );
+    this.directionalShadowPainter = loadShadowDirectionalPainter(runtime);
     this.directionalShadowProjectionMatrix = Matrix4.fromOrthographic(
       -10,
       10,
@@ -781,15 +805,17 @@ class ForwardLightingRenderer
       20
     );
     this.directionalShadowTargets = directionalShadowTargets;
-    this.lightPainter = new SingularPainter(
-      loadLight(runtime, materialConfiguration, lightConfiguration)
+    this.lightPainter = loadLightPainter(
+      runtime,
+      materialConfiguration,
+      lightConfiguration
     );
     this.maxDirectionalLights = maxDirectionalLights;
     this.maxPointLights = maxPointLights;
     this.pointShadowBuffers = pointShadowTargets.map((target) =>
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
-    this.pointShadowPainter = new SingularPainter(loadShadowPoint(runtime));
+    this.pointShadowPainter = loadShadowPointPainter(runtime);
     this.pointShadowProjectionMatrix = Matrix4.fromPerspective(
       Math.PI * 0.5,
       targetWidth / targetHeight,

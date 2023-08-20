@@ -1,7 +1,7 @@
 // Formula based on:
 // http://entropymine.com/imageworsener/srgbformula/
 
-import { GlShaderFunction } from "../shader";
+import { GlShaderFunction } from "../language";
 
 const linearToStandard: GlShaderFunction<[string]> = {
   declare: (): string => `

@@ -2,6 +2,7 @@ import { Matrix4 } from "../../../math/matrix";
 import { SingularPainter } from "../painters/singular";
 import { model } from "./resources/quad";
 import {
+  GlGeometry,
   GlModel,
   GlObject,
   GlPainter,
@@ -9,14 +10,12 @@ import {
   GlRenderer,
   GlRuntime,
   GlScene,
-  GlShader,
   GlTarget,
   GlTexture,
-  directive,
   loadModel,
-  uniform,
 } from "../../webgl";
 import { GlPolygon } from "./objects/polygon";
+import { shaderDirective, shaderUniform } from "../shader";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -145,34 +144,33 @@ type SceneState = {
 };
 
 const load = (runtime: GlRuntime, configuration: DebugTextureConfiguration) => {
-  const directives = {
-    FORMAT: directive.number(configuration.format),
-    SELECT: directive.number(configuration.select),
-    ZFAR: directive.number(configuration.zFar),
-    ZNEAR: directive.number(configuration.zNear),
-  };
+  const shader = runtime.shader(vertexSource, fragmentSource, {
+    FORMAT: shaderDirective.number(configuration.format),
+    SELECT: shaderDirective.number(configuration.select),
+    ZFAR: shaderDirective.number(configuration.zFar),
+    ZNEAR: shaderDirective.number(configuration.zNear),
+  });
 
-  const shader = new GlShader<SceneState, DebugTexturePolygon>(
-    runtime,
-    vertexSource,
-    fragmentSource,
-    directives
-  );
+  const geometryBinding = shader.declare<GlGeometry>();
 
-  shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
-  shader.setAttributePerPolygon("position", ({ position }) => position);
-
-  shader.setUniformPerScene(
-    "source",
-    uniform.blackQuadTexture(({ source }) => source)
-  );
-
-  shader.setUniformPerGeometry(
+  geometryBinding.setUniform(
     "modelMatrix",
-    uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+    shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
 
-  return shader;
+  const polygonBinding = shader.declare<GlPolygon>();
+
+  polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
+  polygonBinding.setAttribute("position", ({ position }) => position);
+
+  const sceneBinding = shader.declare<SceneState>();
+
+  sceneBinding.setUniform(
+    "source",
+    shaderUniform.blackQuadTexture(({ source }) => source)
+  );
+
+  return { geometryBinding, polygonBinding, sceneBinding };
 };
 
 class DebugTextureRenderer
@@ -221,7 +219,18 @@ class DebugTextureRenderer
     runtime: GlRuntime,
     configuration: DebugTextureConfiguration
   ) {
-    this.painter = new SingularPainter(load(runtime, configuration));
+    const { geometryBinding, polygonBinding, sceneBinding } = load(
+      runtime,
+      configuration
+    );
+
+    this.painter = new SingularPainter(
+      sceneBinding,
+      geometryBinding,
+      undefined,
+      polygonBinding
+    );
+
     this.quad = loadModel(runtime, model);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;

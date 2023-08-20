@@ -9,12 +9,6 @@ type GlArray =
   | Uint16Array
   | Uint32Array;
 
-type GlAttribute = Disposable & {
-  buffer: GlBuffer;
-  size: number;
-  stride: number;
-};
-
 type GlBuffer = Disposable & {
   set: (data: GlArray, length: number) => void;
   buffer: WebGLBuffer;
@@ -36,23 +30,6 @@ type GlBufferType =
   | WebGL2RenderingContext["UNSIGNED_BYTE"];
 
 type GlContext = WebGL2RenderingContext;
-
-const attribute = (
-  gl: GlContext,
-  data: GlArray,
-  length: number,
-  stride: number,
-  isDynamic: boolean
-): GlAttribute => {
-  const buffer = arrayBuffer(gl, data, length, isDynamic);
-
-  return {
-    dispose: buffer.dispose,
-    buffer,
-    size: stride,
-    stride: stride * data.BYTES_PER_ELEMENT,
-  };
-};
 
 const arrayBuffer = (
   gl: GlContext,
@@ -135,10 +112,9 @@ const bufferType = (gl: GlContext, array: GlArray): GlBufferType => {
 };
 
 export {
-  type GlAttribute,
+  type GlArray,
   type GlBuffer,
   type GlContext,
   arrayBuffer,
-  attribute,
   indexBuffer,
 };

@@ -8,14 +8,15 @@ import { Camera } from "../view";
 import {
   GlModel,
   GlPainter,
-  GlShader,
   GlTarget,
   runtimeCreate,
   loadModel,
-  uniform,
+  GlMaterial,
+  GlGeometry,
 } from "../../engine/graphic/webgl";
 import { BatchPainter } from "../../engine/graphic/webgl/painters/batch";
 import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
+import { shaderUniform } from "../../engine/graphic/webgl/shader";
 
 /*
  ** What changed?
@@ -77,39 +78,44 @@ const configuration = {
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const runtime = runtimeCreate(screen.context);
-    const shader = new GlShader<SceneState, GlPolygon>(
-      runtime,
-      vsSource,
-      fsSource,
-      {}
-    );
+    const shader = runtime.shader(vsSource, fsSource, {});
     const tweak = configure(configuration);
 
-    shader.setAttributePerPolygon("coordinate", ({ coordinate }) => coordinate);
-    shader.setAttributePerPolygon("position", ({ position }) => position);
-    shader.setAttributePerPolygon("tint", ({ tint }) => tint);
+    const geometryBinding = shader.declare<GlGeometry>();
 
-    shader.setUniformPerMaterial(
-      "albedoFactor",
-      uniform.numberArray4(({ albedoFactor }) => albedoFactor)
+    geometryBinding.setUniform(
+      "modelMatrix",
+      shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
     );
-    shader.setUniformPerMaterial(
+
+    const polygonBinding = shader.declare<GlPolygon>();
+
+    polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
+    polygonBinding.setAttribute("position", ({ position }) => position);
+    polygonBinding.setAttribute("tint", ({ tint }) => tint);
+
+    const materialBinding = shader.declare<GlMaterial>();
+
+    materialBinding.setUniform(
+      "albedoFactor",
+      shaderUniform.numberArray4(({ albedoFactor }) => albedoFactor)
+    );
+    materialBinding.setUniform(
       "albedoMap",
-      uniform.whiteQuadTexture(({ albedoMap }) =>
+      shaderUniform.whiteQuadTexture(({ albedoMap }) =>
         tweak.useTexture ? albedoMap : undefined
       )
     );
-    shader.setUniformPerGeometry(
-      "modelMatrix",
-      uniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
-    );
-    shader.setUniformPerScene(
+
+    const sceneBinding = shader.declare<SceneState>();
+
+    sceneBinding.setUniform(
       "projectionMatrix",
-      uniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+      shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
     );
-    shader.setUniformPerScene(
+    sceneBinding.setUniform(
       "viewMatrix",
-      uniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+      shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
     );
 
     return {
@@ -120,7 +126,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
         runtime,
         await loadModelFromJson("model/cube/mesh.json")
       ),
-      painter: new BatchPainter(shader),
+      painter: new BatchPainter(
+        sceneBinding,
+        geometryBinding,
+        materialBinding,
+        polygonBinding
+      ),
       projectionMatrix: Matrix4.identity,
       screen,
       target: new GlTarget(

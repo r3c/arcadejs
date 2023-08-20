@@ -1,4 +1,4 @@
-import { GlShaderFunction } from "../shader";
+import { GlShaderFunction } from "../language";
 
 const parallaxPerturb: GlShaderFunction<
   [string, string, string, string, string, string, string, string]

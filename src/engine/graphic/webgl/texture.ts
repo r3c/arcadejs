@@ -1,14 +1,6 @@
 import { Disposable } from "../../language/lifecycle";
-import { Filter, Interpolation, Wrap, defaultFilter } from "../model";
+import { Filter, Interpolation, Wrap } from "../model";
 import { GlContext } from "./resource";
-
-/**
- * Default texture lookup, used as fallback values.
- */
-type GlDefaultTexture = Disposable & {
-  blackTexture: GlTexture;
-  whiteTexture: GlTexture;
-};
 
 /**
  * Disposable WebGL texture, also circumvent native `WebGLTexture` type being
@@ -33,41 +25,6 @@ type GlNativeFormat = {
   format: number;
   internal: number;
   type: number;
-};
-
-const defaultTexture = (gl: GlContext) => {
-  const blackTexture = textureCreate(
-    gl,
-    undefined,
-    GlTextureType.Quad,
-    1,
-    1,
-    GlTextureFormat.RGBA8,
-    defaultFilter,
-    new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
-  );
-
-  const whiteTexture = textureCreate(
-    gl,
-    undefined,
-    GlTextureType.Quad,
-    1,
-    1,
-    GlTextureFormat.RGBA8,
-    defaultFilter,
-    new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
-  );
-
-  const dispose = () => {
-    blackTexture.dispose();
-    whiteTexture.dispose();
-  };
-
-  return {
-    dispose,
-    blackTexture,
-    whiteTexture,
-  };
 };
 
 /*
@@ -278,11 +235,9 @@ const textureCreate = (
 };
 
 export {
-  type GlDefaultTexture,
   type GlTexture,
   GlTextureFormat,
   GlTextureType,
-  defaultTexture,
   renderbufferConfigure,
   renderbufferCreate,
   textureCreate,

@@ -12,25 +12,24 @@ import {
   defaultFilter,
 } from "./model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
-import {
-  GlAttribute,
-  GlBuffer,
-  GlContext,
-  attribute,
-  indexBuffer,
-} from "./webgl/resource";
+import { GlBuffer, GlContext, indexBuffer } from "./webgl/resource";
 import { GlPolygon } from "./webgl/renderers/objects/polygon";
 import { Disposable } from "../language/lifecycle";
 import {
-  GlDefaultTexture,
   GlTexture,
   GlTextureFormat,
   GlTextureType,
-  defaultTexture,
   renderbufferConfigure,
   renderbufferCreate,
   textureCreate,
 } from "./webgl/texture";
+import {
+  GlShader,
+  GlShaderAttribute,
+  GlShaderDirectives,
+  shader,
+  shaderAttribute,
+} from "./webgl/shader";
 
 type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -51,10 +50,6 @@ type GlAttachmentTexture = {
   format: GlTextureFormat;
   handle: GlTexture;
 };
-
-type GlBinder<TState> = (state: TState) => void;
-
-type GlBinderMap<TState> = Map<string, GlBinder<TState>>;
 
 type GlGeometry = {
   modelMatrix: Matrix4;
@@ -129,46 +124,17 @@ type GlRenderer<TSceneState, TObject> = Disposable & {
 };
 
 type GlRuntime = Disposable & {
+  shader: (
+    vertexShaderSource: string,
+    fragmentShaderSource: string,
+    directives: GlShaderDirectives
+  ) => GlShader;
   context: GlContext;
-  defaultTexture: GlDefaultTexture;
 };
 
 type GlScene<TSceneState, TObject> = {
   objects: Iterable<TObject>;
   state: TSceneState;
-};
-
-type GlShaderDirective = Record<string, GlShaderDirectiveValue>;
-
-const enum GlShaderDirectiveType {
-  Boolean,
-  Number,
-}
-
-type GlShaderDirectiveValue =
-  | {
-      type: GlShaderDirectiveType.Boolean;
-      value: boolean;
-    }
-  | {
-      type: GlShaderDirectiveType.Number;
-      value: number;
-    };
-
-type GlUniformAccessor<TState, TValue> = {
-  allocateTexture: boolean;
-  createValue: (gl: GlContext) => TValue;
-  readValue: (
-    state: TState,
-    currentValue: TValue,
-    defaultTexture: GlDefaultTexture
-  ) => TValue;
-  setUniform: (
-    gl: GlContext,
-    location: WebGLUniformLocation,
-    value: TValue,
-    textureIndex: number
-  ) => void;
 };
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
@@ -206,16 +172,54 @@ const materialExtractors: GlMaterialExtractor[] = [
 ];
 
 const runtimeCreate = (context: GlContext): GlRuntime => {
-  const { dispose, blackTexture, whiteTexture } = defaultTexture(context);
+  const blackTexture = textureCreate(
+    context,
+    undefined,
+    GlTextureType.Quad,
+    1,
+    1,
+    GlTextureFormat.RGBA8,
+    defaultFilter,
+    new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
+  );
+
+  const whiteTexture = textureCreate(
+    context,
+    undefined,
+    GlTextureType.Quad,
+    1,
+    1,
+    GlTextureFormat.RGBA8,
+    defaultFilter,
+    new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
+  );
+
+  let currentProgram: WebGLProgram | undefined = undefined;
+
+  // Forward call to `gl.useProgram` if given program is not already active
+  // (may be premature optimization e.g. duplicate of underlying implementation)
+  const useProgram = (program: WebGLProgram): void => {
+    if (currentProgram !== program) {
+      context.useProgram(program);
+    }
+  };
 
   return {
-    dispose,
-    context,
-    defaultTexture: {
-      dispose,
-      blackTexture,
-      whiteTexture,
+    dispose: () => {
+      blackTexture.dispose();
+      whiteTexture.dispose();
     },
+    shader: (vertexShaderSource, fragmentShaderSource, directives) => {
+      return shader(
+        context,
+        useProgram,
+        { blackTexture, whiteTexture },
+        vertexShaderSource,
+        fragmentShaderSource,
+        directives
+      );
+    },
+    context,
   };
 };
 
@@ -241,7 +245,7 @@ const deleteMaterial = (gl: GlContext, material: GlMaterial): void => {
 const deleteMesh = <TPolygon>(
   gl: GlContext,
   mesh: GlMesh<TPolygon>,
-  extractor: (polygon: TPolygon) => Iterable<GlAttribute | undefined>
+  extractor: (polygon: TPolygon) => Iterable<GlShaderAttribute | undefined>
 ): void => {
   for (const child of mesh.children) {
     deleteMesh(gl, child, extractor);
@@ -262,7 +266,7 @@ const deleteMesh = <TPolygon>(
 const deleteModel = <TPolygon>(
   gl: GlContext,
   model: GlModel<TPolygon>,
-  extractor: (polygon: TPolygon) => Iterable<GlAttribute | undefined>
+  extractor: (polygon: TPolygon) => Iterable<GlShaderAttribute | undefined>
 ): void => {
   const { library, meshes } = model;
 
@@ -274,19 +278,6 @@ const deleteModel = <TPolygon>(
 
   for (const mesh of meshes) {
     deleteMesh(gl, mesh, extractor);
-  }
-};
-
-const directiveFormat = (value: GlShaderDirectiveValue): string => {
-  switch (value.type) {
-    case GlShaderDirectiveType.Boolean:
-      return value.value ? "1" : "0";
-
-    case GlShaderDirectiveType.Number:
-      return value.value.toString();
-
-    default:
-      return "0";
   }
 };
 
@@ -425,7 +416,7 @@ const loadPrimitive = (
         : defaultMaterial,
     polygon: {
       coordinate: map(polygon.coordinates, (coordinates) =>
-        attribute(
+        shaderAttribute(
           gl,
           new Float32Array(coordinates.flatMap(Vector2.toArray)),
           coordinates.length * 2,
@@ -434,7 +425,7 @@ const loadPrimitive = (
         )
       ),
       normal: map(polygon.normals, (normals) =>
-        attribute(
+        shaderAttribute(
           gl,
           new Float32Array(normals.flatMap(Vector3.toArray)),
           normals.length * 3,
@@ -442,7 +433,7 @@ const loadPrimitive = (
           isDynamic
         )
       ),
-      position: attribute(
+      position: shaderAttribute(
         gl,
         new Float32Array(polygon.positions.flatMap(Vector3.toArray)),
         polygon.positions.length * 3,
@@ -450,7 +441,7 @@ const loadPrimitive = (
         isDynamic
       ),
       tangent: map(polygon.tangents, (tangents) =>
-        attribute(
+        shaderAttribute(
           gl,
           new Float32Array(tangents.flatMap(Vector3.toArray)),
           tangents.length * 3,
@@ -459,7 +450,7 @@ const loadPrimitive = (
         )
       ),
       tint: map(polygon.tints, (tints) =>
-        attribute(
+        shaderAttribute(
           gl,
           new Float32Array(tints.flatMap(Vector4.toArray)),
           tints.length * 4,
@@ -516,265 +507,6 @@ const loadTextureQuad = (
     image
   );
 };
-
-const textureUniform = <TState>(
-  primaryGetter: (state: TState) => GlTexture | undefined,
-  defaultGetter: (defaultTexture: GlDefaultTexture) => GlTexture,
-  target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"]
-): GlUniformAccessor<TState, { target: number; texture: GlTexture }> => ({
-  allocateTexture: true,
-  createValue: () => ({ target, texture: { dispose: () => {}, handle: {} } }),
-  readValue: (state, { target }, defaultValue) => ({
-    target,
-    texture: primaryGetter(state) ?? defaultGetter(defaultValue),
-  }),
-  setUniform: (gl, location, { target, texture }, textureIndex) => {
-    gl.activeTexture(gl.TEXTURE0 + textureIndex);
-    gl.bindTexture(target, texture.handle);
-    gl.uniform1i(location, textureIndex);
-  },
-});
-
-class GlShader<TSceneState, TPolygonState> {
-  private readonly attributePerPolygon: GlBinderMap<TPolygonState>;
-  private readonly program: WebGLProgram;
-  private readonly runtime: GlRuntime;
-  private readonly uniformPerGeometry: GlBinderMap<GlGeometry>;
-  private readonly uniformPerMaterial: GlBinderMap<GlMaterial>;
-  private readonly uniformPerScene: GlBinderMap<TSceneState>;
-
-  private textureIndex: number;
-
-  public constructor(
-    runtime: GlRuntime,
-    vertexShaderSource: string,
-    fragmentShaderSource: string,
-    directives: GlShaderDirective
-  ) {
-    const gl = runtime.context;
-    const program = gl.createProgram();
-
-    if (program === null) {
-      throw Error("could not create program");
-    }
-
-    const header =
-      "#version 300 es\n" +
-      "#ifdef GL_ES\n" +
-      "precision highp float;\n" +
-      "#endif\n" +
-      Object.entries(directives)
-        .map(([name, value]) => `#define ${name} ${directiveFormat(value)}\n`)
-        .join("");
-
-    const vertexShader = GlShader.compile(
-      gl,
-      gl.VERTEX_SHADER,
-      header + vertexShaderSource
-    );
-
-    const fragmentShader = GlShader.compile(
-      gl,
-      gl.FRAGMENT_SHADER,
-      header + fragmentShaderSource
-    );
-
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      const error = gl.getProgramInfoLog(program);
-
-      gl.deleteProgram(program);
-
-      throw Error(`could not link program: ${error}`);
-    }
-
-    this.attributePerPolygon = new Map();
-    this.program = program;
-    this.runtime = runtime;
-    this.textureIndex = 0;
-    this.uniformPerGeometry = new Map();
-    this.uniformPerMaterial = new Map();
-    this.uniformPerScene = new Map();
-  }
-
-  public activate() {
-    this.runtime.context.useProgram(this.program);
-  }
-
-  /*
-   ** Assign per-geometry uniforms.
-   */
-  public bindGeometry(geometry: GlGeometry) {
-    for (const binding of this.uniformPerGeometry.values()) {
-      binding(geometry);
-    }
-  }
-
-  /*
-   ** Assign per-material uniforms.
-   */
-  public bindMaterial(material: GlMaterial) {
-    for (const binding of this.uniformPerMaterial.values()) {
-      binding(material);
-    }
-  }
-
-  /*
-   ** Assign per-polygon attributes.
-   */
-  public bindPolygon(polygon: TPolygonState) {
-    for (const binding of this.attributePerPolygon.values()) {
-      binding(polygon);
-    }
-  }
-
-  /*
-   ** Assign per-scene uniforms.
-   */
-  public bindScene(state: TSceneState) {
-    for (const binding of this.uniformPerScene.values()) {
-      binding(state);
-    }
-  }
-
-  public setAttributePerPolygon(
-    name: string,
-    getter: (state: TPolygonState) => GlAttribute | undefined
-  ) {
-    this.setAttribute(this.attributePerPolygon, name, getter);
-  }
-
-  public setUniformPerGeometry<TValue>(
-    name: string,
-    accessor: GlUniformAccessor<GlGeometry, TValue>
-  ) {
-    this.setUniform(this.uniformPerGeometry, name, accessor);
-  }
-
-  public setUniformPerMaterial<TValue>(
-    name: string,
-    accessor: GlUniformAccessor<GlMaterial, TValue>
-  ) {
-    this.setUniform(this.uniformPerMaterial, name, accessor);
-  }
-
-  public setUniformPerScene<TValue>(
-    name: string,
-    accessor: GlUniformAccessor<TSceneState, TValue>
-  ) {
-    this.setUniform(this.uniformPerScene, name, accessor);
-  }
-
-  private setAttribute<TInput>(
-    target: Map<string, GlBinder<TInput>>,
-    name: string,
-    accessor: (input: TInput) => GlAttribute | undefined
-  ) {
-    if (target.has(name)) {
-      throw new Error(`cannot set attribute "${name}" twice`);
-    }
-
-    const gl = this.runtime.context;
-    const location = gl.getAttribLocation(this.program, name);
-
-    if (location === -1) {
-      throw Error(`cound not find location of attribute "${name}"`);
-    }
-
-    target.set(name, (state: TInput) => {
-      const attribute = accessor(state);
-
-      if (attribute === undefined) {
-        throw Error(`undefined geometry attribute "${name}"`);
-      }
-
-      const { buffer, size, stride } = attribute;
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
-      gl.vertexAttribPointer(location, size, buffer.type, false, stride, 0);
-      gl.enableVertexAttribArray(location);
-    });
-  }
-
-  private setUniform<TInput, TValue>(
-    target: Map<string, GlBinder<TInput>>,
-    name: string,
-    accessor: GlUniformAccessor<TInput, TValue>
-  ): void {
-    if (target.has(name)) {
-      throw new Error(`cannot set uniform "${name}" twice`);
-    }
-
-    const { allocateTexture, createValue, readValue, setUniform } = accessor;
-    const gl = this.runtime.context;
-    const currentValue = createValue(gl);
-    const defaultTexture = this.runtime.defaultTexture;
-    const textureIndex = this.textureIndex;
-
-    if (allocateTexture) {
-      ++this.textureIndex;
-    }
-
-    const location = gl.getUniformLocation(this.program, name);
-
-    if (location === null) {
-      throw Error(`cound not find location of uniform "${name}"`);
-    }
-
-    target.set(name, (state: TInput) => {
-      const uniform = readValue(state, currentValue, defaultTexture);
-
-      setUniform(gl, location, uniform, textureIndex);
-    });
-  }
-
-  private static compile(gl: GlContext, shaderType: number, source: string) {
-    const shader = gl.createShader(shaderType);
-
-    if (shader === null) {
-      throw Error(`could not create shader`);
-    }
-
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      const error = gl.getShaderInfoLog(shader);
-      const name =
-        shaderType === gl.FRAGMENT_SHADER
-          ? "fragment"
-          : shaderType === gl.VERTEX_SHADER
-          ? "vertex"
-          : "unknown";
-      const pattern = /ERROR: [0-9]+:([0-9]+)/;
-
-      gl.deleteShader(shader);
-
-      const match = error !== null ? pattern.exec(error) : null;
-
-      if (match !== null) {
-        const begin = parseInt(match[1]) - 1 - 2;
-        const end = begin + 5;
-
-        throw Error(
-          `could not compile ${name} shader (${error}) around:\n${source
-            .split("\n")
-            .slice(Math.max(begin, 0), end)
-            .join("\n")}`
-        );
-      }
-
-      throw Error(
-        `could not compile ${name} shader (${error}) in source:\n${source}`
-      );
-    }
-
-    return shader;
-  }
-}
 
 class GlTarget {
   private readonly gl: GlContext;
@@ -1128,162 +860,8 @@ class GlTarget {
   }
 }
 
-const directive = {
-  boolean: (value: boolean): GlShaderDirectiveValue => ({
-    type: GlShaderDirectiveType.Boolean,
-    value,
-  }),
-  number: (value: number): GlShaderDirectiveValue => ({
-    type: GlShaderDirectiveType.Number,
-    value,
-  }),
-};
-
-const uniform = {
-  blackQuadTexture: <TState>(
-    getter: (state: TState) => GlTexture | undefined
-  ) =>
-    textureUniform(
-      getter,
-      ({ blackTexture }) => blackTexture,
-      WebGL2RenderingContext["TEXTURE_2D"]
-    ),
-
-  booleanScalar: <TState>(
-    getter: (state: TState) => boolean
-  ): GlUniformAccessor<TState, number> => ({
-    allocateTexture: false,
-    createValue: () => 0,
-    readValue: (state) => (getter(state) ? 1 : 0),
-    setUniform: (g, l, v) => g.uniform1i(l, v),
-  }),
-
-  cubeTexture: <TState>(getter: (state: TState) => GlTexture | undefined) =>
-    textureUniform(
-      getter,
-      () => {
-        throw new Error("undefined cube texture");
-      },
-      WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
-    ),
-
-  numberArray4: <TState>(
-    getter: (state: TState) => number[]
-  ): GlUniformAccessor<TState, number[]> => ({
-    allocateTexture: false,
-    createValue: () => [],
-    readValue: (state) => getter(state),
-    setUniform: (g, l, v) => g.uniform4fv(l, v),
-  }),
-
-  numberMatrix3: <TState>(
-    getter: (state: TState) => Matrix3
-  ): GlUniformAccessor<TState, Float32Array> => {
-    return {
-      allocateTexture: false,
-      createValue: () => new Float32Array(9),
-      readValue: (state, value) => {
-        const matrix = getter(state);
-
-        value[0] = matrix.v00;
-        value[1] = matrix.v01;
-        value[2] = matrix.v02;
-        value[3] = matrix.v10;
-        value[4] = matrix.v11;
-        value[5] = matrix.v12;
-        value[6] = matrix.v20;
-        value[7] = matrix.v21;
-        value[8] = matrix.v22;
-
-        return value;
-      },
-      setUniform: (g, l, v) => g.uniformMatrix3fv(l, false, v),
-    };
-  },
-
-  numberMatrix4: <TState>(
-    getter: (state: TState) => Matrix4
-  ): GlUniformAccessor<TState, Float32Array> => ({
-    allocateTexture: false,
-    createValue: () => new Float32Array(16),
-    readValue: (state, value) => {
-      const matrix = getter(state);
-
-      value[0] = matrix.v00;
-      value[1] = matrix.v01;
-      value[2] = matrix.v02;
-      value[3] = matrix.v03;
-      value[4] = matrix.v10;
-      value[5] = matrix.v11;
-      value[6] = matrix.v12;
-      value[7] = matrix.v13;
-      value[8] = matrix.v20;
-      value[9] = matrix.v21;
-      value[10] = matrix.v22;
-      value[11] = matrix.v23;
-      value[12] = matrix.v30;
-      value[13] = matrix.v31;
-      value[14] = matrix.v32;
-      value[15] = matrix.v33;
-
-      return value;
-    },
-    setUniform: (g, l, v) => g.uniformMatrix4fv(l, false, v),
-  }),
-
-  numberScalar: <TState>(
-    getter: (state: TState) => number
-  ): GlUniformAccessor<TState, number> => ({
-    allocateTexture: false,
-    createValue: () => 0,
-    readValue: (state) => getter(state),
-    setUniform: (g, l, v) => g.uniform1f(l, v),
-  }),
-
-  numberVector2: <TState>(
-    getter: (state: TState) => Vector2
-  ): GlUniformAccessor<TState, Float32Array> => ({
-    allocateTexture: false,
-    createValue: () => new Float32Array(2),
-    readValue: (state, value) => {
-      const vector = getter(state);
-
-      value[0] = vector.x;
-      value[1] = vector.y;
-
-      return value;
-    },
-    setUniform: (g, l, v) => g.uniform2fv(l, v),
-  }),
-
-  numberVector3: <TState>(
-    getter: (state: TState) => Vector3
-  ): GlUniformAccessor<TState, Float32Array> => ({
-    allocateTexture: false,
-    createValue: () => new Float32Array(3),
-    readValue: (state, value) => {
-      const vector = getter(state);
-
-      value[0] = vector.x;
-      value[1] = vector.y;
-      value[2] = vector.z;
-
-      return value;
-    },
-    setUniform: (g, l, v) => g.uniform3fv(l, v),
-  }),
-
-  whiteQuadTexture: <TState>(
-    getter: (state: TState) => GlTexture | undefined
-  ) =>
-    textureUniform(
-      getter,
-      ({ whiteTexture }) => whiteTexture,
-      WebGL2RenderingContext["TEXTURE_2D"]
-    ),
-};
-
 export {
+  type GlGeometry,
   type GlMaterial,
   type GlMesh,
   type GlModel,
@@ -1293,11 +871,7 @@ export {
   type GlRenderer,
   type GlRuntime,
   type GlScene,
-  type GlShaderDirective,
-  type GlShaderDirectiveValue,
   type GlTexture,
-  GlShader,
-  GlShaderDirectiveType,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
@@ -1309,6 +883,4 @@ export {
   loadTextureQuad,
   runtimeCreate,
   defaultMaterial,
-  directive,
-  uniform,
 };

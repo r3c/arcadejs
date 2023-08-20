@@ -1,8 +1,18 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
-import { GlMesh, GlPainter, GlShader, GlObject, GlTarget } from "../../webgl";
+import {
+  GlMesh,
+  GlPainter,
+  GlObject,
+  GlTarget,
+  GlGeometry,
+  GlMaterial,
+} from "../../webgl";
+import { GlShaderBinding } from "../shader";
 
-const draw = <TSceneState, TPolygon>(
-  shader: GlShader<TSceneState, TPolygon>,
+const draw = <TPolygon>(
+  geometryBinding: GlShaderBinding<GlGeometry> | undefined,
+  materialBinding: GlShaderBinding<GlMaterial> | undefined,
+  polygonBinding: GlShaderBinding<TPolygon> | undefined,
   target: GlTarget,
   meshes: Iterable<GlMesh<TPolygon>>,
   parentTransform: Matrix4,
@@ -18,42 +28,66 @@ const draw = <TSceneState, TPolygon>(
     normalMatrix.multiply(modelMatrix);
     normalMatrix.invert();
 
-    draw(shader, target, mesh.children, modelMatrix, viewMatrix);
+    draw(
+      geometryBinding,
+      materialBinding,
+      polygonBinding,
+      target,
+      mesh.children,
+      modelMatrix,
+      viewMatrix
+    );
 
-    shader.bindGeometry({ normalMatrix, modelMatrix });
+    geometryBinding?.bind({ normalMatrix, modelMatrix });
 
     for (const primitive of mesh.primitives) {
       const { index, material, polygon } = primitive;
 
-      shader.bindMaterial(material);
-      shader.bindPolygon(polygon);
+      materialBinding?.bind(material);
+      polygonBinding?.bind(polygon);
       target.draw(0, index.buffer, index.length, index.type);
     }
   }
 };
 
-class SingularPainter<TSceneState, TPolygon>
-  implements GlPainter<TSceneState, TPolygon>
+class SingularPainter<TSceneState, TPolygonState>
+  implements GlPainter<TSceneState, TPolygonState>
 {
-  private readonly shader: GlShader<TSceneState, TPolygon>;
+  private readonly geometryBinding: GlShaderBinding<GlGeometry> | undefined;
+  private readonly materialBinding: GlShaderBinding<GlMaterial> | undefined;
+  private readonly polygonBinding: GlShaderBinding<TPolygonState> | undefined;
+  private readonly sceneBinding: GlShaderBinding<TSceneState> | undefined;
 
-  public constructor(shader: GlShader<TSceneState, TPolygon>) {
-    this.shader = shader;
+  public constructor(
+    sceneBinding: GlShaderBinding<TSceneState> | undefined,
+    geometryBinding: GlShaderBinding<GlGeometry> | undefined,
+    materialBinding: GlShaderBinding<GlMaterial> | undefined,
+    polygonBinding: GlShaderBinding<TPolygonState> | undefined
+  ) {
+    this.geometryBinding = geometryBinding;
+    this.materialBinding = materialBinding;
+    this.polygonBinding = polygonBinding;
+    this.sceneBinding = sceneBinding;
   }
 
   public paint(
     target: GlTarget,
-    objects: Iterable<GlObject<TPolygon>>,
+    objects: Iterable<GlObject<TPolygonState>>,
     view: Matrix4,
     state: TSceneState
   ): void {
-    const shader = this.shader;
-
-    shader.activate();
-    shader.bindScene(state);
+    this.sceneBinding?.bind(state);
 
     for (const { matrix, model } of objects) {
-      draw(shader, target, model.meshes, matrix, view);
+      draw(
+        this.geometryBinding,
+        this.materialBinding,
+        this.polygonBinding,
+        target,
+        model.meshes,
+        matrix,
+        view
+      );
     }
   }
 }

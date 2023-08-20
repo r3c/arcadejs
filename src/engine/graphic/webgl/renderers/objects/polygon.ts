@@ -1,16 +1,16 @@
-import { GlAttribute } from "../../resource";
+import { GlShaderAttribute } from "../../shader";
 
 type GlPolygon = {
-  coordinate: GlAttribute | undefined;
-  normal: GlAttribute | undefined;
-  position: GlAttribute;
-  tangent: GlAttribute | undefined;
-  tint: GlAttribute | undefined;
+  coordinate: GlShaderAttribute | undefined;
+  normal: GlShaderAttribute | undefined;
+  position: GlShaderAttribute;
+  tangent: GlShaderAttribute | undefined;
+  tint: GlShaderAttribute | undefined;
 };
 
 const polygonExtractor: (
   polygon: GlPolygon
-) => Iterable<GlAttribute | undefined> = (polygon) => [
+) => Iterable<GlShaderAttribute | undefined> = (polygon) => [
   polygon.coordinate,
   polygon.normal,
   polygon.position,

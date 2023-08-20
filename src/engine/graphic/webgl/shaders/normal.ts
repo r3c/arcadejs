@@ -1,4 +1,4 @@
-import { GlShaderFunction } from "../shader";
+import { GlShaderFunction } from "../language";
 
 const normalDecode: GlShaderFunction<[string]> = {
   declare: (): string => `

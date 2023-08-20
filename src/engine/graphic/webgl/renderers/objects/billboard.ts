@@ -1,6 +1,7 @@
 import { Matrix4 } from "../../../../math/matrix";
 import { GlModel, defaultMaterial } from "../../../webgl";
-import { GlAttribute, GlContext, attribute, indexBuffer } from "../../resource";
+import { GlContext, indexBuffer } from "../../resource";
+import { GlShaderAttribute, shaderAttribute } from "../../shader";
 import { PointLight } from "../snippets/light";
 
 const emptyFloat32s = new Float32Array();
@@ -13,10 +14,10 @@ type GlLightBillboard = {
 };
 
 type GlLightPolygon = {
-  lightColor: GlAttribute;
-  lightPosition: GlAttribute;
-  lightRadius: GlAttribute;
-  lightShift: GlAttribute;
+  lightColor: GlShaderAttribute;
+  lightPosition: GlShaderAttribute;
+  lightRadius: GlShaderAttribute;
+  lightShift: GlShaderAttribute;
 };
 
 /**
@@ -41,10 +42,10 @@ const recycleArray = <TArray extends Float32Array | Uint32Array>(
  */
 const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
   const index = indexBuffer(gl, emptyInt32s, 0, true);
-  const lightColor = attribute(gl, emptyFloat32s, 0, 3, true);
-  const lightPosition = attribute(gl, emptyFloat32s, 0, 3, true);
-  const lightRadius = attribute(gl, emptyFloat32s, 0, 1, true);
-  const lightShift = attribute(gl, emptyFloat32s, 0, 3, true);
+  const lightColor = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
+  const lightPosition = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
+  const lightRadius = shaderAttribute(gl, emptyFloat32s, 0, 1, true);
+  const lightShift = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
 
   let indexArray = new Uint32Array();
   let lightColorArray = new Float32Array();
