@@ -170,8 +170,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     state.target.resize(screen.getWidth(), screen.getHeight());
   },
 
-  update(state) {
-    state.camera.move(state.input);
+  update(state, dt) {
+    state.camera.move(state.input, dt);
   },
 };
 

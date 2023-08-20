@@ -349,7 +349,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
 
     // Move camera
-    camera.move(input);
+    camera.move(input, dt);
   },
 };
 

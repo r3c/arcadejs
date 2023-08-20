@@ -86,8 +86,8 @@ const application: Application<Context2DScreen, ApplicationState> = {
     state.projection = Matrix4.fromPerspective(45, screen.getRatio(), 0.1, 100);
   },
 
-  update(state) {
-    state.camera.move(state.input);
+  update(state, dt) {
+    state.camera.move(state.input, dt);
   },
 };
 

@@ -202,7 +202,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     state.lightDirection = lightDirection;
 
     // Move camera
-    state.camera.move(state.input);
+    state.camera.move(state.input, dt);
   },
 };
 

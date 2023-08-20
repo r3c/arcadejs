@@ -1,54 +1,108 @@
 import { Input } from "../engine/io/controller";
-import { MutableVector3, Vector3 } from "../engine/math/vector";
+import { EasingType, getEasing } from "../engine/math/easing";
+import { Vector3 } from "../engine/math/vector";
 
-const ease = (from: MutableVector3, to: Vector3, speed: number) => {
-  from.add({
-    x: (to.x - from.x) * speed,
-    y: (to.y - from.y) * speed,
-    z: (to.z - from.z) * speed,
-  });
+const interpolate = (
+  from: Vector3,
+  to: Vector3,
+  elapsed: number,
+  duration: number,
+  type: EasingType
+) => {
+  const easing = getEasing(type);
+  const ratio = easing(Math.min(elapsed / duration, 1));
+
+  return {
+    x: from.x + (to.x - from.x) * ratio,
+    y: from.y + (to.y - from.y) * ratio,
+    z: from.z + (to.z - from.z) * ratio,
+  };
 };
 
-const positionEasing = 0.5;
-const positionSpeed = 1 / 64;
-const rotationEasing = 0.5;
-const rotationSpeed = 1 / 64;
+const moveSpeed = 1 / 64;
+const rotateSpeed = 1 / 32;
+const zoomSpeed = 1;
+
+const positionDuration = 100;
+const positionEasing = EasingType.QuadraticOut;
+const rotationDuration = 100;
+const rotationEasing = EasingType.QuadraticOut;
 
 class Camera {
-  public position: MutableVector3;
-  public rotation: MutableVector3;
+  public position: Vector3;
+  public rotation: Vector3;
 
-  private nextPosition: MutableVector3;
-  private nextRotation: MutableVector3;
+  private positionElapsed: number;
+  private positionStart: Vector3;
+  private positionStop: Vector3;
+  private rotationElapsed: number;
+  private rotationStart: Vector3;
+  private rotationStop: Vector3;
 
   public constructor(position: Vector3, rotation: Vector3) {
-    this.nextPosition = Vector3.fromObject(position);
-    this.nextRotation = Vector3.fromObject(rotation);
-    this.position = Vector3.fromObject(position);
-    this.rotation = Vector3.fromObject(rotation);
+    this.position = position;
+    this.positionElapsed = positionDuration;
+    this.positionStart = position;
+    this.positionStop = position;
+    this.rotation = rotation;
+    this.rotationElapsed = rotationDuration;
+    this.rotationStart = rotation;
+    this.rotationStop = rotation;
   }
 
-  public move(input: Input) {
-    const movement = input.fetchMovement();
+  public move(input: Input, elapsed: number) {
+    const { x, y } = input.fetchMovement();
     const wheel = input.fetchWheel();
 
-    const deltaPosition = {
-      x: input.isPressed("mouseleft") ? movement.x * positionSpeed : 0,
-      y: input.isPressed("mouseleft") ? -movement.y * positionSpeed : 0,
-      z: wheel / 4,
-    };
+    const isMoving = input.isPressed("mouseleft") && (x !== 0 || y !== 0);
+    const isRotating = input.isPressed("mouseright") && (x !== 0 || y !== 0);
+    const isZooming = wheel !== 0;
 
-    const deltaRotation = {
-      x: input.isPressed("mouseright") ? -movement.y * rotationSpeed : 0,
-      y: input.isPressed("mouseright") ? -movement.x * rotationSpeed : 0,
-      z: 0,
-    };
+    if (isRotating) {
+      this.rotationElapsed = 0;
+      this.rotationStart = this.rotation;
+      this.rotationStop = {
+        x: this.rotation.x - y * rotateSpeed,
+        y: this.rotation.y - x * rotateSpeed,
+        z: this.rotation.z,
+      };
+    }
 
-    this.nextPosition.add(deltaPosition);
-    this.nextRotation.add(deltaRotation);
+    if (isMoving || isZooming) {
+      this.positionElapsed = 0;
+      this.positionStart = this.position;
+      this.positionStop = {
+        x: this.position.x + (isMoving ? x * moveSpeed : 0),
+        y: this.position.y - (isMoving ? y * moveSpeed : 0),
+        z: this.position.z + (isZooming ? wheel * zoomSpeed : 0),
+      };
+    }
 
-    ease(this.position, this.nextPosition, positionEasing);
-    ease(this.rotation, this.nextRotation, rotationEasing);
+    if (this.positionElapsed < positionDuration) {
+      this.positionElapsed += elapsed;
+      this.position = interpolate(
+        this.positionStart,
+        this.positionStop,
+        this.positionElapsed,
+        positionDuration,
+        positionEasing
+      );
+    } else {
+      this.position = this.positionStop;
+    }
+
+    if (this.rotationElapsed < rotationDuration) {
+      this.rotationElapsed += elapsed;
+      this.rotation = interpolate(
+        this.rotationStart,
+        this.rotationStop,
+        this.rotationElapsed,
+        rotationDuration,
+        rotationEasing
+      );
+    } else {
+      this.rotation = this.rotationStop;
+    }
   }
 }
 

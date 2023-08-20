@@ -267,7 +267,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
 
     // Move camera
-    state.camera.move(state.input);
+    state.camera.move(state.input, dt);
   },
 };
 

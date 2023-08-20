@@ -190,7 +190,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const { camera, input, worldPhysic, worldGraphic } = state;
 
     // Move camera & define view matrix accordingly
-    camera.move(input);
+    camera.move(input, dt);
 
     const viewMatrix = Matrix4.fromCustom(
       ["translate", camera.position],
