@@ -75,7 +75,7 @@ const paint = <TPolygonState>(
     for (const { index, polygon, modelMatrix, normalMatrix } of meshBatches) {
       geometryBinding.bind({ normalMatrix, modelMatrix });
       polygonBinding.bind(polygon);
-      target.draw(0, index.buffer, index.length, index.type);
+      target.draw(0, index);
     }
   }
 };

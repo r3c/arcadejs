@@ -553,12 +553,7 @@ class GlTarget {
     GlTarget.clearTextureAttachments(gl, this.depthAttachment);
   }
 
-  public draw(
-    framebufferIndex: number,
-    indices: WebGLBuffer,
-    count: number,
-    type: number
-  ) {
+  public draw(framebufferIndex: number, indexBuffer: GlBuffer) {
     const gl = this.gl;
 
     gl.bindFramebuffer(
@@ -569,8 +564,8 @@ class GlTarget {
     );
     gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
-    gl.drawElements(gl.TRIANGLES, count, type, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
+    gl.drawElements(gl.TRIANGLES, indexBuffer.length, indexBuffer.type, 0);
   }
 
   public resize(width: number, height: number) {

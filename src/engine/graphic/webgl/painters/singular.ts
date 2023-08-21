@@ -51,7 +51,7 @@ const draw = <TPolygon>(
 
       materialBinding?.bind(material);
       polygonBinding?.bind(polygon);
-      target.draw(0, index.buffer, index.length, index.type);
+      target.draw(0, index);
     }
   }
 };

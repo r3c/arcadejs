@@ -14,11 +14,9 @@ class SinglePainter<TScene extends SingleScene> implements GlPainter<TScene> {
   }
 
   public paint(target: GlTarget, subject: TScene): void {
-    const index = subject.index;
-
     this.binding.bind(subject);
 
-    target.draw(0, index.buffer, index.length, index.type);
+    target.draw(0, subject.index);
   }
 }
 
