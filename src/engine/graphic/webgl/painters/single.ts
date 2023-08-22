@@ -13,10 +13,10 @@ class SinglePainter<TScene extends SingleScene> implements GlPainter<TScene> {
     this.binding = binding;
   }
 
-  public paint(target: GlTarget, subject: TScene): void {
-    this.binding.bind(subject);
+  public paint(target: GlTarget, scene: TScene): void {
+    this.binding.bind(scene);
 
-    target.draw(0, subject.index);
+    target.draw(0, scene.index);
   }
 }
 

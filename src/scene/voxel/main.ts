@@ -237,7 +237,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
 
     // Simulate falling cell
-    if (input.fetchPressed("arrowdown") && lookVoxel !== undefined) {
+    if (input.fetchPress("arrowdown") && lookVoxel !== undefined) {
       const sourceOffset = lookOffset;
       const targetOffset: Vector3 = {
         x: sourceOffset.x,
@@ -263,12 +263,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
 
     // Simulate upward force
-    if (input.fetchPressed("arrowup") && lookVoxel !== undefined) {
+    if (input.fetchPress("arrowup") && lookVoxel !== undefined) {
       worldPhysic.poke(lookOffset, { x: 0, y: 0.5, z: 0 });
     }
 
     // Simulate push force
-    if (input.fetchPressed("space") && lookVoxel !== undefined) {
+    if (input.fetchPress("space") && lookVoxel !== undefined) {
       const direction =
         Math.abs(cameraDirection.x) > Math.abs(cameraDirection.z)
           ? Vector3.fromXYZ(Math.sign(cameraDirection.x), 0, 0)

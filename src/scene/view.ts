@@ -1,4 +1,4 @@
-import { Input } from "../engine/io/controller";
+import { Input, Pointer } from "../engine/io/controller";
 import { EasingType, getEasing } from "../engine/math/easing";
 import { Vector3 } from "../engine/math/vector";
 
@@ -21,7 +21,7 @@ const interpolate = (
 
 const moveSpeed = 1 / 64;
 const rotateSpeed = 1 / 32;
-const zoomSpeed = 1;
+const zoomSpeed = 1 / 8;
 
 const positionDuration = 100;
 const positionEasing = EasingType.QuadraticOut;
@@ -51,30 +51,27 @@ class Camera {
   }
 
   public move(input: Input, elapsed: number) {
-    const { x, y } = input.fetchMovement();
-    const wheel = input.fetchWheel();
+    const focusMovement = input.fetchMove(Pointer.Focus);
+    const grabMovement = input.fetchMove(Pointer.Grab);
+    const zoom = input.fetchZoom();
 
-    const isMoving = input.isPressed("mouseleft") && (x !== 0 || y !== 0);
-    const isRotating = input.isPressed("mouseright") && (x !== 0 || y !== 0);
-    const isZooming = wheel !== 0;
-
-    if (isRotating) {
+    if (grabMovement.x !== 0 || grabMovement.y !== 0) {
       this.rotationElapsed = 0;
       this.rotationStart = this.rotation;
       this.rotationStop = {
-        x: this.rotation.x - y * rotateSpeed,
-        y: this.rotation.y - x * rotateSpeed,
+        x: this.rotation.x - grabMovement.y * rotateSpeed,
+        y: this.rotation.y - grabMovement.x * rotateSpeed,
         z: this.rotation.z,
       };
     }
 
-    if (isMoving || isZooming) {
+    if (focusMovement.x !== 0 || focusMovement.y !== 0 || zoom !== 0) {
       this.positionElapsed = 0;
       this.positionStart = this.position;
       this.positionStop = {
-        x: this.position.x + (isMoving ? x * moveSpeed : 0),
-        y: this.position.y - (isMoving ? y * moveSpeed : 0),
-        z: this.position.z + (isZooming ? wheel * zoomSpeed : 0),
+        x: this.position.x + focusMovement.x * moveSpeed,
+        y: this.position.y - focusMovement.y * moveSpeed,
+        z: this.position.z + zoom * zoomSpeed,
       };
     }
 
