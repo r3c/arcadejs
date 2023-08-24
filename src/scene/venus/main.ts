@@ -10,7 +10,7 @@ import {
 import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import { Vector3 } from "../../engine/math/vector";
+import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
   GlModel,
   GlScene,
@@ -18,7 +18,6 @@ import {
   runtimeCreate,
   loadModel,
 } from "../../engine/graphic/webgl";
-import { orbitatePosition } from "../move";
 import { Camera } from "../view";
 import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 
@@ -29,21 +28,17 @@ import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon"
  ** - Scene uses two different shaders loaded from external files
  */
 
-type Light = {
-  position: Vector3;
-};
-
 type ApplicationState = {
   camera: Camera;
   input: Input;
-  lights: Light[];
+  lights: MutableVector3[];
   models: {
     star: GlModel<GlPolygon>;
   };
   move: number;
   projectionMatrix: Matrix4;
   renderer: ForwardLightingRenderer;
-  stars: Light[];
+  stars: MutableVector3[];
   target: GlTarget;
 };
 
@@ -63,9 +58,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
       input: new Input(screen.canvas),
-      lights: range(3, () => ({
-        position: { x: 0, y: 0, z: 0 },
-      })),
+      lights: [Vector3.fromXYZ(0, 0, 5)],
       models: {
         star: loadModel(runtime, starModel),
       },
@@ -78,22 +71,19 @@ const application: Application<WebGLScreen, ApplicationState> = {
           noShadow: true,
         },
       }),
-      stars: range(1000, () => ({
-        position: {
+      stars: range(1000, () =>
+        Vector3.fromObject({
           x: Math.random() * 10 - 5,
           y: Math.random() * 10 - 5,
           z: Math.random() * 10 - 5,
-        },
-      })),
+        })
+      ),
       target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
     };
   },
 
   render(state) {
     const { camera, models, projectionMatrix, renderer, target } = state;
-
-    const lightPositions = state.lights.map((light) => light.position);
-    const starPositions = state.stars.map(({ position }) => position);
 
     const viewMatrix = Matrix4.fromCustom(
       ["translate", camera.position],
@@ -105,7 +95,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     // PBR render
-    const objects = starPositions.map((position) => ({
+    const objects = state.stars.map((position) => ({
       matrix: Matrix4.fromCustom(["translate", position]),
       model: models.star,
       noShadow: false,
@@ -114,11 +104,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const scene: GlScene<SceneState, ForwardLightingObject> = {
       objects,
       state: {
-        ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
-        pointLights: lightPositions.map((position) => ({
+        ambientLightColor: Vector3.zero,
+        pointLights: state.lights.map((position) => ({
           color: { x: 1, y: 1, z: 1 },
           position,
-          radius: 5,
+          radius: 10,
         })),
         projectionMatrix,
         viewMatrix,
@@ -143,19 +133,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
   update(state, dt) {
     // Update light positions
     for (const star of state.stars) {
-      const position = Vector3.fromObject(star.position);
+      star.z += dt * 0.001;
 
-      position.z += dt * 0.001;
-
-      if (position.z > 5) {
-        position.z -= 10;
+      if (star.z > 5) {
+        star.z -= 10;
       }
-
-      star.position = position;
-    }
-
-    for (let i = 0; i < state.lights.length; ++i) {
-      state.lights[i].position = orbitatePosition(state.move * 5, i, 1, 3);
     }
 
     // Move camera
