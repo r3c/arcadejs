@@ -15,7 +15,7 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  runtimeCreate,
+  createRuntime,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { Camera } from "../view";
@@ -45,7 +45,7 @@ type ApplicationState = {
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const runtime = runtimeCreate(gl);
+    const runtime = createRuntime(gl);
 
     configure(undefined);
 

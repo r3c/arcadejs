@@ -2,6 +2,7 @@ import { Matrix4 } from "../../../math/matrix";
 import { model } from "./resources/quad";
 import {
   GlModel,
+  GlRenderer,
   GlRuntime,
   GlTarget,
   GlTexture,
@@ -144,7 +145,7 @@ const loadPainter = (
   runtime: GlRuntime,
   configuration: DebugTextureConfiguration
 ) => {
-  const shader = runtime.shader(vertexSource, fragmentSource, {
+  const shader = runtime.createShader(vertexSource, fragmentSource, {
     FORMAT: shaderDirective.number(configuration.format),
     SELECT: shaderDirective.number(configuration.select),
     ZFAR: shaderDirective.number(configuration.zFar),
@@ -167,8 +168,7 @@ const loadPainter = (
   return new SinglePainter(binding);
 };
 
-class DebugTextureRenderer {
-  //implements GlRenderer<DebugTextureState, GlObject<DebugTexturePolygon>>
+class DebugTextureRenderer implements GlRenderer<GlTexture> {
   private readonly painter: SinglePainter<DebugTextureScene>;
   private readonly quad: GlModel<GlPolygon>;
   private readonly runtime: GlRuntime;

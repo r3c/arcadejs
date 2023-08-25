@@ -19,7 +19,7 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  runtimeCreate,
+  createRuntime,
   loadModel,
   loadTextureCube,
   loadTextureQuad,
@@ -90,7 +90,7 @@ const getOptions = (tweak: Tweak<typeof configuration>) => [
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const runtime = runtimeCreate(gl);
+    const runtime = createRuntime(gl);
     const tweak = configure(configuration);
 
     // Load meshes

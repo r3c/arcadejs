@@ -27,7 +27,7 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  runtimeCreate,
+  createRuntime,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
@@ -68,7 +68,7 @@ const getOptions = (tweak: Tweak<typeof configuration>) => [
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const runtime = runtimeCreate(gl);
+    const runtime = createRuntime(gl);
     const tweak = configure(configuration);
 
     // Load meshes

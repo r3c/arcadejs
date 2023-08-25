@@ -9,7 +9,7 @@ import {
   GlModel,
   GlPainter,
   GlTarget,
-  runtimeCreate,
+  createRuntime,
   loadModel,
   GlMaterial,
   GlGeometry,
@@ -78,8 +78,8 @@ const configuration = {
 
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
-    const runtime = runtimeCreate(screen.context);
-    const shader = runtime.shader(vsSource, fsSource, {});
+    const runtime = createRuntime(screen.context);
+    const shader = runtime.createShader(vsSource, fsSource, {});
     const tweak = configure(configuration);
 
     const geometryBinding = shader.declare<GlGeometry>();

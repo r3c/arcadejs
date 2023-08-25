@@ -396,7 +396,7 @@ const loadGeometryPainter = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const shader = runtime.shader(
+  const shader = runtime.createShader(
     geometryVertexShader,
     geometryFragmentShader,
     {}
@@ -482,7 +482,7 @@ const loadLightBinding = <TSceneState extends LightState>(
   type: DeferredLightingLightType
 ) => {
   // Setup light shader
-  const shader = runtime.shader(lightVertexShader, lightFragmentShader, {
+  const shader = runtime.createShader(lightVertexShader, lightFragmentShader, {
     LIGHT_TYPE: shaderDirective.number(type),
   });
 
@@ -618,7 +618,7 @@ const loadMaterialPainter = (
   }
 
   // Setup material shader
-  const shader = runtime.shader(
+  const shader = runtime.createShader(
     materialVertexShader,
     materialFragmentShader,
     directives
@@ -710,7 +710,7 @@ const loadMaterialPainter = (
 };
 
 class DeferredLightingRenderer
-  implements GlRenderer<SceneState, GlObject<GlPolygon>>
+  implements GlRenderer<GlScene<SceneState, GlObject<GlPolygon>>>
 {
   public readonly depthBuffer: GlTexture;
   public readonly lightBuffer: GlTexture;

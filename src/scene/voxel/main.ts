@@ -23,7 +23,7 @@ import {
   GlModel,
   GlScene,
   GlTarget,
-  runtimeCreate,
+  createRuntime,
   loadModel,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
@@ -61,7 +61,7 @@ const timeFactor = 20;
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
-    const runtime = runtimeCreate(gl);
+    const runtime = createRuntime(gl);
 
     configure(undefined);
 

@@ -113,13 +113,13 @@ type GlPrimitive<TPolygon> = {
   polygon: TPolygon;
 };
 
-type GlRenderer<TSceneState, TObject> = Disposable & {
-  render(target: GlTarget, scene: GlScene<TSceneState, TObject>): void;
+type GlRenderer<TScene> = Disposable & {
+  render(target: GlTarget, scene: TScene): void;
   resize(width: number, height: number): void;
 };
 
 type GlRuntime = Disposable & {
-  shader: (
+  createShader: (
     vertexShaderSource: string,
     fragmentShaderSource: string,
     directives: GlShaderDirectives
@@ -166,7 +166,7 @@ const materialExtractors: GlMaterialExtractor[] = [
   (material) => material.roughnessMap,
 ];
 
-const runtimeCreate = (context: GlContext): GlRuntime => {
+const createRuntime = (context: GlContext): GlRuntime => {
   const blackTexture = textureCreate(
     context,
     undefined,
@@ -204,7 +204,7 @@ const runtimeCreate = (context: GlContext): GlRuntime => {
       blackTexture.dispose();
       whiteTexture.dispose();
     },
-    shader: (vertexShaderSource, fragmentShaderSource, directives) => {
+    createShader: (vertexShaderSource, fragmentShaderSource, directives) => {
       return shader(
         context,
         useProgram,
@@ -865,12 +865,12 @@ export {
   GlTarget,
   GlTextureFormat,
   GlTextureType,
+  createRuntime,
   deleteLibrary,
   deleteModel,
   loadLibrary,
   loadModel,
   loadTextureCube,
   loadTextureQuad,
-  runtimeCreate,
   defaultMaterial,
 };

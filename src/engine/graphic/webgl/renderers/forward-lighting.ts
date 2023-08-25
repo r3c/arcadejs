@@ -447,7 +447,7 @@ const loadLightPainter = (
     directives["HAS_SHADOW"] = shaderDirective.number(1);
   }
 
-  const shader = runtime.shader(
+  const shader = runtime.createShader(
     lightVertexShader(maxDirectionalLights, maxPointLights),
     lightFragmentShader(maxDirectionalLights, maxPointLights),
     directives
@@ -704,7 +704,7 @@ const loadLightPainter = (
 };
 
 const loadShadowDirectionalPainter = (runtime: GlRuntime) => {
-  const shader = runtime.shader(
+  const shader = runtime.createShader(
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader,
     {}
@@ -742,7 +742,7 @@ const loadShadowDirectionalPainter = (runtime: GlRuntime) => {
 
 const loadShadowPointPainter = (runtime: GlRuntime) => {
   // Not implemented
-  runtime.shader(
+  runtime.createShader(
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader,
     {}
@@ -752,7 +752,7 @@ const loadShadowPointPainter = (runtime: GlRuntime) => {
 };
 
 class ForwardLightingRenderer
-  implements GlRenderer<SceneState, ForwardLightingObject>
+  implements GlRenderer<GlScene<SceneState, ForwardLightingObject>>
 {
   public readonly directionalShadowBuffers: GlTexture[];
   public readonly pointShadowBuffers: GlTexture[];

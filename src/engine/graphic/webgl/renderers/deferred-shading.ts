@@ -358,7 +358,7 @@ const loadAmbientPainter = (
   }
 
   // Setup light shader
-  const shader = runtime.shader(
+  const shader = runtime.createShader(
     ambientVertexShader,
     ambientFragmentShader,
     directives
@@ -407,7 +407,7 @@ const loadGeometryPainter = (
   configuration: Configuration
 ): GlPainter<SingularScene<State, GlPolygon>> => {
   // Setup geometry shader
-  const shader = runtime.shader(
+  const shader = runtime.createShader(
     geometryVertexShader,
     geometryFragmentShader,
     {}
@@ -519,7 +519,7 @@ const loadLightBinding = <TSceneState extends LightState>(
   }
 
   // Setup light shader
-  const shader = runtime.shader(
+  const shader = runtime.createShader(
     lightVertexShader,
     lightFragmentShader,
     directives
@@ -637,7 +637,7 @@ const loadPointLightPainter = (
 };
 
 class DeferredShadingRenderer
-  implements GlRenderer<SceneState, GlObject<GlPolygon>>
+  implements GlRenderer<GlScene<SceneState, GlObject<GlPolygon>>>
 {
   public readonly albedoAndShininessBuffer: GlTexture;
   public readonly depthBuffer: GlTexture;
