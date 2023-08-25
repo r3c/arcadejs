@@ -2,6 +2,7 @@ import { Context2DScreen } from "./display";
 import { Matrix4 } from "../math/matrix";
 import { Material, Model, Mesh, defaultColor } from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
+import { Renderer } from "./display";
 
 const enum SoftwareDrawMode {
   Default,
@@ -351,18 +352,17 @@ type SceneState = {
   view: Matrix4;
 };
 
-interface Renderer<TSceneState> {
-  render(scene: SoftwareScene<TSceneState>): void;
-  resize(width: number, height: number): void;
-}
-
-class SoftwareRenderer implements Renderer<SceneState> {
+class SoftwareRenderer implements Renderer<SoftwareScene<SceneState>> {
   private readonly drawMode: SoftwareDrawMode;
   private readonly screen: Context2DScreen;
 
   public constructor(screen: Context2DScreen, drawMode: SoftwareDrawMode) {
     this.drawMode = drawMode;
     this.screen = screen;
+  }
+
+  public dispose() {
+    // No-op
   }
 
   public render(scene: SoftwareScene<SceneState>) {

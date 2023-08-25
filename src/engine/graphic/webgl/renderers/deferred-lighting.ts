@@ -22,7 +22,6 @@ import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlPainter,
-  GlRenderer,
   GlRuntime,
   GlScene,
   GlObject,
@@ -40,6 +39,7 @@ import {
 } from "./objects/billboard";
 import { GlPolygon } from "./objects/polygon";
 import { shaderUniform, shaderDirective, GlShaderDirectives } from "../shader";
+import { Renderer } from "../../display";
 
 const enum DeferredLightingLightModel {
   None,
@@ -710,7 +710,7 @@ const loadMaterialPainter = (
 };
 
 class DeferredLightingRenderer
-  implements GlRenderer<GlScene<SceneState, GlObject<GlPolygon>>>
+  implements Renderer<GlScene<SceneState, GlObject<GlPolygon>>>
 {
   public readonly depthBuffer: GlTexture;
   public readonly lightBuffer: GlTexture;
@@ -732,8 +732,13 @@ class DeferredLightingRenderer
     SingularScene<LightState, GlLightPolygon>
   >;
   private readonly runtime: GlRuntime;
+  private readonly target: GlTarget;
 
-  public constructor(runtime: GlRuntime, configuration: Configuration) {
+  public constructor(
+    runtime: GlRuntime,
+    target: GlTarget,
+    configuration: Configuration
+  ) {
     const gl = runtime.context;
     const geometry = new GlTarget(
       gl,
@@ -773,14 +778,12 @@ class DeferredLightingRenderer
       GlTextureType.Quad
     );
     this.runtime = runtime;
+    this.target = target;
   }
 
   public dispose() {}
 
-  public render(
-    target: GlTarget,
-    scene: GlScene<SceneState, GlObject<GlPolygon>>
-  ) {
+  public render(scene: GlScene<SceneState, GlObject<GlPolygon>>) {
     const { objects, state } = scene;
     const gl = this.runtime.context;
     const viewportSize = {
@@ -883,7 +886,7 @@ class DeferredLightingRenderer
     gl.enable(gl.DEPTH_TEST);
     gl.depthMask(true);
 
-    this.materialPainter.paint(target, {
+    this.materialPainter.paint(this.target, {
       objects,
       state: {
         ambientLightColor: state.ambientLightColor ?? Vector3.zero,

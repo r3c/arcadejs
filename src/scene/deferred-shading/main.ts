@@ -140,6 +140,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const pointLightModel = await loadModelFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromCustom(["scale", { x: 0.1, y: 0.1, z: 0.1 }]),
     });
+    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
 
     // Create state
     return {
@@ -147,7 +148,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       debugRendererMemo: memoize(
         indexNumber,
         (index) =>
-          new DebugTextureRenderer(runtime, {
+          new DebugTextureRenderer(runtime, target, {
             format: debugConfigurations[index].format,
             select: debugConfigurations[index].select,
             zNear: 0.1,
@@ -176,7 +177,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       sceneRendererMemo: memoize(
         indexBooleans,
         (flags) =>
-          new DeferredShadingRenderer(runtime, {
+          new DeferredShadingRenderer(runtime, target, {
             lightModel: DeferredShadingLightModel.Phong,
             lightModelPhongNoAmbient: !flags[0],
             lightModelPhongNoDiffuse: !flags[1],
@@ -185,7 +186,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
             useNormalMap: true,
           })
       ),
-      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target,
       tweak,
     };
   },
@@ -270,14 +271,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    sceneRenderer.render(target, scene);
+    sceneRenderer.render(scene);
 
     // Draw debug
     if (tweak.debugMode !== 0) {
       const debugRenderer = debugRendererMemo.get(tweak.debugMode - 1);
 
       debugRenderer.render(
-        target,
         [
           sceneRenderer.depthBuffer,
           sceneRenderer.albedoAndShininessBuffer,

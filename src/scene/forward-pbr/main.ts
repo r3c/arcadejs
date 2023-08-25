@@ -91,6 +91,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
+    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
     const tweak = configure(configuration);
 
     // Load meshes
@@ -151,7 +152,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       rendererMemo: memoize(
         indexBooleans,
         (flags) =>
-          new ForwardLightingRenderer(runtime, {
+          new ForwardLightingRenderer(runtime, target, {
             light: {
               model: ForwardLightingLightModel.Physical,
               modelPhysicalNoAmbient: !flags[0],
@@ -167,7 +168,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
             },
           })
       ),
-      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target,
       textures: {
         brdf,
         diffuse,
@@ -239,7 +240,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       objects: [cube, ground].concat(lights),
     };
 
-    rendererMemo.get(getOptions(tweak)).render(target, scene);
+    rendererMemo.get(getOptions(tweak)).render(scene);
   },
 
   resize(state, screen) {

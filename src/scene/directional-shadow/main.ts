@@ -69,6 +69,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
+    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
     const tweak = configure(configuration);
 
     // Load meshes
@@ -81,7 +82,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Create state
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      debugRenderer: new DebugTextureRenderer(runtime, {
+      debugRenderer: new DebugTextureRenderer(runtime, target, {
         format: DebugTextureFormat.Monochrome,
         select: DebugTextureSelect.Red,
         zNear: 0.1,
@@ -99,7 +100,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       sceneRendererMemo: memoize(
         indexBooleans,
         (flags) =>
-          new ForwardLightingRenderer(runtime, {
+          new ForwardLightingRenderer(runtime, target, {
             light: {
               model: ForwardLightingLightModel.Phong,
               maxDirectionalLights: 1,
@@ -107,7 +108,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
             },
           })
       ),
-      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target,
       tweak,
     };
   },
@@ -160,11 +161,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     const sceneRenderer = sceneRendererMemo.get(getOptions(state.tweak));
 
-    sceneRenderer.render(target, lightScene);
+    sceneRenderer.render(lightScene);
 
     // Draw texture debug
     if (state.tweak.showDebug) {
-      debugRenderer.render(target, sceneRenderer.directionalShadowBuffers[0]);
+      debugRenderer.render(sceneRenderer.directionalShadowBuffers[0]);
     }
   },
 

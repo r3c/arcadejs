@@ -1,19 +1,24 @@
-type ResizeHandler = (screen: Screen) => void;
+import { Disposable } from "../language/lifecycle";
+
+type Renderer<TScene> = Disposable & {
+  render(scene: TScene): void;
+  resize(width: number, height: number): void;
+};
 
 class Screen {
   public readonly canvas: HTMLCanvasElement;
-  public readonly resizeHandlers: Set<ResizeHandler>;
+  public readonly resizeHandlers: Set<() => void>;
 
   protected constructor(container: HTMLElement) {
     const canvas = document.createElement("canvas");
-    const resizeHandlers = new Set<ResizeHandler>();
+    const resizeHandlers = new Set<() => void>();
 
     const onResize = () => {
       canvas.width = canvas.clientWidth;
       canvas.height = canvas.clientHeight;
 
       for (const resizeHandler of resizeHandlers) {
-        resizeHandler(this);
+        resizeHandler();
       }
     };
 
@@ -30,10 +35,10 @@ class Screen {
     this.resizeHandlers = resizeHandlers;
   }
 
-  public addResizeHandler(resizeHandler: ResizeHandler): void {
+  public addResizeHandler(resizeHandler: () => void): void {
     this.resizeHandlers.add(resizeHandler);
 
-    resizeHandler(this);
+    resizeHandler();
   }
 
   public getHeight() {
@@ -48,7 +53,7 @@ class Screen {
     return this.canvas.clientWidth;
   }
 
-  public removeResizeHandler(resizeHandler: ResizeHandler): void {
+  public removeResizeHandler(resizeHandler: () => void): void {
     this.resizeHandlers.delete(resizeHandler);
   }
 
@@ -91,4 +96,4 @@ class WebGLScreen extends Screen {
   }
 }
 
-export { Context2DScreen, Screen, WebGLScreen };
+export { type Renderer, Context2DScreen, Screen, WebGLScreen };

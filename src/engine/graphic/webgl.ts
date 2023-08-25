@@ -113,11 +113,6 @@ type GlPrimitive<TPolygon> = {
   polygon: TPolygon;
 };
 
-type GlRenderer<TScene> = Disposable & {
-  render(target: GlTarget, scene: TScene): void;
-  resize(width: number, height: number): void;
-};
-
 type GlRuntime = Disposable & {
   createShader: (
     vertexShaderSource: string,
@@ -858,7 +853,6 @@ export {
   type GlObject,
   type GlPainter,
   type GlPrimitive,
-  type GlRenderer,
   type GlRuntime,
   type GlScene,
   type GlTexture,

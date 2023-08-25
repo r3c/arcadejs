@@ -75,6 +75,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(screen.context);
+    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
     const tweak = configure(configuration);
 
     // Load models
@@ -100,7 +101,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       rendererMemo: memoize(
         indexBooleans,
         (flags) =>
-          new ForwardLightingRenderer(runtime, {
+          new ForwardLightingRenderer(runtime, target, {
             light: {
               maxDirectionalLights: 3,
               maxPointLights: 3,
@@ -115,7 +116,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
             },
           })
       ),
-      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target,
       tweak,
     };
   },
@@ -191,7 +192,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ),
     };
 
-    renderer.render(target, scene);
+    renderer.render(scene);
   },
 
   resize(state, screen) {

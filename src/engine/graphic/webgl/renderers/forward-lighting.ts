@@ -27,7 +27,6 @@ import {
   GlMaterial,
   GlObject,
   GlPainter,
-  GlRenderer,
   GlRuntime,
   GlScene,
   GlTarget,
@@ -37,6 +36,7 @@ import {
 } from "../../webgl";
 import { GlPolygon } from "./objects/polygon";
 import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
+import { Renderer } from "../../display";
 
 type ForwardLightingConfiguration = {
   light?: LightConfiguration;
@@ -752,7 +752,7 @@ const loadShadowPointPainter = (runtime: GlRuntime) => {
 };
 
 class ForwardLightingRenderer
-  implements GlRenderer<GlScene<SceneState, ForwardLightingObject>>
+  implements Renderer<GlScene<SceneState, ForwardLightingObject>>
 {
   public readonly directionalShadowBuffers: GlTexture[];
   public readonly pointShadowBuffers: GlTexture[];
@@ -773,9 +773,11 @@ class ForwardLightingRenderer
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
   private readonly runtime: GlRuntime;
+  private readonly target: GlTarget;
 
   public constructor(
     runtime: GlRuntime,
+    target: GlTarget,
     configuration: ForwardLightingConfiguration
   ) {
     const gl = runtime.context;
@@ -827,14 +829,12 @@ class ForwardLightingRenderer
     );
     this.pointShadowTargets = pointShadowTargets;
     this.runtime = runtime;
+    this.target = target;
   }
 
   public dispose() {}
 
-  public render(
-    target: GlTarget,
-    scene: GlScene<SceneState, ForwardLightingObject>
-  ) {
+  public render(scene: GlScene<SceneState, ForwardLightingObject>) {
     const { objects, state } = scene;
 
     const directionalLights = state.directionalLights || [];
@@ -916,7 +916,7 @@ class ForwardLightingRenderer
     gl.colorMask(true, true, true, true);
     gl.cullFace(gl.BACK);
 
-    this.lightPainter.paint(target, {
+    this.lightPainter.paint(this.target, {
       objects,
       state: {
         ambientLightColor: state.ambientLightColor ?? Vector3.zero,

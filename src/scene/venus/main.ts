@@ -46,6 +46,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
+    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
 
     configure(undefined);
 
@@ -64,7 +65,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       projectionMatrix: Matrix4.identity,
-      renderer: new ForwardLightingRenderer(runtime, {
+      renderer: new ForwardLightingRenderer(runtime, target, {
         light: {
           model: ForwardLightingLightModel.Phong,
           maxPointLights: 3,
@@ -78,7 +79,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           z: Math.random() * 10 - 5,
         })
       ),
-      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
+      target,
     };
   },
 
@@ -115,7 +116,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
     };
 
-    renderer.render(target, scene);
+    renderer.render(scene);
   },
 
   resize(state, screen) {

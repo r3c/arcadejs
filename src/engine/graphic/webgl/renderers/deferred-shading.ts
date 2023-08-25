@@ -18,7 +18,6 @@ import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlPainter,
-  GlRenderer,
   GlRuntime,
   GlScene,
   GlObject,
@@ -37,6 +36,7 @@ import {
 } from "./objects/billboard";
 import { GlPolygon } from "./objects/polygon";
 import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
+import { Renderer } from "../../display";
 
 const enum DeferredShadingLightModel {
   None,
@@ -637,7 +637,7 @@ const loadPointLightPainter = (
 };
 
 class DeferredShadingRenderer
-  implements GlRenderer<GlScene<SceneState, GlObject<GlPolygon>>>
+  implements Renderer<GlScene<SceneState, GlObject<GlPolygon>>>
 {
   public readonly albedoAndShininessBuffer: GlTexture;
   public readonly depthBuffer: GlTexture;
@@ -659,8 +659,13 @@ class DeferredShadingRenderer
     SingularScene<LightState, GlLightPolygon>
   >;
   private readonly runtime: GlRuntime;
+  private readonly target: GlTarget;
 
-  public constructor(runtime: GlRuntime, configuration: Configuration) {
+  public constructor(
+    runtime: GlRuntime,
+    target: GlTarget,
+    configuration: Configuration
+  ) {
     const gl = runtime.context;
     const geometry = new GlTarget(
       gl,
@@ -696,14 +701,12 @@ class DeferredShadingRenderer
     );
     this.pointLightPainter = loadPointLightPainter(runtime, configuration);
     this.runtime = runtime;
+    this.target = target;
   }
 
   public dispose() {}
 
-  public render(
-    target: GlTarget,
-    scene: GlScene<SceneState, GlObject<GlPolygon>>
-  ) {
+  public render(scene: GlScene<SceneState, GlObject<GlPolygon>>) {
     const { objects, state } = scene;
     const gl = this.runtime.context;
     const viewportSize = {
@@ -750,7 +753,7 @@ class DeferredShadingRenderer
 
     // Draw ambient light using fullscreen quad
     if (state.ambientLightColor !== undefined) {
-      this.ambientLightPainter.paint(target, {
+      this.ambientLightPainter.paint(this.target, {
         objects: this.ambientLightObjects,
         state: {
           albedoAndShininessBuffer: this.albedoAndShininessBuffer,
@@ -775,7 +778,7 @@ class DeferredShadingRenderer
       this.lightObjects[0].matrix = objectMatrix;
 
       for (const directionalLight of state.directionalLights) {
-        this.directionalLightPainter.paint(target, {
+        this.directionalLightPainter.paint(this.target, {
           objects: this.lightObjects,
           state: {
             albedoAndShininessBuffer: this.albedoAndShininessBuffer,
@@ -798,7 +801,7 @@ class DeferredShadingRenderer
       this.lightObjects[0].matrix = Matrix4.identity;
       this.lightBillboard.set(state.pointLights);
 
-      this.pointLightPainter.paint(target, {
+      this.pointLightPainter.paint(this.target, {
         objects: this.lightObjects,
         state: {
           albedoAndShininessBuffer: this.albedoAndShininessBuffer,

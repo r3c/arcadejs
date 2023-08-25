@@ -2,7 +2,6 @@ import { Matrix4 } from "../../../math/matrix";
 import { model } from "./resources/quad";
 import {
   GlModel,
-  GlRenderer,
   GlRuntime,
   GlTarget,
   GlTexture,
@@ -12,6 +11,7 @@ import { GlPolygon } from "./objects/polygon";
 import { GlShaderAttribute, shaderDirective, shaderUniform } from "../shader";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
+import { Renderer } from "../../display";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -168,25 +168,28 @@ const loadPainter = (
   return new SinglePainter(binding);
 };
 
-class DebugTextureRenderer implements GlRenderer<GlTexture> {
+class DebugTextureRenderer implements Renderer<GlTexture> {
   private readonly painter: SinglePainter<DebugTextureScene>;
   private readonly quad: GlModel<GlPolygon>;
   private readonly runtime: GlRuntime;
   private readonly scale: number;
+  private readonly target: GlTarget;
 
   public constructor(
     runtime: GlRuntime,
+    target: GlTarget,
     configuration: DebugTextureConfiguration
   ) {
     this.painter = loadPainter(runtime, configuration);
     this.quad = loadModel(runtime, model);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
+    this.target = target;
   }
 
   public dispose() {}
 
-  public render(target: GlTarget, source: GlTexture) {
+  public render(source: GlTexture) {
     const gl = this.runtime.context;
 
     gl.disable(gl.BLEND);
@@ -198,7 +201,7 @@ class DebugTextureRenderer implements GlRenderer<GlTexture> {
     // FIXME: create dedicated mesh
     const primitive = this.quad.meshes[0].primitives[0];
 
-    this.painter.paint(target, {
+    this.painter.paint(this.target, {
       coordinate: primitive.polygon.coordinate!,
       index: primitive.index,
       modelMatrix: Matrix4.fromCustom(
