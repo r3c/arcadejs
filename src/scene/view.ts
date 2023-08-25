@@ -55,22 +55,22 @@ class Camera {
     const grabMovement = input.fetchMove(Pointer.Grab);
     const zoom = input.fetchZoom();
 
-    if (grabMovement.x !== 0 || grabMovement.y !== 0) {
+    if (focusMovement.x !== 0 || focusMovement.y !== 0) {
       this.rotationElapsed = 0;
       this.rotationStart = this.rotation;
       this.rotationStop = {
-        x: this.rotation.x - grabMovement.y * rotateSpeed,
-        y: this.rotation.y - grabMovement.x * rotateSpeed,
+        x: this.rotation.x - focusMovement.y * rotateSpeed,
+        y: this.rotation.y - focusMovement.x * rotateSpeed,
         z: this.rotation.z,
       };
     }
 
-    if (focusMovement.x !== 0 || focusMovement.y !== 0 || zoom !== 0) {
+    if (grabMovement.x !== 0 || grabMovement.y !== 0 || zoom !== 0) {
       this.positionElapsed = 0;
       this.positionStart = this.position;
       this.positionStop = {
-        x: this.position.x + focusMovement.x * moveSpeed,
-        y: this.position.y - focusMovement.y * moveSpeed,
+        x: this.position.x + grabMovement.x * moveSpeed,
+        y: this.position.y - grabMovement.y * moveSpeed,
         z: this.position.z + zoom * zoomSpeed,
       };
     }
