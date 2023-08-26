@@ -241,7 +241,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
             },
           ]),
           model: models.ground,
-          state: undefined,
         },
       ]
         .concat(

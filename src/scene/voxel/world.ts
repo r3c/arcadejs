@@ -1,11 +1,7 @@
 import { flattenModel, mergeModels } from "../../engine/graphic/model";
 import { Instance, Model } from "../../engine/graphic/model/definition";
 import { GlRuntime } from "../../engine/graphic/webgl";
-import {
-  deleteModel,
-  loadLibrary,
-  loadModel,
-} from "../../engine/graphic/webgl/model";
+import { loadLibrary, loadModel } from "../../engine/graphic/webgl/model";
 import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -128,8 +124,9 @@ const createWorldGraphic = (
   );
 
   const chunkObjects = range<ForwardLightingObject>(chunks.length, () => ({
+    dispose: () => {},
     matrix: Matrix4.identity,
-    model: { library: undefined, meshes: [] },
+    model: { dispose: () => {}, library: undefined, meshes: [] },
     noShadow: false,
   }));
 
@@ -215,7 +212,7 @@ const createWorldGraphic = (
         for (const chunkIndex of chunkUpdates) {
           const chunk = chunks[chunkIndex];
 
-          deleteModel(runtime.context, chunkObjects[chunkIndex].model);
+          chunkObjects[chunkIndex].model.dispose();
 
           const instances: Instance[] = [];
           const nextOffset = Vector3.fromZero();

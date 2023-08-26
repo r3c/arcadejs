@@ -222,7 +222,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
         {
           matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
           model: models.ground,
-          state: undefined,
         },
       ]
         .concat(
@@ -236,7 +235,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
               },
             ]),
             model: models.cube,
-            state: undefined,
           }))
         )
         .concat(
@@ -249,7 +247,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
             return {
               matrix: Matrix4.fromCustom(["translate", direction]),
               model: models.directionalLight,
-              state: undefined,
             };
           })
         )
@@ -257,7 +254,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
           pointLights.map((light) => ({
             matrix: Matrix4.fromCustom(["translate", light.position]),
             model: models.pointLight,
-            state: undefined,
           }))
         ),
     };

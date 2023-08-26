@@ -1,4 +1,5 @@
 import { map } from "../../language/functional";
+import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { Material, Mesh, Model, Polygon, Texture } from "../model";
@@ -11,11 +12,11 @@ import {
   textureCreate,
 } from "./texture";
 
-type GlLibrary = {
+type GlLibrary = Disposable & {
   materials: Map<Material, GlMaterial>;
 };
 
-type GlMaterial = {
+type GlMaterial = Disposable & {
   albedoFactor: number[];
   albedoMap: GlTexture | undefined;
   emissiveFactor: number[];
@@ -35,15 +36,13 @@ type GlMaterial = {
   shininess: number;
 };
 
-type GlMaterialExtractor = (material: GlMaterial) => GlTexture | undefined;
-
-type GlMesh = {
+type GlMesh = Disposable & {
   children: GlMesh[];
   primitives: GlPrimitive[];
   transform: Matrix4;
 };
 
-type GlModel = {
+type GlModel = Disposable & {
   library: GlLibrary | undefined;
   meshes: GlMesh[];
 };
@@ -53,12 +52,13 @@ type GlModelConfiguration = {
   library?: GlLibrary;
 };
 
+// FIXME: should not be part of `model` module, replace with concept of model instance
 type GlObject = {
   matrix: Matrix4;
   model: GlModel;
 };
 
-type GlPolygon = {
+type GlPolygon = Disposable & {
   coordinate: GlShaderAttribute | undefined;
   normal: GlShaderAttribute | undefined;
   position: GlShaderAttribute;
@@ -66,7 +66,7 @@ type GlPolygon = {
   tint: GlShaderAttribute | undefined;
 };
 
-type GlPrimitive = {
+type GlPrimitive = Disposable & {
   index: GlBuffer;
   material: GlMaterial;
   polygon: GlPolygon;
@@ -76,6 +76,7 @@ const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
 const defaultMaterial: GlMaterial = {
+  dispose: () => {},
   albedoFactor: Vector4.toArray(colorWhite),
   albedoMap: undefined,
   emissiveFactor: Vector4.toArray(colorBlack),
@@ -93,66 +94,6 @@ const defaultMaterial: GlMaterial = {
   roughnessMap: undefined,
   roughnessStrength: 0,
   shininess: 30,
-};
-
-const materialExtractors: GlMaterialExtractor[] = [
-  (material) => material.albedoMap,
-  (material) => material.emissiveMap,
-  (material) => material.glossMap,
-  (material) => material.heightMap,
-  (material) => material.metalnessMap,
-  (material) => material.normalMap,
-  (material) => material.occlusionMap,
-  (material) => material.roughnessMap,
-];
-
-// TODO: replace by disposable implementation
-const deleteLibrary = (gl: GlContext, library: GlLibrary): void => {
-  for (const material of library.materials.values()) {
-    deleteMaterial(gl, material);
-  }
-};
-
-// TODO: replace by disposable implementation
-const deleteMaterial = (gl: GlContext, material: GlMaterial): void => {
-  for (const extractor of materialExtractors) {
-    const texture = extractor(material);
-
-    if (texture !== undefined) {
-      gl.deleteTexture(texture);
-    }
-  }
-};
-
-// TODO: replace by disposable implementation
-const deleteMesh = (gl: GlContext, mesh: GlMesh): void => {
-  for (const child of mesh.children) {
-    deleteMesh(gl, child);
-  }
-
-  for (const { index, polygon } of mesh.primitives) {
-    index.dispose();
-    polygon.coordinate?.dispose();
-    polygon.normal?.dispose();
-    polygon.position.dispose();
-    polygon.tangent?.dispose();
-    polygon.tint?.dispose();
-  }
-};
-
-// TODO: replace by disposable implementation
-const deleteModel = (gl: GlContext, model: GlModel): void => {
-  const { library, meshes } = model;
-
-  if (library !== undefined) {
-    for (const material of library.materials.values()) {
-      deleteMaterial(gl, material);
-    }
-  }
-
-  for (const mesh of meshes) {
-    deleteMesh(gl, mesh);
-  }
 };
 
 const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
@@ -177,7 +118,14 @@ const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
     loadMesh(mesh);
   }
 
-  return { materials };
+  return {
+    dispose: () => {
+      for (const material of materials.values()) {
+        material.dispose();
+      }
+    },
+    materials,
+  };
 };
 
 const loadMaterial = (
@@ -206,27 +154,89 @@ const loadMaterial = (
     return glTexture;
   };
 
-  // FIXME: mutualize defaults with `defaultMaterial`
+  const albedoMap = map(material.albedoMap, toColorMap);
+  const emissiveMap = map(material.emissiveMap, toColorMap);
+  const glossMap = map(material.glossMap, toColorMap);
+  const heightMap = map(material.heightMap, toColorMap);
+  const metalnessMap = map(material.metalnessMap, toColorMap);
+  const normalMap = map(material.normalMap, toColorMap);
+  const occlusionMap = map(material.occlusionMap, toColorMap);
+  const roughnessMap = map(material.roughnessMap, toColorMap);
+
   return {
-    albedoFactor: Vector4.toArray(material.albedoFactor ?? colorWhite),
-    albedoMap: map(material.albedoMap, toColorMap),
-    emissiveFactor: Vector4.toArray(material.emissiveFactor ?? colorBlack),
-    emissiveMap: map(material.emissiveMap, toColorMap),
-    glossFactor: Vector4.toArray(
-      material.glossFactor ?? material.albedoFactor ?? colorWhite
-    ),
-    glossMap: map(material.glossMap, toColorMap),
-    heightMap: map(material.heightMap, toColorMap),
-    heightParallaxBias: material.heightParallaxBias ?? 0,
-    heightParallaxScale: material.heightParallaxScale ?? 0,
-    metalnessMap: map(material.metalnessMap, toColorMap),
-    metalnessStrength: material.metalnessStrength ?? 0,
-    normalMap: map(material.normalMap, toColorMap),
-    occlusionMap: map(material.occlusionMap, toColorMap),
-    occlusionStrength: material.occlusionStrength ?? 0,
-    roughnessMap: map(material.roughnessMap, toColorMap),
-    roughnessStrength: material.roughnessStrength ?? 0,
-    shininess: material.shininess ?? 30,
+    dispose: () => {
+      albedoMap?.dispose();
+      emissiveMap?.dispose();
+      glossMap?.dispose();
+      heightMap?.dispose();
+      metalnessMap?.dispose();
+      normalMap?.dispose();
+      occlusionMap?.dispose();
+      roughnessMap?.dispose();
+    },
+    albedoFactor:
+      map(material.albedoFactor, Vector4.toArray) ??
+      defaultMaterial.albedoFactor,
+    albedoMap,
+    emissiveFactor:
+      map(material.emissiveFactor, Vector4.toArray) ??
+      defaultMaterial.emissiveFactor,
+    emissiveMap,
+    glossFactor:
+      map(material.glossFactor ?? material.albedoFactor, Vector4.toArray) ??
+      defaultMaterial.glossFactor,
+    glossMap,
+    heightMap,
+    heightParallaxBias:
+      material.heightParallaxBias ?? defaultMaterial.heightParallaxBias,
+    heightParallaxScale:
+      material.heightParallaxScale ?? defaultMaterial.heightParallaxScale,
+    metalnessMap,
+    metalnessStrength:
+      material.metalnessStrength ?? defaultMaterial.metalnessStrength,
+    normalMap,
+    occlusionMap,
+    occlusionStrength:
+      material.occlusionStrength ?? defaultMaterial.occlusionStrength,
+    roughnessMap,
+    roughnessStrength:
+      material.roughnessStrength ?? defaultMaterial.roughnessStrength,
+    shininess: material.shininess ?? defaultMaterial.shininess,
+  };
+};
+
+const loadMesh = (
+  gl: GlContext,
+  mesh: Mesh,
+  library: GlLibrary,
+  isDynamic: boolean
+): GlMesh => {
+  const children = mesh.children.map((child) =>
+    loadMesh(gl, child, library, isDynamic)
+  );
+
+  const primitives = mesh.polygons.map((polygon) =>
+    loadPrimitive(gl, library, polygon, isDynamic)
+  );
+
+  return {
+    dispose: () => {
+      for (const child of children) {
+        child.dispose();
+      }
+
+      for (const { index, polygon } of primitives) {
+        index.dispose();
+        polygon.coordinate?.dispose();
+        polygon.normal?.dispose();
+        polygon.position.dispose();
+        polygon.tangent?.dispose();
+        polygon.tint?.dispose();
+      }
+    },
+    children,
+    primitives,
+    transform: mesh.transform,
   };
 };
 
@@ -251,86 +261,118 @@ const loadModel = (
     usedLibrary = ownedLibrary;
   }
 
-  const loadMesh = (mesh: Mesh): GlMesh => ({
-    children: mesh.children.map((child) => loadMesh(child)),
-    primitives: mesh.polygons.map((polygon) =>
-      loadPrimitive(gl, usedLibrary, polygon, isDynamic)
-    ),
-    transform: mesh.transform,
-  });
-
   const isDynamic = config?.isDynamic ?? false;
-  const meshes = model.meshes.map(loadMesh);
+  const meshes = model.meshes.map((mesh) =>
+    loadMesh(gl, mesh, usedLibrary, isDynamic)
+  );
 
-  return { library: ownedLibrary, meshes };
+  return {
+    dispose: () => {
+      if (ownedLibrary !== undefined) {
+        for (const material of ownedLibrary.materials.values()) {
+          material.dispose();
+        }
+      }
+
+      for (const mesh of meshes) {
+        mesh.dispose();
+      }
+    },
+    library: ownedLibrary,
+    meshes,
+  };
 };
 
 const loadPrimitive = (
   gl: GlContext,
   library: GlLibrary,
-  polygon: Polygon,
+  source: Polygon,
   isDynamic: boolean
 ): GlPrimitive => {
   const { materials } = library;
 
   const index = indexBuffer(
     gl,
-    new Uint32Array(polygon.indices),
-    polygon.indices.length,
+    new Uint32Array(source.indices),
+    source.indices.length,
     isDynamic
   );
 
-  return {
-    index,
-    material:
-      polygon.material !== undefined
-        ? materials.get(polygon.material) ?? defaultMaterial
-        : defaultMaterial,
-    polygon: {
-      coordinate: map(polygon.coordinates, (coordinates) =>
-        shaderAttribute(
-          gl,
-          new Float32Array(coordinates.flatMap(Vector2.toArray)),
-          coordinates.length * 2,
-          2,
-          isDynamic
-        )
-      ),
-      normal: map(polygon.normals, (normals) =>
-        shaderAttribute(
-          gl,
-          new Float32Array(normals.flatMap(Vector3.toArray)),
-          normals.length * 3,
-          3,
-          isDynamic
-        )
-      ),
-      position: shaderAttribute(
-        gl,
-        new Float32Array(polygon.positions.flatMap(Vector3.toArray)),
-        polygon.positions.length * 3,
-        3,
-        isDynamic
-      ),
-      tangent: map(polygon.tangents, (tangents) =>
-        shaderAttribute(
-          gl,
-          new Float32Array(tangents.flatMap(Vector3.toArray)),
-          tangents.length * 3,
-          3,
-          isDynamic
-        )
-      ),
-      tint: map(polygon.tints, (tints) =>
-        shaderAttribute(
-          gl,
-          new Float32Array(tints.flatMap(Vector4.toArray)),
-          tints.length * 4,
-          4,
-          isDynamic
-        )
-      ),
+  const coordinate = map(source.coordinates, (coordinates) =>
+    shaderAttribute(
+      gl,
+      new Float32Array(coordinates.flatMap(Vector2.toArray)),
+      coordinates.length * 2,
+      2,
+      isDynamic
+    )
+  );
+
+  const normal = map(source.normals, (normals) =>
+    shaderAttribute(
+      gl,
+      new Float32Array(normals.flatMap(Vector3.toArray)),
+      normals.length * 3,
+      3,
+      isDynamic
+    )
+  );
+
+  const position = shaderAttribute(
+    gl,
+    new Float32Array(source.positions.flatMap(Vector3.toArray)),
+    source.positions.length * 3,
+    3,
+    isDynamic
+  );
+
+  const tangent = map(source.tangents, (tangents) =>
+    shaderAttribute(
+      gl,
+      new Float32Array(tangents.flatMap(Vector3.toArray)),
+      tangents.length * 3,
+      3,
+      isDynamic
+    )
+  );
+
+  const tint = map(source.tints, (tints) =>
+    shaderAttribute(
+      gl,
+      new Float32Array(tints.flatMap(Vector4.toArray)),
+      tints.length * 4,
+      4,
+      isDynamic
+    )
+  );
+
+  const material: GlMaterial | undefined =
+    source.material !== undefined ? materials.get(source.material) : undefined;
+
+  const polygon: GlPolygon = {
+    dispose: () => {
+      coordinate?.dispose();
+      normal?.dispose();
+      position.dispose();
+      tangent?.dispose();
+      tint?.dispose();
     },
+    coordinate,
+    normal,
+    position,
+    tangent,
+    tint,
+  };
+
+  return {
+    dispose: () => {
+      index.dispose();
+      material?.dispose();
+      polygon.dispose();
+    },
+    index,
+    material: material ?? defaultMaterial,
+    polygon,
   };
 };
 
@@ -341,8 +383,6 @@ export {
   type GlModel,
   type GlObject,
   type GlPolygon,
-  deleteLibrary,
-  deleteModel,
   loadLibrary,
   loadModel,
 };
