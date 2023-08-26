@@ -6,7 +6,7 @@ import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
 import { Renderer } from "../../display";
 import { GlTexture } from "../texture";
-import { GlModel, GlPolygon, loadModel } from "../model";
+import { GlModel, loadModel } from "../model";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -165,7 +165,7 @@ const loadPainter = (
 
 class DebugTextureRenderer implements Renderer<GlTexture> {
   private readonly painter: SinglePainter<DebugTextureScene>;
-  private readonly quad: GlModel<GlPolygon>;
+  private readonly quad: GlModel;
   private readonly runtime: GlRuntime;
   private readonly scale: number;
   private readonly target: GlTarget;

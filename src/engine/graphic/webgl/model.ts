@@ -37,16 +37,15 @@ type GlMaterial = {
 
 type GlMaterialExtractor = (material: GlMaterial) => GlTexture | undefined;
 
-type GlMesh<TPolygon> = {
-  children: GlMesh<TPolygon>[];
-  primitives: GlPrimitive<TPolygon>[];
+type GlMesh = {
+  children: GlMesh[];
+  primitives: GlPrimitive[];
   transform: Matrix4;
 };
 
-// TODO: remove generic argument once not used by billboard model
-type GlModel<TPolygon> = {
+type GlModel = {
   library: GlLibrary | undefined;
-  meshes: GlMesh<TPolygon>[];
+  meshes: GlMesh[];
 };
 
 type GlModelConfiguration = {
@@ -54,9 +53,9 @@ type GlModelConfiguration = {
   library?: GlLibrary;
 };
 
-type GlObject<TPolygon> = {
+type GlObject = {
   matrix: Matrix4;
-  model: GlModel<TPolygon>;
+  model: GlModel;
 };
 
 type GlPolygon = {
@@ -67,10 +66,10 @@ type GlPolygon = {
   tint: GlShaderAttribute | undefined;
 };
 
-type GlPrimitive<TPolygon> = {
+type GlPrimitive = {
   index: GlBuffer;
   material: GlMaterial;
-  polygon: TPolygon;
+  polygon: GlPolygon;
 };
 
 const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
@@ -126,32 +125,23 @@ const deleteMaterial = (gl: GlContext, material: GlMaterial): void => {
 };
 
 // TODO: replace by disposable implementation
-const deleteMesh = <TPolygon>(
-  gl: GlContext,
-  mesh: GlMesh<TPolygon>,
-  extractor: (polygon: TPolygon) => Iterable<GlShaderAttribute | undefined>
-): void => {
+const deleteMesh = (gl: GlContext, mesh: GlMesh): void => {
   for (const child of mesh.children) {
-    deleteMesh(gl, child, extractor);
+    deleteMesh(gl, child);
   }
 
   for (const { index, polygon } of mesh.primitives) {
-    for (const attribute of extractor(polygon)) {
-      if (attribute !== undefined) {
-        attribute.dispose();
-      }
-    }
-
     index.dispose();
+    polygon.coordinate?.dispose();
+    polygon.normal?.dispose();
+    polygon.position.dispose();
+    polygon.tangent?.dispose();
+    polygon.tint?.dispose();
   }
 };
 
 // TODO: replace by disposable implementation
-const deleteModel = <TPolygon>(
-  gl: GlContext,
-  model: GlModel<TPolygon>,
-  extractor: (polygon: TPolygon) => Iterable<GlShaderAttribute | undefined>
-): void => {
+const deleteModel = (gl: GlContext, model: GlModel): void => {
   const { library, meshes } = model;
 
   if (library !== undefined) {
@@ -161,7 +151,7 @@ const deleteModel = <TPolygon>(
   }
 
   for (const mesh of meshes) {
-    deleteMesh(gl, mesh, extractor);
+    deleteMesh(gl, mesh);
   }
 };
 
@@ -249,7 +239,7 @@ const loadModel = (
   gl: GlContext,
   model: Model,
   config?: GlModelConfiguration
-): GlModel<GlPolygon> => {
+): GlModel => {
   let ownedLibrary: GlLibrary | undefined;
   let usedLibrary: GlLibrary;
 
@@ -261,7 +251,7 @@ const loadModel = (
     usedLibrary = ownedLibrary;
   }
 
-  const loadMesh = (mesh: Mesh): GlMesh<GlPolygon> => ({
+  const loadMesh = (mesh: Mesh): GlMesh => ({
     children: mesh.children.map((child) => loadMesh(child)),
     primitives: mesh.polygons.map((polygon) =>
       loadPrimitive(gl, usedLibrary, polygon, isDynamic)
@@ -280,7 +270,7 @@ const loadPrimitive = (
   library: GlLibrary,
   polygon: Polygon,
   isDynamic: boolean
-): GlPrimitive<GlPolygon> => {
+): GlPrimitive => {
   const { materials } = library;
 
   const index = indexBuffer(
@@ -344,27 +334,15 @@ const loadPrimitive = (
   };
 };
 
-// TODO: keep private once GlModel is not generic anymore
-const polygonExtractor: (
-  polygon: GlPolygon
-) => Iterable<GlShaderAttribute | undefined> = (polygon) => [
-  polygon.coordinate,
-  polygon.normal,
-  polygon.position,
-  polygon.tangent,
-  polygon.tint,
-];
-
 export {
-  type GlObject,
+  type GlLibrary,
   type GlMaterial,
   type GlMesh,
   type GlModel,
+  type GlObject,
   type GlPolygon,
-  defaultMaterial,
   deleteLibrary,
   deleteModel,
   loadLibrary,
   loadModel,
-  polygonExtractor,
 };

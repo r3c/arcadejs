@@ -20,11 +20,7 @@ import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
-import {
-  GlModel,
-  GlPolygon,
-  loadModel,
-} from "../../engine/graphic/webgl/model";
+import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -49,9 +45,9 @@ type ApplicationState = {
   directionalLightDirections: Vector3[];
   input: Input;
   models: {
-    cube: GlModel<GlPolygon>;
-    ground: GlModel<GlPolygon>;
-    light: GlModel<GlPolygon>;
+    cube: GlModel;
+    ground: GlModel;
+    light: GlModel;
   };
   move: number;
   pointLightPositions: Vector3[];

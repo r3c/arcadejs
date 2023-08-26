@@ -30,11 +30,7 @@ import {
   SceneState,
   ForwardLightingObject,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
-import {
-  GlModel,
-  GlPolygon,
-  loadModel,
-} from "../../engine/graphic/webgl/model";
+import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 
 /*
@@ -64,9 +60,9 @@ type ApplicationState = {
   input: Input;
   lights: Light[];
   models: {
-    ground: GlModel<GlPolygon>;
-    helmet: GlModel<GlPolygon>;
-    light: GlModel<GlPolygon>;
+    ground: GlModel;
+    helmet: GlModel;
+    light: GlModel;
   };
   move: number;
   projectionMatrix: Matrix4;

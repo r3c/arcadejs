@@ -34,12 +34,7 @@ import {
   PointLight,
 } from "../../engine/graphic/webgl/renderers/snippets/light";
 import { brightColor } from "../../engine/graphic/color";
-import {
-  GlModel,
-  GlPolygon,
-  loadModel,
-  GlObject,
-} from "../../engine/graphic/webgl/model";
+import { GlModel, GlObject, loadModel } from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -111,10 +106,10 @@ type ApplicationState = {
   directionalLights: DirectionalLight[];
   input: Input;
   models: {
-    cube: GlModel<GlPolygon>;
-    directionalLight: GlModel<GlPolygon>;
-    ground: GlModel<GlPolygon>;
-    pointLight: GlModel<GlPolygon>;
+    cube: GlModel;
+    directionalLight: GlModel;
+    ground: GlModel;
+    pointLight: GlModel;
   };
   move: number;
   pointLights: PointLight[];
@@ -223,7 +218,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Draw scene
     const sceneRenderer = sceneRendererMemo.get(getOptions(tweak));
-    const scene: GlScene<SceneState, GlObject<GlPolygon>> = {
+    const scene: GlScene<SceneState, GlObject> = {
       state: {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
         directionalLights,

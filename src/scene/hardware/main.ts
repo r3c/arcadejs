@@ -63,8 +63,8 @@ type ApplicationState = {
   camera: Camera;
   gl: WebGLRenderingContext;
   input: Input;
-  model: GlModel<GlPolygon>;
-  painter: GlPainter<SingularScene<SceneState, GlPolygon>>;
+  model: GlModel;
+  painter: GlPainter<SingularScene<SceneState>>;
   projectionMatrix: Matrix4;
   target: GlTarget;
 };

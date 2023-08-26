@@ -22,11 +22,7 @@ import { noise } from "./perlin";
 import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
-import {
-  GlModel,
-  GlPolygon,
-  loadModel,
-} from "../../engine/graphic/webgl/model";
+import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
 
 type ApplicationState = {
   camera: Camera;
@@ -37,7 +33,7 @@ type ApplicationState = {
     radius: number;
   }[];
   models: {
-    select: GlModel<GlPolygon>;
+    select: GlModel;
   };
   move: number;
   projectionMatrix: Matrix4;

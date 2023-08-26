@@ -1,20 +1,20 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
 import { GlPainter, GlTarget, GlGeometry } from "../../webgl";
-import { GlMaterial, GlMesh, GlObject } from "../model";
+import { GlMaterial, GlMesh, GlObject, GlPolygon } from "../model";
 import { GlShaderBinding } from "../shader";
 
-type SingularScene<TSceneState, TPolygonState> = {
-  objects: Iterable<GlObject<TPolygonState>>;
+type SingularScene<TSceneState> = {
+  objects: Iterable<GlObject>;
   state: TSceneState;
   viewMatrix: Matrix4;
 };
 
-const draw = <TPolygon>(
+const draw = (
   geometryBinding: GlShaderBinding<GlGeometry> | undefined,
   materialBinding: GlShaderBinding<GlMaterial> | undefined,
-  polygonBinding: GlShaderBinding<TPolygon> | undefined,
+  polygonBinding: GlShaderBinding<GlPolygon> | undefined,
   target: GlTarget,
-  meshes: Iterable<GlMesh<TPolygon>>,
+  meshes: Iterable<GlMesh>,
   parentTransform: Matrix4,
   viewMatrix: Matrix4
 ): void => {
@@ -50,19 +50,19 @@ const draw = <TPolygon>(
   }
 };
 
-class SingularPainter<TSceneState, TPolygonState>
-  implements GlPainter<SingularScene<TSceneState, TPolygonState>>
+class SingularPainter<TSceneState>
+  implements GlPainter<SingularScene<TSceneState>>
 {
   private readonly geometryBinding: GlShaderBinding<GlGeometry> | undefined;
   private readonly materialBinding: GlShaderBinding<GlMaterial> | undefined;
-  private readonly polygonBinding: GlShaderBinding<TPolygonState> | undefined;
+  private readonly polygonBinding: GlShaderBinding<GlPolygon> | undefined;
   private readonly sceneBinding: GlShaderBinding<TSceneState> | undefined;
 
   public constructor(
     sceneBinding: GlShaderBinding<TSceneState> | undefined,
     geometryBinding: GlShaderBinding<GlGeometry> | undefined,
     materialBinding: GlShaderBinding<GlMaterial> | undefined,
-    polygonBinding: GlShaderBinding<TPolygonState> | undefined
+    polygonBinding: GlShaderBinding<GlPolygon> | undefined
   ) {
     this.geometryBinding = geometryBinding;
     this.materialBinding = materialBinding;
@@ -70,10 +70,7 @@ class SingularPainter<TSceneState, TPolygonState>
     this.sceneBinding = sceneBinding;
   }
 
-  public paint(
-    target: GlTarget,
-    scene: SingularScene<TSceneState, TPolygonState>
-  ): void {
+  public paint(target: GlTarget, scene: SingularScene<TSceneState>): void {
     const { objects, state, viewMatrix } = scene;
     this.sceneBinding?.bind(state);
 

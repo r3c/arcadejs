@@ -24,11 +24,7 @@ import { rotateDirection } from "../move";
 import { Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
 import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
-import {
-  GlModel,
-  GlPolygon,
-  loadModel,
-} from "../../engine/graphic/webgl/model";
+import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -48,9 +44,9 @@ interface ApplicationState {
   input: Input;
   lightDirection: Vector3;
   models: {
-    cube: GlModel<GlPolygon>;
-    ground: GlModel<GlPolygon>;
-    light: GlModel<GlPolygon>;
+    cube: GlModel;
+    ground: GlModel;
+    light: GlModel;
   };
   move: number;
   projectionMatrix: Matrix4;

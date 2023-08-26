@@ -5,7 +5,6 @@ import {
   deleteModel,
   loadLibrary,
   loadModel,
-  polygonExtractor,
 } from "../../engine/graphic/webgl/model";
 import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/functional";
@@ -216,11 +215,7 @@ const createWorldGraphic = (
         for (const chunkIndex of chunkUpdates) {
           const chunk = chunks[chunkIndex];
 
-          deleteModel(
-            runtime.context,
-            chunkObjects[chunkIndex].model,
-            polygonExtractor
-          );
+          deleteModel(runtime.context, chunkObjects[chunkIndex].model);
 
           const instances: Instance[] = [];
           const nextOffset = Vector3.fromZero();

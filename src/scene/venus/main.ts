@@ -13,11 +13,7 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Camera } from "../view";
-import {
-  GlModel,
-  GlPolygon,
-  loadModel,
-} from "../../engine/graphic/webgl/model";
+import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -31,7 +27,7 @@ type ApplicationState = {
   input: Input;
   lights: MutableVector3[];
   models: {
-    star: GlModel<GlPolygon>;
+    star: GlModel;
   };
   move: number;
   projectionMatrix: Matrix4;

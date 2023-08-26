@@ -702,7 +702,7 @@ const loadMaterialPainter = (
 };
 
 class DeferredLightingRenderer
-  implements Renderer<GlScene<SceneState, GlObject<GlPolygon>>>
+  implements Renderer<GlScene<SceneState, GlObject>>
 {
   public readonly depthBuffer: GlTexture;
   public readonly lightBuffer: GlTexture;
@@ -711,12 +711,10 @@ class DeferredLightingRenderer
   private readonly directionalLightBillboard: GlDirectionalLightBillboard;
   private readonly directionalLightPainter: GlPainter<DirectionalLightScene>;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: GlPainter<SingularScene<State, GlPolygon>>;
+  private readonly geometryPainter: GlPainter<SingularScene<State>>;
   private readonly geometryTarget: GlTarget;
   private readonly lightTarget: GlTarget;
-  private readonly materialPainter: GlPainter<
-    SingularScene<MaterialState, GlPolygon>
-  >;
+  private readonly materialPainter: GlPainter<SingularScene<MaterialState>>;
   private readonly pointLightBillboard: GlPointLightBillboard;
   private readonly pointLightPainter: GlPainter<PointLightScene>;
   private readonly runtime: GlRuntime;
@@ -769,7 +767,7 @@ class DeferredLightingRenderer
 
   public dispose() {}
 
-  public render(scene: GlScene<SceneState, GlObject<GlPolygon>>) {
+  public render(scene: GlScene<SceneState, GlObject>) {
     const { objects, state } = scene;
     const gl = this.runtime.context;
     const viewportSize = {

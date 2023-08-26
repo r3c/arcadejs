@@ -1,29 +1,29 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
 import { GlPainter, GlTarget, GlGeometry } from "../../webgl";
-import { GlMaterial, GlMesh, GlObject } from "../model";
+import { GlMaterial, GlMesh, GlObject, GlPolygon } from "../model";
 import { GlBuffer } from "../resource";
 import { GlShaderBinding } from "../shader";
 
-type BatchScene<TSceneState, TPolygonState> = {
-  objects: Iterable<GlObject<TPolygonState>>;
+type BatchScene<TSceneState> = {
+  objects: Iterable<GlObject>;
   state: TSceneState;
   viewMatrix: Matrix4;
 };
 
-type MeshBatch<TPolygon> = {
+type MeshBatch = {
   index: GlBuffer;
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
-  polygon: TPolygon;
+  polygon: GlPolygon;
 };
 
-type MaterialMap<TPolygon> = Map<GlMaterial, MeshBatch<TPolygon>[]>;
+type MaterialMap = Map<GlMaterial, MeshBatch[]>;
 
-const group = <TPolygon>(
-  batchByMaterial: Map<GlMaterial, MeshBatch<TPolygon>[]>,
+const group = (
+  batchByMaterial: Map<GlMaterial, MeshBatch[]>,
   viewMatrix: Matrix4,
   parentMatrix: Matrix4,
-  meshes: Iterable<GlMesh<TPolygon>>
+  meshes: Iterable<GlMesh>
 ) => {
   for (const { children, primitives, transform } of meshes) {
     const modelMatrix = Matrix4.fromObject(parentMatrix);
@@ -56,12 +56,12 @@ const group = <TPolygon>(
   }
 };
 
-const paint = <TPolygonState>(
+const paint = (
   geometryBinding: GlShaderBinding<GlGeometry>,
   materialBinding: GlShaderBinding<GlMaterial>,
-  polygonBinding: GlShaderBinding<TPolygonState>,
+  polygonBinding: GlShaderBinding<GlPolygon>,
   target: GlTarget,
-  materialMap: MaterialMap<TPolygonState>
+  materialMap: MaterialMap
 ) => {
   for (const [material, meshBatches] of materialMap.entries()) {
     materialBinding.bind(material);
@@ -74,19 +74,17 @@ const paint = <TPolygonState>(
   }
 };
 
-class BatchPainter<TSceneState, TPolygonState>
-  implements GlPainter<BatchScene<TSceneState, TPolygonState>>
-{
+class BatchPainter<TSceneState> implements GlPainter<BatchScene<TSceneState>> {
   private readonly geometryBinding: GlShaderBinding<GlGeometry>;
   private readonly materialBinding: GlShaderBinding<GlMaterial>;
-  private readonly polygonBinding: GlShaderBinding<TPolygonState>;
+  private readonly polygonBinding: GlShaderBinding<GlPolygon>;
   private readonly sceneBinding: GlShaderBinding<TSceneState>;
 
   public constructor(
     sceneBinding: GlShaderBinding<TSceneState>,
     geometryBinding: GlShaderBinding<GlGeometry>,
     materialBinding: GlShaderBinding<GlMaterial>,
-    polygonBinding: GlShaderBinding<TPolygonState>
+    polygonBinding: GlShaderBinding<GlPolygon>
   ) {
     this.geometryBinding = geometryBinding;
     this.materialBinding = materialBinding;
@@ -94,12 +92,9 @@ class BatchPainter<TSceneState, TPolygonState>
     this.sceneBinding = sceneBinding;
   }
 
-  public paint(
-    target: GlTarget,
-    scene: BatchScene<TSceneState, TPolygonState>
-  ): void {
+  public paint(target: GlTarget, scene: BatchScene<TSceneState>): void {
     const { objects, state, viewMatrix } = scene;
-    const materialMap: MaterialMap<TPolygonState> = new Map();
+    const materialMap: MaterialMap = new Map();
 
     for (const { matrix, model } of objects) {
       group(materialMap, viewMatrix, matrix, model.meshes);

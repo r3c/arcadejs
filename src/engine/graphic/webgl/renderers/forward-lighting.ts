@@ -47,7 +47,7 @@ enum ForwardLightingLightModel {
   Physical,
 }
 
-type ForwardLightingObject = GlObject<GlPolygon> & {
+type ForwardLightingObject = GlObject & {
   noShadow: boolean;
 };
 
@@ -756,17 +756,15 @@ class ForwardLightingRenderer
   public readonly pointShadowBuffers: GlTexture[];
 
   private readonly directionalShadowPainter: GlPainter<
-    SingularScene<ShadowSceneState, GlPolygon>
+    SingularScene<ShadowSceneState>
   >;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: GlTarget[];
-  private readonly lightPainter: GlPainter<
-    SingularScene<LightSceneState, GlPolygon>
-  >;
+  private readonly lightPainter: GlPainter<SingularScene<LightSceneState>>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
   private readonly pointShadowPainter: GlPainter<
-    SingularScene<ShadowSceneState, GlPolygon>
+    SingularScene<ShadowSceneState>
   >;
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
@@ -844,7 +842,7 @@ class ForwardLightingRenderer
     gl.enable(gl.DEPTH_TEST);
 
     // Create list of opaque objects
-    const obstacles: GlObject<GlPolygon>[] = [];
+    const obstacles: GlObject[] = [];
 
     for (const { matrix, model, noShadow } of objects) {
       if (!noShadow) {

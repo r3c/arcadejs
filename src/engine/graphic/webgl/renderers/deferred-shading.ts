@@ -318,8 +318,6 @@ type State = {
   viewMatrix: Matrix4;
 };
 
-type AmbientLightPolygon = Pick<GlPolygon, "position">;
-
 type AmbientLightState = State & {
   albedoAndShininessBuffer: GlTexture;
   ambientLightColor: Vector3;
@@ -355,7 +353,7 @@ type PointLightScene = LightScene & {
 const loadAmbientPainter = (
   runtime: GlRuntime,
   configuration: Configuration
-): GlPainter<SingularScene<AmbientLightState, AmbientLightPolygon>> => {
+): GlPainter<SingularScene<AmbientLightState>> => {
   // Build directives from configuration
   const directives: GlShaderDirectives = {};
 
@@ -375,7 +373,7 @@ const loadAmbientPainter = (
     directives
   );
 
-  const polygonBinding = shader.declare<AmbientLightPolygon>();
+  const polygonBinding = shader.declare<GlPolygon>();
 
   polygonBinding.setAttribute("position", ({ position }) => position);
 
@@ -416,7 +414,7 @@ const loadAmbientPainter = (
 const loadGeometryPainter = (
   runtime: GlRuntime,
   configuration: Configuration
-): GlPainter<SingularScene<State, GlPolygon>> => {
+): GlPainter<SingularScene<State>> => {
   // Setup geometry shader
   const shader = runtime.createShader(
     geometryVertexShader,
@@ -634,20 +632,20 @@ const loadPointLightPainter = (
 };
 
 class DeferredShadingRenderer
-  implements Renderer<GlScene<SceneState, GlObject<GlPolygon>>>
+  implements Renderer<GlScene<SceneState, GlObject>>
 {
   public readonly albedoAndShininessBuffer: GlTexture;
   public readonly depthBuffer: GlTexture;
   public readonly normalAndGlossinessBuffer: GlTexture;
 
   private readonly ambientLightPainter: GlPainter<
-    SingularScene<AmbientLightState, AmbientLightPolygon>
+    SingularScene<AmbientLightState>
   >;
-  private readonly ambientLightObjects: GlObject<AmbientLightPolygon>[];
+  private readonly ambientLightObjects: GlObject[];
   private readonly directionalLightBillboard: GlDirectionalLightBillboard;
   private readonly directionalLightPainter: GlPainter<DirectionalLightScene>;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: GlPainter<SingularScene<State, GlPolygon>>;
+  private readonly geometryPainter: GlPainter<SingularScene<State>>;
   private readonly geometryTarget: GlTarget;
   private readonly pointLightBillboard: GlPointLightBillboard;
   private readonly pointLightPainter: GlPainter<PointLightScene>;
@@ -697,7 +695,7 @@ class DeferredShadingRenderer
 
   public dispose() {}
 
-  public render(scene: GlScene<SceneState, GlObject<GlPolygon>>) {
+  public render(scene: GlScene<SceneState, GlObject>) {
     const { objects, state } = scene;
     const gl = this.runtime.context;
     const viewportSize = {
