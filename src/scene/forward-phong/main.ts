@@ -16,17 +16,15 @@ import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import {
-  GlModel,
-  GlScene,
-  GlTarget,
-  createRuntime,
-  loadModel,
-} from "../../engine/graphic/webgl";
+import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
-import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
+import {
+  GlModel,
+  GlPolygon,
+  loadModel,
+} from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -91,9 +89,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
       directionalLightDirections: range(3, () => Vector3.zero),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(runtime, cubeModel),
-        ground: loadModel(runtime, groundModel),
-        light: loadModel(runtime, lightModel),
+        cube: loadModel(gl, cubeModel),
+        ground: loadModel(gl, groundModel),
+        light: loadModel(gl, lightModel),
       },
       move: 0,
       pointLightPositions: range(3, () => Vector3.zero),

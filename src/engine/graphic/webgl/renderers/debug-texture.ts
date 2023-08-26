@@ -1,17 +1,12 @@
 import { Matrix4 } from "../../../math/matrix";
 import { model } from "./resources/quad";
-import {
-  GlModel,
-  GlRuntime,
-  GlTarget,
-  GlTexture,
-  loadModel,
-} from "../../webgl";
-import { GlPolygon } from "./objects/polygon";
+import { GlRuntime, GlTarget } from "../../webgl";
 import { GlShaderAttribute, shaderDirective, shaderUniform } from "../shader";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
 import { Renderer } from "../../display";
+import { GlTexture } from "../texture";
+import { GlModel, GlPolygon, loadModel } from "../model";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -181,7 +176,7 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
     configuration: DebugTextureConfiguration
   ) {
     this.painter = loadPainter(runtime, configuration);
-    this.quad = loadModel(runtime, model);
+    this.quad = loadModel(runtime.context, model);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
     this.target = target;

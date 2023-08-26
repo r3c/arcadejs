@@ -25,14 +25,7 @@ import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import {
-  GlModel,
-  GlObject,
-  GlScene,
-  GlTarget,
-  createRuntime,
-  loadModel,
-} from "../../engine/graphic/webgl";
+import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { SceneState } from "../../engine/graphic/webgl/renderers/deferred-lighting";
@@ -40,8 +33,13 @@ import {
   DirectionalLight,
   PointLight,
 } from "../../engine/graphic/webgl/renderers/snippets/light";
-import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 import { brightColor } from "../../engine/graphic/color";
+import {
+  GlModel,
+  GlPolygon,
+  loadModel,
+  GlObject,
+} from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -174,10 +172,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
       })),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(runtime, cubeModel),
-        directionalLight: loadModel(runtime, directionalLightModel),
-        ground: loadModel(runtime, groundModel),
-        pointLight: loadModel(runtime, pointLightModel),
+        cube: loadModel(gl, cubeModel),
+        directionalLight: loadModel(gl, directionalLightModel),
+        ground: loadModel(gl, groundModel),
+        pointLight: loadModel(gl, pointLightModel),
       },
       move: 0,
       pointLights: range(2000, (i) => ({

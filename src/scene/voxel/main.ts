@@ -19,16 +19,14 @@ import {
   createWorldPhysic,
 } from "./world";
 import { noise } from "./perlin";
-import {
-  GlModel,
-  GlScene,
-  GlTarget,
-  createRuntime,
-  loadModel,
-} from "../../engine/graphic/webgl";
+import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
-import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
+import {
+  GlModel,
+  GlPolygon,
+  loadModel,
+} from "../../engine/graphic/webgl/model";
 
 type ApplicationState = {
   camera: Camera;
@@ -96,7 +94,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       transform: Matrix4.fromCustom(["scale", worldScaleVector]),
     });
 
-    const select = loadModel(runtime, selectModel);
+    const select = loadModel(gl, selectModel);
 
     const getModelIndex = (height: number): number => {
       const value = Math.pow(height, 0.5) / (1 / levelModels.length);

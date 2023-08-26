@@ -11,15 +11,13 @@ import { range } from "../../engine/language/functional";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
+import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { Camera } from "../view";
 import {
   GlModel,
-  GlScene,
-  GlTarget,
-  createRuntime,
+  GlPolygon,
   loadModel,
-} from "../../engine/graphic/webgl";
-import { Camera } from "../view";
-import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
+} from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -61,7 +59,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       input: new Input(screen.canvas),
       lights: [Vector3.fromXYZ(0, 0, 5)],
       models: {
-        star: loadModel(runtime, starModel),
+        star: loadModel(gl, starModel),
       },
       move: 0,
       projectionMatrix: Matrix4.identity,

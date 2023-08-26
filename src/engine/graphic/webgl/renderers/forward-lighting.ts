@@ -24,19 +24,17 @@ import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
   GlGeometry,
-  GlMaterial,
-  GlObject,
   GlPainter,
   GlRuntime,
   GlScene,
   GlTarget,
-  GlTexture,
   GlTextureFormat,
   GlTextureType,
 } from "../../webgl";
-import { GlPolygon } from "./objects/polygon";
 import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
 import { Renderer } from "../../display";
+import { GlMaterial, GlObject, GlPolygon } from "../model";
+import { GlTexture } from "../texture";
 
 type ForwardLightingConfiguration = {
   light?: LightConfiguration;

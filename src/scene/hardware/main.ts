@@ -6,18 +6,20 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
 import {
-  GlModel,
+  GlGeometry,
   GlPainter,
   GlTarget,
   createRuntime,
-  loadModel,
-  GlMaterial,
-  GlGeometry,
 } from "../../engine/graphic/webgl";
 import { BatchPainter } from "../../engine/graphic/webgl/painters/batch";
-import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
 import { shaderUniform } from "../../engine/graphic/webgl/shader";
 import { SingularScene } from "../../engine/graphic/webgl/painters/singular";
+import {
+  GlModel,
+  GlPolygon,
+  GlMaterial,
+  loadModel,
+} from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -78,7 +80,8 @@ const configuration = {
 
 const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
-    const runtime = createRuntime(screen.context);
+    const gl = screen.context;
+    const runtime = createRuntime(gl);
     const shader = runtime.createShader(vsSource, fsSource, {});
     const tweak = configure(configuration);
 
@@ -121,12 +124,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      gl: runtime.context,
+      gl,
       input: new Input(screen.canvas),
-      model: loadModel(
-        runtime,
-        await loadModelFromJson("model/cube/mesh.json")
-      ),
+      model: loadModel(gl, await loadModelFromJson("model/cube/mesh.json")),
       painter: new BatchPainter(
         sceneBinding,
         geometryBinding,
@@ -135,11 +135,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
       projectionMatrix: Matrix4.identity,
       screen,
-      target: new GlTarget(
-        screen.context,
-        screen.getWidth(),
-        screen.getHeight()
-      ),
+      target: new GlTarget(gl, screen.getWidth(), screen.getHeight()),
     };
   },
 

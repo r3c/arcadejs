@@ -16,14 +16,11 @@ import {
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
-  GlModel,
   GlScene,
   GlTarget,
   createRuntime,
-  loadModel,
   loadTextureCube,
   loadTextureQuad,
-  GlTexture,
 } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Camera } from "../view";
@@ -33,7 +30,12 @@ import {
   SceneState,
   ForwardLightingObject,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
-import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
+import {
+  GlModel,
+  GlPolygon,
+  loadModel,
+} from "../../engine/graphic/webgl/model";
+import { GlTexture } from "../../engine/graphic/webgl/texture";
 
 /*
  ** What changed?
@@ -143,9 +145,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
-        ground: loadModel(runtime, groundModel),
-        helmet: loadModel(runtime, helmetModel),
-        light: loadModel(runtime, lightModel),
+        ground: loadModel(gl, groundModel),
+        helmet: loadModel(gl, helmetModel),
+        light: loadModel(gl, lightModel),
       },
       move: 0,
       projectionMatrix: Matrix4.identity,

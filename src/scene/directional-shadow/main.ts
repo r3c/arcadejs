@@ -23,14 +23,12 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { rotateDirection } from "../move";
 import { Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
+import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import {
   GlModel,
-  GlScene,
-  GlTarget,
-  createRuntime,
+  GlPolygon,
   loadModel,
-} from "../../engine/graphic/webgl";
-import { GlPolygon } from "../../engine/graphic/webgl/renderers/objects/polygon";
+} from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -91,9 +89,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
       input: new Input(screen.canvas),
       lightDirection: Vector3.zero,
       models: {
-        cube: loadModel(runtime, cubeModel),
-        ground: loadModel(runtime, groundModel),
-        light: loadModel(runtime, lightModel),
+        cube: loadModel(gl, cubeModel),
+        ground: loadModel(gl, groundModel),
+        light: loadModel(gl, lightModel),
       },
       move: 0,
       projectionMatrix: Matrix4.identity,

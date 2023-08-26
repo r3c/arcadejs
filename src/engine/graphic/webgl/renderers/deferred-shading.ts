@@ -20,23 +20,20 @@ import {
   GlPainter,
   GlRuntime,
   GlScene,
-  GlObject,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  loadModel,
-  GlTexture,
   GlGeometry,
-  GlMaterial,
 } from "../../webgl";
 import {
   GlLightBillboard,
   GlLightPolygon,
   pointLightBillboard,
 } from "./objects/billboard";
-import { GlPolygon } from "./objects/polygon";
 import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
 import { Renderer } from "../../display";
+import { GlMaterial, GlObject, GlPolygon, loadModel } from "../model";
+import { GlTexture } from "../texture";
 
 const enum DeferredShadingLightModel {
   None,
@@ -672,7 +669,7 @@ class DeferredShadingRenderer
       gl.drawingBufferWidth,
       gl.drawingBufferHeight
     );
-    const quad = loadModel(runtime, quadModel);
+    const quad = loadModel(gl, quadModel);
 
     this.albedoAndShininessBuffer = geometry.setupColorTexture(
       GlTextureFormat.RGBA8,

@@ -1,5 +1,5 @@
 import { Matrix4 } from "../../../../math/matrix";
-import { GlModel, defaultMaterial } from "../../../webgl";
+import { GlModel, defaultMaterial } from "../../model";
 import { GlContext, indexBuffer } from "../../resource";
 import { GlShaderAttribute, shaderAttribute } from "../../shader";
 import { PointLight } from "../snippets/light";

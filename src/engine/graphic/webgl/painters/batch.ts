@@ -1,12 +1,6 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
-import {
-  GlMaterial,
-  GlMesh,
-  GlPainter,
-  GlObject,
-  GlTarget,
-  GlGeometry,
-} from "../../webgl";
+import { GlPainter, GlTarget, GlGeometry } from "../../webgl";
+import { GlMaterial, GlMesh, GlObject } from "../model";
 import { GlBuffer } from "../resource";
 import { GlShaderBinding } from "../shader";
 

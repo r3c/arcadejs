@@ -1,12 +1,6 @@
 import { Matrix3, Matrix4 } from "../../../math/matrix";
-import {
-  GlMesh,
-  GlPainter,
-  GlObject,
-  GlTarget,
-  GlGeometry,
-  GlMaterial,
-} from "../../webgl";
+import { GlPainter, GlTarget, GlGeometry } from "../../webgl";
+import { GlMaterial, GlMesh, GlObject } from "../model";
 import { GlShaderBinding } from "../shader";
 
 type SingularScene<TSceneState, TPolygonState> = {

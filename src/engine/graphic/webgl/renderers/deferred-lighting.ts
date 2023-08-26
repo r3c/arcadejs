@@ -24,22 +24,20 @@ import {
   GlPainter,
   GlRuntime,
   GlScene,
-  GlObject,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
-  GlTexture,
   GlGeometry,
-  GlMaterial,
 } from "../../webgl";
 import {
   GlLightBillboard,
   GlLightPolygon,
   pointLightBillboard,
 } from "./objects/billboard";
-import { GlPolygon } from "./objects/polygon";
 import { shaderUniform, shaderDirective, GlShaderDirectives } from "../shader";
 import { Renderer } from "../../display";
+import { GlTexture } from "../texture";
+import { GlMaterial, GlObject, GlPolygon } from "../model";
 
 const enum DeferredLightingLightModel {
   None,
