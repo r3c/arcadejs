@@ -1,4 +1,4 @@
-import { map } from "../../language/functional";
+import { optionalMap } from "../../language/optional";
 import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
@@ -154,14 +154,14 @@ const loadMaterial = (
     return glTexture;
   };
 
-  const albedoMap = map(material.albedoMap, toColorMap);
-  const emissiveMap = map(material.emissiveMap, toColorMap);
-  const glossMap = map(material.glossMap, toColorMap);
-  const heightMap = map(material.heightMap, toColorMap);
-  const metalnessMap = map(material.metalnessMap, toColorMap);
-  const normalMap = map(material.normalMap, toColorMap);
-  const occlusionMap = map(material.occlusionMap, toColorMap);
-  const roughnessMap = map(material.roughnessMap, toColorMap);
+  const albedoMap = optionalMap(material.albedoMap, toColorMap);
+  const emissiveMap = optionalMap(material.emissiveMap, toColorMap);
+  const glossMap = optionalMap(material.glossMap, toColorMap);
+  const heightMap = optionalMap(material.heightMap, toColorMap);
+  const metalnessMap = optionalMap(material.metalnessMap, toColorMap);
+  const normalMap = optionalMap(material.normalMap, toColorMap);
+  const occlusionMap = optionalMap(material.occlusionMap, toColorMap);
+  const roughnessMap = optionalMap(material.roughnessMap, toColorMap);
 
   return {
     dispose: () => {
@@ -175,16 +175,18 @@ const loadMaterial = (
       roughnessMap?.dispose();
     },
     albedoFactor:
-      map(material.albedoFactor, Vector4.toArray) ??
+      optionalMap(material.albedoFactor, Vector4.toArray) ??
       defaultMaterial.albedoFactor,
     albedoMap,
     emissiveFactor:
-      map(material.emissiveFactor, Vector4.toArray) ??
+      optionalMap(material.emissiveFactor, Vector4.toArray) ??
       defaultMaterial.emissiveFactor,
     emissiveMap,
     glossFactor:
-      map(material.glossFactor ?? material.albedoFactor, Vector4.toArray) ??
-      defaultMaterial.glossFactor,
+      optionalMap(
+        material.glossFactor ?? material.albedoFactor,
+        Vector4.toArray
+      ) ?? defaultMaterial.glossFactor,
     glossMap,
     heightMap,
     heightParallaxBias:
@@ -298,7 +300,7 @@ const loadPrimitive = (
     isDynamic
   );
 
-  const coordinate = map(source.coordinates, (coordinates) =>
+  const coordinate = optionalMap(source.coordinates, (coordinates) =>
     shaderAttribute(
       gl,
       new Float32Array(coordinates.flatMap(Vector2.toArray)),
@@ -308,7 +310,7 @@ const loadPrimitive = (
     )
   );
 
-  const normal = map(source.normals, (normals) =>
+  const normal = optionalMap(source.normals, (normals) =>
     shaderAttribute(
       gl,
       new Float32Array(normals.flatMap(Vector3.toArray)),
@@ -326,7 +328,7 @@ const loadPrimitive = (
     isDynamic
   );
 
-  const tangent = map(source.tangents, (tangents) =>
+  const tangent = optionalMap(source.tangents, (tangents) =>
     shaderAttribute(
       gl,
       new Float32Array(tangents.flatMap(Vector3.toArray)),
@@ -336,7 +338,7 @@ const loadPrimitive = (
     )
   );
 
-  const tint = map(source.tints, (tints) =>
+  const tint = optionalMap(source.tints, (tints) =>
     shaderAttribute(
       gl,
       new Float32Array(tints.flatMap(Vector4.toArray)),

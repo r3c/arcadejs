@@ -1,4 +1,4 @@
-import { range } from "../language/functional";
+import { range } from "../language/iterable";
 import { Matrix3, Matrix4 } from "../math/matrix";
 import { Filter, Interpolation, Wrap, defaultFilter } from "./model";
 import { Vector4 } from "../math/vector";
@@ -287,8 +287,7 @@ class GlTarget {
         continue;
       }
 
-      const buffers = range(
-        this.colorAttachment.textures.length,
+      const buffers = range(this.colorAttachment.textures.length).map(
         (i) => gl.COLOR_ATTACHMENT0 + i
       );
 
@@ -425,7 +424,9 @@ class GlTarget {
 
     switch (type) {
       case GlTextureType.Cube:
-        textureTargets = range(6, (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i);
+        textureTargets = range(6).map(
+          (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i
+        );
 
         break;
 

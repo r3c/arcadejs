@@ -21,7 +21,7 @@ import {
   DeferredLightingRenderer,
 } from "../../engine/graphic/webgl/renderers/deferred-lighting";
 import { WebGLScreen } from "../../engine/graphic/display";
-import { range } from "../../engine/language/functional";
+import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
@@ -160,7 +160,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
             zFar: 100,
           })
       ),
-      directionalLights: range(10, (i) => ({
+      directionalLights: range(10).map((i) => ({
         color: brightColor(i),
         direction: Vector3.zero,
         shadow: false,
@@ -173,7 +173,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         pointLight: loadModel(gl, pointLightModel),
       },
       move: 0,
-      pointLights: range(2000, (i) => ({
+      pointLights: range(2000).map((i) => ({
         color: brightColor(i),
         position: Vector3.zero,
         radius: 0,
@@ -244,7 +244,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         },
       ]
         .concat(
-          range(16, (i) => ({
+          range(16).map((i) => ({
             matrix: Matrix4.fromCustom([
               "translate",
               {

@@ -3,7 +3,7 @@ import { Instance, Model } from "../../engine/graphic/model/definition";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { loadLibrary, loadModel } from "../../engine/graphic/webgl/model";
 import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
-import { range } from "../../engine/language/functional";
+import { range } from "../../engine/language/iterable";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 
@@ -116,14 +116,13 @@ const createWorldGraphic = (
 
   const shift = Vector3.fromCustom(["set", renderSize], ["scale", -0.5]);
 
-  const chunks = range<WorldChunk>(
-    chunkCount.x * chunkCount.y * chunkCount.z,
-    () => ({
-      cubes: new Map<number, WorldCube>(),
-    })
-  );
+  const chunks = range(
+    chunkCount.x * chunkCount.y * chunkCount.z
+  ).map<WorldChunk>(() => ({
+    cubes: new Map<number, WorldCube>(),
+  }));
 
-  const chunkObjects = range<ForwardLightingObject>(chunks.length, () => ({
+  const chunkObjects = range(chunks.length).map<ForwardLightingObject>(() => ({
     dispose: () => {},
     matrix: Matrix4.identity,
     model: { dispose: () => {}, library: undefined, meshes: [] },
@@ -287,10 +286,9 @@ function createWorldPhysic(
   const { onChange, onCreate } = worldEvent;
 
   const activeIndices = new Set<number>();
-  const blocks = range<Block | undefined>(
-    worldSize.x * worldSize.y * worldSize.z,
-    () => undefined
-  );
+  const blocks = range(worldSize.x * worldSize.y * worldSize.z).map<
+    Block | undefined
+  >(() => undefined);
 
   const extractMove = (shift: Vector3): Vector3 | undefined => {
     const x = Math.abs(shift.x);

@@ -7,7 +7,7 @@ import {
   ForwardLightingRenderer,
   SceneState,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
-import { range } from "../../engine/language/functional";
+import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -66,7 +66,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           noShadow: true,
         },
       }),
-      stars: range(1000, () =>
+      stars: range(1000).map(() =>
         Vector3.fromObject({
           x: Math.random() * 10 - 5,
           y: Math.random() * 10 - 5,

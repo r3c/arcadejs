@@ -7,7 +7,7 @@ import {
   ForwardLightingRenderer,
   SceneState,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
-import { range } from "../../engine/language/functional";
+import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
@@ -70,9 +70,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const transform = Matrix4.fromCustom(["scale", worldScaleVector]);
 
     const levelModels = await Promise.all(
-      range(10, (level) =>
+      range(10).map((level) =>
         Promise.all(
-          range(6, (faceIndex) =>
+          range(6).map((faceIndex) =>
             loadModelFromJson(`model/voxel/face${faceIndex}.json`, {
               library,
               load: { variables: { level: level.toString() } },
@@ -151,7 +151,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
       currentOffset: Vector3.zero,
       input: new Input(screen.canvas),
-      lights: range(maxLights, (i) => ({
+      lights: range(maxLights).map((i) => ({
         position: {
           x: worldGraphic.renderSize.x * (i / (maxLights - 1) - 0.5),
           y: worldGraphic.renderSize.y * 0.5,

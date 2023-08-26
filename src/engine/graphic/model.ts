@@ -15,7 +15,7 @@ import {
   defaultColor,
   defaultFilter,
 } from "./model/definition";
-import { range } from "../language/functional";
+import { range } from "../language/iterable";
 import { load as loadFrom3ds } from "./model/loaders/3ds";
 import { load as loadFromGltf } from "./model/loaders/gltf";
 import { load as loadFromJson } from "./model/loaders/json";
@@ -55,7 +55,7 @@ const computeBounds = (model: Model): BoundingBox => {
  ** http://www.iquilezles.org/www/articles/normals/normals.htm
  */
 const computeNormals = (indices: number[], points: Vector3[]): Vector3[] => {
-  const normals = range(points.length, Vector3.fromZero);
+  const normals = range(points.length).map(Vector3.fromZero);
 
   for (let i = 0; i + 2 < indices.length; i += 3) {
     const index1 = indices[i + 0];
@@ -96,7 +96,7 @@ const computeTangents = (
   coords: Vector2[],
   normals: Vector3[]
 ): Vector3[] => {
-  const tangents = range(points.length, Vector3.fromZero);
+  const tangents = range(points.length).map(Vector3.fromZero);
 
   for (let i = 0; i + 2 < indices.length; i += 3) {
     const index1 = indices[i + 0];

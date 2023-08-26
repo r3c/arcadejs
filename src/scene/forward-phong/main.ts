@@ -12,7 +12,7 @@ import {
   ForwardLightingRenderer,
   SceneState,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
-import { range } from "../../engine/language/functional";
+import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
@@ -82,7 +82,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Create state
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      directionalLightDirections: range(3, () => Vector3.zero),
+      directionalLightDirections: range(3).map(() => Vector3.zero),
       input: new Input(screen.canvas),
       models: {
         cube: loadModel(gl, cubeModel),
@@ -90,7 +90,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         light: loadModel(gl, lightModel),
       },
       move: 0,
-      pointLightPositions: range(3, () => Vector3.zero),
+      pointLightPositions: range(3).map(() => Vector3.zero),
       projectionMatrix: Matrix4.identity,
       rendererMemo: memoize(
         indexBooleans,

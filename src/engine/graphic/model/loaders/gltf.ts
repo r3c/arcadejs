@@ -1,5 +1,5 @@
 import { asciiCodec } from "../../../text/encoding";
-import { map } from "../../../language/functional";
+import { optionalMap } from "../../../language/optional";
 import { Channel, loadFromURL, mapChannels } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
@@ -202,7 +202,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     textureOrUndefined: TfTexture | undefined,
     channels?: Channel[]
   ) =>
-    map(textureOrUndefined, (texture) => ({
+    optionalMap(textureOrUndefined, (texture) => ({
       filter: {
         magnifier: texture.sampler.magnifier,
         minifier: texture.sampler.minifier,
@@ -225,7 +225,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     //normalFactor: material.normalFactor, // FIXME: normalFactor is not supported yet
     normalMap: toMap(material.normalTexture),
     occlusionMap: toMap(material.occlusionTexture),
-    occlusionStrength: map(material.occlusionFactor, (factor) =>
+    occlusionStrength: optionalMap(material.occlusionFactor, (factor) =>
       Math.max(factor.x, factor.y, factor.z, factor.w)
     ),
     roughnessMap: toMap(material.metallicRoughnessTexture, [Channel.Green]),
@@ -250,13 +250,13 @@ const expandMesh = (
     } = primitive;
 
     return {
-      coordinates: map(coordinates, (coordinates) =>
+      coordinates: optionalMap(coordinates, (coordinates) =>
         expandAccessor(url, coordinates, 2, Vector2.fromArray, "coordinates")
       ),
       indices: expandAccessor(url, indices, 1, (i) => i[0], "index"),
       material:
         materialName !== undefined ? materials.get(materialName) : undefined,
-      normals: map(normals, (normals) =>
+      normals: optionalMap(normals, (normals) =>
         expandAccessor(url, normals, 3, Vector3.fromArray, "normals")
       ),
       positions: expandAccessor(
@@ -266,10 +266,10 @@ const expandMesh = (
         Vector3.fromArray,
         "positions"
       ),
-      tangents: map(tangents, (tangents) =>
+      tangents: optionalMap(tangents, (tangents) =>
         expandAccessor(url, tangents, 3, Vector3.fromArray, "tangents")
       ),
-      tints: map(tints, (tints) =>
+      tints: optionalMap(tints, (tints) =>
         expandAccessor(url, tints, 4, Vector4.fromArray, "tints")
       ),
     };
@@ -282,7 +282,8 @@ const expandNode = (
   materials: Map<string, Material>
 ): Mesh => ({
   children: node.children.map((child) => expandNode(url, child, materials)),
-  polygons: map(node.mesh, (mesh) => expandMesh(url, mesh, materials)) ?? [],
+  polygons:
+    optionalMap(node.mesh, (mesh) => expandMesh(url, mesh, materials)) ?? [],
   transform: node.transform,
 });
 
@@ -464,7 +465,9 @@ const loadImage = async (
   index: number
 ): Promise<ImageData> => {
   if (definition.uri !== undefined)
-    return await loadFromURL(combinePath(getPathDirectory(url), definition.uri));
+    return await loadFromURL(
+      combinePath(getPathDirectory(url), definition.uri)
+    );
 
   const source = `image[${index}]`;
 
@@ -497,7 +500,7 @@ const loadMaterial = (
   const source = `material[${index}]`;
 
   const toFactor = (property: any) =>
-    map(property, (factor) => ({
+    optionalMap(property, (factor) => ({
       x: factor[0],
       y: factor[1],
       z: factor[2],
@@ -505,7 +508,7 @@ const loadMaterial = (
     }));
 
   const toTexture = (property: any, name: string) =>
-    map(property, (texture) =>
+    optionalMap(property, (texture) =>
       convertReferenceTo(url, source + "." + name, texture.index, textures)
     );
 
@@ -616,7 +619,7 @@ const loadNode = (
 
     nodes[index] = {
       children,
-      mesh: map(node.mesh, (mesh) =>
+      mesh: optionalMap(node.mesh, (mesh) =>
         convertReferenceTo(url, source + ".mesh", mesh, meshes)
       ),
       transform,
@@ -704,7 +707,7 @@ const loadRoot = async (
 ): Promise<Model> => {
   const defaultScene = <number | undefined>structure.scene;
   const version: string =
-    map(structure.asset, (asset) => asset.version) ?? "unknown";
+    optionalMap(structure.asset, (asset) => asset.version) ?? "unknown";
   if (defaultScene === undefined)
     throw invalidData(url, "no default scene is defined");
 

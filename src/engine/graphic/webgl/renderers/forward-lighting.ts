@@ -1,4 +1,4 @@
-import { range } from "../../../language/functional";
+import { range } from "../../../language/iterable";
 import {
   DirectionalLight,
   PointLight,
@@ -333,9 +333,9 @@ void main(void) {
   )} * ambientLightColor * float(LIGHT_AMBIENT);
 
 	// Apply components from directional lights
-  ${range(
-    maxDirectionalLights,
-    (i) => `
+  ${range(maxDirectionalLights)
+    .map(
+      (i) => `
   #ifdef HAS_SHADOW
   float shadowMapSample${i} = texture(directionalLightShadowMaps[${i}], directionalLightShadows[${i}].xy).r;
 
@@ -343,36 +343,38 @@ void main(void) {
   #endif
 
     ${sourceTypeResult} light${i} = ${sourceInvokeDirectional(
-      `directionalLights[${i}]`,
-      `directionalLightDistances[${i}]`
-    )};
+        `directionalLights[${i}]`,
+        `directionalLightDistances[${i}]`
+      )};
 
     color += getLight(light${i}, material, modifiedNormal, eyeDirection);
 
   #ifdef HAS_SHADOW
   }
   #endif`
-  ).join("\n")}
+    )
+    .join("\n")}
 
 	// Apply components from point lights
-  ${range(
-    maxPointLights,
-    (i) => `
+  ${range(maxPointLights)
+    .map(
+      (i) => `
   #ifdef HAS_SHADOW
   if (true) { // FIXME
   #endif
 
     ${sourceTypeResult} light${i} = ${sourceInvokePoint(
-      `pointLights[${i}]`,
-      `pointLightDistances[${i}]`
-    )};
+        `pointLights[${i}]`,
+        `pointLightDistances[${i}]`
+      )};
 
     color += getLight(light${i}, material, modifiedNormal, eyeDirection);
 
   #ifdef HAS_SHADOW
   }
   #endif`
-  ).join("\n")}
+    )
+    .join("\n")}
 
 	// Apply occlusion component
 	color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
@@ -784,12 +786,10 @@ class ForwardLightingRenderer
     const targetHeight = 1024;
     const targetWidth = 1024;
 
-    const directionalShadowTargets = range(
-      maxDirectionalLights,
+    const directionalShadowTargets = range(maxDirectionalLights).map(
       () => new GlTarget(gl, targetWidth, targetHeight)
     );
-    const pointShadowTargets = range(
-      maxPointLights,
+    const pointShadowTargets = range(maxPointLights).map(
       () => new GlTarget(gl, targetWidth, targetHeight)
     );
 

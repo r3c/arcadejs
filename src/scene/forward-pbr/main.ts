@@ -7,7 +7,7 @@ import {
 import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import { range } from "../../engine/language/functional";
+import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
 import {
   loadModelFromGltf,
@@ -137,7 +137,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
       input: new Input(screen.canvas),
-      lights: range(3, () => ({
+      lights: range(3).map(() => ({
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
