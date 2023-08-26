@@ -160,7 +160,7 @@ const loadPainter = (
     shaderUniform.blackQuadTexture(({ source }) => source)
   );
 
-  return new SinglePainter(binding);
+  return new SinglePainter(binding, ({ index }) => index);
 };
 
 class DebugTextureRenderer implements Renderer<GlTexture> {

@@ -1,19 +1,27 @@
-import { Matrix4 } from "../../../../math/matrix";
-import { GlModel, defaultMaterial } from "../../model";
-import { GlContext, indexBuffer } from "../../resource";
+import { Disposable } from "../../../../language/lifecycle";
+import { GlBuffer, GlContext, indexBuffer } from "../../resource";
 import { GlShaderAttribute, shaderAttribute } from "../../shader";
 import { PointLight } from "../snippets/light";
 
 const emptyFloat32s = new Float32Array();
 const emptyInt32s = new Uint32Array();
 
-type GlLightBillboard = {
-  dispose: () => void;
-  set: (lights: ArrayLike<PointLight>) => void;
-  model: GlModel<GlLightPolygon>;
+type GlDirectionalLightBillboard = Disposable & {
+  index: GlBuffer;
+  polygon: GlDirectionalLightPolygon;
 };
 
-type GlLightPolygon = {
+type GlDirectionalLightPolygon = {
+  lightPosition: GlShaderAttribute;
+};
+
+type GlPointLightBillboard = Disposable & {
+  set: (lights: ArrayLike<PointLight>) => void;
+  index: GlBuffer;
+  polygon: GlPointLightPolygon;
+};
+
+type GlPointLightPolygon = {
   lightColor: GlShaderAttribute;
   lightPosition: GlShaderAttribute;
   lightRadius: GlShaderAttribute;
@@ -35,17 +43,48 @@ const recycleArray = <TArray extends Float32Array | Uint32Array>(
 };
 
 /**
+ * Build simple quad intended to be displayed full screen.
+ */
+const directionalLightBillboard = (
+  gl: GlContext
+): GlDirectionalLightBillboard => {
+  const index = indexBuffer(gl, new Uint32Array([0, 1, 2, 0, 2, 3]), 6, true);
+  const lightPosition = shaderAttribute(
+    gl,
+    new Float32Array([
+      -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
+    ]),
+    4,
+    3,
+    true
+  );
+
+  return {
+    dispose: () => {
+      index.dispose();
+      lightPosition.dispose();
+    },
+    index,
+    polygon: {
+      lightPosition,
+    },
+  };
+};
+
+/**
  * Build billboard mask suitable for rendering point lights. For each point
  * light half a cube is built to cover the light influence sphere. It's
  * intended to be displayed always facing camera using a custom view matrix
  * with no rotation.
  */
-const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
+const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
   const index = indexBuffer(gl, emptyInt32s, 0, true);
   const lightColor = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
   const lightPosition = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
   const lightRadius = shaderAttribute(gl, emptyFloat32s, 0, 1, true);
   const lightShift = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
+  const nbIndex = 30;
+  const nbVertex = 8;
 
   let indexArray = new Uint32Array();
   let lightColorArray = new Float32Array();
@@ -55,15 +94,13 @@ const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
 
   return {
     dispose: () => {
+      index.dispose();
       lightColor.dispose();
       lightPosition.dispose();
       lightRadius.dispose();
       lightShift.dispose();
-      index.dispose();
     },
     set: (lights) => {
-      const nbIndex = 30;
-      const nbVertex = 8;
       const indexLength = lights.length * nbIndex;
       const lightColorLength = lights.length * 3 * nbVertex;
       const lightPositionLength = lights.length * 3 * nbVertex;
@@ -180,28 +217,21 @@ const pointLightBillboard = (gl: GlContext): GlLightBillboard => {
       lightRadius.buffer.set(lightRadiusArray, lightRadiusLength);
       lightShift.buffer.set(lightShiftArray, lightShiftLength);
     },
-    model: {
-      library: undefined,
-      meshes: [
-        {
-          children: [],
-          primitives: [
-            {
-              index,
-              material: defaultMaterial,
-              polygon: {
-                lightColor,
-                lightPosition,
-                lightRadius,
-                lightShift,
-              },
-            },
-          ],
-          transform: Matrix4.identity,
-        },
-      ],
+    index,
+    polygon: {
+      lightColor,
+      lightPosition,
+      lightRadius,
+      lightShift,
     },
   };
 };
 
-export { type GlLightBillboard, type GlLightPolygon, pointLightBillboard };
+export {
+  type GlDirectionalLightBillboard,
+  type GlDirectionalLightPolygon,
+  type GlPointLightBillboard,
+  type GlPointLightPolygon,
+  directionalLightBillboard,
+  pointLightBillboard,
+};

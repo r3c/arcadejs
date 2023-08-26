@@ -26,14 +26,19 @@ import {
   GlGeometry,
 } from "../../webgl";
 import {
-  GlLightBillboard,
-  GlLightPolygon,
+  GlDirectionalLightBillboard,
+  GlDirectionalLightPolygon,
+  GlPointLightBillboard,
+  GlPointLightPolygon,
+  directionalLightBillboard,
   pointLightBillboard,
 } from "./objects/billboard";
 import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
 import { Renderer } from "../../display";
 import { GlMaterial, GlObject, GlPolygon, loadModel } from "../model";
 import { GlTexture } from "../texture";
+import { SinglePainter } from "../painters/single";
+import { GlBuffer } from "../resource";
 
 const enum DeferredShadingLightModel {
   None,
@@ -320,22 +325,31 @@ type AmbientLightState = State & {
   ambientLightColor: Vector3;
 };
 
-type LightState = State & {
-  albedoAndShininessBuffer: GlTexture;
-  billboardMatrix: Matrix4;
-  depthBuffer: GlTexture;
-  normalAndGlossinessBuffer: GlTexture;
-  viewportSize: Vector2;
-};
-
-type DirectionalLightState = LightState & {
-  directionalLight: DirectionalLight;
-};
-
 type SceneState = State & {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   pointLights?: PointLight[];
+};
+
+type LightScene = {
+  albedoAndShininessBuffer: GlTexture;
+  depthBuffer: GlTexture;
+  index: GlBuffer;
+  normalAndGlossinessBuffer: GlTexture;
+  projectionMatrix: Matrix4;
+  viewportSize: Vector2;
+  modelMatrix: Matrix4;
+  viewMatrix: Matrix4;
+};
+
+type DirectionalLightScene = LightScene & {
+  directionalLight: DirectionalLight;
+  polygon: GlDirectionalLightPolygon;
+};
+
+type PointLightScene = LightScene & {
+  billboardMatrix: Matrix4;
+  polygon: GlPointLightPolygon;
 };
 
 const loadAmbientPainter = (
@@ -493,7 +507,7 @@ const loadGeometryPainter = (
   );
 };
 
-const loadLightBinding = <TSceneState extends LightState>(
+const loadLightBinding = <TScene extends LightScene>(
   runtime: GlRuntime,
   configuration: Configuration,
   type: DeferredShadingLightType
@@ -522,29 +536,13 @@ const loadLightBinding = <TSceneState extends LightState>(
     directives
   );
 
-  const polygonBinding = shader.declare<GlLightPolygon>();
+  const binding = shader.declare<TScene>();
 
-  if (type === DeferredShadingLightType.Point) {
-    polygonBinding.setAttribute("lightColor", (p) => p.lightColor);
-    polygonBinding.setAttribute("lightPosition", (p) => p.lightPosition);
-    polygonBinding.setAttribute("lightRadius", (p) => p.lightRadius);
-    polygonBinding.setAttribute("lightShift", (p) => p.lightShift);
-  }
-
-  const geometryBinding = shader.declare<GlGeometry>();
-
-  geometryBinding.setUniform(
+  binding.setUniform(
     "modelMatrix",
     shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
   );
-
-  const sceneBinding = shader.declare<TSceneState>();
-
-  sceneBinding.setUniform(
-    "billboardMatrix",
-    shaderUniform.numberMatrix4(({ billboardMatrix }) => billboardMatrix)
-  );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "inverseProjectionMatrix",
     shaderUniform.numberMatrix4(({ projectionMatrix }) => {
       const inverseProjectionMatrix = Matrix4.fromObject(projectionMatrix);
@@ -554,63 +552,62 @@ const loadLightBinding = <TSceneState extends LightState>(
       return inverseProjectionMatrix;
     })
   );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "projectionMatrix",
     shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
   );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "viewMatrix",
     shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
   );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "viewportSize",
     shaderUniform.numberVector2(({ viewportSize }) => viewportSize)
   );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "albedoAndShininess",
     shaderUniform.blackQuadTexture((state) => state.albedoAndShininessBuffer)
   );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "depth",
     shaderUniform.blackQuadTexture(({ depthBuffer }) => depthBuffer)
   );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "normalAndGlossiness",
     shaderUniform.blackQuadTexture((state) => state.normalAndGlossinessBuffer)
   );
 
-  return { geometryBinding, polygonBinding, sceneBinding };
+  return binding;
 };
 
 const loadDirectionalLightPainter = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const { geometryBinding, polygonBinding, sceneBinding } =
-    loadLightBinding<DirectionalLightState>(
-      runtime,
-      configuration,
-      DeferredShadingLightType.Directional
-    );
+  const binding = loadLightBinding<DirectionalLightScene>(
+    runtime,
+    configuration,
+    DeferredShadingLightType.Directional
+  );
 
-  sceneBinding.setUniform(
+  // FIXME: use attributes for all
+  binding.setUniform(
     "directionalLight.color",
     shaderUniform.numberVector3(
       ({ directionalLight }) => directionalLight.color
     )
   );
-  sceneBinding.setUniform(
+  binding.setUniform(
     "directionalLight.direction",
     shaderUniform.numberVector3(
       ({ directionalLight }) => directionalLight.direction
     )
   );
+  binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return new SingularPainter<DirectionalLightState, GlLightPolygon>(
-    sceneBinding,
-    geometryBinding,
-    undefined,
-    polygonBinding
+  return new SinglePainter<DirectionalLightScene>(
+    binding,
+    ({ index }) => index
   );
 };
 
@@ -618,19 +615,22 @@ const loadPointLightPainter = (
   runtime: GlRuntime,
   configuration: Configuration
 ) => {
-  const { geometryBinding, polygonBinding, sceneBinding } =
-    loadLightBinding<LightState>(
-      runtime,
-      configuration,
-      DeferredShadingLightType.Point
-    );
-
-  return new SingularPainter<LightState, GlLightPolygon>(
-    sceneBinding,
-    geometryBinding,
-    undefined,
-    polygonBinding
+  const binding = loadLightBinding<PointLightScene>(
+    runtime,
+    configuration,
+    DeferredShadingLightType.Point
   );
+
+  binding.setUniform(
+    "billboardMatrix",
+    shaderUniform.numberMatrix4(({ billboardMatrix }) => billboardMatrix)
+  );
+  binding.setAttribute("lightColor", ({ polygon: p }) => p.lightColor);
+  binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
+  binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
+  binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
+
+  return new SinglePainter<PointLightScene>(binding, ({ index }) => index);
 };
 
 class DeferredShadingRenderer
@@ -644,17 +644,13 @@ class DeferredShadingRenderer
     SingularScene<AmbientLightState, AmbientLightPolygon>
   >;
   private readonly ambientLightObjects: GlObject<AmbientLightPolygon>[];
-  private readonly directionalLightPainter: GlPainter<
-    SingularScene<DirectionalLightState, GlLightPolygon>
-  >;
+  private readonly directionalLightBillboard: GlDirectionalLightBillboard;
+  private readonly directionalLightPainter: GlPainter<DirectionalLightScene>;
   private readonly fullscreenProjection: Matrix4;
   private readonly geometryPainter: GlPainter<SingularScene<State, GlPolygon>>;
   private readonly geometryTarget: GlTarget;
-  private readonly lightBillboard: GlLightBillboard;
-  private readonly lightObjects: GlObject<GlLightPolygon>[];
-  private readonly pointLightPainter: GlPainter<
-    SingularScene<LightState, GlLightPolygon>
-  >;
+  private readonly pointLightBillboard: GlPointLightBillboard;
+  private readonly pointLightPainter: GlPainter<PointLightScene>;
   private readonly runtime: GlRuntime;
   private readonly target: GlTarget;
 
@@ -681,6 +677,7 @@ class DeferredShadingRenderer
       GlTextureFormat.Depth16,
       GlTextureType.Quad
     );
+    this.directionalLightBillboard = directionalLightBillboard(gl);
     this.directionalLightPainter = loadDirectionalLightPainter(
       runtime,
       configuration
@@ -688,10 +685,7 @@ class DeferredShadingRenderer
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = loadGeometryPainter(runtime, configuration);
     this.geometryTarget = geometry;
-    this.lightBillboard = pointLightBillboard(gl);
-    this.lightObjects = [
-      { matrix: Matrix4.identity, model: this.lightBillboard.model },
-    ];
+    this.pointLightBillboard = pointLightBillboard(gl);
     this.normalAndGlossinessBuffer = geometry.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
@@ -768,48 +762,41 @@ class DeferredShadingRenderer
       // passing 2 distinct "view" matrices to light shader:
       // - One for projecting our quad to fullscreen
       // - One for computing light directions in camera space
-      const objectMatrix = Matrix4.fromObject(state.viewMatrix);
+      const modelMatrix = Matrix4.fromObject(state.viewMatrix);
 
-      objectMatrix.invert();
-
-      this.lightObjects[0].matrix = objectMatrix;
+      modelMatrix.invert();
 
       for (const directionalLight of state.directionalLights) {
         this.directionalLightPainter.paint(this.target, {
-          objects: this.lightObjects,
-          state: {
-            albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-            depthBuffer: this.depthBuffer,
-            directionalLight,
-            normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-            projectionMatrix: this.fullscreenProjection,
-            viewMatrix: state.viewMatrix,
-            viewportSize,
-            billboardMatrix: Matrix4.identity, // FIXME: unused
-          },
+          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+          depthBuffer: this.depthBuffer,
+          directionalLight,
+          index: this.directionalLightBillboard.index,
+          modelMatrix,
+          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+          polygon: this.directionalLightBillboard.polygon,
+          projectionMatrix: this.fullscreenProjection,
           viewMatrix: state.viewMatrix,
+          viewportSize,
         });
       }
     }
 
     // Draw point lights using quads
     if (state.pointLights !== undefined) {
-      // FIXME: remove when directional light doesn't overwrite this value
-      this.lightObjects[0].matrix = Matrix4.identity;
-      this.lightBillboard.set(state.pointLights);
+      this.pointLightBillboard.set(state.pointLights);
 
       this.pointLightPainter.paint(this.target, {
-        objects: this.lightObjects,
-        state: {
-          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-          billboardMatrix,
-          depthBuffer: this.depthBuffer,
-          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
-          projectionMatrix: state.projectionMatrix,
-          viewMatrix: state.viewMatrix,
-          viewportSize,
-        },
+        albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+        billboardMatrix,
+        depthBuffer: this.depthBuffer,
+        index: this.pointLightBillboard.index,
+        modelMatrix: Matrix4.identity, // FIXME: remove from shader
+        normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+        polygon: this.pointLightBillboard.polygon,
+        projectionMatrix: state.projectionMatrix,
         viewMatrix: state.viewMatrix,
+        viewportSize,
       });
     }
   }
