@@ -89,7 +89,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     geometryBinding.setUniform(
       "modelMatrix",
-      shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+      shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
     );
 
     const polygonBinding = shader.declare<GlPolygon>();
@@ -102,11 +102,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     materialBinding.setUniform(
       "albedoFactor",
-      shaderUniform.numberArray4(({ albedoFactor }) => albedoFactor)
+      shaderUniform.array4f(({ albedoFactor }) => albedoFactor)
     );
     materialBinding.setUniform(
       "albedoMap",
-      shaderUniform.whiteQuadTexture(({ albedoMap }) =>
+      shaderUniform.quadWhite(({ albedoMap }) =>
         tweak.useTexture ? albedoMap : undefined
       )
     );
@@ -115,11 +115,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      shaderUniform.numberMatrix4(({ projectionMatrix }) => projectionMatrix)
+      shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      shaderUniform.numberMatrix4(({ viewMatrix }) => viewMatrix)
+      shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
     );
 
     return {

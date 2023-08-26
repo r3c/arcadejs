@@ -153,11 +153,11 @@ const loadPainter = (
   binding.setAttribute("position", ({ position }) => position);
   binding.setUniform(
     "modelMatrix",
-    shaderUniform.numberMatrix4(({ modelMatrix }) => modelMatrix)
+    shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
   );
   binding.setUniform(
     "source",
-    shaderUniform.blackQuadTexture(({ source }) => source)
+    shaderUniform.quadBlack(({ source }) => source)
   );
 
   return new SinglePainter(binding, ({ index }) => index);

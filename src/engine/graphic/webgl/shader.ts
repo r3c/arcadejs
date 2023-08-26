@@ -323,16 +323,7 @@ const shaderDirective = {
 };
 
 const shaderUniform = {
-  blackQuadTexture: <TState>(
-    getter: (state: TState) => GlTexture | undefined
-  ) =>
-    textureUniform(
-      getter,
-      ({ blackTexture }) => blackTexture,
-      WebGL2RenderingContext["TEXTURE_2D"]
-    ),
-
-  booleanScalar: <TState>(
+  boolean: <TState>(
     getter: (state: TState) => boolean
   ): GlShaderUniform<TState, number> => ({
     allocateTexture: false,
@@ -341,7 +332,7 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniform1i(l, v),
   }),
 
-  cubeTexture: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+  cube: <TState>(getter: (state: TState) => GlTexture | undefined) =>
     textureUniform(
       getter,
       () => {
@@ -350,7 +341,7 @@ const shaderUniform = {
       WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
     ),
 
-  numberArray4: <TState>(
+  array4f: <TState>(
     getter: (state: TState) => number[]
   ): GlShaderUniform<TState, number[]> => ({
     allocateTexture: false,
@@ -359,7 +350,7 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniform4fv(l, v),
   }),
 
-  numberMatrix3: <TState>(
+  matrix3f: <TState>(
     getter: (state: TState) => Matrix3
   ): GlShaderUniform<TState, Float32Array> => {
     return {
@@ -384,7 +375,7 @@ const shaderUniform = {
     };
   },
 
-  numberMatrix4: <TState>(
+  matrix4f: <TState>(
     getter: (state: TState) => Matrix4
   ): GlShaderUniform<TState, Float32Array> => ({
     allocateTexture: false,
@@ -414,7 +405,7 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniformMatrix4fv(l, false, v),
   }),
 
-  numberScalar: <TState>(
+  number: <TState>(
     getter: (state: TState) => number
   ): GlShaderUniform<TState, number> => ({
     allocateTexture: false,
@@ -423,7 +414,21 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniform1f(l, v),
   }),
 
-  numberVector2: <TState>(
+  quadBlack: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+    textureUniform(
+      getter,
+      ({ blackTexture }) => blackTexture,
+      WebGL2RenderingContext["TEXTURE_2D"]
+    ),
+
+  quadWhite: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+    textureUniform(
+      getter,
+      ({ whiteTexture }) => whiteTexture,
+      WebGL2RenderingContext["TEXTURE_2D"]
+    ),
+
+  vector2f: <TState>(
     getter: (state: TState) => Vector2
   ): GlShaderUniform<TState, Float32Array> => ({
     allocateTexture: false,
@@ -439,7 +444,7 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniform2fv(l, v),
   }),
 
-  numberVector3: <TState>(
+  vector3f: <TState>(
     getter: (state: TState) => Vector3
   ): GlShaderUniform<TState, Float32Array> => ({
     allocateTexture: false,
@@ -455,15 +460,6 @@ const shaderUniform = {
     },
     setUniform: (g, l, v) => g.uniform3fv(l, v),
   }),
-
-  whiteQuadTexture: <TState>(
-    getter: (state: TState) => GlTexture | undefined
-  ) =>
-    textureUniform(
-      getter,
-      ({ whiteTexture }) => whiteTexture,
-      WebGL2RenderingContext["TEXTURE_2D"]
-    ),
 };
 
 export {
