@@ -5,7 +5,7 @@ import {
   declare,
 } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/display";
+import { Renderer, WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
   ForwardLightingObject,
@@ -21,6 +21,12 @@ import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
+import {
+  DebugTextureRenderer,
+  DebugTextureFormat,
+  DebugTextureSelect,
+} from "../../engine/graphic/webgl/renderers/debug-texture";
+import { GlTexture } from "../../engine/graphic/webgl/texture";
 
 /*
  ** What changed?
@@ -38,10 +44,12 @@ const configuration = {
   useSpecular: true,
   useNormalMap: true,
   useHeightMap: true,
+  debugMode: [".None", "Shadow"],
 };
 
 type ApplicationState = {
   camera: Camera;
+  debugRenderer: Renderer<GlTexture>;
   directionalLightDirections: Vector3[];
   input: Input;
   models: {
@@ -82,6 +90,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Create state
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      debugRenderer: new DebugTextureRenderer(runtime, target, {
+        format: DebugTextureFormat.Monochrome,
+        select: DebugTextureSelect.Red,
+        zNear: 0.1,
+        zFar: 100,
+      }),
       directionalLightDirections: range(3).map(() => Vector3.zero),
       input: new Input(screen.canvas),
       models: {
@@ -118,6 +132,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   render(state) {
     const {
       camera,
+      debugRenderer,
       directionalLightDirections,
       models,
       pointLightPositions,
@@ -131,7 +146,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     // Forward pass
-    const renderer = rendererMemo.get(getOptions(tweak));
+    const sceneRenderer = rendererMemo.get(getOptions(tweak));
     const scene: GlScene<SceneState, ForwardLightingObject> = {
       state: {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
@@ -186,7 +201,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ),
     };
 
-    renderer.render(scene);
+    sceneRenderer.render(scene);
+
+    // Draw texture debug
+    if (state.tweak.debugMode === 1) {
+      debugRenderer.render(sceneRenderer.directionalShadowBuffers[0]);
+    }
   },
 
   resize(state, screen) {
