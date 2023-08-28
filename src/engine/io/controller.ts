@@ -21,39 +21,39 @@ type Position = {
 
 const emptyPointers: Pointer[] = [];
 const pointersByNbTouch = new Map<number, Pointer[]>([
-  [1, [Pointer.Focus, Pointer.Hover]],
-  [2, [Pointer.Grab]],
+  [1, [Pointer.Grab, Pointer.Hover]],
+  [2, [Pointer.Drag]],
 ]);
 
 /**
  * Mouse and keyboard key codes.
  */
 const enum Key {
-  Alt,
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Backspace,
-  Capslock,
-  Control,
-  Delete,
-  End,
-  Enter,
-  Escape,
-  Home,
-  Insert,
-  MouseLeft,
-  MouseMiddle,
-  MouseRight,
-  Numlock,
-  OS,
-  PageDown,
-  PageUp,
-  Pause,
-  Shift,
-  Space,
-  Tab,
+  Alt = "alt",
+  ArrowDown = "arrowdown",
+  ArrowLeft = "arrowleft",
+  ArrowRight = "arrowright",
+  ArrowUp = "arrowup",
+  Backspace = "backspace",
+  Capslock = "capslock",
+  Control = "control",
+  Delete = "delete",
+  End = "end",
+  Enter = "enter",
+  Escape = "escape",
+  Home = "home",
+  Insert = "insert",
+  MouseLeft = "mouseleft",
+  MouseMiddle = "mousemiddle",
+  MouseRight = "mouseright",
+  Numlock = "numlock",
+  OS = "os",
+  PageDown = "pagedown",
+  PageUp = "pageup",
+  Pause = "pause",
+  Shift = "shift",
+  Space = "space",
+  Tab = "ab",
 }
 
 /**
@@ -61,40 +61,40 @@ const enum Key {
  */
 const enum Pointer {
   Hover,
-  Focus,
   Grab,
+  Drag,
 }
 
-const keyNameFocus = "0";
-const keyNameGrab = "2";
-const wheelSpeed = -1 / 20;
+const buttonGrabName = "mouseleft";
+const buttonDragName = "mouseright";
+const wheelSpeed = -1 / 32;
 
-const keyNames: [Key, string][] = [
-  [Key.Alt, "Alt"],
-  [Key.ArrowDown, "ArrowDown"],
-  [Key.ArrowLeft, "ArrowLeft"],
-  [Key.ArrowRight, "ArrowRight"],
-  [Key.ArrowUp, "ArrowUp"],
-  [Key.Backspace, "Backspace"],
-  [Key.Capslock, "Capslock"],
-  [Key.Control, "Control"],
-  [Key.Delete, "Delete"],
-  [Key.End, "End"],
-  [Key.Enter, "Enter"],
-  [Key.Escape, "Escape"],
-  [Key.Home, "Home"],
-  [Key.Insert, "Insert"],
-  [Key.MouseLeft, keyNameFocus],
-  [Key.MouseMiddle, "1"],
-  [Key.MouseRight, keyNameGrab],
-  [Key.Numlock, "NumLock"],
-  [Key.OS, "OS"],
-  [Key.PageDown, "PageDown"],
-  [Key.PageUp, "PageUp"],
-  [Key.Pause, "Pause"],
-  [Key.Shift, "Shift"],
-  [Key.Space, " "],
-  [Key.Tab, "Tab"],
+const keys: [Key, string, string][] = [
+  [Key.Alt, "Alt", "alt"],
+  [Key.ArrowDown, "ArrowDown", "arrowdown"],
+  [Key.ArrowLeft, "ArrowLeft", "arrowleft"],
+  [Key.ArrowRight, "ArrowRight", "arrowright"],
+  [Key.ArrowUp, "ArrowUp", "arrowup"],
+  [Key.Backspace, "Backspace", "backspace"],
+  [Key.Capslock, "Capslock", "capslock"],
+  [Key.Control, "Control", "control"],
+  [Key.Delete, "Delete", "delete"],
+  [Key.End, "End", "end"],
+  [Key.Enter, "Enter", "enter"],
+  [Key.Escape, "Escape", "escape"],
+  [Key.Home, "Home", "home"],
+  [Key.Insert, "Insert", "insert"],
+  [Key.MouseLeft, "0", buttonGrabName],
+  [Key.MouseMiddle, "1", "mousemiddle"],
+  [Key.MouseRight, "2", buttonDragName],
+  [Key.Numlock, "NumLock", "numlock"],
+  [Key.OS, "OS", "os"],
+  [Key.PageDown, "PageDown", "pagedown"],
+  [Key.PageUp, "PageUp", "pageup"],
+  [Key.Pause, "Pause", "pause"],
+  [Key.Shift, "Shift", "shift"],
+  [Key.Space, " ", "space"],
+  [Key.Tab, "Tab", "tab"],
 ];
 
 /*
@@ -119,8 +119,8 @@ class Input {
 
     this.buttonStatesByKey = new Map();
     this.bufferMoves = {
-      [Pointer.Focus]: { x: 0, y: 0 },
       [Pointer.Grab]: { x: 0, y: 0 },
+      [Pointer.Drag]: { x: 0, y: 0 },
       [Pointer.Hover]: { x: 0, y: 0 },
     };
     this.bufferZoom = 0;
@@ -131,14 +131,14 @@ class Input {
     this.touchPositions = new Map();
 
     // Define and attach event listeners
-    const keyByName = new Map(keyNames.map(([key, name]) => [name, key]));
+    const keyByCode = new Map(keys.map(([key, code]) => [code, key]));
     const handlers: { name: string; callback: (event: any) => void }[] = [
       { name: "contextmenu", callback: () => {} }, // NoOp, just disable context menu on canvas
       {
         name: "keydown",
         callback: (event: KeyboardEvent) => {
           if (!event.repeat) {
-            this.processKeyPress(event.key, keyByName, true);
+            this.processKeyPress(event.key, keyByCode, true);
           }
         },
       },
@@ -146,14 +146,14 @@ class Input {
         name: "keyup",
         callback: (event: KeyboardEvent) => {
           if (!event.repeat) {
-            this.processKeyPress(event.key, keyByName, false);
+            this.processKeyPress(event.key, keyByCode, false);
           }
         },
       },
       {
         name: "mousedown",
         callback: (event: MouseEvent) =>
-          this.processKeyPress(event.button.toString(), keyByName, true),
+          this.processKeyPress(event.button.toString(), keyByCode, true),
       },
       {
         name: "mousemove",
@@ -162,7 +162,7 @@ class Input {
       {
         name: "mouseup",
         callback: (event: MouseEvent) =>
-          this.processKeyPress(event.button.toString(), keyByName, false),
+          this.processKeyPress(event.button.toString(), keyByCode, false),
       },
       {
         name: "touchend",
@@ -197,9 +197,9 @@ class Input {
       });
     }
 
-    // Register known keys as buttons
-    for (const [key, name] of keyNames) {
-      this.assign(key, name.toLowerCase());
+    // Register default buttons for known keys
+    for (const [key, _, button] of keys) {
+      this.assign(key, button);
     }
 
     // Relocate mouse on window resize
@@ -329,16 +329,13 @@ class Input {
 
   /**
    * Change state of enabled buttons in given list.
-   * states: current button states
-   * buttons: button IDs list
-   * value: new button state
    */
   private processKeyPress(
-    keyName: string,
-    keyByName: Map<string, Key>,
+    keyCode: string,
+    keyByCode: Map<string, Key>,
     pressed: boolean
   ) {
-    const key = keyByName.get(keyName);
+    const key = keyByCode.get(keyCode);
 
     if (key === undefined) {
       return;
@@ -370,9 +367,9 @@ class Input {
 
     let bufferMove: Position;
 
-    if (this.isPressed(keyNameFocus)) {
-      bufferMove = this.bufferMoves[Pointer.Focus];
-    } else if (this.isPressed(keyNameGrab)) {
+    if (this.isPressed(buttonDragName)) {
+      bufferMove = this.bufferMoves[Pointer.Drag];
+    } else if (this.isPressed(buttonGrabName)) {
       bufferMove = this.bufferMoves[Pointer.Grab];
     } else {
       bufferMove = this.bufferMoves[Pointer.Hover];

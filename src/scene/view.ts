@@ -51,8 +51,8 @@ class Camera {
   }
 
   public move(input: Input, elapsed: number) {
-    const focusMovement = input.fetchMove(Pointer.Focus);
-    const grabMovement = input.fetchMove(Pointer.Grab);
+    const focusMovement = input.fetchMove(Pointer.Grab);
+    const grabMovement = input.fetchMove(Pointer.Drag);
     const zoom = input.fetchZoom();
 
     if (focusMovement.x !== 0 || focusMovement.y !== 0) {
