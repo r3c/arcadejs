@@ -24,29 +24,29 @@ import { Vector2, Vector3, Vector4 } from "../../../math/vector";
  ** http://www.martinreddy.net/gfx/3d/MLI.spec
  */
 
-interface Context {
+type Context = {
   codec: Codec;
   directory: string;
   file: string;
   reader: BinaryReader;
-}
+};
 
-interface RawMaterial {
+type RawMaterial = {
   material: Material;
   name: string;
-}
+};
 
-interface RawModel {
+type RawModel = {
   materials: Map<string, Material>;
   polygons: RawPolygon[];
-}
+};
 
-interface RawPolygon {
-  coordinates: Vector2[];
+type RawPolygon = {
+  coordinates: Vector2[] | undefined;
   indices: number[];
   materialName: string | undefined;
   positions: Vector3[];
-}
+};
 
 const invalidChunk = (file: string, chunk: number, description: string) => {
   return Error(`invalid chunk ${chunk} in file ${file}: ${description}`);
@@ -60,25 +60,31 @@ const load = async (url: string): Promise<Model> => {
     reader: new BinaryReader(await readURL(BinaryFormat, url), Endian.Little),
   };
 
-  const model = await scan(context, context.reader.getLength(), readRoot, {
-    materials: new Map(),
-    polygons: [],
-  });
+  const { materials, polygons } = await scan(
+    context,
+    context.reader.getLength(),
+    readRoot,
+    {
+      materials: new Map(),
+      polygons: [],
+    }
+  );
 
   return {
     meshes: [
       {
         children: [],
-        polygons: model.polygons.map((mesh) => ({
-          coordinates:
-            mesh.coordinates.length > 0 ? mesh.coordinates : undefined,
-          indices: mesh.indices,
-          material:
-            mesh.materialName !== undefined
-              ? model.materials.get(mesh.materialName)
-              : undefined,
-          positions: mesh.positions,
-        })),
+        polygons: polygons.map(
+          ({ coordinates, indices, materialName, positions }) => ({
+            coordinates,
+            indices,
+            material:
+              materialName !== undefined
+                ? materials.get(materialName)
+                : undefined,
+            positions,
+          })
+        ),
         transform: Matrix4.identity,
       },
     ],
@@ -263,7 +269,7 @@ const readObject = async (
   switch (chunk) {
     case 0x4100: // OBJ_TRIMESH
       const mesh = await scan(context, end, readPolygon, {
-        coordinates: [],
+        coordinates: undefined,
         indices: [],
         materialName: undefined,
         positions: [],
@@ -309,6 +315,10 @@ const readPolygon = async (
       return state;
 
     case 0x4140: // TRI_MAPPINGCOORS
+      if (state.coordinates === undefined) {
+        state.coordinates = [];
+      }
+
       for (let count = context.reader.readInt16u(); count > 0; --count) {
         const x = context.reader.readFloat32();
         const y = 1.0 - context.reader.readFloat32();
