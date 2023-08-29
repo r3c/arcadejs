@@ -14,6 +14,28 @@ class MutableVector2 implements Vector2 {
     this.y = y;
   }
 
+  public len(): number {
+    const { x, y } = this;
+
+    return Math.sqrt(x * x + y * y);
+  }
+
+  public normalize(): void {
+    const length = this.len();
+
+    if (length !== 0) {
+      const lengthInverse = 1 / length;
+
+      this.x *= lengthInverse;
+      this.y *= lengthInverse;
+    }
+  }
+
+  public scale(factor: number): void {
+    this.x *= factor;
+    this.y *= factor;
+  }
+
   public set(source: Vector2): void {
     this.x = source.x;
     this.y = source.y;

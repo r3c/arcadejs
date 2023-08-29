@@ -61,21 +61,16 @@ const computeNormals = (indices: number[], points: Vector3[]): Vector3[] => {
     const index1 = indices[i + 0];
     const index2 = indices[i + 1];
     const index3 = indices[i + 2];
-    const point1 = Vector3.fromObject(points[index1]);
-    const point2 = Vector3.fromObject(points[index2]);
-    const point3 = Vector3.fromObject(points[index3]);
+    const u = Vector3.fromObject(points[index1]);
+    const v = Vector3.fromObject(points[index3]);
 
-    point1.sub(point2);
-    point3.sub(point2);
-    point3.cross(point1);
+    u.sub(points[index2]);
+    v.sub(points[index2]);
+    u.cross(v);
 
-    const normal = point3;
-
-    normal.normalize;
-
-    normals[index1].add(normal);
-    normals[index2].add(normal);
-    normals[index3].add(normal);
+    normals[index1].add(u);
+    normals[index2].add(u);
+    normals[index3].add(u);
   }
 
   for (const normal of normals) {
@@ -102,24 +97,24 @@ const computeTangents = (
     const index1 = indices[i + 0];
     const index2 = indices[i + 1];
     const index3 = indices[i + 2];
-    const coord1 = Vector2.fromObject(coords[index1]);
     const coord2 = Vector2.fromObject(coords[index2]);
     const coord3 = Vector2.fromObject(coords[index3]);
-    const point1 = Vector3.fromObject(points[index1]);
     const point2 = Vector3.fromObject(points[index2]);
     const point3 = Vector3.fromObject(points[index3]);
 
-    coord3.sub(coord2);
-    coord1.sub(coord2);
-    point3.sub(point2);
-    point1.sub(point2);
-
-    const coef = 1 / (coord3.x * coord1.y - coord1.x * coord3.y);
+    coord2.sub(coords[index1]);
+    coord2.normalize();
+    coord3.sub(coords[index1]);
+    coord3.normalize();
+    point2.sub(points[index1]);
+    point2.normalize();
+    point3.sub(points[index1]);
+    point3.normalize();
 
     const tangent = {
-      x: coef * (point3.x * coord1.y - point1.x * coord3.y),
-      y: coef * (point3.y * coord1.y - point1.y * coord3.y),
-      z: coef * (point3.z * coord1.y - point1.z * coord3.y),
+      x: coord3.y * point2.x - coord2.y * point3.x,
+      y: coord3.y * point2.y - coord2.y * point3.y,
+      z: coord3.y * point2.z - coord2.y * point3.z,
     };
 
     tangents[index1].add(tangent);
