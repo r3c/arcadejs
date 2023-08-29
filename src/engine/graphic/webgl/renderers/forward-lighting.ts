@@ -837,9 +837,14 @@ class ForwardLightingRenderer
     const gl = this.runtime.context;
     const pointLights = state.pointLights || [];
 
+    gl.colorMask(false, false, false, false);
     gl.disable(gl.BLEND);
+
     gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.FRONT);
+
     gl.enable(gl.DEPTH_TEST);
+    gl.depthMask(true);
 
     // Create list of opaque objects
     const obstacles: GlObject[] = [];
@@ -874,9 +879,6 @@ class ForwardLightingRenderer
           Matrix4.fromDirection(shadowDirection, { x: 0, y: 1, z: 0 }),
         ]
       );
-
-      gl.colorMask(false, false, false, false);
-      gl.cullFace(gl.FRONT);
 
       this.directionalShadowTargets[bufferIndex].clear(0);
       this.directionalShadowPainter.paint(
