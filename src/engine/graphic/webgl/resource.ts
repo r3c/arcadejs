@@ -1,13 +1,15 @@
 import { Disposable } from "../../language/lifecycle";
 
-type GlArray =
+type GlArray = Omit<
   | Float32Array
   | Int8Array
   | Int16Array
   | Int32Array
   | Uint8Array
   | Uint16Array
-  | Uint32Array;
+  | Uint32Array,
+  "length"
+>;
 
 type GlBuffer = Disposable & {
   set: (data: GlArray, length: number) => void;
@@ -60,11 +62,7 @@ const bufferCreate = (
   }
 
   const usage = isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
-  const set = (data: GlArray, length: number) => {
-    if (length > data.length) {
-      throw new Error("not enough data in source array");
-    }
-
+  const set = (data: Omit<GlArray, "length">, length: number) => {
     gl.bindBuffer(bufferTarget, buffer);
     gl.bufferData(bufferTarget, data, usage, 0, length);
 
