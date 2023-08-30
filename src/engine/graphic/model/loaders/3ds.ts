@@ -296,7 +296,9 @@ const readPolygon = async (
         const y = context.reader.readFloat32();
         const z = context.reader.readFloat32();
 
-        state.positions.push(Vector3.fromXYZ(x, y, z));
+        // Swap from 3DS to OpenGL coordinates system
+        // See: https://forums.ogre3d.org/viewtopic.php?p=106490&sid=33050fc83f38cf0e31b9649398d95295#p106490
+        state.positions.push(Vector3.fromXYZ(x, z, -y));
       }
 
       return state;
