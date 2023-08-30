@@ -40,6 +40,14 @@ function downloadFiles(files) {
 
 downloadFiles([
   {
+    destination: "public/model/colmftr1/COLMFTR1.3DS",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/colmftr1/COLMFTR1.3DS",
+  },
+  {
+    destination: "public/model/colmftr1/COLMFTR1.JPG",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/colmftr1/COLMFTR1.JPG",
+  },
+  {
     destination: "public/model/cube/mybricks1_AO.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_AO.png",
   },
