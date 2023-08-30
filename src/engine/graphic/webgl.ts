@@ -10,9 +10,9 @@ import {
   GlTextureType,
   renderbufferConfigure,
   renderbufferCreate,
-  textureCreate,
+  createTexture,
 } from "./webgl/texture";
-import { GlShader, GlShaderDirectives, shader } from "./webgl/shader";
+import { GlShader, GlShaderDirectives, createShader } from "./webgl/shader";
 
 type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -58,7 +58,7 @@ type GlScene<TSceneState, TObject> = {
 };
 
 const createRuntime = (context: GlContext): GlRuntime => {
-  const blackTexture = textureCreate(
+  const blackTexture = createTexture(
     context,
     undefined,
     GlTextureType.Quad,
@@ -69,7 +69,7 @@ const createRuntime = (context: GlContext): GlRuntime => {
     new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
   );
 
-  const whiteTexture = textureCreate(
+  const whiteTexture = createTexture(
     context,
     undefined,
     GlTextureType.Quad,
@@ -96,7 +96,7 @@ const createRuntime = (context: GlContext): GlRuntime => {
       whiteTexture.dispose();
     },
     createShader: (vertexShaderSource, fragmentShaderSource, directives) => {
-      return shader(
+      return createShader(
         context,
         useProgram,
         { blackTexture, whiteTexture },
@@ -119,7 +119,7 @@ const loadTextureCube = (
   faceNegativeZ: ImageData,
   filter?: Filter
 ): GlTexture => {
-  return textureCreate(
+  return createTexture(
     gl,
     undefined,
     GlTextureType.Cube,
@@ -143,7 +143,7 @@ const loadTextureQuad = (
   image: ImageData,
   filter?: Filter
 ): GlTexture => {
-  return textureCreate(
+  return createTexture(
     gl,
     undefined,
     GlTextureType.Quad,
@@ -238,7 +238,7 @@ class GlTarget {
 
       // Resize previously existing texture attachments if any
       for (const texture of attachment.textures) {
-        textureCreate(
+        createTexture(
           gl,
           texture.handle,
           GlTextureType.Quad,
@@ -447,7 +447,7 @@ class GlTarget {
       wrap: Wrap.Clamp,
     };
 
-    const texture = textureCreate(
+    const texture = createTexture(
       gl,
       undefined,
       type,

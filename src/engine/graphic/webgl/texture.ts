@@ -129,7 +129,7 @@ const textureGetWrap = (gl: GlContext, wrap: Wrap) => {
   }
 };
 
-const textureCreate = (
+const createTexture = (
   gl: GlContext,
   previousTexture: GlTexture | undefined,
   type: GlTextureType,
@@ -238,7 +238,7 @@ export {
   type GlTexture,
   GlTextureFormat,
   GlTextureType,
+  createTexture,
   renderbufferConfigure,
   renderbufferCreate,
-  textureCreate,
 };

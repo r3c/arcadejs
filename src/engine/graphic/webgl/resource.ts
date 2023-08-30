@@ -33,14 +33,14 @@ type GlBufferType =
 
 type GlContext = WebGL2RenderingContext;
 
-const arrayBuffer = (
+const createArrayBuffer = (
   gl: GlContext,
   data: GlArray,
   length: number,
   isDynamic: boolean
 ): GlBuffer => bufferCreate(gl, gl.ARRAY_BUFFER, data, length, isDynamic);
 
-const indexBuffer = (
+const createIndexBuffer = (
   gl: GlContext,
   data: GlArray,
   length: number,
@@ -113,6 +113,6 @@ export {
   type GlArray,
   type GlBuffer,
   type GlContext,
-  arrayBuffer,
-  indexBuffer,
+  createArrayBuffer,
+  createIndexBuffer,
 };

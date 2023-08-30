@@ -10,15 +10,11 @@ import {
 import { Renderer } from "../../display";
 import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
 import { SinglePainter } from "../painters/single";
-import {
-  GlBuffer,
-  GlContext,
-  indexBuffer as createIndexBuffer,
-} from "../resource";
+import { GlBuffer, GlContext, createIndexBuffer } from "../resource";
 import {
   GlShaderAttribute,
   GlShaderBinding,
-  shaderAttribute,
+  createAttribute,
   shaderUniform,
 } from "../shader";
 import { GlTexture } from "../texture";
@@ -125,11 +121,11 @@ const createBillboard = (
   const particleTintBuffer = createFlexibleBuffer(Float32Array, 5);
 
   const index = createIndexBuffer(gl, emptyInt32s, 0, true);
-  const particleCoordinate = shaderAttribute(gl, emptyFloat32s, 0, 2, true);
-  const particleCorner = shaderAttribute(gl, emptyFloat32s, 0, 2, true);
-  const particlePosition = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
-  const particleRadius = shaderAttribute(gl, emptyFloat32s, 0, 1, true);
-  const particleTint = shaderAttribute(gl, emptyFloat32s, 0, 4, true);
+  const particleCoordinate = createAttribute(gl, emptyFloat32s, 0, 2, true);
+  const particleCorner = createAttribute(gl, emptyFloat32s, 0, 2, true);
+  const particlePosition = createAttribute(gl, emptyFloat32s, 0, 3, true);
+  const particleRadius = createAttribute(gl, emptyFloat32s, 0, 1, true);
+  const particleTint = createAttribute(gl, emptyFloat32s, 0, 4, true);
 
   return {
     dispose: () => {

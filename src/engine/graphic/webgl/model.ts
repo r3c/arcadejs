@@ -3,13 +3,13 @@ import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { Material, Mesh, Model, Polygon, Texture } from "../model";
-import { GlBuffer, GlContext, indexBuffer } from "./resource";
-import { GlShaderAttribute, shaderAttribute } from "./shader";
+import { GlBuffer, GlContext, createIndexBuffer } from "./resource";
+import { GlShaderAttribute, createAttribute } from "./shader";
 import {
   GlTexture,
   GlTextureFormat,
   GlTextureType,
-  textureCreate,
+  createTexture,
 } from "./texture";
 
 type GlLibrary = Disposable & {
@@ -137,7 +137,7 @@ const loadMaterial = (
     let glTexture = textures.get(texture);
 
     if (glTexture === undefined) {
-      glTexture = textureCreate(
+      glTexture = createTexture(
         gl,
         undefined,
         GlTextureType.Quad,
@@ -293,7 +293,7 @@ const loadPrimitive = (
 ): GlPrimitive => {
   const { materials } = library;
 
-  const index = indexBuffer(
+  const index = createIndexBuffer(
     gl,
     new Uint32Array(source.indices),
     source.indices.length,
@@ -301,7 +301,7 @@ const loadPrimitive = (
   );
 
   const coordinate = optionalMap(source.coordinates, (coordinates) =>
-    shaderAttribute(
+    createAttribute(
       gl,
       new Float32Array(coordinates.flatMap(Vector2.toArray)),
       coordinates.length * 2,
@@ -311,7 +311,7 @@ const loadPrimitive = (
   );
 
   const normal = optionalMap(source.normals, (normals) =>
-    shaderAttribute(
+    createAttribute(
       gl,
       new Float32Array(normals.flatMap(Vector3.toArray)),
       normals.length * 3,
@@ -320,7 +320,7 @@ const loadPrimitive = (
     )
   );
 
-  const position = shaderAttribute(
+  const position = createAttribute(
     gl,
     new Float32Array(source.positions.flatMap(Vector3.toArray)),
     source.positions.length * 3,
@@ -329,7 +329,7 @@ const loadPrimitive = (
   );
 
   const tangent = optionalMap(source.tangents, (tangents) =>
-    shaderAttribute(
+    createAttribute(
       gl,
       new Float32Array(tangents.flatMap(Vector3.toArray)),
       tangents.length * 3,
@@ -339,7 +339,7 @@ const loadPrimitive = (
   );
 
   const tint = optionalMap(source.tints, (tints) =>
-    shaderAttribute(
+    createAttribute(
       gl,
       new Float32Array(tints.flatMap(Vector4.toArray)),
       tints.length * 4,

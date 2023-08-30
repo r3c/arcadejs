@@ -1,7 +1,7 @@
 import { Disposable } from "../../language/lifecycle";
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3 } from "../../math/vector";
-import { GlArray, GlBuffer, GlContext, arrayBuffer } from "./resource";
+import { GlArray, GlBuffer, GlContext, createArrayBuffer } from "./resource";
 import { GlTexture } from "./texture";
 
 type GlShaderAttribute = Disposable & {
@@ -81,24 +81,7 @@ const directiveFormat = (value: GlShaderDirectiveValue): string => {
   }
 };
 
-const shaderAttribute = (
-  gl: GlContext,
-  data: GlArray,
-  length: number,
-  stride: number,
-  isDynamic: boolean
-): GlShaderAttribute => {
-  const buffer = arrayBuffer(gl, data, length, isDynamic);
-
-  return {
-    dispose: buffer.dispose,
-    buffer,
-    size: stride,
-    stride: stride * data.BYTES_PER_ELEMENT,
-  };
-};
-
-const shaderBinding = <TState>(
+const bindShader = <TState>(
   gl: GlContext,
   program: WebGLProgram,
   useProgram: (program: WebGLProgram) => void,
@@ -171,7 +154,7 @@ const shaderBinding = <TState>(
   };
 };
 
-const shaderCompile = (
+const compileShader = (
   gl: GlContext,
   shaderType: number,
   source: string
@@ -219,7 +202,24 @@ const shaderCompile = (
   return shader;
 };
 
-const shader = (
+const createAttribute = (
+  gl: GlContext,
+  data: GlArray,
+  length: number,
+  stride: number,
+  isDynamic: boolean
+): GlShaderAttribute => {
+  const buffer = createArrayBuffer(gl, data, length, isDynamic);
+
+  return {
+    dispose: buffer.dispose,
+    buffer,
+    size: stride,
+    stride: stride * data.BYTES_PER_ELEMENT,
+  };
+};
+
+const createShader = (
   gl: GlContext,
   useProgram: (program: WebGLProgram) => void,
   shaderDefault: GlShaderDefault,
@@ -243,13 +243,13 @@ const shader = (
   }
 
   try {
-    const vertexShader = shaderCompile(
+    const vertexShader = compileShader(
       gl,
       gl.VERTEX_SHADER,
       header + vertexShaderSource
     );
 
-    const fragmentShader = shaderCompile(
+    const fragmentShader = compileShader(
       gl,
       gl.FRAGMENT_SHADER,
       header + fragmentShaderSource
@@ -279,7 +279,7 @@ const shader = (
     declare: <TState>(): GlShaderBinding<TState> => {
       const allocateTextureIndex = () => textureIndex++;
 
-      return shaderBinding(
+      return bindShader(
         gl,
         program,
         useProgram,
@@ -467,8 +467,8 @@ export {
   type GlShaderAttribute,
   type GlShaderBinding,
   type GlShaderDirectives,
-  shader,
-  shaderAttribute,
+  createAttribute,
+  createShader,
   shaderDirective,
   shaderUniform,
 };

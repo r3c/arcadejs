@@ -1,6 +1,6 @@
 import { Disposable } from "../../../../language/lifecycle";
-import { GlBuffer, GlContext, indexBuffer } from "../../resource";
-import { GlShaderAttribute, shaderAttribute } from "../../shader";
+import { GlBuffer, GlContext, createIndexBuffer } from "../../resource";
+import { GlShaderAttribute, createAttribute } from "../../shader";
 import { PointLight } from "../snippets/light";
 
 const emptyFloat32s = new Float32Array();
@@ -48,8 +48,13 @@ const recycleArray = <TArray extends Float32Array | Uint32Array>(
 const directionalLightBillboard = (
   gl: GlContext
 ): GlDirectionalLightBillboard => {
-  const index = indexBuffer(gl, new Uint32Array([0, 1, 2, 0, 2, 3]), 6, true);
-  const lightPosition = shaderAttribute(
+  const index = createIndexBuffer(
+    gl,
+    new Uint32Array([0, 1, 2, 0, 2, 3]),
+    6,
+    true
+  );
+  const lightPosition = createAttribute(
     gl,
     new Float32Array([
       -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
@@ -78,11 +83,11 @@ const directionalLightBillboard = (
  * with no rotation.
  */
 const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
-  const index = indexBuffer(gl, emptyInt32s, 0, true);
-  const lightColor = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
-  const lightPosition = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
-  const lightRadius = shaderAttribute(gl, emptyFloat32s, 0, 1, true);
-  const lightShift = shaderAttribute(gl, emptyFloat32s, 0, 3, true);
+  const index = createIndexBuffer(gl, emptyInt32s, 0, true);
+  const lightColor = createAttribute(gl, emptyFloat32s, 0, 3, true);
+  const lightPosition = createAttribute(gl, emptyFloat32s, 0, 3, true);
+  const lightRadius = createAttribute(gl, emptyFloat32s, 0, 1, true);
+  const lightShift = createAttribute(gl, emptyFloat32s, 0, 3, true);
   const nbIndex = 30;
   const nbVertex = 8;
 
