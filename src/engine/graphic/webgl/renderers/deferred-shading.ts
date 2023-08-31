@@ -10,7 +10,7 @@ import {
 } from "./snippets/light";
 import { Matrix4 } from "../../../math/matrix";
 import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
-import { SingularPainter, SingularScene } from "../painters/singular";
+import { ObjectScene, createObjectPainter } from "../painters/object";
 import { parallaxPerturb } from "../shaders/parallax";
 import { lightDeclare, lightInvoke } from "./snippets/phong";
 import { model as quadModel } from "./resources/quad";
@@ -312,23 +312,23 @@ type DeferredShadingConfiguration = {
   useNormalMap: boolean;
 };
 
-type State = {
+type DeferredShadingScene = {
+  ambientLightColor?: Vector3;
+  directionalLights?: DirectionalLight[];
+  objects: Iterable<GlObject>;
+  pointLights?: PointLight[];
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
 
-type AmbientLightState = {
+type AmbientLightScene = ObjectScene & {
   albedoAndShininessBuffer: GlTexture;
   ambientLightColor: Vector3;
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
 
-type DeferredShadingScene = {
-  ambientLightColor?: Vector3;
-  directionalLights?: DirectionalLight[];
-  objects: Iterable<GlObject>;
-  pointLights?: PointLight[];
+type GeometryScene = ObjectScene & {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
@@ -357,7 +357,7 @@ type PointLightScene = LightScene & {
 const loadAmbientPainter = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration
-): GlPainter<SingularScene<AmbientLightState>> => {
+): GlPainter<AmbientLightScene> => {
   // Build directives from configuration
   const directives: GlShaderDirectives = {};
 
@@ -388,7 +388,7 @@ const loadAmbientPainter = (
     shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
   );
 
-  const sceneBinding = shader.declare<AmbientLightState>();
+  const sceneBinding = shader.declare<AmbientLightScene>();
 
   sceneBinding.setUniform(
     "projectionMatrix",
@@ -407,7 +407,7 @@ const loadAmbientPainter = (
     shaderUniform.vector3f(({ ambientLightColor }) => ambientLightColor)
   );
 
-  return new SingularPainter(
+  return createObjectPainter(
     sceneBinding,
     geometryBinding,
     undefined,
@@ -418,7 +418,7 @@ const loadAmbientPainter = (
 const loadGeometryPainter = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration
-): GlPainter<SingularScene<State>> => {
+): GlPainter<GeometryScene> => {
   // Setup geometry shader
   const shader = runtime.createShader(
     geometryVertexShader,
@@ -444,7 +444,7 @@ const loadGeometryPainter = (
     shaderUniform.matrix3f(({ normalMatrix }) => normalMatrix)
   );
 
-  const sceneBinding = shader.declare<State>();
+  const sceneBinding = shader.declare<GeometryScene>();
 
   sceneBinding.setUniform(
     "projectionMatrix",
@@ -499,7 +499,7 @@ const loadGeometryPainter = (
     );
   }
 
-  return new SingularPainter(
+  return createObjectPainter(
     sceneBinding,
     geometryBinding,
     materialBinding,
@@ -634,14 +634,12 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
   public readonly depthBuffer: GlTexture;
   public readonly normalAndGlossinessBuffer: GlTexture;
 
-  private readonly ambientLightPainter: GlPainter<
-    SingularScene<AmbientLightState>
-  >;
+  private readonly ambientLightPainter: GlPainter<AmbientLightScene>;
   private readonly ambientLightObjects: GlObject[];
   private readonly directionalLightBillboard: GlDirectionalLightBillboard;
   private readonly directionalLightPainter: GlPainter<DirectionalLightScene>;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: GlPainter<SingularScene<State>>;
+  private readonly geometryPainter: GlPainter<GeometryScene>;
   private readonly geometryTarget: GlTarget;
   private readonly pointLightBillboard: GlPointLightBillboard;
   private readonly pointLightPainter: GlPainter<PointLightScene>;
@@ -695,7 +693,6 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     const {
       ambientLightColor,
       directionalLights,
-      objects,
       pointLights,
       projectionMatrix,
       viewMatrix,
@@ -731,11 +728,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     gl.depthMask(true);
 
     this.geometryTarget.clear(0);
-    this.geometryPainter.paint(this.geometryTarget, {
-      objects,
-      state: scene,
-      viewMatrix,
-    });
+    this.geometryPainter.paint(this.geometryTarget, scene);
 
     // Draw scene lights
     gl.disable(gl.DEPTH_TEST);
@@ -747,14 +740,11 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     // Draw ambient light using fullscreen quad
     if (ambientLightColor !== undefined) {
       this.ambientLightPainter.paint(this.target, {
+        albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+        ambientLightColor,
         objects: this.ambientLightObjects,
-        state: {
-          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
-          ambientLightColor,
-          projectionMatrix: this.fullscreenProjection,
-          viewMatrix: Matrix4.identity,
-        },
-        viewMatrix,
+        projectionMatrix: this.fullscreenProjection,
+        viewMatrix: Matrix4.identity,
       });
     }
 

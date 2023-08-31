@@ -10,7 +10,7 @@ import {
   sourceTypeResult,
 } from "./snippets/light";
 import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
-import { SingularPainter, SingularScene } from "../painters/singular";
+import { ObjectScene, createObjectPainter } from "../painters/object";
 import { Matrix4 } from "../../../math/matrix";
 import { normalPerturb } from "../shaders/normal";
 import { parallaxPerturb } from "../shaders/parallax";
@@ -83,17 +83,18 @@ type ForwardLightingScene = {
   viewMatrix: Matrix4;
 };
 
-type LightSceneState = {
+type LightScene = {
   ambientLightColor: Vector3;
-  directionalLights: ShadowDirectionalLight[];
+  directionalShadowLights: ShadowDirectionalLight[];
   environmentLight?: {
     brdf: GlTexture;
     diffuse: GlTexture;
     specular: GlTexture;
   };
-  pointLights: PointLight[]; // FIXME: extend PointLight with extra properties
+  objects: Iterable<GlObject>;
+  pointShadowLights: PointLight[]; // FIXME: extend PointLight with extra properties
   projectionMatrix: Matrix4;
-  shadowProjectionMatrix: Matrix4;
+  projectionShadowMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
 
@@ -108,7 +109,7 @@ type MaterialConfiguration = {
   noRoughnessMap?: boolean;
 };
 
-type ShadowSceneState = {
+type ShadowScene = ObjectScene & {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
@@ -407,7 +408,7 @@ const loadLightPainter = (
   runtime: GlRuntime,
   materialConfiguration: MaterialConfiguration,
   lightConfiguration: LightConfiguration
-) => {
+): GlPainter<LightScene> => {
   const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
   const maxPointLights = lightConfiguration.maxPointLights ?? 0;
 
@@ -471,7 +472,7 @@ const loadLightPainter = (
     shaderUniform.matrix3f(({ normalMatrix }) => normalMatrix)
   );
 
-  const sceneBinding = shader.declare<LightSceneState>();
+  const sceneBinding = shader.declare<LightScene>();
 
   sceneBinding.setUniform(
     "projectionMatrix",
@@ -486,7 +487,8 @@ const loadLightPainter = (
     sceneBinding.setUniform(
       "shadowProjectionMatrix",
       shaderUniform.matrix4f(
-        ({ shadowProjectionMatrix }) => shadowProjectionMatrix
+        ({ projectionShadowMatrix: shadowProjectionMatrix }) =>
+          shadowProjectionMatrix
       )
     );
   }
@@ -628,31 +630,33 @@ const loadLightPainter = (
       sceneBinding.setUniform(
         `directionalLights[${index}].castShadow`,
         shaderUniform.boolean(
-          ({ directionalLights }) =>
+          ({ directionalShadowLights: directionalLights }) =>
             index < directionalLights.length && directionalLights[index].shadow
         )
       );
       sceneBinding.setUniform(
         `directionalLights[${index}].shadowViewMatrix`,
-        shaderUniform.matrix4f(({ directionalLights }) =>
-          index < directionalLights.length
-            ? directionalLights[index].shadowViewMatrix
-            : Matrix4.identity
+        shaderUniform.matrix4f(
+          ({ directionalShadowLights: directionalLights }) =>
+            index < directionalLights.length
+              ? directionalLights[index].shadowViewMatrix
+              : Matrix4.identity
         )
       );
       sceneBinding.setUniform(
         `directionalLightShadowMaps[${index}]`,
-        shaderUniform.quadBlack(({ directionalLights }) =>
-          index < directionalLights.length
-            ? directionalLights[index].shadowMap
-            : undefined
+        shaderUniform.quadBlack(
+          ({ directionalShadowLights: directionalLights }) =>
+            index < directionalLights.length
+              ? directionalLights[index].shadowMap
+              : undefined
         )
       );
     }
 
     sceneBinding.setUniform(
       `directionalLights[${i}].color`,
-      shaderUniform.vector3f(({ directionalLights }) =>
+      shaderUniform.vector3f(({ directionalShadowLights: directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].color
           : defaultColor
@@ -660,7 +664,7 @@ const loadLightPainter = (
     );
     sceneBinding.setUniform(
       `directionalLights[${i}].direction`,
-      shaderUniform.vector3f(({ directionalLights }) =>
+      shaderUniform.vector3f(({ directionalShadowLights: directionalLights }) =>
         index < directionalLights.length
           ? directionalLights[index].direction
           : defaultDirection
@@ -673,13 +677,13 @@ const loadLightPainter = (
 
     sceneBinding.setUniform(
       `pointLights[${i}].color`,
-      shaderUniform.vector3f(({ pointLights }) =>
+      shaderUniform.vector3f(({ pointShadowLights: pointLights }) =>
         index < pointLights.length ? pointLights[index].color : defaultColor
       )
     );
     sceneBinding.setUniform(
       `pointLights[${i}].position`,
-      shaderUniform.vector3f(({ pointLights }) =>
+      shaderUniform.vector3f(({ pointShadowLights: pointLights }) =>
         index < pointLights.length
           ? pointLights[index].position
           : defaultPosition
@@ -687,13 +691,13 @@ const loadLightPainter = (
     );
     sceneBinding.setUniform(
       `pointLights[${i}].radius`,
-      shaderUniform.number(({ pointLights }) =>
+      shaderUniform.number(({ pointShadowLights: pointLights }) =>
         index < pointLights.length ? pointLights[index].radius : 0
       )
     );
   }
 
-  return new SingularPainter(
+  return createObjectPainter(
     sceneBinding,
     geometryBinding,
     materialBinding,
@@ -701,7 +705,9 @@ const loadLightPainter = (
   );
 };
 
-const loadShadowDirectionalPainter = (runtime: GlRuntime) => {
+const loadDirectionalShadowPainter = (
+  runtime: GlRuntime
+): GlPainter<ShadowScene> => {
   const shader = runtime.createShader(
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader,
@@ -719,7 +725,7 @@ const loadShadowDirectionalPainter = (runtime: GlRuntime) => {
     shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
   );
 
-  const sceneBinding = shader.declare<ShadowSceneState>();
+  const sceneBinding = shader.declare<ShadowScene>();
 
   sceneBinding.setUniform(
     "projectionMatrix",
@@ -730,7 +736,7 @@ const loadShadowDirectionalPainter = (runtime: GlRuntime) => {
     shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
   );
 
-  return new SingularPainter(
+  return createObjectPainter<ShadowScene>(
     sceneBinding,
     geometryBinding,
     undefined,
@@ -738,32 +744,30 @@ const loadShadowDirectionalPainter = (runtime: GlRuntime) => {
   );
 };
 
-const loadShadowPointPainter = (runtime: GlRuntime) => {
-  // Not implemented
+// FIXME: not implemented
+const loadPointShadowPainter = (runtime: GlRuntime): GlPainter<ShadowScene> => {
   runtime.createShader(
     shadowDirectionalVertexShader,
     shadowDirectionalFragmentShader,
     {}
   );
 
-  return new SingularPainter(undefined, undefined, undefined, undefined);
+  return {
+    paint: () => {},
+  };
 };
 
 class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
   public readonly directionalShadowBuffers: GlTexture[];
   public readonly pointShadowBuffers: GlTexture[];
 
-  private readonly directionalShadowPainter: GlPainter<
-    SingularScene<ShadowSceneState>
-  >;
+  private readonly directionalShadowPainter: GlPainter<ShadowScene>;
   private readonly directionalShadowProjectionMatrix: Matrix4;
   private readonly directionalShadowTargets: GlTarget[];
-  private readonly lightPainter: GlPainter<SingularScene<LightSceneState>>;
+  private readonly lightPainter: GlPainter<LightScene>;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
-  private readonly pointShadowPainter: GlPainter<
-    SingularScene<ShadowSceneState>
-  >;
+  private readonly pointShadowPainter: GlPainter<ShadowScene>;
   private readonly pointShadowProjectionMatrix: Matrix4;
   private readonly pointShadowTargets: GlTarget[];
   private readonly runtime: GlRuntime;
@@ -792,7 +796,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
-    this.directionalShadowPainter = loadShadowDirectionalPainter(runtime);
+    this.directionalShadowPainter = loadDirectionalShadowPainter(runtime);
     this.directionalShadowProjectionMatrix = Matrix4.fromOrthographic(
       -10,
       10,
@@ -812,7 +816,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     this.pointShadowBuffers = pointShadowTargets.map((target) =>
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
-    this.pointShadowPainter = loadShadowPointPainter(runtime);
+    this.pointShadowPainter = loadPointShadowPainter(runtime);
     this.pointShadowProjectionMatrix = Matrix4.fromPerspective(
       Math.PI * 0.5,
       targetWidth / targetHeight,
@@ -860,7 +864,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     let bufferIndex = 0;
 
     // Create shadow maps for directional lights
-    const directionalLightStates = [];
+    const directionalShadowLights = [];
 
     if (directionalLights !== undefined) {
       for (
@@ -888,15 +892,12 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
           this.directionalShadowTargets[bufferIndex],
           {
             objects: obstacles,
-            state: {
-              projectionMatrix: this.directionalShadowProjectionMatrix,
-              viewMatrix,
-            },
+            projectionMatrix: this.directionalShadowProjectionMatrix,
             viewMatrix,
           }
         );
 
-        directionalLightStates.push({
+        directionalShadowLights.push({
           color: light.color,
           direction: light.direction,
           shadow: light.shadow,
@@ -919,16 +920,13 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     gl.cullFace(gl.BACK);
 
     this.lightPainter.paint(this.target, {
+      ambientLightColor: ambientLightColor ?? Vector3.zero,
+      directionalShadowLights,
+      environmentLight,
       objects,
-      state: {
-        ambientLightColor: ambientLightColor ?? Vector3.zero,
-        directionalLights: directionalLightStates,
-        environmentLight,
-        pointLights: pointLights ?? [],
-        projectionMatrix,
-        shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
-        viewMatrix,
-      },
+      pointShadowLights: pointLights ?? [],
+      projectionMatrix,
+      projectionShadowMatrix: this.directionalShadowProjectionMatrix,
       viewMatrix,
     });
   }
