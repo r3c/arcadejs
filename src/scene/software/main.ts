@@ -25,8 +25,7 @@ import { Camera } from "../view";
  */
 
 const configuration = {
-  useTexture: false,
-  useWire: false,
+  renderMode: ["Wire", ".Color", "Texture"],
 };
 
 type ApplicationState = {
@@ -73,8 +72,8 @@ const application: Application<Context2DScreen, ApplicationState> = {
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
     );
 
-    const model = tweak.useTexture ? cubeWithTexture : cubeWithColor;
-    const renderer = tweak.useWire ? rendererWire : rendererDefault;
+    const model = tweak.renderMode === 2 ? cubeWithTexture : cubeWithColor;
+    const renderer = tweak.renderMode === 0 ? rendererWire : rendererDefault;
 
     renderer.render({
       objects: [{ matrix: Matrix4.identity, model }],
