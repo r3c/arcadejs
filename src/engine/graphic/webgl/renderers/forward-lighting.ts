@@ -833,12 +833,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
     this.pointShadowPainter = createPointShadowPainter();
-    this.pointShadowProjectionMatrix = Matrix4.fromPerspective(
-      Math.PI * 0.5,
-      targetWidth / targetHeight,
-      0.1,
-      100
-    );
+    this.pointShadowProjectionMatrix = Matrix4.identity;
     this.pointShadowTargets = pointShadowTargets;
     this.runtime = runtime;
     this.target = target;

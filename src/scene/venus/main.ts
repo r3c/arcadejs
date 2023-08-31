@@ -239,7 +239,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
   resize(state, screen) {
     state.projectionMatrix = Matrix4.fromPerspective(
-      45,
+      Math.PI / 4,
       screen.getRatio(),
       0.1,
       10000

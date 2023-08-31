@@ -700,16 +700,16 @@ class Matrix4 {
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
    */
   public static fromPerspective(
-    angle: number,
-    ratio: number,
+    fieldOfView: number,
+    aspectRatio: number,
     zMin: number,
     zMax: number
   ): MutableMatrix4 {
-    var f = 1.0 / Math.tan((angle * Math.PI) / 360.0);
+    var f = 1.0 / Math.tan(fieldOfView * 0.5);
     var q = 1 / (zMin - zMax);
 
     return new MutableMatrix4({
-      v00: f / ratio,
+      v00: f / aspectRatio,
       v01: 0,
       v02: 0,
       v03: 0,
