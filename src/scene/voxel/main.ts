@@ -3,9 +3,8 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
-  ForwardLightingObject,
   ForwardLightingRenderer,
-  SceneState,
+  ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
@@ -19,7 +18,7 @@ import {
   createWorldPhysic,
 } from "./world";
 import { noise } from "./perlin";
-import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
 import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
@@ -330,18 +329,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Forward pass
     const lightRenderer = renderers.forwardLighting;
-    const lightScene: GlScene<SceneState, ForwardLightingObject> = {
-      state: {
-        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-        pointLights: state.lights.map(({ position, radius }) => ({
-          color: { x: 0.8, y: 0.8, z: 0.8 },
-          position,
-          radius,
-        })),
-        projectionMatrix,
-        viewMatrix,
-      },
+    const lightScene: ForwardLightingScene = {
+      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
       objects,
+      pointLights: state.lights.map(({ position, radius }) => ({
+        color: { x: 0.8, y: 0.8, z: 0.8 },
+        position,
+        radius,
+      })),
+      projectionMatrix,
+      viewMatrix,
     };
 
     lightRenderer.render(lightScene);

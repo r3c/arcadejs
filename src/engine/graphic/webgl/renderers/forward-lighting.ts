@@ -26,7 +26,6 @@ import {
   GlGeometry,
   GlPainter,
   GlRuntime,
-  GlScene,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
@@ -74,16 +73,17 @@ type LightConfiguration = {
   noShadow?: boolean;
 };
 
-type SceneState = State & {
+type ForwardLightingScene = {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   environmentLight?: EnvironmentLight;
+  objects: Iterable<ForwardLightingObject>;
   pointLights?: PointLight[];
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
 
-type LightSceneState = State & {
+type LightSceneState = {
   ambientLightColor: Vector3;
   directionalLights: ShadowDirectionalLight[];
   environmentLight?: {
@@ -108,9 +108,7 @@ type MaterialConfiguration = {
   noRoughnessMap?: boolean;
 };
 
-type ShadowSceneState = State;
-
-type State = {
+type ShadowSceneState = {
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
@@ -751,9 +749,7 @@ const loadShadowPointPainter = (runtime: GlRuntime) => {
   return new SingularPainter(undefined, undefined, undefined, undefined);
 };
 
-class ForwardLightingRenderer
-  implements Renderer<GlScene<SceneState, ForwardLightingObject>>
-{
+class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
   public readonly directionalShadowBuffers: GlTexture[];
   public readonly pointShadowBuffers: GlTexture[];
 
@@ -830,12 +826,18 @@ class ForwardLightingRenderer
 
   public dispose() {}
 
-  public render(scene: GlScene<SceneState, ForwardLightingObject>) {
-    const { objects, state } = scene;
+  public render(scene: ForwardLightingScene) {
+    const {
+      ambientLightColor,
+      directionalLights,
+      environmentLight,
+      objects,
+      pointLights,
+      projectionMatrix,
+      viewMatrix,
+    } = scene;
 
-    const directionalLights = state.directionalLights || [];
     const gl = this.runtime.context;
-    const pointLights = state.pointLights || [];
 
     gl.colorMask(false, false, false, false);
     gl.disable(gl.BLEND);
@@ -860,48 +862,50 @@ class ForwardLightingRenderer
     // Create shadow maps for directional lights
     const directionalLightStates = [];
 
-    for (
-      let i = 0;
-      i < Math.min(directionalLights.length, this.maxDirectionalLights);
-      ++i
-    ) {
-      const light = directionalLights[i];
-      const shadowDirection = {
-        x: -light.direction.x,
-        y: -light.direction.y,
-        z: -light.direction.z,
-      };
+    if (directionalLights !== undefined) {
+      for (
+        let i = 0;
+        i < Math.min(directionalLights.length, this.maxDirectionalLights);
+        ++i
+      ) {
+        const light = directionalLights[i];
+        const shadowDirection = {
+          x: -light.direction.x,
+          y: -light.direction.y,
+          z: -light.direction.z,
+        };
 
-      const viewMatrix = Matrix4.fromCustom(
-        ["translate", { x: 0, y: 0, z: -10 }],
-        [
-          "multiply",
-          Matrix4.fromDirection(shadowDirection, { x: 0, y: 1, z: 0 }),
-        ]
-      );
+        const viewMatrix = Matrix4.fromCustom(
+          ["translate", { x: 0, y: 0, z: -10 }],
+          [
+            "multiply",
+            Matrix4.fromDirection(shadowDirection, { x: 0, y: 1, z: 0 }),
+          ]
+        );
 
-      this.directionalShadowTargets[bufferIndex].clear(0);
-      this.directionalShadowPainter.paint(
-        this.directionalShadowTargets[bufferIndex],
-        {
-          objects: obstacles,
-          state: {
-            projectionMatrix: this.directionalShadowProjectionMatrix,
+        this.directionalShadowTargets[bufferIndex].clear(0);
+        this.directionalShadowPainter.paint(
+          this.directionalShadowTargets[bufferIndex],
+          {
+            objects: obstacles,
+            state: {
+              projectionMatrix: this.directionalShadowProjectionMatrix,
+              viewMatrix,
+            },
             viewMatrix,
-          },
-          viewMatrix,
-        }
-      );
+          }
+        );
 
-      directionalLightStates.push({
-        color: light.color,
-        direction: light.direction,
-        shadow: light.shadow,
-        shadowMap: this.directionalShadowBuffers[bufferIndex],
-        shadowViewMatrix: viewMatrix,
-      });
+        directionalLightStates.push({
+          color: light.color,
+          direction: light.direction,
+          shadow: light.shadow,
+          shadowMap: this.directionalShadowBuffers[bufferIndex],
+          shadowViewMatrix: viewMatrix,
+        });
 
-      ++bufferIndex;
+        ++bufferIndex;
+      }
     }
 
     // TODO: create shadow maps for point lights ; following lines only skip compiler warnings
@@ -917,15 +921,15 @@ class ForwardLightingRenderer
     this.lightPainter.paint(this.target, {
       objects,
       state: {
-        ambientLightColor: state.ambientLightColor ?? Vector3.zero,
+        ambientLightColor: ambientLightColor ?? Vector3.zero,
         directionalLights: directionalLightStates,
-        environmentLight: state.environmentLight,
-        pointLights,
-        projectionMatrix: state.projectionMatrix,
+        environmentLight,
+        pointLights: pointLights ?? [],
+        projectionMatrix,
         shadowProjectionMatrix: this.directionalShadowProjectionMatrix,
-        viewMatrix: state.viewMatrix,
+        viewMatrix,
       },
-      viewMatrix: state.viewMatrix,
+      viewMatrix,
     });
   }
 
@@ -935,7 +939,7 @@ class ForwardLightingRenderer
 export {
   type ForwardLightingConfiguration,
   type ForwardLightingObject,
-  type SceneState,
+  type ForwardLightingScene,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
 };

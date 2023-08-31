@@ -8,15 +8,14 @@ import { Input } from "../../engine/io/controller";
 import { Renderer, WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
-  ForwardLightingObject,
   ForwardLightingRenderer,
-  SceneState,
+  ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
@@ -147,30 +146,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Forward pass
     const sceneRenderer = rendererMemo.get(getOptions(tweak));
-    const scene: GlScene<SceneState, ForwardLightingObject> = {
-      state: {
-        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-        directionalLights: directionalLightDirections
-          .slice(0, tweak.nbDirectionalLights)
-          .map((direction) => ({
-            color: { x: 0.8, y: 0.8, z: 0.8 },
-            direction,
-            shadow: true,
-          })),
-        pointLights: pointLightPositions
-          .slice(0, tweak.nbPointLights)
-          .map((position) => ({
-            color: { x: 0.8, y: 0.8, z: 0.8 },
-            position,
-            radius: 5,
-          })),
-        projectionMatrix,
-        viewMatrix: Matrix4.fromCustom(
-          ["translate", camera.position],
-          ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-          ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-        ),
-      },
+    const scene: ForwardLightingScene = {
+      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+      directionalLights: directionalLightDirections
+        .slice(0, tweak.nbDirectionalLights)
+        .map((direction) => ({
+          color: { x: 0.8, y: 0.8, z: 0.8 },
+          direction,
+          shadow: true,
+        })),
       objects: [
         {
           matrix: Matrix4.identity,
@@ -199,6 +183,19 @@ const application: Application<WebGLScreen, ApplicationState> = {
               noShadow: true,
             }))
         ),
+      pointLights: pointLightPositions
+        .slice(0, tweak.nbPointLights)
+        .map((position) => ({
+          color: { x: 0.8, y: 0.8, z: 0.8 },
+          position,
+          radius: 5,
+        })),
+      projectionMatrix,
+      viewMatrix: Matrix4.fromCustom(
+        ["translate", camera.position],
+        ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
+        ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
+      ),
     };
 
     sceneRenderer.render(scene);

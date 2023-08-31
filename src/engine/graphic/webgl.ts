@@ -52,11 +52,6 @@ type GlRuntime = Disposable & {
   context: GlContext;
 };
 
-type GlScene<TSceneState, TObject> = {
-  objects: Iterable<TObject>;
-  state: TSceneState;
-};
-
 const createRuntime = (context: GlContext): GlRuntime => {
   const blackTexture = createTexture(
     context,
@@ -507,7 +502,6 @@ export {
   type GlGeometry,
   type GlPainter,
   type GlRuntime,
-  type GlScene,
   GlTarget,
   GlTextureFormat,
   GlTextureType,

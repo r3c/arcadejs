@@ -3,9 +3,8 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
-  ForwardLightingObject,
   ForwardLightingRenderer,
-  SceneState,
+  ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import {
@@ -15,7 +14,6 @@ import {
 import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
-  GlScene,
   GlTarget,
   createRuntime,
   loadTextureQuad,
@@ -213,7 +211,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Draw scene
     target.clear(0);
 
-    const scene: GlScene<SceneState, ForwardLightingObject> = {
+    const scene: ForwardLightingScene = {
+      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
       objects: [
         {
           matrix: Matrix4.fromCustom(
@@ -229,20 +228,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
           noShadow: false,
         })),
       ],
-      state: {
-        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-        pointLights: state.lights.map((position) => ({
-          color: { x: 1, y: 1, z: 1 },
-          position,
-          radius: 50,
-        })),
-        projectionMatrix,
-        viewMatrix,
-      },
+      pointLights: state.lights.map((position) => ({
+        color: { x: 1, y: 1, z: 1 },
+        position,
+        radius: 50,
+      })),
+      projectionMatrix,
+      viewMatrix,
     };
 
     sceneRenderer.render(scene);
-    particleRenderer.render(scene.state);
+    particleRenderer.render(scene);
   },
 
   resize(state, screen) {

@@ -25,16 +25,16 @@ import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
-import { GlScene, GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
-import { SceneState } from "../../engine/graphic/webgl/renderers/deferred-shading";
+import { DeferredShadingScene } from "../../engine/graphic/webgl/renderers/deferred-shading";
 import {
   DirectionalLight,
   PointLight,
 } from "../../engine/graphic/webgl/renderers/snippets/light";
 import { brightColor } from "../../engine/graphic/color";
-import { GlModel, GlObject, loadModel } from "../../engine/graphic/webgl/model";
+import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -206,18 +206,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Draw scene
     const sceneRenderer = sceneRendererMemo.get(getOptions(tweak));
-    const scene: GlScene<SceneState, GlObject> = {
-      state: {
-        ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-        directionalLights,
-        pointLights,
-        projectionMatrix: state.projectionMatrix,
-        viewMatrix: Matrix4.fromCustom(
-          ["translate", camera.position],
-          ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-          ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-        ),
-      },
+    const scene: DeferredShadingScene = {
+      ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
+      directionalLights,
       objects: [
         {
           matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
@@ -256,6 +247,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
             model: models.pointLight,
           }))
         ),
+      pointLights,
+      projectionMatrix: state.projectionMatrix,
+      viewMatrix: Matrix4.fromCustom(
+        ["translate", camera.position],
+        ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
+        ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
+      ),
     };
 
     target.clear(0);

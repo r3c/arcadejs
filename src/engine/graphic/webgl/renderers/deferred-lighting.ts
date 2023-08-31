@@ -23,7 +23,6 @@ import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlPainter,
   GlRuntime,
-  GlScene,
   GlTarget,
   GlTextureFormat,
   GlTextureType,
@@ -359,7 +358,7 @@ void main(void) {
 	fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
 
-type Configuration = {
+type DeferredLightingConfiguration = {
   lightModel: DeferredLightingLightModel;
   lightModelPhongNoAmbient?: boolean;
   lightModelPhongNoDiffuse?: boolean;
@@ -368,16 +367,13 @@ type Configuration = {
   useNormalMap: boolean;
 };
 
-type State = {
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
-};
-
-type LightScene = State & {
+type LightScene = {
   depthBuffer: GlTexture;
   index: GlBuffer;
   modelMatrix: Matrix4;
   normalAndGlossinessBuffer: GlTexture;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
   viewportSize: Vector2;
 };
 
@@ -391,20 +387,25 @@ type PointLightScene = LightScene & {
   polygon: GlPointLightPolygon;
 };
 
-type MaterialState = State & {
+type MaterialState = {
   ambientLightColor: Vector3;
   lightBuffer: GlTexture;
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 };
 
-type SceneState = State & {
+type DeferredLightingScene = {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
+  objects: Iterable<GlObject>;
   pointLights?: PointLight[];
+  projectionMatrix: Matrix4;
+  viewMatrix: Matrix4;
 };
 
 const loadGeometryPainter = (
   runtime: GlRuntime,
-  configuration: Configuration
+  configuration: DeferredLightingConfiguration
 ) => {
   const shader = runtime.createShader(
     geometryVertexShader,
@@ -430,7 +431,7 @@ const loadGeometryPainter = (
     shaderUniform.matrix3f(({ normalMatrix }) => normalMatrix)
   );
 
-  const sceneBinding = shader.declare<State>();
+  const sceneBinding = shader.declare<DeferredLightingScene>();
 
   sceneBinding.setUniform(
     "projectionMatrix",
@@ -486,7 +487,7 @@ const loadGeometryPainter = (
 
 const loadLightBinding = <TScene extends LightScene>(
   runtime: GlRuntime,
-  _: Configuration,
+  _: DeferredLightingConfiguration,
   type: DeferredLightingLightType
 ) => {
   // Setup light shader
@@ -537,7 +538,7 @@ const loadLightBinding = <TScene extends LightScene>(
 
 const loadDirectionalLightPainter = (
   runtime: GlRuntime,
-  configuration: Configuration
+  configuration: DeferredLightingConfiguration
 ) => {
   const binding = loadLightBinding<DirectionalLightScene>(
     runtime,
@@ -561,7 +562,7 @@ const loadDirectionalLightPainter = (
 
 const loadPointLightPainter = (
   runtime: GlRuntime,
-  configuration: Configuration
+  configuration: DeferredLightingConfiguration
 ) => {
   const binding = loadLightBinding<PointLightScene>(
     runtime,
@@ -583,7 +584,7 @@ const loadPointLightPainter = (
 
 const loadMaterialPainter = (
   runtime: GlRuntime,
-  configuration: Configuration
+  configuration: DeferredLightingConfiguration
 ) => {
   // Build directives from configuration
   const directives: GlShaderDirectives = {};
@@ -693,9 +694,7 @@ const loadMaterialPainter = (
   );
 };
 
-class DeferredLightingRenderer
-  implements Renderer<GlScene<SceneState, GlObject>>
-{
+class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
   public readonly depthBuffer: GlTexture;
   public readonly lightBuffer: GlTexture;
   public readonly normalAndGlossinessBuffer: GlTexture;
@@ -703,7 +702,9 @@ class DeferredLightingRenderer
   private readonly directionalLightBillboard: GlDirectionalLightBillboard;
   private readonly directionalLightPainter: GlPainter<DirectionalLightScene>;
   private readonly fullscreenProjection: Matrix4;
-  private readonly geometryPainter: GlPainter<SingularScene<State>>;
+  private readonly geometryPainter: GlPainter<
+    SingularScene<DeferredLightingScene>
+  >;
   private readonly geometryTarget: GlTarget;
   private readonly lightTarget: GlTarget;
   private readonly materialPainter: GlPainter<SingularScene<MaterialState>>;
@@ -715,7 +716,7 @@ class DeferredLightingRenderer
   public constructor(
     runtime: GlRuntime,
     target: GlTarget,
-    configuration: Configuration
+    configuration: DeferredLightingConfiguration
   ) {
     const gl = runtime.context;
     const geometry = new GlTarget(
@@ -759,8 +760,16 @@ class DeferredLightingRenderer
 
   public dispose() {}
 
-  public render(scene: GlScene<SceneState, GlObject>) {
-    const { objects, state } = scene;
+  public render(scene: DeferredLightingScene) {
+    const {
+      ambientLightColor,
+      directionalLights,
+      objects,
+      pointLights,
+      projectionMatrix,
+      viewMatrix,
+    } = scene;
+
     const gl = this.runtime.context;
     const viewportSize = {
       x: gl.drawingBufferWidth,
@@ -769,7 +778,7 @@ class DeferredLightingRenderer
 
     // Build billboard matrix from view matrix to get camera-facing quads by
     // copying view matrix and cancelling any rotation.
-    const billboardMatrix = Matrix4.fromObject(state.viewMatrix);
+    const billboardMatrix = Matrix4.fromObject(viewMatrix);
 
     billboardMatrix.v00 = 1;
     billboardMatrix.v01 = 0;
@@ -793,8 +802,8 @@ class DeferredLightingRenderer
     this.geometryTarget.clear(0);
     this.geometryPainter.paint(this.geometryTarget, {
       objects,
-      state,
-      viewMatrix: state.viewMatrix,
+      state: scene,
+      viewMatrix,
     });
 
     // Render lights to light buffer
@@ -808,16 +817,16 @@ class DeferredLightingRenderer
     this.lightTarget.clear(0);
 
     // Draw directional lights using fullscreen quads
-    if (state.directionalLights !== undefined) {
+    if (directionalLights !== undefined) {
       // FIXME: a simple identity matrix could be use here at the cost of
       // passing 2 distinct "view" matrices to light shader:
       // - One for projecting our quad to fullscreen
       // - One for computing light directions in camera space
-      const modelMatrix = Matrix4.fromObject(state.viewMatrix);
+      const modelMatrix = Matrix4.fromObject(viewMatrix);
 
       modelMatrix.invert();
 
-      for (const directionalLight of state.directionalLights) {
+      for (const directionalLight of directionalLights) {
         this.directionalLightPainter.paint(this.lightTarget, {
           depthBuffer: this.depthBuffer,
           directionalLight,
@@ -826,15 +835,15 @@ class DeferredLightingRenderer
           normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
           polygon: this.directionalLightBillboard.polygon,
           projectionMatrix: this.fullscreenProjection,
-          viewMatrix: state.viewMatrix,
+          viewMatrix,
           viewportSize,
         });
       }
     }
 
     // Draw point lights using quads
-    if (state.pointLights !== undefined) {
-      this.pointLightBillboard.set(state.pointLights);
+    if (pointLights !== undefined) {
+      this.pointLightBillboard.set(pointLights);
 
       this.pointLightPainter.paint(this.lightTarget, {
         billboardMatrix,
@@ -843,8 +852,8 @@ class DeferredLightingRenderer
         modelMatrix: Matrix4.identity, // FIXME: remove from shader
         normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
         polygon: this.pointLightBillboard.polygon,
-        projectionMatrix: state.projectionMatrix,
-        viewMatrix: state.viewMatrix,
+        projectionMatrix,
+        viewMatrix,
         viewportSize,
       });
     }
@@ -858,12 +867,12 @@ class DeferredLightingRenderer
     this.materialPainter.paint(this.target, {
       objects,
       state: {
-        ambientLightColor: state.ambientLightColor ?? Vector3.zero,
+        ambientLightColor: ambientLightColor ?? Vector3.zero,
         lightBuffer: this.lightBuffer,
-        projectionMatrix: state.projectionMatrix,
-        viewMatrix: state.viewMatrix,
+        projectionMatrix,
+        viewMatrix,
       },
-      viewMatrix: state.viewMatrix,
+      viewMatrix,
     });
   }
 
@@ -874,8 +883,8 @@ class DeferredLightingRenderer
 }
 
 export {
-  type Configuration,
-  type SceneState,
+  type DeferredLightingConfiguration,
+  type DeferredLightingScene,
   DeferredLightingLightModel,
   DeferredLightingRenderer,
 };

@@ -16,7 +16,6 @@ import {
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import {
-  GlScene,
   GlTarget,
   createRuntime,
   loadTextureCube,
@@ -25,10 +24,9 @@ import {
 import { orbitatePosition } from "../move";
 import { Camera } from "../view";
 import {
-  ForwardLightingRenderer,
   ForwardLightingLightModel,
-  SceneState,
-  ForwardLightingObject,
+  ForwardLightingRenderer,
+  ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
@@ -219,23 +217,21 @@ const application: Application<WebGLScreen, ApplicationState> = {
       noShadow: true,
     }));
 
-    const scene: GlScene<SceneState, ForwardLightingObject> = {
-      state: {
-        ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
-        environmentLight: {
-          brdf: textures.brdf,
-          diffuse: textures.diffuse,
-          specular: textures.specular,
-        },
-        pointLights: lightPositions.map((position) => ({
-          color: { x: 1, y: 1, z: 1 },
-          position,
-          radius: 5,
-        })),
-        projectionMatrix,
-        viewMatrix,
+    const scene: ForwardLightingScene = {
+      ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
+      environmentLight: {
+        brdf: textures.brdf,
+        diffuse: textures.diffuse,
+        specular: textures.specular,
       },
       objects: [cube, ground].concat(lights),
+      pointLights: lightPositions.map((position) => ({
+        color: { x: 1, y: 1, z: 1 },
+        position,
+        radius: 5,
+      })),
+      projectionMatrix,
+      viewMatrix,
     };
 
     rendererMemo.get(getOptions(tweak)).render(scene);
