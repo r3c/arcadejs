@@ -2,7 +2,6 @@ import { Application, configure, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
-  ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
@@ -21,7 +20,7 @@ import { noise } from "./perlin";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
-import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
+import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 
 type ApplicationState = {
   camera: Camera;
@@ -89,7 +88,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       transform: Matrix4.fromCustom(["scale", worldScaleVector]),
     });
 
-    const select = loadModel(gl, selectModel);
+    const select = createModel(gl, selectModel);
 
     const getModelIndex = (height: number): number => {
       const value = Math.pow(height, 0.5) / (1 / levelModels.length);
@@ -165,11 +164,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       projectionMatrix: Matrix4.identity,
       renderers: {
         forwardLighting: new ForwardLightingRenderer(runtime, target, {
-          light: {
-            maxPointLights: maxLights,
-            model: ForwardLightingLightModel.Phong,
-            noShadow: true,
-          },
+          maxPointLights: maxLights,
+          noShadow: true,
         }),
       },
       target,

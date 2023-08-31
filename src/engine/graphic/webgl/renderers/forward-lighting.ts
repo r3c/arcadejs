@@ -30,14 +30,34 @@ import {
   GlTextureFormat,
   GlTextureType,
 } from "../../webgl";
-import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
+import {
+  GlShader,
+  GlShaderDirectives,
+  shaderDirective,
+  shaderUniform,
+} from "../shader";
 import { Renderer } from "../../display";
 import { GlMaterial, GlObject, GlPolygon } from "../model";
 import { GlTexture } from "../texture";
 
 type ForwardLightingConfiguration = {
-  light?: LightConfiguration;
-  material?: MaterialConfiguration;
+  maxDirectionalLights?: number;
+  maxPointLights?: number;
+  model?: ForwardLightingLightModel;
+  modelPhongNoAmbient?: boolean;
+  modelPhongNoDiffuse?: boolean;
+  modelPhongNoSpecular?: boolean;
+  modelPhysicalNoAmbient?: boolean;
+  modelPhysicalNoIBL?: boolean;
+  noAlbedoMap?: boolean;
+  noEmissiveMap?: boolean;
+  noGlossMap?: boolean;
+  noHeightMap?: boolean;
+  noMetalnessMap?: boolean;
+  noNormalMap?: boolean;
+  noOcclusionMap?: boolean;
+  noRoughnessMap?: boolean;
+  noShadow?: boolean;
 };
 
 enum ForwardLightingLightModel {
@@ -59,18 +79,6 @@ type EnvironmentLight = {
   brdf: GlTexture;
   diffuse: GlTexture;
   specular: GlTexture;
-};
-
-type LightConfiguration = {
-  maxDirectionalLights?: number;
-  maxPointLights?: number;
-  model?: ForwardLightingLightModel;
-  modelPhongNoAmbient?: boolean;
-  modelPhongNoDiffuse?: boolean;
-  modelPhongNoSpecular?: boolean;
-  modelPhysicalNoAmbient?: boolean;
-  modelPhysicalNoIBL?: boolean;
-  noShadow?: boolean;
 };
 
 type ForwardLightingScene = {
@@ -96,17 +104,6 @@ type LightScene = {
   projectionMatrix: Matrix4;
   projectionShadowMatrix: Matrix4;
   viewMatrix: Matrix4;
-};
-
-type MaterialConfiguration = {
-  noAlbedoMap?: boolean;
-  noEmissiveMap?: boolean;
-  noGlossMap?: boolean;
-  noHeightMap?: boolean;
-  noMetalnessMap?: boolean;
-  noNormalMap?: boolean;
-  noOcclusionMap?: boolean;
-  noRoughnessMap?: boolean;
 };
 
 type ShadowScene = ObjectScene & {
@@ -404,54 +401,61 @@ void main(void) {
 	fragColor = vec4(1, 1, 1, 1);
 }`;
 
-const loadLightPainter = (
+const createLightShader = (
   runtime: GlRuntime,
-  materialConfiguration: MaterialConfiguration,
-  lightConfiguration: LightConfiguration
-): GlPainter<LightScene> => {
-  const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
-  const maxPointLights = lightConfiguration.maxPointLights ?? 0;
-
+  configuration: Required<ForwardLightingConfiguration>
+): GlShader => {
   const directives: GlShaderDirectives = {
-    ["LIGHT_MODEL"]: shaderDirective.number(<number>lightConfiguration.model),
+    ["LIGHT_MODEL"]: shaderDirective.number(<number>configuration.model),
   };
 
-  switch (lightConfiguration.model) {
+  switch (configuration.model) {
     case ForwardLightingLightModel.Phong:
       directives["LIGHT_AMBIENT"] = shaderDirective.boolean(
-        !lightConfiguration.modelPhongNoAmbient
+        !configuration.modelPhongNoAmbient
       );
       directives["LIGHT_MODEL_PHONG_DIFFUSE"] = shaderDirective.boolean(
-        !lightConfiguration.modelPhongNoDiffuse
+        !configuration.modelPhongNoDiffuse
       );
       directives["LIGHT_MODEL_PHONG_SPECULAR"] = shaderDirective.boolean(
-        !lightConfiguration.modelPhongNoSpecular
+        !configuration.modelPhongNoSpecular
       );
 
       break;
 
     case ForwardLightingLightModel.Physical:
-      if (!lightConfiguration.modelPhysicalNoIBL) {
+      if (!configuration.modelPhysicalNoIBL) {
         directives["LIGHT_MODEL_PBR_IBL"] = shaderDirective.number(1);
       }
 
       directives["LIGHT_AMBIENT"] = shaderDirective.boolean(
-        !lightConfiguration.modelPhysicalNoAmbient
+        !configuration.modelPhysicalNoAmbient
       );
 
       break;
   }
 
-  if (!lightConfiguration.noShadow) {
+  if (!configuration.noShadow) {
     directives["HAS_SHADOW"] = shaderDirective.number(1);
   }
 
-  const shader = runtime.createShader(
-    lightVertexShader(maxDirectionalLights, maxPointLights),
-    lightFragmentShader(maxDirectionalLights, maxPointLights),
+  return runtime.createShader(
+    lightVertexShader(
+      configuration.maxDirectionalLights,
+      configuration.maxPointLights
+    ),
+    lightFragmentShader(
+      configuration.maxDirectionalLights,
+      configuration.maxPointLights
+    ),
     directives
   );
+};
 
+const createLightPainter = (
+  shader: GlShader,
+  configuration: Required<ForwardLightingConfiguration>
+): GlPainter<LightScene> => {
   // Bind geometry attributes
   const polygonBinding = shader.declare<GlPolygon>();
 
@@ -483,7 +487,7 @@ const loadLightPainter = (
     shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
   );
 
-  if (!lightConfiguration.noShadow) {
+  if (!configuration.noShadow) {
     sceneBinding.setUniform(
       "shadowProjectionMatrix",
       shaderUniform.matrix4f(
@@ -498,7 +502,7 @@ const loadLightPainter = (
 
   materialBinding.setUniform(
     "albedoMap",
-    materialConfiguration.noAlbedoMap !== true
+    !configuration.noAlbedoMap
       ? shaderUniform.quadWhite(({ albedoMap }) => albedoMap)
       : shaderUniform.quadWhite(() => undefined)
   );
@@ -507,11 +511,11 @@ const loadLightPainter = (
     shaderUniform.array4f(({ albedoFactor }) => albedoFactor)
   );
 
-  switch (lightConfiguration.model) {
+  switch (configuration.model) {
     case ForwardLightingLightModel.Phong:
       materialBinding.setUniform(
         "glossinessMap",
-        materialConfiguration.noGlossMap !== true
+        !configuration.noGlossMap
           ? shaderUniform.quadBlack(({ glossMap }) => glossMap)
           : shaderUniform.quadBlack(() => undefined)
       );
@@ -527,7 +531,7 @@ const loadLightPainter = (
       break;
 
     case ForwardLightingLightModel.Physical:
-      if (!lightConfiguration.modelPhysicalNoIBL) {
+      if (!configuration.modelPhysicalNoIBL) {
         sceneBinding.setUniform(
           "environmentBrdfMap",
           shaderUniform.quadBlack(
@@ -550,13 +554,13 @@ const loadLightPainter = (
 
       materialBinding.setUniform(
         "metalnessMap",
-        materialConfiguration.noMetalnessMap !== true
+        !configuration.noMetalnessMap
           ? shaderUniform.quadBlack(({ metalnessMap }) => metalnessMap)
           : shaderUniform.quadBlack(() => undefined)
       );
       materialBinding.setUniform(
         "roughnessMap",
-        materialConfiguration.noRoughnessMap !== true
+        !configuration.noRoughnessMap
           ? shaderUniform.quadBlack(({ roughnessMap }) => roughnessMap)
           : shaderUniform.quadBlack(() => undefined)
       );
@@ -574,7 +578,7 @@ const loadLightPainter = (
 
   materialBinding.setUniform(
     "emissiveMap",
-    materialConfiguration.noEmissiveMap !== true
+    !configuration.noEmissiveMap
       ? shaderUniform.quadBlack(({ emissiveMap }) => emissiveMap)
       : shaderUniform.quadBlack(() => undefined)
   );
@@ -584,7 +588,7 @@ const loadLightPainter = (
   );
   materialBinding.setUniform(
     "heightMap",
-    materialConfiguration.noHeightMap !== true
+    !configuration.noHeightMap
       ? shaderUniform.quadBlack(({ heightMap }) => heightMap)
       : shaderUniform.quadBlack(() => undefined)
   );
@@ -598,13 +602,13 @@ const loadLightPainter = (
   );
   materialBinding.setUniform(
     "normalMap",
-    materialConfiguration.noNormalMap !== true
+    !configuration.noNormalMap
       ? shaderUniform.quadBlack(({ normalMap }) => normalMap)
       : shaderUniform.quadBlack(() => undefined)
   );
   materialBinding.setUniform(
     "occlusionMap",
-    materialConfiguration.noOcclusionMap !== true
+    !configuration.noOcclusionMap
       ? shaderUniform.quadBlack(({ occlusionMap }) => occlusionMap)
       : shaderUniform.quadBlack(() => undefined)
   );
@@ -623,10 +627,10 @@ const loadLightPainter = (
     shaderUniform.vector3f(({ ambientLightColor }) => ambientLightColor)
   );
 
-  for (let i = 0; i < maxDirectionalLights; ++i) {
+  for (let i = 0; i < configuration.maxDirectionalLights; ++i) {
     const index = i;
 
-    if (!lightConfiguration.noShadow) {
+    if (!configuration.noShadow) {
       sceneBinding.setUniform(
         `directionalLights[${index}].castShadow`,
         shaderUniform.boolean(
@@ -672,7 +676,7 @@ const loadLightPainter = (
     );
   }
 
-  for (let i = 0; i < maxPointLights; ++i) {
+  for (let i = 0; i < configuration.maxPointLights; ++i) {
     const index = i;
 
     sceneBinding.setUniform(
@@ -705,15 +709,9 @@ const loadLightPainter = (
   );
 };
 
-const loadDirectionalShadowPainter = (
-  runtime: GlRuntime
+const createDirectionalShadowPainter = (
+  shader: GlShader
 ): GlPainter<ShadowScene> => {
-  const shader = runtime.createShader(
-    shadowDirectionalVertexShader,
-    shadowDirectionalFragmentShader,
-    {}
-  );
-
   const polygonBinding = shader.declare<GlPolygon>();
 
   polygonBinding.setAttribute("position", ({ position }) => position);
@@ -745,13 +743,7 @@ const loadDirectionalShadowPainter = (
 };
 
 // FIXME: not implemented
-const loadPointShadowPainter = (runtime: GlRuntime): GlPainter<ShadowScene> => {
-  runtime.createShader(
-    shadowDirectionalVertexShader,
-    shadowDirectionalFragmentShader,
-    {}
-  );
-
+const createPointShadowPainter = (): GlPainter<ShadowScene> => {
   return {
     paint: () => {},
   };
@@ -763,8 +755,10 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
 
   private readonly directionalShadowPainter: GlPainter<ShadowScene>;
   private readonly directionalShadowProjectionMatrix: Matrix4;
+  private readonly directionalShadowShader: GlShader;
   private readonly directionalShadowTargets: GlTarget[];
   private readonly lightPainter: GlPainter<LightScene>;
+  private readonly lightShader: GlShader;
   private readonly maxDirectionalLights: number;
   private readonly maxPointLights: number;
   private readonly pointShadowPainter: GlPainter<ShadowScene>;
@@ -779,24 +773,48 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     configuration: ForwardLightingConfiguration
   ) {
     const gl = runtime.context;
-    const lightConfiguration = configuration.light ?? {};
-    const materialConfiguration = configuration.material ?? {};
-    const maxDirectionalLights = lightConfiguration.maxDirectionalLights ?? 0;
-    const maxPointLights = lightConfiguration.maxPointLights ?? 0;
     const targetHeight = 1024;
     const targetWidth = 1024;
 
-    const directionalShadowTargets = range(maxDirectionalLights).map(
-      () => new GlTarget(gl, targetWidth, targetHeight)
-    );
-    const pointShadowTargets = range(maxPointLights).map(
+    const fullConfiguration: Required<ForwardLightingConfiguration> = {
+      maxDirectionalLights: configuration.maxDirectionalLights ?? 0,
+      maxPointLights: configuration.maxPointLights ?? 0,
+      model: configuration.model ?? ForwardLightingLightModel.Phong,
+      modelPhongNoAmbient: configuration.modelPhongNoAmbient ?? false,
+      modelPhongNoDiffuse: configuration.modelPhongNoDiffuse ?? false,
+      modelPhongNoSpecular: configuration.modelPhongNoSpecular ?? false,
+      modelPhysicalNoAmbient: configuration.modelPhysicalNoAmbient ?? false,
+      modelPhysicalNoIBL: configuration.modelPhysicalNoIBL ?? false,
+      noAlbedoMap: configuration.noAlbedoMap ?? false,
+      noEmissiveMap: configuration.noEmissiveMap ?? false,
+      noGlossMap: configuration.noGlossMap ?? false,
+      noHeightMap: configuration.noHeightMap ?? false,
+      noMetalnessMap: configuration.noMetalnessMap ?? false,
+      noNormalMap: configuration.noNormalMap ?? false,
+      noOcclusionMap: configuration.noOcclusionMap ?? false,
+      noRoughnessMap: configuration.noRoughnessMap ?? false,
+      noShadow: configuration.noShadow ?? false,
+    };
+
+    const directionalShadowTargets = range(
+      fullConfiguration.maxDirectionalLights
+    ).map(() => new GlTarget(gl, targetWidth, targetHeight));
+    const lightShader = createLightShader(runtime, fullConfiguration);
+    const pointShadowTargets = range(fullConfiguration.maxPointLights).map(
       () => new GlTarget(gl, targetWidth, targetHeight)
     );
 
     this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
-    this.directionalShadowPainter = loadDirectionalShadowPainter(runtime);
+    const directionalShadowShader = runtime.createShader(
+      shadowDirectionalVertexShader,
+      shadowDirectionalFragmentShader,
+      {}
+    );
+    this.directionalShadowPainter = createDirectionalShadowPainter(
+      directionalShadowShader
+    );
     this.directionalShadowProjectionMatrix = Matrix4.fromOrthographic(
       -10,
       10,
@@ -805,18 +823,16 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
       -10,
       20
     );
+    this.directionalShadowShader = directionalShadowShader;
     this.directionalShadowTargets = directionalShadowTargets;
-    this.lightPainter = loadLightPainter(
-      runtime,
-      materialConfiguration,
-      lightConfiguration
-    );
-    this.maxDirectionalLights = maxDirectionalLights;
-    this.maxPointLights = maxPointLights;
+    this.lightPainter = createLightPainter(lightShader, fullConfiguration);
+    this.lightShader = lightShader;
+    this.maxDirectionalLights = fullConfiguration.maxDirectionalLights;
+    this.maxPointLights = fullConfiguration.maxPointLights;
     this.pointShadowBuffers = pointShadowTargets.map((target) =>
       target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
     );
-    this.pointShadowPainter = loadPointShadowPainter(runtime);
+    this.pointShadowPainter = createPointShadowPainter();
     this.pointShadowProjectionMatrix = Matrix4.fromPerspective(
       Math.PI * 0.5,
       targetWidth / targetHeight,
@@ -828,7 +844,10 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     this.target = target;
   }
 
-  public dispose() {}
+  public dispose() {
+    this.directionalShadowShader.dispose();
+    this.lightShader.dispose();
+  }
 
   public render(scene: ForwardLightingScene) {
     const {

@@ -386,5 +386,5 @@ export {
   type GlObject,
   type GlPolygon,
   loadLibrary,
-  loadModel,
+  loadModel as createModel,
 };

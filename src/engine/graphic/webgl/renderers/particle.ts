@@ -12,6 +12,7 @@ import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer, GlContext, createIndexBuffer } from "../resource";
 import {
+  GlShader,
   GlShaderAttribute,
   GlShaderBinding,
   createAttribute,
@@ -234,18 +235,19 @@ class ParticleRenderer implements Renderer<ParticleScene> {
   private readonly runtime: GlRuntime;
   private readonly sceneBinding: GlShaderBinding<SceneState>;
   private readonly sceneState: SceneState;
+  private readonly shader: GlShader;
   private readonly sources: ParticleSource[];
   private readonly target: GlTarget;
 
   public constructor(runtime: GlRuntime, target: GlTarget) {
-    const particleShader = runtime.createShader(
+    const shader = runtime.createShader(
       particleVertexShader,
       particleFragmentShader,
       {}
     );
 
     // Declare billboard binding (unique to each particle source)
-    const billboardBinding = particleShader.declare<ParticleBillboard>();
+    const billboardBinding = shader.declare<ParticleBillboard>();
 
     billboardBinding.setAttribute(
       "particleCoordinate",
@@ -273,7 +275,7 @@ class ParticleRenderer implements Renderer<ParticleScene> {
     );
 
     // Declare scene binding (shared by all particle sources)
-    const sceneBinding = particleShader.declare<SceneState>();
+    const sceneBinding = shader.declare<SceneState>();
 
     sceneBinding.setUniform(
       "billboardMatrix",
@@ -298,6 +300,7 @@ class ParticleRenderer implements Renderer<ParticleScene> {
       projectionMatrix: Matrix4.fromIdentity(),
       viewMatrix: Matrix4.fromIdentity(),
     };
+    this.shader = shader;
     this.sources = [];
     this.target = target;
   }
@@ -309,14 +312,14 @@ class ParticleRenderer implements Renderer<ParticleScene> {
     variants: number,
     define: (seed: TSeed) => ParticleDefinition
   ): ParticleEmitter<TSeed> {
-    const instances = this.sources;
+    const sources = this.sources;
 
     return (center, seed) => {
       const { create, update } = define(seed);
 
       const billboard = createBillboard(this.runtime.context, sprite, variants);
 
-      instances.push({
+      sources.push({
         update,
         billboard,
         center,
@@ -339,7 +342,13 @@ class ParticleRenderer implements Renderer<ParticleScene> {
     };
   }
 
-  public dispose() {}
+  public dispose() {
+    for (const { billboard } of this.sources) {
+      billboard.dispose();
+    }
+
+    this.shader.dispose();
+  }
 
   public render(scene: ParticleScene) {
     const { projectionMatrix, viewMatrix } = scene;
@@ -392,6 +401,8 @@ class ParticleRenderer implements Renderer<ParticleScene> {
       source.elapsed += dt;
 
       if (source.elapsed >= source.duration) {
+        source.billboard.dispose();
+
         this.sources.splice(i - 1, 1);
 
         continue;

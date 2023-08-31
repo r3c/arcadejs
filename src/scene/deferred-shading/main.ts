@@ -34,7 +34,7 @@ import {
   PointLight,
 } from "../../engine/graphic/webgl/renderers/snippets/light";
 import { brightColor } from "../../engine/graphic/color";
-import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
+import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 
 /*
  ** What changed?
@@ -155,10 +155,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
       })),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(gl, cubeModel),
-        directionalLight: loadModel(gl, directionalLightModel),
-        ground: loadModel(gl, groundModel),
-        pointLight: loadModel(gl, pointLightModel),
+        cube: createModel(gl, cubeModel),
+        directionalLight: createModel(gl, directionalLightModel),
+        ground: createModel(gl, groundModel),
+        pointLight: createModel(gl, pointLightModel),
       },
       move: 0,
       pointLights: range(2000).map((i) => ({

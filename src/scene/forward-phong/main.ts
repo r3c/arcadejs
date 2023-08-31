@@ -19,7 +19,7 @@ import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { orbitatePosition, rotateDirection } from "../move";
 import { Camera } from "../view";
 import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
-import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
+import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import {
   DebugTextureRenderer,
   DebugTextureFormat,
@@ -98,9 +98,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
       directionalLightDirections: range(3).map(() => Vector3.zero),
       input: new Input(screen.canvas),
       models: {
-        cube: loadModel(gl, cubeModel),
-        ground: loadModel(gl, groundModel),
-        light: loadModel(gl, lightModel),
+        cube: createModel(gl, cubeModel),
+        ground: createModel(gl, groundModel),
+        light: createModel(gl, lightModel),
       },
       move: 0,
       pointLightPositions: range(3).map(() => Vector3.zero),
@@ -109,18 +109,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
         indexBooleans,
         (flags) =>
           new ForwardLightingRenderer(runtime, target, {
-            light: {
-              maxDirectionalLights: 3,
-              maxPointLights: 3,
-              model: ForwardLightingLightModel.Phong,
-              modelPhongNoAmbient: !flags[0],
-              modelPhongNoDiffuse: !flags[1],
-              modelPhongNoSpecular: !flags[2],
-            },
-            material: {
-              noHeightMap: !flags[3],
-              noNormalMap: !flags[4],
-            },
+            maxDirectionalLights: 3,
+            maxPointLights: 3,
+            model: ForwardLightingLightModel.Phong,
+            modelPhongNoAmbient: !flags[0],
+            modelPhongNoDiffuse: !flags[1],
+            modelPhongNoSpecular: !flags[2],
+            noHeightMap: !flags[3],
+            noNormalMap: !flags[4],
           })
       ),
       target,

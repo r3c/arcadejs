@@ -1,7 +1,7 @@
 import { flattenModel, mergeModels } from "../../engine/graphic/model";
 import { Instance, Model } from "../../engine/graphic/model/definition";
 import { GlRuntime } from "../../engine/graphic/webgl";
-import { loadLibrary, loadModel } from "../../engine/graphic/webgl/model";
+import { loadLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -238,7 +238,9 @@ const createWorldGraphic = (
 
           const mergedModel = mergeModels(instances);
           const flattenedModel = flattenModel(mergedModel);
-          const model = loadModel(runtime.context, flattenedModel, { library });
+          const model = createModel(runtime.context, flattenedModel, {
+            library,
+          });
 
           chunkObjects[chunkIndex].model = model;
         }

@@ -407,6 +407,7 @@ const loadGeometryPainter = (
   runtime: GlRuntime,
   configuration: DeferredLightingConfiguration
 ): GlPainter<DeferredLightingScene> => {
+  // FIXME: should be disposed
   const shader = runtime.createShader(
     geometryVertexShader,
     geometryFragmentShader,
@@ -491,6 +492,7 @@ const loadLightBinding = <TScene extends LightScene>(
   type: DeferredLightingLightType
 ) => {
   // Setup light shader
+  // FIXME: should be disposed
   const shader = runtime.createShader(lightVertexShader, lightFragmentShader, {
     LIGHT_TYPE: shaderDirective.number(type),
   });
@@ -605,6 +607,7 @@ const loadMaterialPainter = (
   }
 
   // Setup material shader
+  // FIXME: should be disposed
   const shader = runtime.createShader(
     materialVertexShader,
     materialFragmentShader,

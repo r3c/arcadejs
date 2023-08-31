@@ -2,7 +2,6 @@ import { type Application, configure, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
-  ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
@@ -25,7 +24,7 @@ import {
 } from "../../engine/graphic/webgl/renderers/particle";
 import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
-import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
+import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
 
@@ -165,8 +164,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       input: new Input(screen.canvas),
       lights: [Vector3.fromXYZ(0, 0, 50)],
       models: {
-        ship: loadModel(gl, shipModel),
-        star: loadModel(gl, starModel),
+        ship: createModel(gl, shipModel),
+        star: createModel(gl, starModel),
       },
       move: 0,
       player: {
@@ -178,11 +177,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       particleRenderer,
       projectionMatrix: Matrix4.identity,
       sceneRenderer: new ForwardLightingRenderer(runtime, target, {
-        light: {
-          model: ForwardLightingLightModel.Phong,
-          maxPointLights: 3,
-          noShadow: true,
-        },
+        maxPointLights: 3,
+        noShadow: true,
       }),
       sprite,
       stars: range(starFieldCount).map(() =>

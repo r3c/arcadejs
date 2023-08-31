@@ -34,7 +34,7 @@ import {
 } from "./objects/billboard";
 import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
 import { Renderer } from "../../display";
-import { GlMaterial, GlObject, GlPolygon, loadModel } from "../model";
+import { GlMaterial, GlObject, GlPolygon, createModel } from "../model";
 import { GlTexture } from "../texture";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
@@ -371,6 +371,7 @@ const loadAmbientPainter = (
   }
 
   // Setup light shader
+  // FIXME: should be disposed
   const shader = runtime.createShader(
     ambientVertexShader,
     ambientFragmentShader,
@@ -420,6 +421,7 @@ const loadGeometryPainter = (
   configuration: DeferredShadingConfiguration
 ): GlPainter<GeometryScene> => {
   // Setup geometry shader
+  // FIXME: should be disposed
   const shader = runtime.createShader(
     geometryVertexShader,
     geometryFragmentShader,
@@ -530,6 +532,7 @@ const loadLightBinding = <TScene extends LightScene>(
   }
 
   // Setup light shader
+  // FIXME: should be disposed
   const shader = runtime.createShader(
     lightVertexShader,
     lightFragmentShader,
@@ -657,7 +660,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       gl.drawingBufferWidth,
       gl.drawingBufferHeight
     );
-    const quad = loadModel(gl, quadModel);
+    const quad = createModel(gl, quadModel);
 
     this.albedoAndShininessBuffer = geometry.setupColorTexture(
       GlTextureFormat.RGBA8,

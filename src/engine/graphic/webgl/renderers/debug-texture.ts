@@ -1,12 +1,17 @@
 import { Matrix4 } from "../../../math/matrix";
 import { model } from "./resources/quad";
 import { GlRuntime, GlTarget } from "../../webgl";
-import { GlShaderAttribute, shaderDirective, shaderUniform } from "../shader";
+import {
+  GlShader,
+  GlShaderAttribute,
+  shaderDirective,
+  shaderUniform,
+} from "../shader";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
 import { Renderer } from "../../display";
 import { GlTexture } from "../texture";
-import { GlModel, loadModel } from "../model";
+import { GlModel, createModel } from "../model";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -136,17 +141,7 @@ type DebugTextureScene = {
   source: GlTexture;
 };
 
-const loadPainter = (
-  runtime: GlRuntime,
-  configuration: DebugTextureConfiguration
-) => {
-  const shader = runtime.createShader(vertexSource, fragmentSource, {
-    FORMAT: shaderDirective.number(configuration.format),
-    SELECT: shaderDirective.number(configuration.select),
-    ZFAR: shaderDirective.number(configuration.zFar),
-    ZNEAR: shaderDirective.number(configuration.zNear),
-  });
-
+const createPainter = (shader: GlShader) => {
   const binding = shader.declare<DebugTextureScene>();
 
   binding.setAttribute("coordinate", ({ coordinate }) => coordinate);
@@ -163,11 +158,24 @@ const loadPainter = (
   return new SinglePainter(binding, ({ index }) => index);
 };
 
+const createShader = (
+  runtime: GlRuntime,
+  configuration: DebugTextureConfiguration
+): GlShader => {
+  return runtime.createShader(vertexSource, fragmentSource, {
+    FORMAT: shaderDirective.number(configuration.format),
+    SELECT: shaderDirective.number(configuration.select),
+    ZFAR: shaderDirective.number(configuration.zFar),
+    ZNEAR: shaderDirective.number(configuration.zNear),
+  });
+};
+
 class DebugTextureRenderer implements Renderer<GlTexture> {
   private readonly painter: SinglePainter<DebugTextureScene>;
   private readonly quad: GlModel;
   private readonly runtime: GlRuntime;
   private readonly scale: number;
+  private readonly shader: GlShader;
   private readonly target: GlTarget;
 
   public constructor(
@@ -175,14 +183,20 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
     target: GlTarget,
     configuration: DebugTextureConfiguration
   ) {
-    this.painter = loadPainter(runtime, configuration);
-    this.quad = loadModel(runtime.context, model);
+    const shader = createShader(runtime, configuration);
+
+    this.painter = createPainter(shader);
+    this.quad = createModel(runtime.context, model);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
+    this.shader = shader;
     this.target = target;
   }
 
-  public dispose() {}
+  public dispose() {
+    this.quad.dispose();
+    this.shader.dispose();
+  }
 
   public render(source: GlTexture) {
     const gl = this.runtime.context;

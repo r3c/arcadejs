@@ -28,7 +28,7 @@ import {
   ForwardLightingRenderer,
   ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
-import { GlModel, loadModel } from "../../engine/graphic/webgl/model";
+import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 
 /*
@@ -139,9 +139,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
         position: { x: 0, y: 0, z: 0 },
       })),
       models: {
-        ground: loadModel(gl, groundModel),
-        helmet: loadModel(gl, helmetModel),
-        light: loadModel(gl, lightModel),
+        ground: createModel(gl, groundModel),
+        helmet: createModel(gl, helmetModel),
+        light: createModel(gl, lightModel),
       },
       move: 0,
       projectionMatrix: Matrix4.identity,
@@ -149,19 +149,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
         indexBooleans,
         (flags) =>
           new ForwardLightingRenderer(runtime, target, {
-            light: {
-              model: ForwardLightingLightModel.Physical,
-              modelPhysicalNoAmbient: !flags[0],
-              modelPhysicalNoIBL: !flags[3],
-              maxPointLights: 3,
-              noShadow: true,
-            },
-            material: {
-              noEmissiveMap: !flags[1],
-              noHeightMap: !flags[4],
-              noNormalMap: !flags[5],
-              noOcclusionMap: !flags[2],
-            },
+            maxPointLights: 3,
+            model: ForwardLightingLightModel.Physical,
+            modelPhysicalNoAmbient: !flags[0],
+            modelPhysicalNoIBL: !flags[3],
+            noEmissiveMap: !flags[1],
+            noHeightMap: !flags[4],
+            noNormalMap: !flags[5],
+            noOcclusionMap: !flags[2],
+            noShadow: true,
           })
       ),
       target,
