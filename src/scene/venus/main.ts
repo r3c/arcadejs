@@ -132,28 +132,24 @@ const application: Application<WebGLScreen, ApplicationState> = {
       (seed) => {
         const sequence = createFloatSequence(seed);
 
-        return {
-          create: (spark, rankSpan) => {
-            spark.tint.x = 0.4;
-            spark.tint.y = 0.4;
-            spark.tint.z = 1;
-            spark.variant = Math.floor((rankSpan * 5) % 5);
-          },
-          update: (spark, rankSpan, timeSpan) => {
-            const pitch = sequence(rankSpan + 0.1) * pi2;
-            const roll = sequence(rankSpan + 0.2) * pi2;
-            const rotationAngle = sequence(rankSpan + 0.3) * pi2;
-            const rotationSpeed = sequence(rankSpan + 0.4) - 0.5;
-            const velocity = sequence(rankSpan + 0.5) * 0.5;
-            const position = particleEasing0(timeSpan * velocity);
+        return (spark, rankSpan, timeSpan) => {
+          const pitch = sequence(rankSpan + 0.1) * pi2;
+          const roll = sequence(rankSpan + 0.2) * pi2;
+          const rotationAngle = sequence(rankSpan + 0.3) * pi2;
+          const rotationSpeed = sequence(rankSpan + 0.4) - 0.5;
+          const velocity = sequence(rankSpan + 0.5) * 0.5;
+          const position = particleEasing0(timeSpan * velocity);
 
-            spark.position.x = Math.cos(pitch) * Math.cos(roll) * position;
-            spark.position.y = Math.sin(pitch) * Math.cos(roll) * position;
-            spark.position.z = Math.sin(roll) * position;
-            spark.radius = (1 - timeSpan) * 0.5;
-            spark.rotation = (rotationAngle + timeSpan * rotationSpeed) * pi2;
-            spark.tint.w = (1 - timeSpan) * 0.5;
-          },
+          spark.position.x = Math.cos(pitch) * Math.cos(roll) * position;
+          spark.position.y = Math.sin(pitch) * Math.cos(roll) * position;
+          spark.position.z = Math.sin(roll) * position;
+          spark.radius = (1 - timeSpan) * 0.5;
+          spark.rotation = (rotationAngle + timeSpan * rotationSpeed) * pi2;
+          spark.tint.x = 0.4;
+          spark.tint.y = 0.4;
+          spark.tint.z = 1;
+          spark.tint.w = (1 - timeSpan) * 0.5;
+          spark.variant = Math.floor((rankSpan * 5) % 5);
         };
       }
     );
