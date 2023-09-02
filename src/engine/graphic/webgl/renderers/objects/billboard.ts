@@ -216,11 +216,11 @@ const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
         );
       }
 
-      index.set(indexArray, indexLength);
-      lightColor.buffer.set(lightColorArray, lightColorLength);
-      lightPosition.buffer.set(lightPositionArray, lightPositionLength);
-      lightRadius.buffer.set(lightRadiusArray, lightRadiusLength);
-      lightShift.buffer.set(lightShiftArray, lightShiftLength);
+      index.reset(indexArray, indexLength);
+      lightColor.buffer.reset(lightColorArray, lightColorLength);
+      lightPosition.buffer.reset(lightPositionArray, lightPositionLength);
+      lightRadius.buffer.reset(lightRadiusArray, lightRadiusLength);
+      lightShift.buffer.reset(lightShiftArray, lightShiftLength);
     },
     index,
     polygon: {

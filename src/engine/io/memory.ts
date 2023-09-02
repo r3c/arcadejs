@@ -1,7 +1,7 @@
 type FlexibleBufferArray = Float32Array | Uint32Array;
 
 type FlexibleBuffer<TArray extends FlexibleBufferArray> = {
-  resize: (length: number) => void;
+  allocate: (length: number) => void;
   array: Omit<TArray, "length">;
   capacity: number;
   length: number;
@@ -16,7 +16,7 @@ const createFlexibleBuffer = <TArray extends FlexibleBufferArray>(
   recycle: number
 ): FlexibleBuffer<TArray> => {
   const instance: FlexibleBuffer<TArray> = {
-    resize: (length) => {
+    allocate: (length) => {
       if (instance.capacity < length || instance.capacity >= length * recycle) {
         instance.array = new constructor(length);
         instance.capacity = length;
