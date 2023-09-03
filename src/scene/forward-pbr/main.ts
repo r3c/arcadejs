@@ -14,14 +14,14 @@ import {
   loadModelFromJson,
 } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import { Vector3 } from "../../engine/math/vector";
+import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
   GlTarget,
   createRuntime,
   loadTextureCube,
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
-import { orbitatePosition } from "../move";
+import { Mover, createOrbitMover } from "../move";
 import { Camera } from "../view";
 import {
   ForwardLightingLightModel,
@@ -50,7 +50,8 @@ const configuration = {
 };
 
 type Light = {
-  position: Vector3;
+  mover: Mover;
+  position: MutableVector3;
 };
 
 type ApplicationState = {
@@ -135,8 +136,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
       input: new Input(screen.canvas),
-      lights: range(3).map(() => ({
-        position: { x: 0, y: 0, z: 0 },
+      lights: range(3).map((i) => ({
+        mover: createOrbitMover(i, 1, 3, 1),
+        position: Vector3.fromZero(),
       })),
       models: {
         ground: createModel(gl, groundModel),
@@ -252,7 +254,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Update light positions
     for (let i = 0; i < lights.length; ++i) {
-      lights[i].position = orbitatePosition(time * 0.0005, i, 1, 3);
+      const position = lights[i].position;
+
+      position.set(lights[i].mover(Vector3.zero, time * 0.0005));
     }
 
     // Move camera

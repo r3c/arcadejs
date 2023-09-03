@@ -8,7 +8,7 @@ import {
 import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import { Vector3 } from "../../engine/math/vector";
+import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
 import {
   WorldGraphic,
@@ -18,7 +18,7 @@ import {
 } from "./world";
 import { noise } from "./perlin";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
-import { orbitatePosition } from "../move";
+import { Mover, createOrbitMover } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 
@@ -27,7 +27,8 @@ type ApplicationState = {
   currentOffset: Vector3;
   input: Input;
   lights: {
-    position: Vector3;
+    mover: Mover;
+    position: MutableVector3;
     radius: number;
   }[];
   models: {
@@ -150,11 +151,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
       currentOffset: Vector3.zero,
       input: new Input(screen.canvas),
       lights: range(maxLights).map((i) => ({
-        position: {
-          x: worldGraphic.renderSize.x * (i / (maxLights - 1) - 0.5),
-          y: worldGraphic.renderSize.y * 0.5,
-          z: worldGraphic.renderSize.z * (i / (maxLights - 1) - 0.5),
-        },
+        mover: createOrbitMover(i, 1, maxWorldRenderSize, 1),
+        position: Vector3.fromXYZ(
+          worldGraphic.renderSize.x * (i / (maxLights - 1) - 0.5),
+          worldGraphic.renderSize.y * 0.5,
+          worldGraphic.renderSize.z * (i / (maxLights - 1) - 0.5)
+        ),
         radius: maxWorldRenderSize,
       })),
       models: {
@@ -177,7 +179,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   update(state: ApplicationState, dt: number) {
-    const { camera, input, worldPhysic, worldGraphic } = state;
+    const { camera, input, lights, worldPhysic, worldGraphic } = state;
 
     // Move camera & define view matrix accordingly
     camera.move(input, dt);
@@ -270,19 +272,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
 
     // Move lights
-    const maxWorldRenderSize = Math.max(
-      worldGraphic.renderSize.x,
-      worldGraphic.renderSize.y,
-      worldGraphic.renderSize.z
-    );
+    for (let i = 0; i < lights.length; ++i) {
+      const { mover, position } = lights[i];
 
-    for (let i = 0; i < state.lights.length; ++i) {
-      state.lights[i].position = orbitatePosition(
-        state.move * 0.0005,
-        i,
-        1,
-        maxWorldRenderSize
-      );
+      position.set(mover(Vector3.zero, state.move * 0.0005));
     }
 
     // Update state

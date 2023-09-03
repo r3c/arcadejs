@@ -27,7 +27,7 @@ import { EasingType, getEasing } from "../../engine/math/easing";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
-import { orbitatePosition } from "../move";
+import { Mover, createOrbitMover } from "../move";
 
 type Player = {
   position: MutableVector3;
@@ -35,10 +35,15 @@ type Player = {
   velocity: MutableVector3;
 };
 
+type Light = {
+  mover: Mover;
+  position: MutableVector3;
+};
+
 type ApplicationState = {
   camera: Camera;
   input: Input;
-  lights: MutableVector3[];
+  lights: Light[];
   models: {
     light: GlModel;
     ship: GlModel;
@@ -111,6 +116,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
     configure(undefined);
 
     // Load meshes
+    const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
+      transform: Matrix4.fromCustom(["scale", { x: 0.25, y: 0.25, z: 0.25 }]),
+    });
+
     const shipModel = await loadModelFrom3ds("model/colmftr1/COLMFTR1.3DS", {
       transform: Matrix4.fromCustom(["translate", { x: 0, y: 4, z: 0 }]),
     });
@@ -161,9 +170,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -50 }, { x: 0, y: 0, z: 0 }),
       input: new Input(screen.canvas),
-      lights: [Vector3.fromZero()],
+      lights: range(2).map((i) => ({
+        mover: createOrbitMover(i, 5, 5, 2),
+        position: Vector3.fromZero(),
+      })),
       models: {
-        light: createModel(gl, starModel),
+        light: createModel(gl, lightModel),
         ship: createModel(gl, shipModel),
         star: createModel(gl, starModel),
       },
@@ -222,13 +234,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
           matrix: Matrix4.fromCustom(["translate", position]),
           model: models.star,
         })),
-        ...state.lights.map((position) => ({
+        ...state.lights.map(({ position }) => ({
           matrix: Matrix4.fromCustom(["translate", position]),
           model: models.light,
           noShadow: true,
         })),
       ],
-      pointLights: state.lights.map((position) => ({
+      pointLights: state.lights.map(({ position }) => ({
         color: { x: 1, y: 1, z: 1 },
         position,
         radius: 50,
@@ -296,7 +308,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Update light positions
     for (let i = lights.length; i-- > 0; ) {
-      lights[i].set(orbitatePosition(state.time * 0.0001, i, 10, 10));
+      const { mover, position } = lights[i];
+
+      position.set(mover(player.position, state.time * 0.001));
     }
 
     // Emit particles & update them

@@ -24,9 +24,9 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import { Vector3 } from "../../engine/math/vector";
+import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
-import { orbitatePosition, rotateDirection } from "../move";
+import { Mover, createCircleMover, createOrbitMover } from "../move";
 import { Camera } from "../view";
 import { DeferredLightingScene } from "../../engine/graphic/webgl/renderers/deferred-lighting";
 import {
@@ -100,10 +100,20 @@ const pointLightParameters = [
   { count: 2000, radius: 1 },
 ];
 
+type SceneDirectionalLight = DirectionalLight & {
+  mover: Mover;
+  direction: MutableVector3;
+};
+
+type ScenePointLight = PointLight & {
+  mover: Mover;
+  position: MutableVector3;
+};
+
 type ApplicationState = {
   camera: Camera;
   debugRendererMemo: Memo<number, DebugTextureRenderer>;
-  directionalLights: DirectionalLight[];
+  directionalLights: SceneDirectionalLight[];
   input: Input;
   models: {
     cube: GlModel;
@@ -112,7 +122,7 @@ type ApplicationState = {
     pointLight: GlModel;
   };
   time: number;
-  pointLights: PointLight[];
+  pointLights: ScenePointLight[];
   projectionMatrix: Matrix4;
   sceneRendererMemo: Memo<boolean[], DeferredLightingRenderer>;
   target: GlTarget;
@@ -162,7 +172,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
       directionalLights: range(10).map((i) => ({
         color: brightColor(i),
-        direction: Vector3.zero,
+        direction: Vector3.fromZero(),
+        mover: createCircleMover(i),
         shadow: false,
       })),
       input: new Input(screen.canvas),
@@ -174,7 +185,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       pointLights: range(2000).map((i) => ({
         color: brightColor(i),
-        position: Vector3.zero,
+        mover: createOrbitMover(i, 1, 5, 1),
+        position: Vector3.fromZero(),
         radius: 0,
       })),
       projectionMatrix: Matrix4.identity,
@@ -326,11 +338,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const pointLightRadius = pointLightParameters[tweak.nbPoints].radius;
 
     for (let i = 0; i < directionalLights.length; ++i) {
-      directionalLights[i].direction = rotateDirection(time * 0.001, i);
+      const { direction, mover } = directionalLights[i];
+
+      direction.set(mover(Vector3.zero, time * 0.001));
     }
 
     for (let i = 0; i < pointLights.length; ++i) {
-      pointLights[i].position = orbitatePosition(time * 0.0002, i, 1, 5);
+      const { mover, position } = pointLights[i];
+
+      position.set(mover(Vector3.zero, time * 0.0002));
+
       pointLights[i].radius = pointLightRadius;
     }
 

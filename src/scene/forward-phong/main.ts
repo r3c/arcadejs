@@ -14,9 +14,9 @@ import {
 import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import { Vector3 } from "../../engine/math/vector";
+import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
-import { orbitatePosition, rotateDirection } from "../move";
+import { Mover, createCircleMover, createOrbitMover } from "../move";
 import { Camera } from "../view";
 import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
@@ -49,7 +49,7 @@ const configuration = {
 type ApplicationState = {
   camera: Camera;
   debugRenderer: Renderer<GlTexture>;
-  directionalLightDirections: Vector3[];
+  directionalLights: { mover: Mover; direction: MutableVector3 }[];
   input: Input;
   models: {
     cube: GlModel;
@@ -57,7 +57,7 @@ type ApplicationState = {
     light: GlModel;
   };
   time: number;
-  pointLightPositions: Vector3[];
+  pointLights: { mover: Mover; position: MutableVector3 }[];
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   target: GlTarget;
@@ -95,14 +95,20 @@ const application: Application<WebGLScreen, ApplicationState> = {
         zNear: 0.1,
         zFar: 100,
       }),
-      directionalLightDirections: range(3).map(() => Vector3.zero),
+      directionalLights: range(3).map((i) => ({
+        direction: Vector3.fromZero(),
+        mover: createCircleMover(i),
+      })),
       input: new Input(screen.canvas),
       models: {
         cube: createModel(gl, cubeModel),
         ground: createModel(gl, groundModel),
         light: createModel(gl, lightModel),
       },
-      pointLightPositions: range(3).map(() => Vector3.zero),
+      pointLights: range(3).map((i) => ({
+        mover: createOrbitMover(i, 2, 2, 1),
+        position: Vector3.fromZero(),
+      })),
       projectionMatrix: Matrix4.identity,
       rendererMemo: memoize(
         indexBooleans,
@@ -128,9 +134,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const {
       camera,
       debugRenderer,
-      directionalLightDirections,
+      directionalLights,
       models,
-      pointLightPositions,
+      pointLights,
       projectionMatrix,
       rendererMemo,
       target,
@@ -144,9 +150,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const sceneRenderer = rendererMemo.get(getOptions(tweak));
     const scene: ForwardLightingScene = {
       ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-      directionalLights: directionalLightDirections
+      directionalLights: directionalLights
         .slice(0, tweak.nbDirectionalLights)
-        .map((direction) => ({
+        .map(({ direction }) => ({
           color: { x: 0.8, y: 0.8, z: 0.8 },
           direction,
           shadow: true,
@@ -164,24 +170,24 @@ const application: Application<WebGLScreen, ApplicationState> = {
         },
       ]
         .concat(
-          pointLightPositions.slice(0, tweak.nbPointLights).map((position) => ({
+          pointLights.slice(0, tweak.nbPointLights).map(({ position }) => ({
             matrix: Matrix4.fromCustom(["translate", position]),
             model: models.light,
             noShadow: true,
           }))
         )
         .concat(
-          directionalLightDirections
+          directionalLights
             .slice(0, tweak.nbDirectionalLights)
-            .map((direction) => ({
+            .map(({ direction }) => ({
               matrix: Matrix4.fromCustom(["translate", direction]),
               model: models.light,
               noShadow: true,
             }))
         ),
-      pointLights: pointLightPositions
+      pointLights: pointLights
         .slice(0, tweak.nbPointLights)
-        .map((position) => ({
+        .map(({ position }) => ({
           color: { x: 0.8, y: 0.8, z: 0.8 },
           position,
           radius: 5,
@@ -217,27 +223,22 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   update(state, dt) {
-    const {
-      camera,
-      directionalLightDirections,
-      input,
-      pointLightPositions,
-      time,
-      tweak,
-    } = state;
+    const { camera, directionalLights, input, pointLights, time, tweak } =
+      state;
 
     // Update light positions
-    for (let i = 0; i < directionalLightDirections.length; ++i) {
-      const direction = Vector3.fromObject(rotateDirection(-time * 0.0005, i));
+    for (let i = 0; i < directionalLights.length; ++i) {
+      const direction = directionalLights[i].direction;
 
+      direction.set(directionalLights[i].mover(Vector3.zero, -time * 0.0005));
       direction.normalize();
       direction.scale(10);
-
-      directionalLightDirections[i] = direction;
     }
 
-    for (let i = 0; i < pointLightPositions.length; ++i) {
-      pointLightPositions[i] = orbitatePosition(time * 0.0005, i, 2, 2);
+    for (let i = 0; i < pointLights.length; ++i) {
+      const position = pointLights[i].position;
+
+      position.set(pointLights[i].mover(Vector3.zero, time * 0.0005));
     }
 
     // Move camera
