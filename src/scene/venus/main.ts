@@ -27,6 +27,7 @@ import { EasingType, getEasing } from "../../engine/math/easing";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
+import { orbitatePosition } from "../move";
 
 type Player = {
   position: MutableVector3;
@@ -39,6 +40,7 @@ type ApplicationState = {
   input: Input;
   lights: MutableVector3[];
   models: {
+    light: GlModel;
     ship: GlModel;
     star: GlModel;
   };
@@ -51,6 +53,7 @@ type ApplicationState = {
   sprite: GlTexture;
   stars: MutableVector3[];
   target: GlTarget;
+  time: number;
   viewMatrix: MutableMatrix4;
 };
 
@@ -158,8 +161,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -50 }, { x: 0, y: 0, z: 0 }),
       input: new Input(screen.canvas),
-      lights: [Vector3.fromXYZ(0, 0, 50)],
+      lights: [Vector3.fromZero()],
       models: {
+        light: createModel(gl, starModel),
         ship: createModel(gl, shipModel),
         star: createModel(gl, starModel),
       },
@@ -185,6 +189,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         })
       ),
       target,
+      time: 0,
       viewMatrix: Matrix4.fromIdentity(),
     };
   },
@@ -212,12 +217,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
             ["rotate", { x: 0, y: 1, z: 0 }, Math.PI]
           ),
           model: models.ship,
-          noShadow: false,
         },
         ...state.stars.map((position) => ({
           matrix: Matrix4.fromCustom(["translate", position]),
           model: models.star,
-          noShadow: false,
+        })),
+        ...state.lights.map((position) => ({
+          matrix: Matrix4.fromCustom(["translate", position]),
+          model: models.light,
+          noShadow: true,
         })),
       ],
       pointLights: state.lights.map((position) => ({
@@ -250,6 +258,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const {
       camera,
       input,
+      lights,
       player,
       particleEmitter0,
       particleRenderer,
@@ -261,7 +270,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     movePlayer(input, player, dt);
 
     // Move camera
-    camera.move(input, dt * 1000); // FIXME: scale camera movement
+    camera.move(input, dt);
     camera.position = Vector3.fromXYZ(
       -player.position.x,
       -player.position.y,
@@ -285,6 +294,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
       star.z = warp(star.z, starCenter.v32, 50);
     }
 
+    // Update light positions
+    for (let i = lights.length; i-- > 0; ) {
+      lights[i].set(orbitatePosition(state.time * 0.0001, i, 10, 10));
+    }
+
     // Emit particles & update them
     player.smoke += dt;
 
@@ -299,6 +313,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
 
     particleRenderer.update(dt);
+
+    state.time += dt;
   },
 };
 

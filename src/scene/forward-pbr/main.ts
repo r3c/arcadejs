@@ -62,7 +62,7 @@ type ApplicationState = {
     helmet: GlModel;
     light: GlModel;
   };
-  move: number;
+  time: number;
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   target: GlTarget;
@@ -143,7 +143,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
         helmet: createModel(gl, helmetModel),
         light: createModel(gl, lightModel),
       },
-      move: 0,
       projectionMatrix: Matrix4.identity,
       rendererMemo: memoize(
         indexBooleans,
@@ -166,6 +165,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         diffuse,
         specular,
       },
+      time: 0,
       tweak,
     };
   },
@@ -248,17 +248,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   update(state, dt) {
-    // Update light positions
-    if (state.tweak.animate) {
-      state.move += dt * 0.0001;
-    }
+    const { camera, input, lights, time, tweak } = state;
 
-    for (let i = 0; i < state.lights.length; ++i) {
-      state.lights[i].position = orbitatePosition(state.move * 5, i, 1, 3);
+    // Update light positions
+    for (let i = 0; i < lights.length; ++i) {
+      lights[i].position = orbitatePosition(time * 0.0005, i, 1, 3);
     }
 
     // Move camera
-    state.camera.move(state.input, dt);
+    camera.move(input, dt);
+
+    state.time += tweak.animate ? dt : 0;
   },
 };
 

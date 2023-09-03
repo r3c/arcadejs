@@ -111,7 +111,7 @@ type ApplicationState = {
     ground: GlModel;
     pointLight: GlModel;
   };
-  move: number;
+  time: number;
   pointLights: PointLight[];
   projectionMatrix: Matrix4;
   sceneRendererMemo: Memo<boolean[], DeferredLightingRenderer>;
@@ -172,7 +172,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ground: createModel(gl, groundModel),
         pointLight: createModel(gl, pointLightModel),
       },
-      move: 0,
       pointLights: range(2000).map((i) => ({
         color: brightColor(i),
         position: Vector3.zero,
@@ -192,6 +191,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           })
       ),
       target,
+      time: 0,
       tweak,
     };
   },
@@ -321,25 +321,23 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   update(state, dt) {
-    const { camera, directionalLights, input, pointLights, tweak } = state;
+    const { camera, directionalLights, input, pointLights, time, tweak } =
+      state;
     const pointLightRadius = pointLightParameters[tweak.nbPoints].radius;
 
-    // Update light positions
-    if (tweak.animate) {
-      state.move += dt * 0.0002;
-    }
-
     for (let i = 0; i < directionalLights.length; ++i) {
-      directionalLights[i].direction = rotateDirection(state.move * 5, i);
+      directionalLights[i].direction = rotateDirection(time * 0.001, i);
     }
 
     for (let i = 0; i < pointLights.length; ++i) {
-      pointLights[i].position = orbitatePosition(state.move, i, 1, 5);
+      pointLights[i].position = orbitatePosition(time * 0.0002, i, 1, 5);
       pointLights[i].radius = pointLightRadius;
     }
 
     // Move camera
     camera.move(input, dt);
+
+    state.time += tweak.animate ? dt : 0;
   },
 };
 

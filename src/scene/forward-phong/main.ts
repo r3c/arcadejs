@@ -56,7 +56,7 @@ type ApplicationState = {
     ground: GlModel;
     light: GlModel;
   };
-  move: number;
+  time: number;
   pointLightPositions: Vector3[];
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
@@ -102,7 +102,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ground: createModel(gl, groundModel),
         light: createModel(gl, lightModel),
       },
-      move: 0,
       pointLightPositions: range(3).map(() => Vector3.zero),
       projectionMatrix: Matrix4.identity,
       rendererMemo: memoize(
@@ -120,6 +119,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           })
       ),
       target,
+      time: 0,
       tweak,
     };
   },
@@ -217,26 +217,33 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   update(state, dt) {
-    // Update light positions
-    if (state.tweak.animate) {
-      state.move += dt * 0.0005;
-    }
+    const {
+      camera,
+      directionalLightDirections,
+      input,
+      pointLightPositions,
+      time,
+      tweak,
+    } = state;
 
-    for (let i = 0; i < state.directionalLightDirections.length; ++i) {
-      const direction = Vector3.fromObject(rotateDirection(-state.move, i));
+    // Update light positions
+    for (let i = 0; i < directionalLightDirections.length; ++i) {
+      const direction = Vector3.fromObject(rotateDirection(-time * 0.0005, i));
 
       direction.normalize();
       direction.scale(10);
 
-      state.directionalLightDirections[i] = direction;
+      directionalLightDirections[i] = direction;
     }
 
-    for (let i = 0; i < state.pointLightPositions.length; ++i) {
-      state.pointLightPositions[i] = orbitatePosition(state.move, i, 2, 2);
+    for (let i = 0; i < pointLightPositions.length; ++i) {
+      pointLightPositions[i] = orbitatePosition(time * 0.0005, i, 2, 2);
     }
 
     // Move camera
-    state.camera.move(state.input, dt);
+    camera.move(input, dt);
+
+    state.time += tweak.animate ? dt : 0;
   },
 };
 

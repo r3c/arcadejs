@@ -276,11 +276,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
       worldGraphic.renderSize.z
     );
 
-    state.move += dt * 0.00025;
-
     for (let i = 0; i < state.lights.length; ++i) {
       state.lights[i].position = orbitatePosition(
-        state.move,
+        state.move * 0.0005,
         i,
         1,
         maxWorldRenderSize
@@ -294,6 +292,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     for (state.time += dt; state.time >= timeFactor; state.time -= timeFactor) {
       worldPhysic.tick();
     }
+
+    state.move += dt;
   },
 
   render(state: ApplicationState) {
