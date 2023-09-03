@@ -1,3 +1,4 @@
+import { createFlexibleBuffer } from "../../../../io/memory";
 import { Disposable } from "../../../../language/lifecycle";
 import {
   GlBuffer,
@@ -32,18 +33,23 @@ type GlPointLightPolygon = {
 };
 
 /**
- * Try to reuse given array if length is close enough from required one to
- * reduce number of buffer allocations
+ * Relative indices of light half cube vertices.
  */
-const recycleArray = <TArray extends Float32Array | Uint32Array>(
-  constructor: { new (length: number): TArray },
-  array: TArray,
-  length: number
-): TArray => {
-  return array.length < length || array.length >= length * 2
-    ? new constructor(length)
-    : array;
-};
+const indexOffsets = [
+  0, 7, 3, 4, 7, 0, 2, 5, 1, 6, 5, 2, 0, 1, 4, 5, 4, 1, 2, 3, 6, 7, 6, 3, 4, 5,
+  7, 5, 6, 7,
+];
+
+/**
+ * Relative shift factors of light half cube vertices.
+ */
+const shiftFactors = [
+  -1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0, -1, -1, -1, 1, -1, -1, 1, 1, -1, -1,
+  1, -1,
+];
+
+const nbCubeIndices = 30;
+const nbCubeVertices = 8;
 
 /**
  * Build simple quad intended to be displayed full screen.
@@ -84,151 +90,81 @@ const directionalLightBillboard = (
  * with no rotation.
  */
 const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
+  const color = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const colorBuffer = createFlexibleBuffer(Float32Array, 10);
   const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
-  const lightColor = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const lightPosition = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const lightRadius = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const lightShift = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const nbIndex = 30;
-  const nbVertex = 8;
-
-  let indexArray = new Uint32Array();
-  let lightColorArray = new Float32Array();
-  let lightPositionArray = new Float32Array();
-  let lightRadiusArray = new Float32Array();
-  let lightShiftArray = new Float32Array();
+  const indexBuffer = createFlexibleBuffer(Uint32Array, 10);
+  const position = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const positionBuffer = createFlexibleBuffer(Float32Array, 10);
+  const radius = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const radiusBuffer = createFlexibleBuffer(Float32Array, 10);
+  const shift = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const shiftBuffer = createFlexibleBuffer(Float32Array, 10);
 
   return {
     dispose: () => {
+      color.dispose();
       index.dispose();
-      lightColor.dispose();
-      lightPosition.dispose();
-      lightRadius.dispose();
-      lightShift.dispose();
+      position.dispose();
+      radius.dispose();
+      shift.dispose();
     },
     set: (lights) => {
-      const indexLength = lights.length * nbIndex;
-      const lightColorLength = lights.length * 3 * nbVertex;
-      const lightPositionLength = lights.length * 3 * nbVertex;
-      const lightRadiusLength = lights.length * nbVertex;
-      const lightShiftLength = lights.length * 3 * nbVertex;
+      const nbIndices = lights.length * nbCubeIndices;
+      const nbVertices = lights.length * nbCubeVertices;
 
-      indexArray = recycleArray(Uint32Array, indexArray, indexLength);
-      lightColorArray = recycleArray(
-        Float32Array,
-        lightColorArray,
-        lightColorLength
-      );
-      lightPositionArray = recycleArray(
-        Float32Array,
-        lightPositionArray,
-        lightPositionLength
-      );
-      lightRadiusArray = recycleArray(
-        Float32Array,
-        lightRadiusArray,
-        lightRadiusLength
-      );
-      lightShiftArray = recycleArray(
-        Float32Array,
-        lightShiftArray,
-        lightShiftLength
-      );
+      colorBuffer.allocate(nbVertices * 3);
+      indexBuffer.allocate(nbIndices);
+      positionBuffer.allocate(nbVertices * 3);
+      radiusBuffer.allocate(nbVertices * 1);
+      shiftBuffer.allocate(nbVertices * 3);
 
       for (let i = 0; i < lights.length; ++i) {
         const { color, position, radius } = lights[i];
-        const indexOffset = i * nbIndex;
-        const vertexOffset = i * nbVertex;
+        const indexStart = i * nbCubeIndices;
+        const vertexStart = i * nbCubeVertices;
 
-        for (let vertex = 0; vertex < nbVertex; ++vertex) {
-          lightColorArray[(vertexOffset + vertex) * 3 + 0] = color.x;
-          lightColorArray[(vertexOffset + vertex) * 3 + 1] = color.y;
-          lightColorArray[(vertexOffset + vertex) * 3 + 2] = color.z;
-          lightPositionArray[(vertexOffset + vertex) * 3 + 0] = position.x;
-          lightPositionArray[(vertexOffset + vertex) * 3 + 1] = position.y;
-          lightPositionArray[(vertexOffset + vertex) * 3 + 2] = position.z;
-          lightRadiusArray[vertexOffset + vertex] = radius;
+        for (let vertexIndex = 0; vertexIndex < nbCubeVertices; ++vertexIndex) {
+          const start1 = (vertexStart + vertexIndex) * 1;
+          const start3 = (vertexStart + vertexIndex) * 3;
+
+          colorBuffer.array[start3 + 0] = color.x;
+          colorBuffer.array[start3 + 1] = color.y;
+          colorBuffer.array[start3 + 2] = color.z;
+          positionBuffer.array[start3 + 0] = position.x;
+          positionBuffer.array[start3 + 1] = position.y;
+          positionBuffer.array[start3 + 2] = position.z;
+          radiusBuffer.array[start1] = radius;
         }
 
-        indexArray.set(
-          [
-            vertexOffset + 0,
-            vertexOffset + 7,
-            vertexOffset + 3,
-            vertexOffset + 4,
-            vertexOffset + 7,
-            vertexOffset + 0,
-            vertexOffset + 2,
-            vertexOffset + 5,
-            vertexOffset + 1,
-            vertexOffset + 6,
-            vertexOffset + 5,
-            vertexOffset + 2,
-            vertexOffset + 0,
-            vertexOffset + 1,
-            vertexOffset + 4,
-            vertexOffset + 5,
-            vertexOffset + 4,
-            vertexOffset + 1,
-            vertexOffset + 2,
-            vertexOffset + 3,
-            vertexOffset + 6,
-            vertexOffset + 7,
-            vertexOffset + 6,
-            vertexOffset + 3,
-            vertexOffset + 4,
-            vertexOffset + 5,
-            vertexOffset + 7,
-            vertexOffset + 5,
-            vertexOffset + 6,
-            vertexOffset + 7,
-          ],
-          indexOffset
-        );
+        for (let j = indexOffsets.length; j-- > 0; ) {
+          indexBuffer.array[indexStart + j] = vertexStart + indexOffsets[j];
+        }
 
-        lightShiftArray.set(
-          [
-            -radius,
-            -radius,
-            0,
-            radius,
-            -radius,
-            0,
-            radius,
-            radius,
-            0,
-            -radius,
-            radius,
-            0,
-            -radius,
-            -radius,
-            -radius,
-            radius,
-            -radius,
-            -radius,
-            radius,
-            radius,
-            -radius,
-            -radius,
-            radius,
-            -radius,
-          ],
-          vertexOffset * 3
-        );
+        const start3 = vertexStart * 3;
+
+        for (let j = shiftFactors.length; j-- > 0; ) {
+          shiftBuffer.array[start3 + j] = shiftFactors[j] * radius;
+        }
       }
 
-      index.reset(indexArray, indexLength);
-      lightColor.reset(lightColorArray, lightColorLength);
-      lightPosition.reset(lightPositionArray, lightPositionLength);
-      lightRadius.reset(lightRadiusArray, lightRadiusLength);
-      lightShift.reset(lightShiftArray, lightShiftLength);
+      color.allocate(colorBuffer.length);
+      color.update(0, colorBuffer.array, colorBuffer.length);
+      index.allocate(indexBuffer.length);
+      index.update(0, indexBuffer.array, indexBuffer.length);
+      position.allocate(positionBuffer.length);
+      position.update(0, positionBuffer.array, positionBuffer.length);
+      radius.allocate(radiusBuffer.length);
+      radius.update(0, radiusBuffer.array, radiusBuffer.length);
+      shift.allocate(shiftBuffer.length);
+      shift.update(0, shiftBuffer.array, shiftBuffer.length);
     },
     index,
     polygon: {
-      lightColor: createAttribute(lightColor, 3),
-      lightPosition: createAttribute(lightPosition, 3),
-      lightRadius: createAttribute(lightRadius, 1),
-      lightShift: createAttribute(lightShift, 3),
+      lightColor: createAttribute(color, 3),
+      lightPosition: createAttribute(position, 3),
+      lightRadius: createAttribute(radius, 1),
+      lightShift: createAttribute(shift, 3),
     },
   };
 };
