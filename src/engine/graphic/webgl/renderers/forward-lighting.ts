@@ -67,7 +67,7 @@ enum ForwardLightingLightModel {
 }
 
 type ForwardLightingObject = GlObject & {
-  noShadow: boolean;
+  noShadow?: boolean;
 };
 
 type ShadowDirectionalLight = DirectionalLight & {
@@ -870,7 +870,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     const obstacles: GlObject[] = [];
 
     for (const { matrix, model, noShadow } of objects) {
-      if (!noShadow) {
+      if (noShadow !== true) {
         obstacles.push({ matrix, model });
       }
     }
