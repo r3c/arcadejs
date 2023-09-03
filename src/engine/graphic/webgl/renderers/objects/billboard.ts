@@ -59,12 +59,12 @@ const directionalLightBillboard = (
 ): GlDirectionalLightBillboard => {
   const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
 
-  index.reset(new Uint32Array([0, 1, 2, 0, 2, 3]), 6);
+  index.set(new Uint32Array([0, 1, 2, 0, 2, 3]), 6);
 
   const lightPositionBuffer = createStaticArrayBuffer(gl, Float32Array);
   const lightPosition = createAttribute(lightPositionBuffer, 3);
 
-  lightPositionBuffer.reset(
+  lightPositionBuffer.set(
     new Float32Array([
       -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
     ]),
@@ -113,11 +113,11 @@ const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
       const nbIndices = lights.length * nbCubeIndices;
       const nbVertices = lights.length * nbCubeVertices;
 
-      colorBuffer.allocate(nbVertices * 3);
-      indexBuffer.allocate(nbIndices);
-      positionBuffer.allocate(nbVertices * 3);
-      radiusBuffer.allocate(nbVertices * 1);
-      shiftBuffer.allocate(nbVertices * 3);
+      colorBuffer.reserve(nbVertices * 3);
+      indexBuffer.reserve(nbIndices);
+      positionBuffer.reserve(nbVertices * 3);
+      radiusBuffer.reserve(nbVertices * 1);
+      shiftBuffer.reserve(nbVertices * 3);
 
       for (let i = 0; i < lights.length; ++i) {
         const { color, position, radius } = lights[i];
@@ -148,15 +148,15 @@ const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
         }
       }
 
-      color.allocate(colorBuffer.length);
+      color.reserve(colorBuffer.length);
       color.update(0, colorBuffer.array, colorBuffer.length);
-      index.allocate(indexBuffer.length);
+      index.reserve(indexBuffer.length);
       index.update(0, indexBuffer.array, indexBuffer.length);
-      position.allocate(positionBuffer.length);
+      position.reserve(positionBuffer.length);
       position.update(0, positionBuffer.array, positionBuffer.length);
-      radius.allocate(radiusBuffer.length);
+      radius.reserve(radiusBuffer.length);
       radius.update(0, radiusBuffer.array, radiusBuffer.length);
-      shift.allocate(shiftBuffer.length);
+      shift.reserve(shiftBuffer.length);
       shift.update(0, shiftBuffer.array, shiftBuffer.length);
     },
     index,

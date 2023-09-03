@@ -175,11 +175,11 @@ const createBillboard = (
       const nbIndices = nbSources * nbSparks * nbQuadIndices;
       const nbVertices = nbSources * nbSparks * nbQuadVertices;
 
-      coordinate.allocate(nbVertices * 2);
-      corner.allocate(nbVertices * 2);
-      index.allocate(nbIndices);
-      position.allocate(nbVertices * 3);
-      tint.allocate(nbVertices * 4);
+      coordinate.reserve(nbVertices * 2);
+      corner.reserve(nbVertices * 2);
+      index.reserve(nbIndices);
+      position.reserve(nbVertices * 3);
+      tint.reserve(nbVertices * 4);
     },
     write: (sourceIndex) => {
       const indexOffset = sourceIndex * nbSparks * nbQuadVertices;

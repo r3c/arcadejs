@@ -288,12 +288,12 @@ const loadPrimitive = (
 
   const index = createStaticIndexBuffer(gl, Uint32Array);
 
-  index.reset(new Uint32Array(source.indices), source.indices.length);
+  index.set(new Uint32Array(source.indices), source.indices.length);
 
   const coordinate = optionalMap(source.coordinates, (coordinates) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
-    buffer.reset(
+    buffer.set(
       new Float32Array(coordinates.flatMap(Vector2.toArray)),
       coordinates.length * 2
     );
@@ -304,7 +304,7 @@ const loadPrimitive = (
   const normal = optionalMap(source.normals, (normals) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
-    buffer.reset(
+    buffer.set(
       new Float32Array(normals.flatMap(Vector3.toArray)),
       normals.length * 3
     );
@@ -314,7 +314,7 @@ const loadPrimitive = (
 
   const positionBuffer = createStaticArrayBuffer(gl, Float32Array);
 
-  positionBuffer.reset(
+  positionBuffer.set(
     new Float32Array(source.positions.flatMap(Vector3.toArray)),
     source.positions.length * 3
   );
@@ -324,7 +324,7 @@ const loadPrimitive = (
   const tangent = optionalMap(source.tangents, (tangents) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
-    buffer.reset(
+    buffer.set(
       new Float32Array(tangents.flatMap(Vector3.toArray)),
       tangents.length * 3
     );
@@ -335,7 +335,7 @@ const loadPrimitive = (
   const tint = optionalMap(source.tints, (tints) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
-    buffer.reset(
+    buffer.set(
       new Float32Array(tints.flatMap(Vector4.toArray)),
       tints.length * 4
     );
