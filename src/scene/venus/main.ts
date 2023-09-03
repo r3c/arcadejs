@@ -60,6 +60,7 @@ type ApplicationState = {
   target: GlTarget;
   time: number;
   viewMatrix: MutableMatrix4;
+  zoom: number;
 };
 
 const pi2 = Math.PI * 2;
@@ -203,6 +204,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       target,
       time: 0,
       viewMatrix: Matrix4.fromIdentity(),
+      zoom: -25,
     };
   },
 
@@ -221,7 +223,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     const scene: ForwardLightingScene = {
-      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+      ambientLightColor: Vector3.zero,
       objects: [
         {
           matrix: Matrix4.fromCustom(
@@ -243,7 +245,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       pointLights: state.lights.map(({ position }) => ({
         color: { x: 1, y: 1, z: 1 },
         position,
-        radius: 50,
+        radius: 25,
       })),
       projectionMatrix,
       viewMatrix,
@@ -282,6 +284,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     movePlayer(input, player, dt);
 
     // Move camera
+    const zoom = input.fetchZoom();
+
     camera.move(input, dt);
     camera.position = Vector3.fromXYZ(
       -player.position.x,
@@ -289,8 +293,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
       -player.position.z
     );
 
+    state.zoom += zoom * 0.2;
+
     viewMatrix.set(Matrix4.identity);
-    viewMatrix.translate({ x: 0, y: 0, z: -25 });
+    viewMatrix.translate({ x: 0, y: 0, z: state.zoom });
     viewMatrix.rotate({ x: 1, y: 0, z: 0 }, camera.rotation.x);
     viewMatrix.rotate({ x: 0, y: 1, z: 0 }, camera.rotation.y);
     viewMatrix.translate(camera.position);
