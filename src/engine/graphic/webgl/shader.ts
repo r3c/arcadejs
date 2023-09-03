@@ -1,12 +1,11 @@
 import { Disposable } from "../../language/lifecycle";
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3 } from "../../math/vector";
-import { GlArray, GlBuffer, GlContext, createArrayBuffer } from "./resource";
+import { GlBuffer, GlContext } from "./resource";
 import { GlTexture } from "./texture";
 
-type GlShaderAttribute = Disposable & {
+type GlShaderAttribute = {
   buffer: GlBuffer;
-  size: number;
   stride: number;
 };
 
@@ -122,10 +121,17 @@ const bindShader = <TState>(
           throw Error(`undefined geometry attribute "${name}"`);
         }
 
-        const { buffer, size, stride } = attribute;
+        const { buffer, stride } = attribute;
 
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
-        gl.vertexAttribPointer(location, size, buffer.type, false, stride, 0);
+        gl.vertexAttribPointer(
+          location,
+          stride,
+          buffer.type,
+          false,
+          buffer.bytesPerElement * stride,
+          0
+        );
         gl.enableVertexAttribArray(location);
       });
     },
@@ -203,20 +209,10 @@ const compileShader = (
 };
 
 const createAttribute = (
-  gl: GlContext,
-  data: GlArray,
-  length: number,
-  stride: number,
-  isDynamic: boolean
+  buffer: GlBuffer,
+  stride: number
 ): GlShaderAttribute => {
-  const buffer = createArrayBuffer(gl, data, length, isDynamic);
-
-  return {
-    dispose: buffer.dispose,
-    buffer,
-    size: stride,
-    stride: stride * data.BYTES_PER_ELEMENT,
-  };
+  return { buffer, stride };
 };
 
 const createShader = (

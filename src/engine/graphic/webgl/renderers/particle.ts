@@ -10,7 +10,12 @@ import {
 import { Renderer } from "../../display";
 import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
 import { SinglePainter } from "../painters/single";
-import { GlBuffer, GlContext, createIndexBuffer } from "../resource";
+import {
+  GlBuffer,
+  GlContext,
+  createDynamicArrayBuffer,
+  createDynamicIndexBuffer,
+} from "../resource";
 import {
   GlShader,
   GlShaderAttribute,
@@ -109,9 +114,6 @@ void main(void) {
 	fragColor = emissiveColor * tint;
 }`;
 
-const emptyFloat32s = new Float32Array();
-const emptyInt32s = new Uint32Array();
-
 const createBillboard = (
   gl: GlContext,
   nbSparks: number,
@@ -121,19 +123,17 @@ const createBillboard = (
   const nbQuadIndices = 6;
   const nbQuadVertices = 4;
 
-  const indices = new Uint32Array(nbSparks * nbQuadIndices); // 6 indices per spark
   const coordinates = new Float32Array(nbSparks * nbQuadVertices * 2); // 2 coordinates & 4 vertices per spark
   const corners = new Float32Array(nbSparks * nbQuadVertices * 2); // 2 coordinates & 4 vertices per spark
+  const indices = new Uint32Array(nbSparks * nbQuadIndices); // 6 indices per spark
   const positions = new Float32Array(nbSparks * nbQuadVertices * 3); // 3 dimensions & 4 vertices per spark
-  const radiuses = new Float32Array(nbSparks * nbQuadVertices * 1); // 1 value & 4 vertices per spark
   const tints = new Float32Array(nbSparks * nbQuadVertices * 4); // 4 components & 4 vertices
 
-  const index = createIndexBuffer(gl, emptyInt32s, 0, true);
-  const coordinate = createAttribute(gl, emptyFloat32s, 0, 2, true);
-  const corner = createAttribute(gl, emptyFloat32s, 0, 2, true);
-  const position = createAttribute(gl, emptyFloat32s, 0, 3, true);
-  const radius = createAttribute(gl, emptyFloat32s, 0, 1, true);
-  const tint = createAttribute(gl, emptyFloat32s, 0, 4, true);
+  const coordinate = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const corner = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
+  const position = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const tint = createDynamicArrayBuffer(gl, Float32Array, 10);
 
   const coordinatesByVariant = range(nbVariants).map<Vector2[]>((i) => {
     const coordinate0 = (i + 0) / nbVariants;
@@ -157,11 +157,10 @@ const createBillboard = (
 
   return {
     dispose: () => {
-      index.dispose();
       coordinate.dispose();
       corner.dispose();
+      index.dispose();
       position.dispose();
-      radius.dispose();
       tint.dispose();
     },
     finalize: (nbSources) => {
@@ -176,12 +175,11 @@ const createBillboard = (
       const nbIndices = nbSources * nbSparks * nbQuadIndices;
       const nbVertices = nbSources * nbSparks * nbQuadVertices;
 
+      coordinate.allocate(nbVertices * 2);
+      corner.allocate(nbVertices * 2);
       index.allocate(nbIndices);
-      coordinate.buffer.allocate(nbVertices * 2);
-      corner.buffer.allocate(nbVertices * 2);
-      position.buffer.allocate(nbVertices * 3);
-      radius.buffer.allocate(nbVertices * 1);
-      tint.buffer.allocate(nbVertices * 4);
+      position.allocate(nbVertices * 3);
+      tint.allocate(nbVertices * 4);
     },
     write: (sourceIndex) => {
       const indexOffset = sourceIndex * nbSparks * nbQuadVertices;
@@ -194,7 +192,6 @@ const createBillboard = (
 
         for (let vertexIndex = 0; vertexIndex < nbQuadVertices; ++vertexIndex) {
           const angle = rotation + Math.PI * (vertexIndex * 0.5 + 0.25);
-          const start1 = (vertexStart + vertexIndex) * 1;
           const start2 = (vertexStart + vertexIndex) * 2;
           const start3 = (vertexStart + vertexIndex) * 3;
           const start4 = (vertexStart + vertexIndex) * 4;
@@ -206,7 +203,6 @@ const createBillboard = (
           positions[start3 + 0] = position.x;
           positions[start3 + 1] = position.y;
           positions[start3 + 2] = position.z;
-          radiuses[start1] = radius;
           tints[start4 + 0] = tint.x;
           tints[start4 + 1] = tint.y;
           tints[start4 + 2] = tint.z;
@@ -223,20 +219,23 @@ const createBillboard = (
 
       const indexStart = sourceIndex * nbSparks * nbQuadIndices;
       const vertexStart = sourceIndex * nbSparks * nbQuadVertices;
-      const start1 = vertexStart * 1;
       const start2 = vertexStart * 2;
       const start3 = vertexStart * 3;
       const start4 = vertexStart * 4;
 
+      coordinate.update(start2, coordinates, coordinates.length);
+      corner.update(start2, corners, corners.length);
       index.update(indexStart, indices, indices.length);
-      coordinate.buffer.update(start2, coordinates, coordinates.length);
-      corner.buffer.update(start2, corners, corners.length);
-      position.buffer.update(start3, positions, positions.length);
-      radius.buffer.update(start1, radiuses, radiuses.length);
-      tint.buffer.update(start4, tints, tints.length);
+      position.update(start3, positions, positions.length);
+      tint.update(start4, tints, tints.length);
     },
     index,
-    polygon: { corner, coordinate, position, tint },
+    polygon: {
+      corner: createAttribute(corner, 2),
+      coordinate: createAttribute(coordinate, 2),
+      position: createAttribute(position, 3),
+      tint: createAttribute(tint, 4),
+    },
     sources: [],
     sparks,
     sprite,

@@ -11,11 +11,21 @@ type GlArray = Omit<
   "length"
 >;
 
+type GlArrayConstructor =
+  | Float32ArrayConstructor
+  | Int8ArrayConstructor
+  | Int16ArrayConstructor
+  | Int32ArrayConstructor
+  | Uint8ArrayConstructor
+  | Uint16ArrayConstructor
+  | Uint32ArrayConstructor;
+
 type GlBuffer = Disposable & {
   allocate: (length: number) => void;
   reset: (data: GlArray, length: number) => void;
   update: (offset: number, data: GlArray, length: number) => void;
   buffer: WebGLBuffer;
+  bytesPerElement: number;
   capacity: number;
   length: number;
   type: GlBufferType;
@@ -34,14 +44,18 @@ type GlBufferType =
   | WebGL2RenderingContext["BYTE"]
   | WebGL2RenderingContext["UNSIGNED_BYTE"];
 
+type GlBufferUsage =
+  | WebGL2RenderingContext["DYNAMIC_DRAW"]
+  | WebGL2RenderingContext["STATIC_DRAW"];
+
 type GlContext = WebGL2RenderingContext;
 
 const createBuffer = (
   gl: GlContext,
   bufferTarget: GlBufferTarget,
-  data: GlArray,
-  length: number,
-  isDynamic: boolean
+  arrayConstructor: GlArrayConstructor,
+  recycleRatio: number,
+  usage: GlBufferUsage
 ): GlBuffer => {
   const buffer = gl.createBuffer();
 
@@ -49,81 +63,104 @@ const createBuffer = (
     throw Error("could not create buffer");
   }
 
-  const usage = isDynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
+  const self: GlBuffer = {
+    allocate: (length: number) => {
+      if (self.capacity < length || self.capacity >= length * recycleRatio) {
+        gl.bindBuffer(bufferTarget, buffer);
+        gl.bufferData(bufferTarget, self.bytesPerElement * length, usage);
 
-  const allocate = (length: number) => {
-    const recycle = 10; // FIXME: recycle factor
+        self.capacity = length;
+      }
 
-    if (instance.capacity < length || instance.capacity >= length * recycle) {
+      self.length = length;
+    },
+    dispose: () => {
+      gl.deleteBuffer(buffer);
+    },
+    reset: (data: GlArray, length: number) => {
       gl.bindBuffer(bufferTarget, buffer);
-      gl.bufferData(bufferTarget, data.BYTES_PER_ELEMENT * length, usage);
+      gl.bufferData(bufferTarget, data, usage, 0, length);
 
-      instance.capacity = length;
-    }
+      self.bytesPerElement = data.BYTES_PER_ELEMENT;
+      self.capacity = length;
+      self.length = length;
+      self.type = bufferType(gl, data);
+    },
+    update: (offset: number, data: GlArray, length: number) => {
+      if (data.BYTES_PER_ELEMENT !== self.bytesPerElement) {
+        throw Error(
+          `cannot change buffer with ${self.bytesPerElement} byte(s) per element to ${data.BYTES_PER_ELEMENT}`
+        );
+      }
 
-    instance.length = length;
-  };
+      if (offset + length > self.capacity) {
+        throw Error(
+          `cannot write at offset ${offset} + length ${length} into a buffer of capacity ${self.capacity}`
+        );
+      }
 
-  const dispose = () => {
-    gl.deleteBuffer(buffer);
-  };
-
-  const reset = (data: GlArray, length: number) => {
-    gl.bindBuffer(bufferTarget, buffer);
-    gl.bufferData(bufferTarget, data, usage, 0, length);
-
-    instance.capacity = length;
-    instance.length = length;
-    instance.type = bufferType(gl, data);
-  };
-
-  const update = (offset: number, data: GlArray, length: number) => {
-    if (offset + length > instance.capacity) {
-      throw Error(
-        `cannot write at offset ${offset} + length ${length} into a buffer of capacity ${instance.capacity}`
+      gl.bindBuffer(bufferTarget, buffer);
+      gl.bufferSubData(
+        bufferTarget,
+        self.bytesPerElement * offset,
+        data,
+        0,
+        length
       );
-    }
-
-    gl.bindBuffer(bufferTarget, buffer);
-    gl.bufferSubData(
-      bufferTarget,
-      data.BYTES_PER_ELEMENT * offset,
-      data,
-      0,
-      length
-    );
-  };
-
-  const instance: GlBuffer = {
-    allocate,
-    dispose,
-    reset,
-    update,
+    },
+    bytesPerElement: arrayConstructor.BYTES_PER_ELEMENT,
     buffer,
     capacity: 0,
     length: 0,
-    type: gl.BYTE,
+    type: bufferType(gl, new arrayConstructor()),
   };
 
-  reset(data, length);
-
-  return instance;
+  return self;
 };
 
-const createArrayBuffer = (
+const createDynamicArrayBuffer = (
   gl: GlContext,
-  data: GlArray,
-  length: number,
-  isDynamic: boolean
-): GlBuffer => createBuffer(gl, gl.ARRAY_BUFFER, data, length, isDynamic);
-
-const createIndexBuffer = (
-  gl: GlContext,
-  data: GlArray,
-  length: number,
-  isDynamic: boolean
+  arrayConstructor: GlArrayConstructor,
+  recycleRatio: number
 ): GlBuffer =>
-  createBuffer(gl, gl.ELEMENT_ARRAY_BUFFER, data, length, isDynamic);
+  createBuffer(
+    gl,
+    gl.ARRAY_BUFFER,
+    arrayConstructor,
+    recycleRatio,
+    gl.DYNAMIC_DRAW
+  );
+
+const createDynamicIndexBuffer = (
+  gl: GlContext,
+  arrayConstructor: GlArrayConstructor,
+  recycleRatio: number
+): GlBuffer =>
+  createBuffer(
+    gl,
+    gl.ELEMENT_ARRAY_BUFFER,
+    arrayConstructor,
+    recycleRatio,
+    gl.DYNAMIC_DRAW
+  );
+
+const createStaticArrayBuffer = (
+  gl: GlContext,
+  arrayConstructor: GlArrayConstructor
+): GlBuffer =>
+  createBuffer(gl, gl.ARRAY_BUFFER, arrayConstructor, 1, gl.STATIC_DRAW);
+
+const createStaticIndexBuffer = (
+  gl: GlContext,
+  arrayConstructor: GlArrayConstructor
+): GlBuffer =>
+  createBuffer(
+    gl,
+    gl.ELEMENT_ARRAY_BUFFER,
+    arrayConstructor,
+    1,
+    gl.STATIC_DRAW
+  );
 
 /*
  ** Find OpenGL type from associated array type.
@@ -151,8 +188,11 @@ const bufferType = (gl: GlContext, array: GlArray): GlBufferType => {
 
 export {
   type GlArray,
+  type GlArrayConstructor,
   type GlBuffer,
   type GlContext,
-  createArrayBuffer,
-  createIndexBuffer,
+  createDynamicArrayBuffer,
+  createDynamicIndexBuffer,
+  createStaticArrayBuffer,
+  createStaticIndexBuffer,
 };

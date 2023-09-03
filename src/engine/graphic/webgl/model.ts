@@ -3,7 +3,12 @@ import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { Material, Mesh, Model, Polygon, Texture } from "../model";
-import { GlBuffer, GlContext, createIndexBuffer } from "./resource";
+import {
+  GlBuffer,
+  GlContext,
+  createStaticArrayBuffer,
+  createStaticIndexBuffer,
+} from "./resource";
 import { GlShaderAttribute, createAttribute } from "./shader";
 import {
   GlTexture,
@@ -48,7 +53,6 @@ type GlModel = Disposable & {
 };
 
 type GlModelConfiguration = {
-  isDynamic?: boolean;
   library?: GlLibrary;
 };
 
@@ -207,18 +211,11 @@ const loadMaterial = (
   };
 };
 
-const loadMesh = (
-  gl: GlContext,
-  mesh: Mesh,
-  library: GlLibrary,
-  isDynamic: boolean
-): GlMesh => {
-  const children = mesh.children.map((child) =>
-    loadMesh(gl, child, library, isDynamic)
-  );
+const loadMesh = (gl: GlContext, mesh: Mesh, library: GlLibrary): GlMesh => {
+  const children = mesh.children.map((child) => loadMesh(gl, child, library));
 
   const primitives = mesh.polygons.map((polygon) =>
-    loadPrimitive(gl, library, polygon, isDynamic)
+    loadPrimitive(gl, library, polygon)
   );
 
   return {
@@ -229,11 +226,11 @@ const loadMesh = (
 
       for (const { index, polygon } of primitives) {
         index.dispose();
-        polygon.coordinate?.dispose();
-        polygon.normal?.dispose();
-        polygon.position.dispose();
-        polygon.tangent?.dispose();
-        polygon.tint?.dispose();
+        polygon.coordinate?.buffer.dispose();
+        polygon.normal?.buffer.dispose();
+        polygon.position.buffer.dispose();
+        polygon.tangent?.buffer.dispose();
+        polygon.tint?.buffer.dispose();
       }
     },
     children,
@@ -263,10 +260,7 @@ const loadModel = (
     usedLibrary = ownedLibrary;
   }
 
-  const isDynamic = config?.isDynamic ?? false;
-  const meshes = model.meshes.map((mesh) =>
-    loadMesh(gl, mesh, usedLibrary, isDynamic)
-  );
+  const meshes = model.meshes.map((mesh) => loadMesh(gl, mesh, usedLibrary));
 
   return {
     dispose: () => {
@@ -288,76 +282,77 @@ const loadModel = (
 const loadPrimitive = (
   gl: GlContext,
   library: GlLibrary,
-  source: Polygon,
-  isDynamic: boolean
+  source: Polygon
 ): GlPrimitive => {
   const { materials } = library;
 
-  const index = createIndexBuffer(
-    gl,
-    new Uint32Array(source.indices),
-    source.indices.length,
-    isDynamic
-  );
+  const index = createStaticIndexBuffer(gl, Uint32Array);
 
-  const coordinate = optionalMap(source.coordinates, (coordinates) =>
-    createAttribute(
-      gl,
+  index.reset(new Uint32Array(source.indices), source.indices.length);
+
+  const coordinate = optionalMap(source.coordinates, (coordinates) => {
+    const buffer = createStaticArrayBuffer(gl, Float32Array);
+
+    buffer.reset(
       new Float32Array(coordinates.flatMap(Vector2.toArray)),
-      coordinates.length * 2,
-      2,
-      isDynamic
-    )
-  );
+      coordinates.length * 2
+    );
 
-  const normal = optionalMap(source.normals, (normals) =>
-    createAttribute(
-      gl,
+    return createAttribute(buffer, 2);
+  });
+
+  const normal = optionalMap(source.normals, (normals) => {
+    const buffer = createStaticArrayBuffer(gl, Float32Array);
+
+    buffer.reset(
       new Float32Array(normals.flatMap(Vector3.toArray)),
-      normals.length * 3,
-      3,
-      isDynamic
-    )
-  );
+      normals.length * 3
+    );
 
-  const position = createAttribute(
-    gl,
+    return createAttribute(buffer, 3);
+  });
+
+  const positionBuffer = createStaticArrayBuffer(gl, Float32Array);
+
+  positionBuffer.reset(
     new Float32Array(source.positions.flatMap(Vector3.toArray)),
-    source.positions.length * 3,
-    3,
-    isDynamic
+    source.positions.length * 3
   );
 
-  const tangent = optionalMap(source.tangents, (tangents) =>
-    createAttribute(
-      gl,
+  const position = createAttribute(positionBuffer, 3);
+
+  const tangent = optionalMap(source.tangents, (tangents) => {
+    const buffer = createStaticArrayBuffer(gl, Float32Array);
+
+    buffer.reset(
       new Float32Array(tangents.flatMap(Vector3.toArray)),
-      tangents.length * 3,
-      3,
-      isDynamic
-    )
-  );
+      tangents.length * 3
+    );
 
-  const tint = optionalMap(source.tints, (tints) =>
-    createAttribute(
-      gl,
+    return createAttribute(buffer, 3);
+  });
+
+  const tint = optionalMap(source.tints, (tints) => {
+    const buffer = createStaticArrayBuffer(gl, Float32Array);
+
+    buffer.reset(
       new Float32Array(tints.flatMap(Vector4.toArray)),
-      tints.length * 4,
-      4,
-      isDynamic
-    )
-  );
+      tints.length * 4
+    );
+
+    return createAttribute(buffer, 4);
+  });
 
   const material: GlMaterial | undefined =
     source.material !== undefined ? materials.get(source.material) : undefined;
 
   const polygon: GlPolygon = {
     dispose: () => {
-      coordinate?.dispose();
-      normal?.dispose();
-      position.dispose();
-      tangent?.dispose();
-      tint?.dispose();
+      coordinate?.buffer.dispose();
+      normal?.buffer.dispose();
+      position.buffer.dispose();
+      tangent?.buffer.dispose();
+      tint?.buffer.dispose();
     },
     coordinate,
     normal,

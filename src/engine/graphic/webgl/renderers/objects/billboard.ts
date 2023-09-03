@@ -1,10 +1,13 @@
 import { Disposable } from "../../../../language/lifecycle";
-import { GlBuffer, GlContext, createIndexBuffer } from "../../resource";
+import {
+  GlBuffer,
+  GlContext,
+  createDynamicArrayBuffer,
+  createDynamicIndexBuffer,
+  createStaticArrayBuffer,
+} from "../../resource";
 import { GlShaderAttribute, createAttribute } from "../../shader";
 import { PointLight } from "../snippets/light";
-
-const emptyFloat32s = new Float32Array();
-const emptyInt32s = new Uint32Array();
 
 type GlDirectionalLightBillboard = Disposable & {
   index: GlBuffer;
@@ -48,26 +51,24 @@ const recycleArray = <TArray extends Float32Array | Uint32Array>(
 const directionalLightBillboard = (
   gl: GlContext
 ): GlDirectionalLightBillboard => {
-  const index = createIndexBuffer(
-    gl,
-    new Uint32Array([0, 1, 2, 0, 2, 3]),
-    6,
-    true
-  );
-  const lightPosition = createAttribute(
-    gl,
+  const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
+
+  index.reset(new Uint32Array([0, 1, 2, 0, 2, 3]), 6);
+
+  const lightPositionBuffer = createStaticArrayBuffer(gl, Float32Array);
+  const lightPosition = createAttribute(lightPositionBuffer, 3);
+
+  lightPositionBuffer.reset(
     new Float32Array([
       -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
     ]),
-    4,
-    3,
-    true
+    12
   );
 
   return {
     dispose: () => {
       index.dispose();
-      lightPosition.dispose();
+      lightPositionBuffer.dispose();
     },
     index,
     polygon: {
@@ -83,11 +84,11 @@ const directionalLightBillboard = (
  * with no rotation.
  */
 const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
-  const index = createIndexBuffer(gl, emptyInt32s, 0, true);
-  const lightColor = createAttribute(gl, emptyFloat32s, 0, 3, true);
-  const lightPosition = createAttribute(gl, emptyFloat32s, 0, 3, true);
-  const lightRadius = createAttribute(gl, emptyFloat32s, 0, 1, true);
-  const lightShift = createAttribute(gl, emptyFloat32s, 0, 3, true);
+  const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
+  const lightColor = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const lightPosition = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const lightRadius = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const lightShift = createDynamicArrayBuffer(gl, Float32Array, 10);
   const nbIndex = 30;
   const nbVertex = 8;
 
@@ -217,17 +218,17 @@ const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
       }
 
       index.reset(indexArray, indexLength);
-      lightColor.buffer.reset(lightColorArray, lightColorLength);
-      lightPosition.buffer.reset(lightPositionArray, lightPositionLength);
-      lightRadius.buffer.reset(lightRadiusArray, lightRadiusLength);
-      lightShift.buffer.reset(lightShiftArray, lightShiftLength);
+      lightColor.reset(lightColorArray, lightColorLength);
+      lightPosition.reset(lightPositionArray, lightPositionLength);
+      lightRadius.reset(lightRadiusArray, lightRadiusLength);
+      lightShift.reset(lightShiftArray, lightShiftLength);
     },
     index,
     polygon: {
-      lightColor,
-      lightPosition,
-      lightRadius,
-      lightShift,
+      lightColor: createAttribute(lightColor, 3),
+      lightPosition: createAttribute(lightPosition, 3),
+      lightRadius: createAttribute(lightRadius, 1),
+      lightShift: createAttribute(lightShift, 3),
     },
   };
 };
