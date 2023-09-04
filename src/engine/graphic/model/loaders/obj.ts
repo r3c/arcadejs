@@ -2,6 +2,7 @@ import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
   Interpolation,
+  Library,
   Material,
   Model,
   Polygon,
@@ -18,9 +19,9 @@ import { Vector2, Vector3 } from "../../../math/vector";
  ** http://paulbourke.net/dataformats/mtl/
  */
 
-interface WavefrontOBJBatchMap {
-  [key: string]: number;
-}
+type WavefrontOBJConfiguration = {
+  objectFilter?: string;
+};
 
 interface WavefrontOBJGroup {
   faces: WavefrontOBJVertex[][];
@@ -37,14 +38,18 @@ const invalidFile = (file: string, description: string) => {
   return Error(`${description} in file ${file}`);
 };
 
-const invalidLine = (file: string, line: number, description: string) => {
-  return Error(`invalid ${description} in file ${file} at line ${line}`);
+const invalidLine = (file: string, lineIndex: number, description: string) => {
+  return Error(`invalid ${description} in file ${file} at line ${lineIndex}`);
 };
 
-const load = async (url: string): Promise<Model> => {
+const load = async (
+  url: string,
+  _: Library,
+  configuration: WavefrontOBJConfiguration | undefined
+): Promise<Model> => {
   const data = await readURL(StringFormat, url);
 
-  return loadObject(data, url);
+  return loadObject(configuration?.objectFilter, data, url);
 };
 
 const loadMaterial = async (
@@ -54,20 +59,37 @@ const loadMaterial = async (
 ) => {
   let current: Material | undefined;
 
-  for (const { line, fields } of parseFile(data)) {
+  for (const { fields, lineIndex } of parseFile(data, fileName)) {
     switch (fields[0]) {
+      case "#":
+      case "d": // Transparency (not supported)
+      case "illum": // Illumination model (not supported)
+      case "Ka": // Ambient light color (not supported)
+      case "Ni": // Optical density (not supported)
+      case "Tr": // Transparency (not supported)
+        break;
+
       case "Kd": // Diffuse light color
         if (fields.length < 4 || current === undefined) {
-          throw invalidLine(fileName, line, "albedo color");
+          throw invalidLine(fileName, lineIndex, "albedo color");
         }
 
         current.albedoFactor = parseVector4(fields);
 
         break;
 
+      case "Ke": // Emissive light color
+        if (fields.length < 4 || current === undefined) {
+          throw invalidLine(fileName, lineIndex, "emissive color");
+        }
+
+        current.emissiveFactor = parseVector4(fields);
+
+        break;
+
       case "Ks": // Specular light color
         if (fields.length < 4 || current === undefined) {
-          throw invalidLine(fileName, line, "gloss color");
+          throw invalidLine(fileName, lineIndex, "gloss color");
         }
 
         current.glossFactor = parseVector4(fields);
@@ -76,7 +98,7 @@ const loadMaterial = async (
 
       case "map_bump": // Bump map texture
         if (fields.length < 2 || current === undefined) {
-          throw invalidLine(fileName, line, "bump map");
+          throw invalidLine(fileName, lineIndex, "bump map");
         }
 
         current.heightMap = await loadTexture(fileName, fields[1]);
@@ -85,7 +107,7 @@ const loadMaterial = async (
 
       case "map_Kd": // Diffuse map texture
         if (fields.length < 2 || current === undefined) {
-          throw invalidLine(fileName, line, "albedo map");
+          throw invalidLine(fileName, lineIndex, "albedo map");
         }
 
         current.albedoMap = await loadTexture(fileName, fields[1]);
@@ -94,7 +116,7 @@ const loadMaterial = async (
 
       case "map_Ks": // Specular map texture
         if (fields.length < 2 || current === undefined) {
-          throw invalidLine(fileName, line, "specular map");
+          throw invalidLine(fileName, lineIndex, "specular map");
         }
 
         current.glossMap = await loadTexture(fileName, fields[1]);
@@ -103,7 +125,7 @@ const loadMaterial = async (
 
       case "map_normal": // Normal map texture (custom extension)
         if (fields.length < 2 || current === undefined) {
-          throw invalidLine(fileName, line, "normal map");
+          throw invalidLine(fileName, lineIndex, "normal map");
         }
 
         current.normalMap = await loadTexture(fileName, fields[1]);
@@ -112,7 +134,7 @@ const loadMaterial = async (
 
       case "Ns": // Material shininess
         if (fields.length < 2 || current === undefined) {
-          throw invalidLine(fileName, line, "shininess");
+          throw invalidLine(fileName, lineIndex, "shininess");
         }
 
         current.shininess = parseFloat(fields[1]);
@@ -121,7 +143,7 @@ const loadMaterial = async (
 
       case "newmtl": // New material declaration
         if (fields.length < 2) {
-          throw invalidLine(fileName, line, "material");
+          throw invalidLine(fileName, lineIndex, "material");
         }
 
         const material = {};
@@ -130,11 +152,18 @@ const loadMaterial = async (
         current = material;
 
         break;
+
+      default:
+        throw invalidLine(fileName, lineIndex, `prefix '${fields[0]}'`);
     }
   }
 };
 
-const loadObject = async (data: string, fileName: string): Promise<Model> => {
+const loadObject = async (
+  objectFilter: string | undefined,
+  data: string,
+  fileName: string
+): Promise<Model> => {
   const coordinates: Vector2[] = [];
   const polygons: Polygon[] = [];
   const groups: WavefrontOBJGroup[] = [];
@@ -143,31 +172,39 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
   const positions: Vector3[] = [];
 
   let mustStartNew = true;
-  let mustUseMaterial: string | undefined = undefined;
-
+  let currentMaterial: string | undefined = undefined;
+  let currentObject: string | undefined = undefined;
   let current: WavefrontOBJGroup = {
     faces: [],
     materialName: undefined,
   };
 
   // Load raw model data from file
-  for (const { line, fields } of parseFile(data)) {
+  for (const { fields, lineIndex } of parseFile(data, fileName)) {
     switch (fields[0]) {
+      case "#":
+      case "s": // Smooth shading (not supported)
+        break;
+
       case "f":
         if (fields.length < 4) {
-          throw invalidLine(fileName, line, "face definition");
+          throw invalidLine(fileName, lineIndex, "face definition");
+        }
+
+        if (objectFilter !== undefined && currentObject !== objectFilter) {
+          break;
         }
 
         if (mustStartNew) {
           current = {
             faces: [],
-            materialName: mustUseMaterial,
+            materialName: currentMaterial,
           };
 
           groups.push(current);
 
           mustStartNew = false;
-          mustUseMaterial = undefined;
+          currentMaterial = undefined;
         }
 
         current.faces.push(fields.slice(1).map(parseFace));
@@ -176,7 +213,11 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
 
       case "mtllib":
         if (fields.length < 2) {
-          throw invalidLine(fileName, line, "material library reference");
+          throw invalidLine(fileName, lineIndex, "material library reference");
+        }
+
+        if (objectFilter !== undefined && currentObject !== objectFilter) {
+          break;
         }
 
         const directory = getPathDirectory(fileName);
@@ -188,19 +229,36 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
 
         break;
 
+      case "o":
+        if (fields.length < 2) {
+          throw invalidLine(fileName, lineIndex, "object name");
+        }
+
+        currentObject = fields[1];
+
+        break;
+
       case "usemtl":
         if (fields.length < 2) {
-          throw invalidLine(fileName, line, "material use");
+          throw invalidLine(fileName, lineIndex, "material use");
+        }
+
+        if (objectFilter !== undefined && currentObject !== objectFilter) {
+          break;
         }
 
         mustStartNew = true;
-        mustUseMaterial = fields[1];
+        currentMaterial = fields[1];
 
         break;
 
       case "v":
         if (fields.length < 4) {
-          throw invalidLine(fileName, line, "vertex");
+          throw invalidLine(fileName, lineIndex, "vertex");
+        }
+
+        if (objectFilter !== undefined && currentObject !== objectFilter) {
+          break;
         }
 
         positions.push(parseVector3(fields));
@@ -209,7 +267,11 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
 
       case "vn":
         if (fields.length < 4) {
-          throw invalidLine(fileName, line, "normal");
+          throw invalidLine(fileName, lineIndex, "normal");
+        }
+
+        if (objectFilter !== undefined && currentObject !== objectFilter) {
+          break;
         }
 
         normals.push(parseVector3(fields));
@@ -218,18 +280,25 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
 
       case "vt":
         if (fields.length < 3) {
-          throw invalidLine(fileName, line, "texture");
+          throw invalidLine(fileName, lineIndex, "texture");
+        }
+
+        if (objectFilter !== undefined && currentObject !== objectFilter) {
+          break;
         }
 
         coordinates.push(parseVector2(fields));
 
         break;
+
+      default:
+        throw invalidLine(fileName, lineIndex, `prefix '${fields[0]}'`);
     }
   }
 
   // Convert groups into meshes by transforming multi-component face indices into scalar batch indices
   for (const group of groups) {
-    const batches: WavefrontOBJBatchMap = {};
+    const batches = new Map<string, number>();
     const groupCoordinates: Vector2[] = [];
     const groupIndices: number[] = [];
     const groupNormals: Vector3[] = [];
@@ -239,59 +308,58 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
     // vertices [0, i + 1, i + 2] for 0 <= i < N - 2 (equivalent to gl.TRIANGLE_FAN mode)
     for (const face of group.faces) {
       for (let triangle = 0; triangle + 2 < face.length; ++triangle) {
-        for (let i = 0; i < 3; ++i) {
-          const vertex = face[i === 0 ? i : triangle + i];
-          const key =
-            vertex.position + "/" + vertex.coordinate + "/" + vertex.normal;
+        for (let faceIndex of [0, triangle + 1, triangle + 2]) {
+          const { coordinate, normal, position } = face[faceIndex];
+          const key = position + "/" + coordinate + "/" + normal;
 
-          if (batches[key] === undefined) {
-            batches[key] = positions.length;
+          let batch = batches.get(key);
+
+          if (batch === undefined) {
+            batch = batches.size;
+
+            batches.set(key, batch);
 
             if (coordinates.length > 0) {
-              if (vertex.coordinate === undefined)
+              if (coordinate === undefined) {
                 throw invalidFile(
                   fileName,
                   "faces must include texture coordinate index if file specify them"
                 );
+              }
 
-              if (
-                vertex.coordinate < 0 ||
-                vertex.coordinate >= coordinates.length
-              )
+              if (coordinate < 0 || coordinate >= coordinates.length) {
                 throw invalidFile(
                   fileName,
-                  `invalid texture coordinate index ${vertex.coordinate}`
+                  `invalid texture coordinate index ${coordinate}`
                 );
+              }
 
-              groupCoordinates.push(coordinates[vertex.coordinate]);
+              groupCoordinates.push(coordinates[coordinate]);
             }
 
             if (normals.length > 0) {
-              if (vertex.normal === undefined)
+              if (normal === undefined) {
                 throw invalidFile(
                   fileName,
                   "faces must include normal index if file specify them"
                 );
+              }
 
-              if (vertex.normal < 0 || vertex.normal >= normals.length)
-                throw invalidFile(
-                  fileName,
-                  `invalid normal index ${vertex.normal}`
-                );
+              if (normal < 0 || normal >= normals.length) {
+                throw invalidFile(fileName, `invalid normal index ${normal}`);
+              }
 
-              groupNormals.push(normals[vertex.normal]);
+              groupNormals.push(normals[normal]);
             }
 
-            if (vertex.position < 0 || vertex.position >= positions.length)
-              throw invalidFile(
-                fileName,
-                `invalid vertex index ${vertex.position}`
-              );
+            if (position < 0 || position >= positions.length) {
+              throw invalidFile(fileName, `invalid vertex index ${position}`);
+            }
 
-            groupPositions.push(positions[vertex.position]);
+            groupPositions.push(positions[position]);
           }
 
-          groupIndices.push(batches[key]);
+          groupIndices.push(batch);
         }
       }
     }
@@ -331,7 +399,9 @@ const loadTexture = async (
     mipmap: true,
     wrap: Wrap.Repeat,
   },
-  image: await loadFromURL(combinePath(getPathDirectory(fileName), textureName)),
+  image: await loadFromURL(
+    combinePath(getPathDirectory(fileName), textureName)
+  ),
 });
 
 const parseFace = (face: string) => {
@@ -350,17 +420,29 @@ const parseFace = (face: string) => {
   };
 };
 
-function* parseFile(data: string) {
-  const regexp = /(?:.*(?:\n\r|\r\n|\n|\r)|.+$)/g;
+function* parseFile(data: string, fileName: string) {
+  const regexp = /(?:.*(?:\n\r|\r\n|\n|\r)|$)/g;
 
-  for (let line = 1; true; ++line) {
+  for (let lineIndex = 1; true; ++lineIndex) {
     const match = regexp.exec(data);
 
-    if (match === null) break;
+    if (match === null) {
+      throw invalidLine(fileName, lineIndex, "line");
+    }
+
+    if (match[0] === "") {
+      break; // End of file, stop parsing
+    }
+
+    const line = match[0].trim();
+
+    if (line === "") {
+      continue; // Empty line, skip
+    }
 
     yield {
-      fields: match[0].trim().split(/[\t ]+/),
-      line,
+      fields: line.split(/[\t ]+/),
+      lineIndex,
     };
   }
 }
