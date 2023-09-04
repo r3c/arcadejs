@@ -286,12 +286,7 @@ const toPolygon = (
             state
           )
         : undefined,
-    indices: toArrayOf(
-      `${name}.faces`,
-      polygon.faces,
-      (name, item) => toTuple3(name, item, toInteger),
-      state
-    ).flatMap((items) => items),
+    indices: toArrayOf(`${name}.indices`, polygon.indices, toVertex, state),
     material:
       materialName !== undefined
         ? state.materials.get(materialName)
@@ -353,24 +348,6 @@ const toTexture = async (
   }
 
   return texture;
-};
-
-const toTuple3 = <TValue>(
-  name: string,
-  instance: unknown,
-  converter: (name: string, item: unknown) => TValue
-): [TValue, TValue, TValue] => {
-  if (instance === null || typeof instance !== "object") {
-    throw invalid(name, instance, "3-tuple");
-  }
-
-  const tuple3 = instance as any;
-
-  return [
-    converter(`${name}[0]`, tuple3[0]),
-    converter(`${name}[1]`, tuple3[1]),
-    converter(`${name}[2]`, tuple3[2]),
-  ];
 };
 
 const toVertex = (name: string, instance: unknown): Vector3 => {

@@ -300,7 +300,7 @@ const loadObject = async (
   for (const group of groups) {
     const batches = new Map<string, number>();
     const groupCoordinates: Vector2[] = [];
-    const groupIndices: number[] = [];
+    const groupIndices: Vector3[] = [];
     const groupNormals: Vector3[] = [];
     const groupPositions: Vector3[] = [];
 
@@ -308,6 +308,8 @@ const loadObject = async (
     // vertices [0, i + 1, i + 2] for 0 <= i < N - 2 (equivalent to gl.TRIANGLE_FAN mode)
     for (const face of group.faces) {
       for (let triangle = 0; triangle + 2 < face.length; ++triangle) {
+        const indices = [];
+
         for (let faceIndex of [0, triangle + 1, triangle + 2]) {
           const { coordinate, normal, position } = face[faceIndex];
           const key = position + "/" + coordinate + "/" + normal;
@@ -359,8 +361,10 @@ const loadObject = async (
             groupPositions.push(positions[position]);
           }
 
-          groupIndices.push(batch);
+          indices.push(batch);
         }
+
+        groupIndices.push({ x: indices[0], y: indices[1], z: indices[2] });
       }
     }
 

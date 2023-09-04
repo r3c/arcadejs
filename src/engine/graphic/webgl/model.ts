@@ -288,7 +288,10 @@ const loadPrimitive = (
 
   const index = createStaticIndexBuffer(gl, Uint32Array);
 
-  index.set(new Uint32Array(source.indices), source.indices.length);
+  index.set(
+    new Uint32Array(source.indices.flatMap(Vector3.toArray)),
+    source.indices.length * 3
+  );
 
   const coordinate = optionalMap(source.coordinates, (coordinates) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);

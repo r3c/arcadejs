@@ -43,7 +43,7 @@ type RawModel = {
 
 type RawPolygon = {
   coordinates: Vector2[] | undefined;
-  indices: number[];
+  indices: Vector3[];
   materialName: string | undefined;
   positions: Vector3[];
 };
@@ -305,11 +305,12 @@ const readPolygon = async (
 
     case 0x4120: // TRI_FACEL1
       for (let count = context.reader.readInt16u(); count > 0; --count) {
-        state.indices.push(context.reader.readInt16u());
-        state.indices.push(context.reader.readInt16u());
-        state.indices.push(context.reader.readInt16u());
-
+        const x = context.reader.readInt16u();
+        const y = context.reader.readInt16u();
+        const z = context.reader.readInt16u();
         context.reader.readInt16u(); // Face info
+
+        state.indices.push({ x, y, z });
       }
 
       state.materialName = await scan(context, end, readPolygonMaterial, "");

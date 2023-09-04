@@ -78,7 +78,7 @@ const drawMeshes = (
     for (const polygon of mesh.polygons) {
       const { coordinates, indices, material, positions, tints } = polygon;
 
-      for (let i = 0; i + 3 <= indices.length; i += 3) {
+      for (let i = 0; i < indices.length; ++i) {
         const vertex0 = projectVertexToScreen(
           modelViewProjection,
           halfWidth,
@@ -86,7 +86,7 @@ const drawMeshes = (
           positions,
           tints,
           coordinates,
-          indices[i + 0]
+          indices[i].x
         );
 
         const vertex1 = projectVertexToScreen(
@@ -96,7 +96,7 @@ const drawMeshes = (
           positions,
           tints,
           coordinates,
-          indices[i + 1]
+          indices[i].y
         );
 
         const vertex2 = projectVertexToScreen(
@@ -106,7 +106,7 @@ const drawMeshes = (
           positions,
           tints,
           coordinates,
-          indices[i + 2]
+          indices[i].z
         );
 
         drawTriangle(image, vertex0, vertex1, vertex2, material);

@@ -18,6 +18,7 @@ import {
   readURL,
 } from "../../../io/stream";
 import { Vector2, Vector3, Vector4 } from "../../../math/vector";
+import { range } from "../../../language/iterable";
 
 /*
  ** Implementation based on:
@@ -249,11 +250,17 @@ const expandMesh = (
       tints,
     } = primitive;
 
+    const indexValues = expandAccessor(url, indices, 1, (i) => i[0], "index");
+
     return {
       coordinates: optionalMap(coordinates, (coordinates) =>
         expandAccessor(url, coordinates, 2, Vector2.fromArray, "coordinates")
       ),
-      indices: expandAccessor(url, indices, 1, (i) => i[0], "index"),
+      indices: range(Math.floor(indexValues.length / 3)).map((i) => ({
+        x: indexValues[i * 3 + 0],
+        y: indexValues[i * 3 + 1],
+        z: indexValues[i * 3 + 2],
+      })),
       material:
         materialName !== undefined ? materials.get(materialName) : undefined,
       normals: optionalMap(normals, (normals) =>

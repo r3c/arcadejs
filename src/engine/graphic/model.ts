@@ -54,23 +54,20 @@ const computeBounds = (model: Model): BoundingBox => {
  ** Based on:
  ** http://www.iquilezles.org/www/articles/normals/normals.htm
  */
-const computeNormals = (indices: number[], points: Vector3[]): Vector3[] => {
+const computeNormals = (indices: Vector3[], points: Vector3[]): Vector3[] => {
   const normals = range(points.length).map(Vector3.fromZero);
 
-  for (let i = 0; i + 2 < indices.length; i += 3) {
-    const index1 = indices[i + 0];
-    const index2 = indices[i + 1];
-    const index3 = indices[i + 2];
-    const u = Vector3.fromObject(points[index1]);
-    const v = Vector3.fromObject(points[index3]);
+  for (const { x, y, z } of indices) {
+    const u = Vector3.fromObject(points[x]);
+    const v = Vector3.fromObject(points[z]);
 
-    u.sub(points[index2]);
-    v.sub(points[index2]);
+    u.sub(points[y]);
+    v.sub(points[y]);
     u.cross(v);
 
-    normals[index1].add(u);
-    normals[index2].add(u);
-    normals[index3].add(u);
+    normals[x].add(u);
+    normals[y].add(u);
+    normals[z].add(u);
   }
 
   for (const normal of normals) {
@@ -86,29 +83,26 @@ const computeNormals = (indices: number[], points: Vector3[]): Vector3[] => {
  ** http://www.terathon.com/code/tangent.html
  */
 const computeTangents = (
-  indices: number[],
+  indices: Vector3[],
   points: Vector3[],
   coords: Vector2[],
   normals: Vector3[]
 ): Vector3[] => {
   const tangents = range(points.length).map(Vector3.fromZero);
 
-  for (let i = 0; i + 2 < indices.length; i += 3) {
-    const index1 = indices[i + 0];
-    const index2 = indices[i + 1];
-    const index3 = indices[i + 2];
-    const coord2 = Vector2.fromObject(coords[index2]);
-    const coord3 = Vector2.fromObject(coords[index3]);
-    const point2 = Vector3.fromObject(points[index2]);
-    const point3 = Vector3.fromObject(points[index3]);
+  for (const { x, y, z } of indices) {
+    const coord2 = Vector2.fromObject(coords[y]);
+    const coord3 = Vector2.fromObject(coords[z]);
+    const point2 = Vector3.fromObject(points[y]);
+    const point3 = Vector3.fromObject(points[z]);
 
-    coord2.sub(coords[index1]);
+    coord2.sub(coords[x]);
     coord2.normalize();
-    coord3.sub(coords[index1]);
+    coord3.sub(coords[x]);
     coord3.normalize();
-    point2.sub(points[index1]);
+    point2.sub(points[x]);
     point2.normalize();
-    point3.sub(points[index1]);
+    point3.sub(points[x]);
     point3.normalize();
 
     const tangent = {
@@ -117,9 +111,9 @@ const computeTangents = (
       z: coord3.y * point2.z - coord2.y * point3.z,
     };
 
-    tangents[index1].add(tangent);
-    tangents[index2].add(tangent);
-    tangents[index3].add(tangent);
+    tangents[x].add(tangent);
+    tangents[y].add(tangent);
+    tangents[z].add(tangent);
   }
 
   for (let i = 0; i < tangents.length; ++i) {
@@ -275,13 +269,17 @@ const flattenModel = (model: Model): Model => {
     }
 
     // Build concatenated indices
-    const indices: number[] = [];
+    const indices: Vector3[] = [];
 
     let indexShift = 0;
 
     for (const { polygon } of fragments) {
       for (const index of polygon.indices) {
-        indices.push(index + indexShift);
+        indices.push({
+          x: index.x + indexShift,
+          y: index.y + indexShift,
+          z: index.z + indexShift,
+        });
       }
 
       indexShift += polygon.positions.length;

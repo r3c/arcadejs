@@ -28,7 +28,7 @@ interface Library {
 
 interface Polygon {
   coordinates?: Vector2[];
-  indices: number[];
+  indices: Vector3[];
   material?: Material;
   normals?: Vector3[];
   positions: Vector3[];
