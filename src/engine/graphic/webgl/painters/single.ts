@@ -17,7 +17,11 @@ class SinglePainter<TScene> implements GlPainter<TScene> {
   public paint(target: GlTarget, scene: TScene): void {
     this.binding.bind(scene);
 
-    target.draw(0, this.indexGetter(scene));
+    target.draw(
+      0,
+      WebGL2RenderingContext["TRIANGLES"],
+      this.indexGetter(scene)
+    );
   }
 }
 

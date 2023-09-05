@@ -68,7 +68,7 @@ const paint = (
     for (const { index, polygon, modelMatrix, normalMatrix } of meshBatches) {
       geometryBinding?.bind({ normalMatrix, modelMatrix });
       polygonBinding?.bind(polygon);
-      target.draw(0, index);
+      target.draw(0, WebGL2RenderingContext["TRIANGLES"], index);
     }
   }
 };

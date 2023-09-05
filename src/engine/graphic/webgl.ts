@@ -34,6 +34,10 @@ type GlAttachmentTexture = {
   handle: GlTexture;
 };
 
+type GlDrawMode =
+  | WebGL2RenderingContext["TRIANGLES"]
+  | WebGL2RenderingContext["LINES"];
+
 type GlGeometry = {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
@@ -200,7 +204,11 @@ class GlTarget {
     GlTarget.clearTextureAttachments(gl, this.depthAttachment);
   }
 
-  public draw(framebufferIndex: number, indexBuffer: GlBuffer) {
+  public draw(
+    framebufferIndex: number,
+    mode: GlDrawMode,
+    indexBuffer: GlBuffer
+  ) {
     const gl = this.gl;
 
     gl.bindFramebuffer(
@@ -212,7 +220,7 @@ class GlTarget {
     gl.viewport(0, 0, this.viewWidth, this.viewHeight);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
-    gl.drawElements(gl.TRIANGLES, indexBuffer.length, indexBuffer.type, 0);
+    gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
   }
 
   public resize(width: number, height: number) {
