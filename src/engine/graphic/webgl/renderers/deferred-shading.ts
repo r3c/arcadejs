@@ -471,7 +471,7 @@ const loadGeometryPainter = (
   if (configuration.lightModel === DeferredShadingLightModel.Phong) {
     materialBinding.setUniform(
       "glossinessMap",
-      shaderUniform.tex2dBlack(({ glossMap }) => glossMap)
+      shaderUniform.tex2dWhite(({ albedoMap: a, glossMap: g }) => g ?? a)
     );
     materialBinding.setUniform(
       "shininess",
@@ -497,7 +497,7 @@ const loadGeometryPainter = (
   if (configuration.useNormalMap) {
     materialBinding.setUniform(
       "normalMap",
-      shaderUniform.tex2dBlack(({ normalMap }) => normalMap)
+      shaderUniform.tex2dNormal(({ normalMap }) => normalMap)
     );
   }
 

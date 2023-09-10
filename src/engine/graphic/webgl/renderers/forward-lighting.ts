@@ -516,8 +516,8 @@ const createLightPainter = (
       materialBinding.setUniform(
         "glossinessMap",
         !configuration.noGlossMap
-          ? shaderUniform.tex2dBlack(({ glossMap }) => glossMap)
-          : shaderUniform.tex2dBlack(() => undefined)
+          ? shaderUniform.tex2dWhite(({ albedoMap: a, glossMap: g }) => g ?? a)
+          : shaderUniform.tex2dWhite(() => undefined)
       );
       materialBinding.setUniform(
         "glossinessStrength",
@@ -603,8 +603,8 @@ const createLightPainter = (
   materialBinding.setUniform(
     "normalMap",
     !configuration.noNormalMap
-      ? shaderUniform.tex2dBlack(({ normalMap }) => normalMap)
-      : shaderUniform.tex2dBlack(() => undefined)
+      ? shaderUniform.tex2dNormal(({ normalMap }) => normalMap)
+      : shaderUniform.tex2dNormal(() => undefined)
   );
   materialBinding.setUniform(
     "occlusionMap",

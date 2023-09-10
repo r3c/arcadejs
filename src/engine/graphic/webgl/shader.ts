@@ -27,6 +27,7 @@ type GlShaderBinding<TState> = {
 
 type GlShaderDefault = {
   textureBlack: GlTexture;
+  textureNormal: GlTexture;
   textureWhite: GlTexture;
 };
 
@@ -405,6 +406,13 @@ const shaderUniform = {
     textureUniform(
       getter,
       ({ textureBlack }) => textureBlack,
+      WebGL2RenderingContext["TEXTURE_2D"]
+    ),
+
+  tex2dNormal: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+    textureUniform(
+      getter,
+      ({ textureNormal }) => textureNormal,
       WebGL2RenderingContext["TEXTURE_2D"]
     ),
 

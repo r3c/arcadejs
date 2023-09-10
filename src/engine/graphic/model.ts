@@ -58,11 +58,11 @@ const computeNormals = (indices: Vector3[], points: Vector3[]): Vector3[] => {
   const normals = range(points.length).map(Vector3.fromZero);
 
   for (const { x, y, z } of indices) {
-    const u = Vector3.fromObject(points[x]);
+    const u = Vector3.fromObject(points[y]);
     const v = Vector3.fromObject(points[z]);
 
-    u.sub(points[y]);
-    v.sub(points[y]);
+    u.sub(points[x]);
+    v.sub(points[x]);
     u.cross(v);
 
     normals[x].add(u);

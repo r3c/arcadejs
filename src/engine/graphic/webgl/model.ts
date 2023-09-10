@@ -76,16 +76,15 @@ type GlPrimitive = Disposable & {
   polygon: GlPolygon;
 };
 
-const colorBlack = { x: 0, y: 0, z: 0, w: 0 };
-const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
+const colorWhite = Vector4.toArray({ x: 1, y: 1, z: 1, w: 1 });
 
 const defaultMaterial: GlMaterial = {
   dispose: () => {},
-  albedoFactor: Vector4.toArray(colorWhite),
+  albedoFactor: colorWhite,
   albedoMap: undefined,
-  emissiveFactor: Vector4.toArray(colorBlack),
+  emissiveFactor: colorWhite,
   emissiveMap: undefined,
-  glossFactor: Vector4.toArray(colorWhite),
+  glossFactor: colorWhite,
   glossMap: undefined,
   heightMap: undefined,
   heightParallaxBias: 0,
@@ -187,10 +186,8 @@ const loadMaterial = (
       defaultMaterial.emissiveFactor,
     emissiveMap,
     glossFactor:
-      optionalMap(
-        material.glossFactor ?? material.albedoFactor,
-        Vector4.toArray
-      ) ?? defaultMaterial.glossFactor,
+      optionalMap(material.glossFactor, Vector4.toArray) ??
+      defaultMaterial.glossFactor,
     glossMap,
     heightMap,
     heightParallaxBias:
