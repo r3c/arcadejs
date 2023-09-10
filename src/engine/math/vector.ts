@@ -206,6 +206,20 @@ class MutableVector4 implements Vector4 {
     this.w = w;
   }
 
+  public map(callback: (v: number) => number): void {
+    this.x = callback(this.x);
+    this.y = callback(this.y);
+    this.z = callback(this.z);
+    this.w = callback(this.w);
+  }
+
+  public scale(factor: number): void {
+    this.x *= factor;
+    this.y *= factor;
+    this.z *= factor;
+    this.w *= factor;
+  }
+
   public set(source: Vector4): void {
     this.x = source.x;
     this.y = source.y;

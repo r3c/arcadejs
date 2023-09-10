@@ -152,7 +152,7 @@ const createPainter = (shader: GlShader) => {
   );
   binding.setUniform(
     "source",
-    shaderUniform.quadBlack(({ source }) => source)
+    shaderUniform.tex2dBlack(({ source }) => source)
   );
 
   return new SinglePainter(binding, ({ index }) => index);

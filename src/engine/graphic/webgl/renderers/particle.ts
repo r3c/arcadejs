@@ -283,7 +283,7 @@ class ParticleRenderer implements Renderer<ParticleScene> {
 
     billboardBinding.setUniform(
       "sprite",
-      shaderUniform.quadWhite(({ sprite }) => sprite)
+      shaderUniform.tex2dWhite(({ sprite }) => sprite)
     );
 
     // Declare scene binding (shared by all particle sources)

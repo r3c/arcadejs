@@ -503,8 +503,8 @@ const createLightPainter = (
   materialBinding.setUniform(
     "albedoMap",
     !configuration.noAlbedoMap
-      ? shaderUniform.quadWhite(({ albedoMap }) => albedoMap)
-      : shaderUniform.quadWhite(() => undefined)
+      ? shaderUniform.tex2dWhite(({ albedoMap }) => albedoMap)
+      : shaderUniform.tex2dWhite(() => undefined)
   );
   materialBinding.setUniform(
     "albedoFactor",
@@ -516,8 +516,8 @@ const createLightPainter = (
       materialBinding.setUniform(
         "glossinessMap",
         !configuration.noGlossMap
-          ? shaderUniform.quadBlack(({ glossMap }) => glossMap)
-          : shaderUniform.quadBlack(() => undefined)
+          ? shaderUniform.tex2dBlack(({ glossMap }) => glossMap)
+          : shaderUniform.tex2dBlack(() => undefined)
       );
       materialBinding.setUniform(
         "glossinessStrength",
@@ -534,19 +534,19 @@ const createLightPainter = (
       if (!configuration.modelPhysicalNoIBL) {
         sceneBinding.setUniform(
           "environmentBrdfMap",
-          shaderUniform.quadBlack(
+          shaderUniform.tex2dBlack(
             ({ environmentLight }) => environmentLight?.brdf
           )
         );
         sceneBinding.setUniform(
           "environmentDiffuseMap",
-          shaderUniform.cube(
+          shaderUniform.tex3d(
             ({ environmentLight }) => environmentLight?.diffuse
           )
         );
         sceneBinding.setUniform(
           "environmentSpecularMap",
-          shaderUniform.cube(
+          shaderUniform.tex3d(
             ({ environmentLight }) => environmentLight?.specular
           )
         );
@@ -555,14 +555,14 @@ const createLightPainter = (
       materialBinding.setUniform(
         "metalnessMap",
         !configuration.noMetalnessMap
-          ? shaderUniform.quadBlack(({ metalnessMap }) => metalnessMap)
-          : shaderUniform.quadBlack(() => undefined)
+          ? shaderUniform.tex2dBlack(({ metalnessMap }) => metalnessMap)
+          : shaderUniform.tex2dBlack(() => undefined)
       );
       materialBinding.setUniform(
         "roughnessMap",
         !configuration.noRoughnessMap
-          ? shaderUniform.quadBlack(({ roughnessMap }) => roughnessMap)
-          : shaderUniform.quadBlack(() => undefined)
+          ? shaderUniform.tex2dBlack(({ roughnessMap }) => roughnessMap)
+          : shaderUniform.tex2dBlack(() => undefined)
       );
       materialBinding.setUniform(
         "metalnessStrength",
@@ -579,8 +579,8 @@ const createLightPainter = (
   materialBinding.setUniform(
     "emissiveMap",
     !configuration.noEmissiveMap
-      ? shaderUniform.quadBlack(({ emissiveMap }) => emissiveMap)
-      : shaderUniform.quadBlack(() => undefined)
+      ? shaderUniform.tex2dBlack(({ emissiveMap }) => emissiveMap)
+      : shaderUniform.tex2dBlack(() => undefined)
   );
   materialBinding.setUniform(
     "emissiveFactor",
@@ -589,8 +589,8 @@ const createLightPainter = (
   materialBinding.setUniform(
     "heightMap",
     !configuration.noHeightMap
-      ? shaderUniform.quadBlack(({ heightMap }) => heightMap)
-      : shaderUniform.quadBlack(() => undefined)
+      ? shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
+      : shaderUniform.tex2dBlack(() => undefined)
   );
   materialBinding.setUniform(
     "heightParallaxBias",
@@ -603,14 +603,14 @@ const createLightPainter = (
   materialBinding.setUniform(
     "normalMap",
     !configuration.noNormalMap
-      ? shaderUniform.quadBlack(({ normalMap }) => normalMap)
-      : shaderUniform.quadBlack(() => undefined)
+      ? shaderUniform.tex2dBlack(({ normalMap }) => normalMap)
+      : shaderUniform.tex2dBlack(() => undefined)
   );
   materialBinding.setUniform(
     "occlusionMap",
     !configuration.noOcclusionMap
-      ? shaderUniform.quadBlack(({ occlusionMap }) => occlusionMap)
-      : shaderUniform.quadBlack(() => undefined)
+      ? shaderUniform.tex2dBlack(({ occlusionMap }) => occlusionMap)
+      : shaderUniform.tex2dBlack(() => undefined)
   );
   materialBinding.setUniform(
     "occlusionStrength",
@@ -649,7 +649,7 @@ const createLightPainter = (
       );
       sceneBinding.setUniform(
         `directionalLightShadowMaps[${index}]`,
-        shaderUniform.quadBlack(
+        shaderUniform.tex2dBlack(
           ({ directionalShadowLights: directionalLights }) =>
             index < directionalLights.length
               ? directionalLights[index].shadowMap

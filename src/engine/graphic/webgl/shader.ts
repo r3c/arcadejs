@@ -26,8 +26,8 @@ type GlShaderBinding<TState> = {
 };
 
 type GlShaderDefault = {
-  blackTexture: GlTexture;
-  whiteTexture: GlTexture;
+  textureBlack: GlTexture;
+  textureWhite: GlTexture;
 };
 
 type GlShaderDirectives = Record<string, GlShaderDirectiveValue>;
@@ -328,15 +328,6 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniform1i(l, v),
   }),
 
-  cube: <TState>(getter: (state: TState) => GlTexture | undefined) =>
-    textureUniform(
-      getter,
-      () => {
-        throw new Error("undefined cube texture");
-      },
-      WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
-    ),
-
   array4f: <TState>(
     getter: (state: TState) => number[]
   ): GlShaderUniform<TState, number[]> => ({
@@ -410,18 +401,27 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniform1f(l, v),
   }),
 
-  quadBlack: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+  tex2dBlack: <TState>(getter: (state: TState) => GlTexture | undefined) =>
     textureUniform(
       getter,
-      ({ blackTexture }) => blackTexture,
+      ({ textureBlack }) => textureBlack,
       WebGL2RenderingContext["TEXTURE_2D"]
     ),
 
-  quadWhite: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+  tex2dWhite: <TState>(getter: (state: TState) => GlTexture | undefined) =>
     textureUniform(
       getter,
-      ({ whiteTexture }) => whiteTexture,
+      ({ textureWhite }) => textureWhite,
       WebGL2RenderingContext["TEXTURE_2D"]
+    ),
+
+  tex3d: <TState>(getter: (state: TState) => GlTexture | undefined) =>
+    textureUniform(
+      getter,
+      () => {
+        throw new Error("undefined cube texture");
+      },
+      WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
     ),
 
   vector2f: <TState>(

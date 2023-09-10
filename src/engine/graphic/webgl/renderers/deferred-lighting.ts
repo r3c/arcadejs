@@ -448,7 +448,7 @@ const loadGeometryPainter = (
   if (configuration.lightModel === DeferredLightingLightModel.Phong) {
     materialBinding.setUniform(
       "glossinessMap",
-      shaderUniform.quadBlack(({ glossMap }) => glossMap)
+      shaderUniform.tex2dBlack(({ glossMap }) => glossMap)
     );
     materialBinding.setUniform(
       "shininess",
@@ -459,7 +459,7 @@ const loadGeometryPainter = (
   if (configuration.useHeightMap) {
     materialBinding.setUniform(
       "heightMap",
-      shaderUniform.quadBlack(({ heightMap }) => heightMap)
+      shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
     );
     materialBinding.setUniform(
       "heightParallaxBias",
@@ -474,7 +474,7 @@ const loadGeometryPainter = (
   if (configuration.useNormalMap) {
     materialBinding.setUniform(
       "normalMap",
-      shaderUniform.quadBlack(({ normalMap }) => normalMap)
+      shaderUniform.tex2dBlack(({ normalMap }) => normalMap)
     );
   }
 
@@ -528,11 +528,11 @@ const loadLightBinding = <TScene extends LightScene>(
   );
   binding.setUniform(
     "depthBuffer",
-    shaderUniform.quadBlack(({ depthBuffer }) => depthBuffer)
+    shaderUniform.tex2dBlack(({ depthBuffer }) => depthBuffer)
   );
   binding.setUniform(
     "normalAndGlossinessBuffer",
-    shaderUniform.quadBlack((state) => state.normalAndGlossinessBuffer)
+    shaderUniform.tex2dBlack((state) => state.normalAndGlossinessBuffer)
   );
 
   return binding;
@@ -649,7 +649,7 @@ const loadMaterialPainter = (
   );
   sceneBinding.setUniform(
     "lightBuffer",
-    shaderUniform.quadBlack(({ lightBuffer }) => lightBuffer)
+    shaderUniform.tex2dBlack(({ lightBuffer }) => lightBuffer)
   );
 
   const materialBinding = shader.declare<GlMaterial>();
@@ -660,7 +660,7 @@ const loadMaterialPainter = (
   );
   materialBinding.setUniform(
     "albedoMap",
-    shaderUniform.quadWhite(({ albedoMap }) => albedoMap)
+    shaderUniform.tex2dWhite(({ albedoMap }) => albedoMap)
   );
 
   if (configuration.lightModel >= DeferredLightingLightModel.Phong) {
@@ -670,14 +670,14 @@ const loadMaterialPainter = (
     );
     materialBinding.setUniform(
       "glossinessMap",
-      shaderUniform.quadBlack(({ glossMap }) => glossMap)
+      shaderUniform.tex2dBlack(({ glossMap }) => glossMap)
     );
   }
 
   if (configuration.useHeightMap) {
     materialBinding.setUniform(
       "heightMap",
-      shaderUniform.quadBlack(({ heightMap }) => heightMap)
+      shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
     );
     materialBinding.setUniform(
       "heightParallaxBias",

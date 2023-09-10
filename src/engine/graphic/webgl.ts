@@ -57,27 +57,32 @@ type GlRuntime = Disposable & {
 };
 
 const createRuntime = (context: GlContext): GlRuntime => {
-  const blackTexture = createTexture(
-    context,
-    undefined,
-    GlTextureType.Quad,
-    1,
-    1,
-    GlTextureFormat.RGBA8,
-    defaultFilter,
-    new ImageData(new Uint8ClampedArray([0, 0, 0, 0]), 1, 1)
-  );
+  const createConstantTexture = (color: Vector4) =>
+    createTexture(
+      context,
+      undefined,
+      GlTextureType.Quad,
+      1,
+      1,
+      GlTextureFormat.RGBA8,
+      defaultFilter,
+      new ImageData(
+        new Uint8ClampedArray(
+          Vector4.toArray(
+            Vector4.fromCustom(
+              ["set", color],
+              ["scale", 255],
+              ["map", Math.floor]
+            )
+          )
+        ),
+        1,
+        1
+      )
+    );
 
-  const whiteTexture = createTexture(
-    context,
-    undefined,
-    GlTextureType.Quad,
-    1,
-    1,
-    GlTextureFormat.RGBA8,
-    defaultFilter,
-    new ImageData(new Uint8ClampedArray([255, 255, 255, 255]), 1, 1)
-  );
+  const textureBlack = createConstantTexture({ x: 0, y: 0, z: 0, w: 0 });
+  const textureWhite = createConstantTexture({ x: 1, y: 1, z: 1, w: 1 });
 
   let currentProgram: WebGLProgram | undefined = undefined;
 
@@ -91,14 +96,14 @@ const createRuntime = (context: GlContext): GlRuntime => {
 
   return {
     dispose: () => {
-      blackTexture.dispose();
-      whiteTexture.dispose();
+      textureBlack.dispose();
+      textureWhite.dispose();
     },
     createShader: (vertexShaderSource, fragmentShaderSource, directives) => {
       return createShader(
         context,
         useProgram,
-        { blackTexture, whiteTexture },
+        { textureBlack, textureWhite },
         vertexShaderSource,
         fragmentShaderSource,
         directives
