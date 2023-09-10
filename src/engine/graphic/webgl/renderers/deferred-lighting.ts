@@ -105,9 +105,7 @@ in vec3 tangent;
 layout(location=0) out vec4 normalAndGlossiness;
 
 void main(void) {
-	vec3 t = normalize(tangent);
-	vec3 b = normalize(bitangent);
-	vec3 n = normalize(normal);
+	mat3 tbn = mat3(tangent, bitangent, normal);
 
 	vec3 eyeDirection = normalize(-point);
 	vec2 coordParallax = ${parallaxPerturb.invoke(
@@ -116,18 +114,14 @@ void main(void) {
     "eyeDirection",
     "heightParallaxScale",
     "heightParallaxBias",
-    "t",
-    "b",
-    "n"
+    "tbn"
   )};
 
 	// Color target: [normal, normal, shininess, glossiness]
 	vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
-    "t",
-    "b",
-    "n"
+    "tbn"
   )};
 	vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
@@ -330,9 +324,7 @@ void main(void) {
 	vec3 specularLight = lightSample.rgb * lightSample.a * float(LIGHT_MODEL_PHONG_SPECULAR); // FIXME: not accurate, depends on diffuse RGB instead of specular RGB
 
 	// Read material properties from uniforms
-	vec3 t = normalize(tangent);
-	vec3 b = normalize(bitangent);
-	vec3 n = normalize(normal);
+	mat3 tbn = mat3(tangent, bitangent, normal);
 
 	vec3 eyeDirection = normalize(-point);
 	vec2 coordParallax = ${parallaxPerturb.invoke(
@@ -341,9 +333,7 @@ void main(void) {
     "eyeDirection",
     "heightParallaxScale",
     "heightParallaxBias",
-    "t",
-    "b",
-    "n"
+    "tbn"
   )};
 
 	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke(

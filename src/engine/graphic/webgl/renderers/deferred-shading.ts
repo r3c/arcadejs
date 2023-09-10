@@ -104,9 +104,7 @@ layout(location=0) out vec4 albedoAndShininess;
 layout(location=1) out vec4 normalAndGlossiness;
 
 void main(void) {
-	vec3 t = normalize(tangent);
-	vec3 b = normalize(bitangent);
-	vec3 n = normalize(normal);
+	mat3 tbn = mat3(tangent, bitangent, normal);
 
 	vec3 eyeDirection = normalize(-point);
 	vec2 coordParallax = ${parallaxPerturb.invoke(
@@ -115,9 +113,7 @@ void main(void) {
     "eyeDirection",
     "heightParallaxScale",
     "heightParallaxBias",
-    "t",
-    "b",
-    "n"
+    "tbn"
   )};
 
 	// Color target 1: [albedo.rgb, shininess]
@@ -130,9 +126,7 @@ void main(void) {
 	vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
-    "t",
-    "b",
-    "n"
+    "tbn"
   )};
 	vec2 normalPack = ${normalEncode.invoke("normalModified")};
 

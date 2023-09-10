@@ -1,6 +1,6 @@
 import { GlShaderFunction } from "../language";
 
-const normalDecode: GlShaderFunction<[string]> = {
+const normalDecode: GlShaderFunction<[], [string]> = {
   declare: (): string => `
   vec3 normalDecode(in vec2 normalPack) {
 	  // Spheremap transform
@@ -15,7 +15,7 @@ const normalDecode: GlShaderFunction<[string]> = {
   invoke: (packedNormal: string): string => `normalDecode(${packedNormal})`,
 };
 
-const normalEncode: GlShaderFunction<[string]> = {
+const normalEncode: GlShaderFunction<[], [string]> = {
   declare: (): string => `
 vec2 normalEncode(in vec3 decoded) {
 	// Spheremap transform
@@ -26,24 +26,17 @@ vec2 normalEncode(in vec3 decoded) {
   invoke: (decoded: string): string => `normalEncode(${decoded})`,
 };
 
-const normalPerturb: GlShaderFunction<
-  [string, string, string, string, string]
-> = {
+const normalPerturb: GlShaderFunction<[], [string, string, string]> = {
   declare: (): string => `
-	vec3 normalPerturb(in sampler2D sampler, in vec2 coord, in vec3 t, in vec3 b, in vec3 n) {
-		vec3 normalFace = normalize(2.0 * texture(sampler, coord).rgb - 1.0);
+	vec3 normalPerturb(in sampler2D sampler, in vec2 coord, in mat3 tbn) {
+		vec3 normal = 2.0 * texture(sampler, coord).rgb - 1.0;
 	
-		return normalize(normalFace.x * t + normalFace.y * b + normalFace.z * n);
+		return normalize(tbn * normal);
 	}
 	`,
 
-  invoke: (
-    sampler: string,
-    coord: string,
-    t: string,
-    b: string,
-    n: string
-  ): string => `normalPerturb(${sampler}, ${coord}, ${t}, ${b}, ${n})`,
+  invoke: (sampler: string, coord: string, tbn: string): string =>
+    `normalPerturb(${sampler}, ${coord}, ${tbn})`,
 };
 
 export { normalDecode, normalEncode, normalPerturb };

@@ -14,11 +14,7 @@ import { ObjectScene, createObjectPainter } from "../painters/object";
 import { Matrix4 } from "../../../math/matrix";
 import { normalPerturb } from "../shaders/normal";
 import { parallaxPerturb } from "../shaders/parallax";
-import {
-  pbrDeclare,
-  pbrEnvironmentInvoke,
-  pbrLightInvoke,
-} from "./snippets/pbr";
+import { pbrEnvironment, pbrLight } from "../shaders/pbr";
 import { lightDeclare, lightInvoke } from "./snippets/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { Vector3 } from "../../../math/vector";
@@ -259,12 +255,11 @@ ${sampleDeclare(
 ${normalPerturb.declare()}
 ${parallaxPerturb.declare()}
 ${lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
-${pbrDeclare(
-  "LIGHT_MODEL_PBR_IBL",
-  "environmentBrdfMap",
-  "environmentDiffuseMap",
-  "environmentSpecularMap"
-)}
+
+#if LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
+${pbrEnvironment.declare("LIGHT_MODEL_PBR_IBL")}
+${pbrLight.declare()}
+#endif
 
 in vec3 bitangent;
 in vec2 coord;
@@ -291,14 +286,12 @@ vec3 getLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 n
       "eyeDirection"
     )};
 	#elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
-		return ${pbrLightInvoke("light", "material", "normal", "eyeDirection")};
+		return ${pbrLight.invoke("light", "material", "normal", "eyeDirection")};
 	#endif
 }
 
 void main(void) {
-	vec3 b = normalize(bitangent);
-	vec3 n = normalize(normal);
-	vec3 t = normalize(tangent);
+	mat3 tbn = mat3(tangent, bitangent, normal);
 
 	vec3 eyeDirection = normalize(eye);
 	vec2 coordParallax = ${parallaxPerturb.invoke(
@@ -307,26 +300,29 @@ void main(void) {
     "eyeDirection",
     "heightParallaxScale",
     "heightParallaxBias",
-    "t",
-    "b",
-    "n"
+    "tbn"
   )};
 	vec3 modifiedNormal = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
-    "t",
-    "b",
-    "n"
+    "tbn"
   )};
 
 	${sampleType} material = ${sampleInvoke("coordParallax")};
 
 	// Apply environment (ambient or influence-based) lighting
-	vec3 color = ${pbrEnvironmentInvoke(
+  #if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
+  vec3 color = material.albedo * ambientLightColor * float(LIGHT_AMBIENT);
+  #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
+	vec3 color = ${pbrEnvironment.invoke(
+    "environmentBrdfMap",
+    "environmentDiffuseMap",
+    "environmentSpecularMap",
     "material",
     "normal",
     "eyeDirection"
   )} * ambientLightColor * float(LIGHT_AMBIENT);
+  #endif
 
 	// Apply components from directional lights
   ${range(maxDirectionalLights)
