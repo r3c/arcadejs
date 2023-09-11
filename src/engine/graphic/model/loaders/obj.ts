@@ -1,14 +1,6 @@
 import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
-import {
-  Interpolation,
-  Library,
-  Material,
-  Model,
-  Polygon,
-  Texture,
-  Wrap,
-} from "../definition";
+import { Interpolation, Material, Model, Texture, Wrap } from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import { StringFormat, readURL } from "../../../io/stream";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -19,20 +11,21 @@ import { Vector2, Vector3 } from "../../../math/vector";
  ** http://paulbourke.net/dataformats/mtl/
  */
 
-type WavefrontOBJConfiguration = {
-  objectFilter?: string;
-};
-
-interface WavefrontOBJGroup {
+type WavefrontOBJGroup = {
   faces: WavefrontOBJVertex[][];
   materialName: string | undefined;
-}
+};
 
-interface WavefrontOBJVertex {
+type WavefrontOBJObject = {
+  groups: WavefrontOBJGroup[];
+  name: string;
+};
+
+type WavefrontOBJVertex = {
   coordinate: number | undefined;
   normal: number | undefined;
   position: number;
-}
+};
 
 const invalidFile = (file: string, description: string) => {
   return Error(`${description} in file ${file}`);
@@ -42,18 +35,14 @@ const invalidLine = (file: string, lineIndex: number, description: string) => {
   return Error(`invalid ${description} in file ${file} at line ${lineIndex}`);
 };
 
-const load = async (
-  url: string,
-  _: Library,
-  configuration: WavefrontOBJConfiguration | undefined
-): Promise<Model> => {
+const load = async (url: string): Promise<Model> => {
   const data = await readURL(StringFormat, url);
 
-  return loadObject(configuration?.objectFilter, data, url);
+  return loadObject(data, url);
 };
 
 const loadMaterial = async (
-  materials: Map<string, Material>,
+  materials: Map<string | undefined, Material>,
   data: string,
   fileName: string
 ) => {
@@ -159,25 +148,23 @@ const loadMaterial = async (
   }
 };
 
-const loadObject = async (
-  objectFilter: string | undefined,
-  data: string,
-  fileName: string
-): Promise<Model> => {
-  const coordinates: Vector2[] = [];
-  const polygons: Polygon[] = [];
-  const groups: WavefrontOBJGroup[] = [];
-  const materials = new Map<string, Material>();
-  const normals: Vector3[] = [];
-  const positions: Vector3[] = [];
+const loadObject = async (data: string, fileName: string): Promise<Model> => {
+  const allCoordinates: Vector2[] = [];
+  const allMaterials = new Map<string | undefined, Material>();
+  const allNormals: Vector3[] = [];
+  const allPositions: Vector3[] = [];
 
-  let mustStartNew = true;
-  let currentMaterial: string | undefined = undefined;
-  let currentObject: string | undefined = undefined;
-  let current: WavefrontOBJGroup = {
+  let currentGroup: WavefrontOBJGroup = {
     faces: [],
     materialName: undefined,
   };
+
+  let currentObject: WavefrontOBJObject = {
+    groups: [currentGroup],
+    name: "default",
+  };
+
+  const objects: WavefrontOBJObject[] = [currentObject];
 
   // Load raw model data from file
   for (const { fields, lineIndex } of parseFile(data, fileName)) {
@@ -191,23 +178,7 @@ const loadObject = async (
           throw invalidLine(fileName, lineIndex, "face definition");
         }
 
-        if (objectFilter !== undefined && currentObject !== objectFilter) {
-          break;
-        }
-
-        if (mustStartNew) {
-          current = {
-            faces: [],
-            materialName: currentMaterial,
-          };
-
-          groups.push(current);
-
-          mustStartNew = false;
-          currentMaterial = undefined;
-        }
-
-        current.faces.push(fields.slice(1).map(parseFace));
+        currentGroup.faces.push(fields.slice(1).map(parseFace));
 
         break;
 
@@ -216,15 +187,11 @@ const loadObject = async (
           throw invalidLine(fileName, lineIndex, "material library reference");
         }
 
-        if (objectFilter !== undefined && currentObject !== objectFilter) {
-          break;
-        }
-
         const directory = getPathDirectory(fileName);
         const library = combinePath(directory, fields[1]);
 
         await readURL(StringFormat, library).then((data) =>
-          loadMaterial(materials, data, library)
+          loadMaterial(allMaterials, data, library)
         );
 
         break;
@@ -234,7 +201,16 @@ const loadObject = async (
           throw invalidLine(fileName, lineIndex, "object name");
         }
 
-        currentObject = fields[1];
+        if (
+          currentObject.groups.length > 0 &&
+          currentObject.groups[0].faces.length > 0
+        ) {
+          currentObject = { groups: [], name: fields[1] };
+
+          objects.push(currentObject);
+        } else {
+          currentObject.name = fields[1];
+        }
 
         break;
 
@@ -243,12 +219,17 @@ const loadObject = async (
           throw invalidLine(fileName, lineIndex, "material use");
         }
 
-        if (objectFilter !== undefined && currentObject !== objectFilter) {
-          break;
-        }
+        // If current group isn't empty create a new one, otherwise reuse it
+        if (currentGroup.faces.length > 0) {
+          currentGroup = {
+            faces: [],
+            materialName: fields[1],
+          };
 
-        mustStartNew = true;
-        currentMaterial = fields[1];
+          currentObject.groups.push(currentGroup);
+        } else {
+          currentGroup.materialName = fields[1];
+        }
 
         break;
 
@@ -257,11 +238,7 @@ const loadObject = async (
           throw invalidLine(fileName, lineIndex, "vertex");
         }
 
-        if (objectFilter !== undefined && currentObject !== objectFilter) {
-          break;
-        }
-
-        positions.push(parseVector3(fields));
+        allPositions.push(parseVector3(fields));
 
         break;
 
@@ -270,11 +247,7 @@ const loadObject = async (
           throw invalidLine(fileName, lineIndex, "normal");
         }
 
-        if (objectFilter !== undefined && currentObject !== objectFilter) {
-          break;
-        }
-
-        normals.push(parseVector3(fields));
+        allNormals.push(parseVector3(fields));
 
         break;
 
@@ -283,11 +256,7 @@ const loadObject = async (
           throw invalidLine(fileName, lineIndex, "texture");
         }
 
-        if (objectFilter !== undefined && currentObject !== objectFilter) {
-          break;
-        }
-
-        coordinates.push(parseVector2(fields));
+        allCoordinates.push(parseVector2(fields));
 
         break;
 
@@ -296,101 +265,93 @@ const loadObject = async (
     }
   }
 
-  // Convert groups into meshes by transforming multi-component face indices into scalar batch indices
-  for (const group of groups) {
-    const batches = new Map<string, number>();
-    const groupCoordinates: Vector2[] = [];
-    const groupIndices: Vector3[] = [];
-    const groupNormals: Vector3[] = [];
-    const groupPositions: Vector3[] = [];
+  // Convert
+  const meshes = objects.map((obj) => {
+    // Convert groups into polygons by transforming multi-component face indices into scalar indices
+    const polygons = obj.groups.map((group) => {
+      const coordinates: Vector2[] = [];
+      const indexByKey = new Map<string, number>();
+      const indices: Vector3[] = [];
+      const normals: Vector3[] = [];
+      const positions: Vector3[] = [];
 
-    // Convert faces into triangles, a face with N vertices defines N-2 triangles with
-    // vertices [0, i + 1, i + 2] for 0 <= i < N - 2 (equivalent to gl.TRIANGLE_FAN mode)
-    for (const face of group.faces) {
-      for (let triangle = 0; triangle + 2 < face.length; ++triangle) {
-        const indices = [];
+      // Convert faces into triangles, a face with N vertices defines N-2 triangles with
+      // vertices [0, i + 1, i + 2] for 0 <= i < N - 2 (equivalent to gl.TRIANGLE_FAN mode)
+      for (const face of group.faces) {
+        for (let triangle = 0; triangle + 2 < face.length; ++triangle) {
+          const faceIndices = [];
 
-        for (let faceIndex of [0, triangle + 1, triangle + 2]) {
-          const { coordinate, normal, position } = face[faceIndex];
-          const key = position + "/" + coordinate + "/" + normal;
+          for (let faceIndex of [0, triangle + 1, triangle + 2]) {
+            const { coordinate, normal, position } = face[faceIndex];
+            const key = position + "/" + coordinate + "/" + normal;
 
-          let batch = batches.get(key);
+            let index = indexByKey.get(key);
 
-          if (batch === undefined) {
-            batch = batches.size;
+            if (index === undefined) {
+              index = indexByKey.size;
 
-            batches.set(key, batch);
+              indexByKey.set(key, index);
 
-            if (coordinates.length > 0) {
-              if (coordinate === undefined) {
-                throw invalidFile(
-                  fileName,
-                  "faces must include texture coordinate index if file specify them"
-                );
+              if (allCoordinates.length > 0) {
+                if (coordinate === undefined) {
+                  throw invalidFile(
+                    fileName,
+                    "faces must include texture coordinate index if file specify them"
+                  );
+                }
+
+                if (coordinate < 0 || coordinate >= allCoordinates.length) {
+                  throw invalidFile(
+                    fileName,
+                    `invalid texture coordinate index ${coordinate}`
+                  );
+                }
+
+                coordinates.push(allCoordinates[coordinate]);
               }
 
-              if (coordinate < 0 || coordinate >= coordinates.length) {
-                throw invalidFile(
-                  fileName,
-                  `invalid texture coordinate index ${coordinate}`
-                );
+              if (allNormals.length > 0) {
+                if (normal === undefined) {
+                  throw invalidFile(
+                    fileName,
+                    "faces must include normal index if file specify them"
+                  );
+                }
+
+                if (normal < 0 || normal >= allNormals.length) {
+                  throw invalidFile(fileName, `invalid normal index ${normal}`);
+                }
+
+                normals.push(allNormals[normal]);
               }
 
-              groupCoordinates.push(coordinates[coordinate]);
+              if (position < 0 || position >= allPositions.length) {
+                throw invalidFile(fileName, `invalid vertex index ${position}`);
+              }
+
+              positions.push(allPositions[position]);
             }
 
-            if (normals.length > 0) {
-              if (normal === undefined) {
-                throw invalidFile(
-                  fileName,
-                  "faces must include normal index if file specify them"
-                );
-              }
-
-              if (normal < 0 || normal >= normals.length) {
-                throw invalidFile(fileName, `invalid normal index ${normal}`);
-              }
-
-              groupNormals.push(normals[normal]);
-            }
-
-            if (position < 0 || position >= positions.length) {
-              throw invalidFile(fileName, `invalid vertex index ${position}`);
-            }
-
-            groupPositions.push(positions[position]);
+            faceIndices.push(index);
           }
 
-          indices.push(batch);
+          indices.push(Vector3.fromArray(faceIndices));
         }
-
-        groupIndices.push({ x: indices[0], y: indices[1], z: indices[2] });
       }
-    }
 
-    const material =
-      group.materialName !== undefined
-        ? materials.get(group.materialName)
-        : undefined;
+      const material = allMaterials.get(group.materialName);
 
-    polygons.push({
-      coordinates: groupCoordinates,
-      indices: groupIndices,
-      material,
-      normals: groupNormals,
-      positions: groupPositions,
+      return { coordinates, indices, material, normals, positions };
     });
-  }
 
-  return {
-    meshes: [
-      {
-        children: [],
-        polygons,
-        transform: Matrix4.identity,
-      },
-    ],
-  };
+    return {
+      children: [],
+      polygons,
+      transform: Matrix4.identity,
+    };
+  });
+
+  return { meshes };
 };
 
 const loadTexture = async (
@@ -425,7 +386,7 @@ const parseFace = (face: string) => {
 };
 
 function* parseFile(data: string, fileName: string) {
-  const regexp = /(?:.*(?:\n\r|\r\n|\n|\r)|$)/g;
+  const regexp = /.*(?:\n\r|\r\n|\n|\r|$)/g;
 
   for (let lineIndex = 1; true; ++lineIndex) {
     const match = regexp.exec(data);
