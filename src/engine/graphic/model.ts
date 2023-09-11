@@ -27,8 +27,11 @@ type Configuration<TLoad> = {
   transform?: Matrix4;
 };
 
-const computeBounds = (model: Model): BoundingBox => {
-  return reduceMeshPoints<BoundingBox>(
+/**
+ ** Compute bouding box around given model.
+ */
+const computeBoundingBox = (model: Model): BoundingBox => {
+  return reduceMeshPositions<BoundingBox>(
     model.meshes,
     Matrix4.identity,
     {
@@ -39,18 +42,18 @@ const computeBounds = (model: Model): BoundingBox => {
       zMax: Number.MIN_VALUE,
       zMin: Number.MAX_VALUE,
     },
-    (previous: BoundingBox, point: Vector3) => ({
-      xMax: Math.max(previous.xMax, point.x),
-      xMin: Math.min(previous.xMin, point.x),
-      yMax: Math.max(previous.yMax, point.y),
-      yMin: Math.min(previous.yMin, point.y),
-      zMax: Math.max(previous.zMax, point.z),
-      zMin: Math.min(previous.zMin, point.z),
+    (previous, position) => ({
+      xMax: Math.max(previous.xMax, position.x),
+      xMin: Math.min(previous.xMin, position.x),
+      yMax: Math.max(previous.yMax, position.y),
+      yMin: Math.min(previous.yMin, position.y),
+      zMax: Math.max(previous.zMax, position.z),
+      zMin: Math.min(previous.zMin, position.z),
     })
   );
 };
 
-/*
+/**
  ** Based on:
  ** http://www.iquilezles.org/www/articles/normals/normals.htm
  */
@@ -77,7 +80,7 @@ const computeNormals = (indices: Vector3[], points: Vector3[]): Vector3[] => {
   return normals;
 };
 
-/*
+/**
  ** Based on:
  ** http://fabiensanglard.net/bumpMapping/index.php
  ** http://www.terathon.com/code/tangent.html
@@ -359,24 +362,24 @@ const reduceMeshes = <TState>(
   return state;
 };
 
-const reduceMeshPoints = <TState>(
+const reduceMeshPositions = <TState>(
   meshes: Mesh[],
   parent: Matrix4,
   state: TState,
-  reduce: (previous: TState, point: Vector3) => TState
+  reduce: (previous: TState, position: Vector3) => TState
 ): TState => {
   return reduceMeshes(
     meshes,
     parent,
     state,
     (previous: TState, polygon: Polygon, transform: Matrix4) => {
-      for (const point of polygon.positions) {
+      for (const position of polygon.positions) {
         state = reduce(
           previous,
           Matrix4.transform(transform, {
-            x: point.x,
-            y: point.y,
-            z: point.z,
+            x: position.x,
+            y: position.y,
+            z: position.z,
             w: 1,
           })
         );
@@ -396,9 +399,9 @@ export {
   type Texture,
   Interpolation,
   Wrap,
-  computeBounds,
   defaultColor,
   defaultFilter,
+  computeBoundingBox,
   flattenModel,
   loadModelFrom3ds,
   loadModelFromGltf,
