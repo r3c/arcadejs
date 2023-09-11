@@ -1,18 +1,17 @@
 import {
   DirectionalLight,
   PointLight,
-  sourceDeclare,
-  sourceInvokeDirectional,
-  sourceInvokePoint,
-  sourceTypeDirectional,
-  sourceTypePoint,
-  sourceTypeResult,
-} from "./snippets/light";
+  directionalLight,
+  directionalLightType,
+  pointLight,
+  pointLightType,
+  resultLightType,
+} from "../shaders/light";
 import { Matrix4 } from "../../../math/matrix";
 import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
 import { ObjectScene, createObjectPainter } from "../painters/object";
 import { parallaxPerturb } from "../shaders/parallax";
-import { lightDeclare, lightInvoke } from "./snippets/phong";
+import { phongLight } from "../shaders/phong";
 import { model as quadModel } from "./resources/quad";
 import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -172,9 +171,10 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-${sourceDeclare("HAS_SHADOW")}
+${directionalLight.declare("HAS_SHADOW")}
+${pointLight.declare("HAS_SHADOW")}
 
-uniform ${sourceTypeDirectional} directionalLight;`;
+uniform ${directionalLightType} directionalLight;`;
 
 const lightVertexShader = `
 ${lightHeaderShader}
@@ -232,7 +232,7 @@ uniform sampler2D depth;
 uniform sampler2D normalAndGlossiness;
 
 ${normalDecode.declare()}
-${lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
+${phongLight.declare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 ${shininessDecode.declare()}
 
 #if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
@@ -273,19 +273,19 @@ void main(void) {
 
 	// Compute lightning
 	#if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
-		${sourceTypeResult} light = ${sourceInvokeDirectional(
+		${resultLightType} light = ${directionalLight.invoke(
   "directionalLight",
   "lightDistanceCamera"
 )};
 	#elif LIGHT_TYPE == ${DeferredShadingLightType.Point}
-    ${sourceTypePoint} pointLight = ${sourceTypePoint}(pointLightColor, pointLightPosition, pointLightRadius);
-		${sourceTypeResult} light = ${sourceInvokePoint(
+    ${pointLightType} pointLight = ${pointLightType}(pointLightColor, pointLightPosition, pointLightRadius);
+		${resultLightType} light = ${pointLight.invoke(
   "pointLight",
   "lightPositionCamera - point"
 )};
 	#endif
 
-	vec3 color = ${lightInvoke(
+	vec3 color = ${phongLight.invoke(
     "light",
     "albedo",
     "glossiness",

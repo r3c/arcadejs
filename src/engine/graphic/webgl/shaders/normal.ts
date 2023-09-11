@@ -28,8 +28,8 @@ vec2 normalEncode(in vec3 decoded) {
 
 const normalPerturb: GlShaderFunction<[], [string, string, string]> = {
   declare: (): string => `
-	vec3 normalPerturb(in sampler2D sampler, in vec2 coord, in mat3 tbn) {
-		vec3 normal = 2.0 * texture(sampler, coord).rgb - 1.0;
+	vec3 normalPerturb(in sampler2D sampler, in vec2 coordinate, in mat3 tbn) {
+		vec3 normal = 2.0 * texture(sampler, coordinate).rgb - 1.0;
 	
 		return normalize(tbn * normal);
 	}

@@ -2,20 +2,19 @@ import { range } from "../../../language/iterable";
 import {
   DirectionalLight,
   PointLight,
-  sourceDeclare,
-  sourceInvokeDirectional,
-  sourceInvokePoint,
-  sourceTypeDirectional,
-  sourceTypePoint,
-  sourceTypeResult,
-} from "./snippets/light";
-import { sampleDeclare, sampleInvoke, sampleType } from "./snippets/material";
+  directionalLight,
+  directionalLightType,
+  pointLight,
+  pointLightType,
+  resultLightType,
+} from "../shaders/light";
+import { materialSample, materialType } from "../shaders/material";
 import { ObjectScene, createObjectPainter } from "../painters/object";
 import { Matrix4 } from "../../../math/matrix";
 import { normalPerturb } from "../shaders/normal";
 import { parallaxPerturb } from "../shaders/parallax";
 import { pbrEnvironment, pbrLight } from "../shaders/pbr";
-import { lightDeclare, lightInvoke } from "./snippets/phong";
+import { phongLight } from "../shaders/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { Vector3 } from "../../../math/vector";
 import {
@@ -111,7 +110,8 @@ const lightHeaderShader = (
   maxDirectionalLights: number,
   maxPointLights: number
 ) => `
-${sourceDeclare("HAS_SHADOW")}
+${directionalLight.declare("HAS_SHADOW")}
+${pointLight.declare("HAS_SHADOW")}
 
 const mat4 texUnitConverter = mat4(
 	0.5, 0.0, 0.0, 0.0,
@@ -123,11 +123,11 @@ const mat4 texUnitConverter = mat4(
 uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform ${sourceTypeDirectional} directionalLights[${Math.max(
+uniform ${directionalLightType} directionalLights[${Math.max(
   maxDirectionalLights,
   1
 )}];
-uniform ${sourceTypePoint} pointLights[max(${Math.max(maxPointLights, 1)}, 1)];
+uniform ${pointLightType} pointLights[max(${Math.max(maxPointLights, 1)}, 1)];
 
 // FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
 uniform sampler2D directionalLightShadowMaps[${Math.max(
@@ -239,24 +239,13 @@ uniform samplerCube environmentSpecularMap;
 
 ${linearToStandard.declare()}
 ${standardToLinear.declare()}
-
-${sampleDeclare(
-  "albedoMap",
-  "albedoFactor",
-  "glossinessMap",
-  "glossinessStrength",
-  "metalnessMap",
-  "metalnessStrength",
-  "roughnessMap",
-  "roughnessStrength",
-  "shininess"
-)}
-
+${materialSample.declare()}
 ${normalPerturb.declare()}
 ${parallaxPerturb.declare()}
-${lightDeclare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
 
-#if LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
+#if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
+${phongLight.declare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
+#elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
 ${pbrEnvironment.declare("LIGHT_MODEL_PBR_IBL")}
 ${pbrLight.declare()}
 #endif
@@ -275,9 +264,9 @@ in vec3 pointLightShadows[${Math.max(maxPointLights, 1)}];
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
+vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
 	#if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
-		return ${lightInvoke(
+		return ${phongLight.invoke(
       "light",
       "material.albedo.rgb",
       "material.glossiness",
@@ -308,11 +297,22 @@ void main(void) {
     "tbn"
   )};
 
-	${sampleType} material = ${sampleInvoke("coordParallax")};
+	${materialType} material = ${materialSample.invoke(
+  "albedoMap",
+  "albedoFactor",
+  "glossinessMap",
+  "glossinessStrength",
+  "metalnessMap",
+  "metalnessStrength",
+  "roughnessMap",
+  "roughnessStrength",
+  "shininess",
+  "coordParallax"
+)};
 
 	// Apply environment (ambient or influence-based) lighting
   #if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
-  vec3 color = material.albedo * ambientLightColor * float(LIGHT_AMBIENT);
+  vec3 color = material.albedo.rgb * ambientLightColor * float(LIGHT_AMBIENT);
   #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
 	vec3 color = ${pbrEnvironment.invoke(
     "environmentBrdfMap",
@@ -334,7 +334,7 @@ void main(void) {
   if (!directionalLights[${i}].castShadow || shadowMapSample${i} >= directionalLightShadows[${i}].z) {
   #endif
 
-    ${sourceTypeResult} light${i} = ${sourceInvokeDirectional(
+    ${resultLightType} light${i} = ${directionalLight.invoke(
         `directionalLights[${i}]`,
         `directionalLightDistances[${i}]`
       )};
@@ -355,7 +355,7 @@ void main(void) {
   if (true) { // FIXME
   #endif
 
-    ${sourceTypeResult} light${i} = ${sourceInvokePoint(
+    ${resultLightType} light${i} = ${pointLight.invoke(
         `pointLights[${i}]`,
         `pointLightDistances[${i}]`
       )};

@@ -32,7 +32,7 @@ import { DeferredLightingScene } from "../../engine/graphic/webgl/renderers/defe
 import {
   DirectionalLight,
   PointLight,
-} from "../../engine/graphic/webgl/renderers/snippets/light";
+} from "../../engine/graphic/webgl/shaders/light";
 import { brightColor } from "../../engine/graphic/color";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 

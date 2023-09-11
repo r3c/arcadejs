@@ -8,7 +8,7 @@ import {
   createStaticArrayBuffer,
 } from "../../resource";
 import { GlShaderAttribute, createAttribute } from "../../shader";
-import { PointLight } from "../snippets/light";
+import { PointLight } from "../../shaders/light";
 
 type GlDirectionalLightBillboard = Disposable & {
   index: GlBuffer;

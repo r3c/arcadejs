@@ -1,22 +1,21 @@
 import {
   DirectionalLight,
   PointLight,
-  sourceDeclare,
-  sourceInvokeDirectional,
-  sourceInvokePoint,
-  sourceTypeDirectional,
-  sourceTypePoint,
-  sourceTypeResult,
-} from "./snippets/light";
+  directionalLight,
+  directionalLightType,
+  pointLight,
+  pointLightType,
+  resultLightType,
+} from "../shaders/light";
 import { Matrix4 } from "../../../math/matrix";
 import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
 import { ObjectScene, createObjectPainter } from "../painters/object";
 import { parallaxPerturb } from "../shaders/parallax";
 import {
-  lightDeclare,
-  lightInvokeDiffusePower,
-  lightInvokeSpecularPower,
-} from "./snippets/phong";
+  phoneLightInvokeDiffusePower,
+  phoneLightInvokeSpecularPower,
+  phongLight,
+} from "../shaders/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -132,9 +131,10 @@ void main(void) {
 }`;
 
 const lightHeaderShader = `
-${sourceDeclare("HAS_SHADOW")}
+${directionalLight.declare("HAS_SHADOW")}
+${pointLight.declare("HAS_SHADOW")}
 
-uniform ${sourceTypeDirectional} directionalLight;`;
+uniform ${directionalLightType} directionalLight;`;
 
 const lightVertexShader = `
 ${lightHeaderShader}
@@ -193,7 +193,7 @@ uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossinessBuffer;
 
 ${normalDecode.declare()}
-${lightDeclare("ZERO", "ZERO")}
+${phongLight.declare("ZERO", "ZERO")}
 ${shininessDecode.declare()}
 
 #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
@@ -234,20 +234,20 @@ void main(void) {
 
 	// Compute lightning parameters
 	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-		${sourceTypeResult} light = ${sourceInvokeDirectional(
+		${resultLightType} light = ${directionalLight.invoke(
   "directionalLight",
   "lightDistanceCamera"
 )};
 	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
-    ${sourceTypePoint} pointLight = ${sourceTypePoint}(pointLightColor, pointLightPosition, pointLightRadius);
-		${sourceTypeResult} light = ${sourceInvokePoint(
+    ${pointLightType} pointLight = ${pointLightType}(pointLightColor, pointLightPosition, pointLightRadius);
+		${resultLightType} light = ${pointLight.invoke(
   "pointLight",
   "lightPositionCamera - point"
 )};
 	#endif
 
-	float lightDiffusePower = ${lightInvokeDiffusePower("light", "normal")};
-	float lightSpecularPower = ${lightInvokeSpecularPower(
+	float lightDiffusePower = ${phoneLightInvokeDiffusePower("light", "normal")};
+	float lightSpecularPower = ${phoneLightInvokeSpecularPower(
     "light",
     "glossiness",
     "shininess",

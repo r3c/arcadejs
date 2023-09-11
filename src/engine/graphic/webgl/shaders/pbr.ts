@@ -1,5 +1,5 @@
-import { sourceTypeResult } from "../renderers/snippets/light";
-import { sampleType } from "../renderers/snippets/material";
+import { resultLightType } from "./light";
+import { materialType } from "./material";
 import { standardToLinear } from "./rgb";
 import { GlShaderFunction } from "../language";
 
@@ -10,16 +10,16 @@ const pbrEnvironment: GlShaderFunction<
   [string],
   [string, string, string, string, string, string]
 > = {
-  declare: (environmentEnableDirective: string) => `
+  declare: (environmentEnable: string) => `
 const vec3 PBR_ENVIRONMENT_F0 = vec3(0.04);
 
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
 // See our README.md on Environment Maps [3] for additional discussion.
-vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentDiffuseMap, in samplerCube environmentSpecularMap, in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
-	#ifdef ${environmentEnableDirective}
-		vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_ENVIRONMENT_F0) * (1.0 - material.metalness);
-		vec3 specularColor = mix(PBR_ENVIRONMENT_F0, material.albedo, material.metalness);
+vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentDiffuseMap, in samplerCube environmentSpecularMap, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
+	#ifdef ${environmentEnable}
+		vec3 diffuseColor = material.albedo.rgb * (vec3(1.0) - PBR_ENVIRONMENT_F0) * (1.0 - material.metalness);
+		vec3 specularColor = mix(PBR_ENVIRONMENT_F0, material.albedo.rgb, material.metalness);
 
 		vec3 diffuseLight = ${standardToLinear.invoke(
       `texture(environmentDiffuseMap, normal).rgb`
@@ -87,9 +87,9 @@ vec3 pbrSpecularReflection(vec3 reflectance0, vec3 reflectance90, float VdotH) {
 	return reflectance0 + (reflectance90 - reflectance0) * pow(clamp(1.0 - VdotH, 0.0, 1.0), 5.0);
 }
 
-vec3 pbrLight(in ${sourceTypeResult} light, in ${sampleType} material, in vec3 normal, in vec3 eyeDirection) {
-	vec3 diffuseColor = material.albedo * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
-	vec3 specularColor = mix(PBR_F0, material.albedo, material.metalness);
+vec3 pbrLight(in ${resultLightType} light, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
+	vec3 diffuseColor = material.albedo.rgb * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
+	vec3 specularColor = mix(PBR_F0, material.albedo.rgb, material.metalness);
 
 	// Compute reflectance
 	float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);
