@@ -74,7 +74,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           range(6).map((faceIndex) =>
             loadModelFromJson(`model/voxel/face${faceIndex}.json`, {
               library,
-              load: { variables: { level: level.toString() } },
+              format: { variables: { level: level.toString() } },
               transform,
             })
           )

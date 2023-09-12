@@ -13,24 +13,24 @@ import { combinePath, getPathDirectory } from "../../../fs/path";
 import { JSONFormat, readURL } from "../../../io/stream";
 import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
-interface JsonConfiguration {
-  variables?: Record<string, string>;
-}
+type JsonConfiguration = {
+  variables: Record<string, string>;
+};
 
-interface JsonMaterialState {
+type JsonMaterialState = {
   directory: string;
   textures: Map<string, Promise<Texture>>;
   variables: Record<string, string>;
-}
+};
 
-interface JsonPolygonState {
+type JsonPolygonState = {
   materials: Map<string, Material>;
-}
+};
 
 const load = async (
   urlOrData: any,
   library: Library,
-  configuration: JsonConfiguration | undefined
+  configuration: Partial<JsonConfiguration> | undefined
 ): Promise<Model> => {
   let directory: string;
   let root: any;
@@ -254,7 +254,7 @@ const toPath = (
   }
 
   const tail = Object.entries(state.variables).reduce(
-    (tail, [name, value]) => tail.replaceAll(`{${name}}`, value),
+    (tail, [name, value]) => tail.replaceAll(`{{${name}}}`, value),
     instance
   );
 

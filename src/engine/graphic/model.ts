@@ -21,9 +21,9 @@ import { load as loadFromGltf } from "./model/loaders/gltf";
 import { load as loadFromJson } from "./model/loaders/json";
 import { load as loadFromObj } from "./model/loaders/obj";
 
-type Configuration<TLoad> = {
+type Configuration<TFormat> = {
+  format?: TFormat;
   library?: Library;
-  load?: TLoad;
   transform?: Matrix4;
 };
 
@@ -146,7 +146,7 @@ const createLoadModel = <TSource, TLoad>(
     // Load model using underlying loading callback
     const configuration = configurationOrUndefined ?? {};
     const library = configuration.library ?? { textures: new Map() };
-    const model = await loadCallback(source, library, configuration.load);
+    const model = await loadCallback(source, library, configuration.format);
 
     // Transform top-level meshes using provided transform matrix if any
     const transform = configuration.transform;

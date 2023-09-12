@@ -1,9 +1,9 @@
 {
   "materials": {
     "side": {
-      "albedoMap": "level_{level}_albedo.png",
-      "glossMap": "level_{level}_gloss.png",
-      "normalMap": "level_{level}_normal.png",
+      "albedoMap": "level_{{level}}_albedo.png",
+      "glossMap": "level_{{level}}_gloss.png",
+      "normalMap": "level_{{level}}_normal.png",
       "shininess": 100
     }
   },

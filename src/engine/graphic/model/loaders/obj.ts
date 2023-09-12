@@ -1,6 +1,13 @@
 import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
-import { Interpolation, Material, Model, Texture, Wrap } from "../definition";
+import {
+  Interpolation,
+  Library,
+  Material,
+  Model,
+  Texture,
+  Wrap,
+} from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import { StringFormat, readURL } from "../../../io/stream";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -10,6 +17,10 @@ import { Vector2, Vector3 } from "../../../math/vector";
  ** http://paulbourke.net/dataformats/obj/
  ** http://paulbourke.net/dataformats/mtl/
  */
+
+type WavefrontOBJConfiguration = {
+  variables: Record<string, string>;
+};
 
 type WavefrontOBJGroup = {
   faces: WavefrontOBJVertex[][];
@@ -35,20 +46,25 @@ const invalidLine = (file: string, lineIndex: number, description: string) => {
   return Error(`invalid ${description} in file ${file} at line ${lineIndex}`);
 };
 
-const load = async (url: string): Promise<Model> => {
+const load = async (
+  url: string,
+  _: Library,
+  configuration: Partial<WavefrontOBJConfiguration> | undefined
+): Promise<Model> => {
   const data = await readURL(StringFormat, url);
 
-  return loadObject(data, url);
+  return loadObject(data, url, configuration?.variables ?? {});
 };
 
 const loadMaterial = async (
   materials: Map<string | undefined, Material>,
   data: string,
-  fileName: string
+  fileName: string,
+  variables: Record<string, string>
 ) => {
   let current: Material | undefined;
 
-  for (const { fields, lineIndex } of parseFile(data, fileName)) {
+  for (const { fields, lineIndex } of parseFile(data, fileName, variables)) {
     switch (fields[0]) {
       case "#":
       case "d": // Transparency (not supported)
@@ -148,7 +164,11 @@ const loadMaterial = async (
   }
 };
 
-const loadObject = async (data: string, fileName: string): Promise<Model> => {
+const loadObject = async (
+  data: string,
+  fileName: string,
+  variables: Record<string, string>
+): Promise<Model> => {
   const allCoordinates: Vector2[] = [];
   const allMaterials = new Map<string | undefined, Material>();
   const allNormals: Vector3[] = [];
@@ -167,7 +187,7 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
   const objects: WavefrontOBJObject[] = [currentObject];
 
   // Load raw model data from file
-  for (const { fields, lineIndex } of parseFile(data, fileName)) {
+  for (const { fields, lineIndex } of parseFile(data, fileName, variables)) {
     switch (fields[0]) {
       case "#":
       case "s": // Smooth shading (not supported)
@@ -191,7 +211,7 @@ const loadObject = async (data: string, fileName: string): Promise<Model> => {
         const library = combinePath(directory, fields[1]);
 
         await readURL(StringFormat, library).then((data) =>
-          loadMaterial(allMaterials, data, library)
+          loadMaterial(allMaterials, data, library, variables)
         );
 
         break;
@@ -385,7 +405,11 @@ const parseFace = (face: string) => {
   };
 };
 
-function* parseFile(data: string, fileName: string) {
+function* parseFile(
+  data: string,
+  fileName: string,
+  variables: Record<string, string>
+) {
   const regexp = /.*(?:\n\r|\r\n|\n|\r|$)/g;
 
   for (let lineIndex = 1; true; ++lineIndex) {
@@ -406,7 +430,12 @@ function* parseFile(data: string, fileName: string) {
     }
 
     yield {
-      fields: line.split(/[\t ]+/),
+      fields: Object.entries(variables)
+        .reduce(
+          (tail, [name, value]) => tail.replaceAll(`{{${name}}}`, value),
+          line
+        )
+        .split(/[\t ]+/),
       lineIndex,
     };
   }
