@@ -40,6 +40,54 @@ function downloadFiles(files) {
 
 downloadFiles([
   {
+    destination: "public/model/asteroid/Asteroid_Asset_Pack.mtl",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/Asteroid_Asset_Pack.mtl",
+  },
+  {
+    destination: "public/model/asteroid/Asteroid_Asset_Pack.obj",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/Asteroid_Asset_Pack.obj",
+  },
+  {
+    destination: "public/model/asteroid/ground_0010_ao_1k.jpg",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/ground_0010_ao_1k.jpg",
+  },
+  {
+    destination: "public/model/asteroid/ground_0010_color_1k.jpg",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/ground_0010_color_1k.jpg",
+  },
+  {
+    destination: "public/model/asteroid/ground_0010_height_1k.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/ground_0010_height_1k.png",
+  },
+  {
+    destination: "public/model/asteroid/ground_0010_normal_opengl_1k.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/ground_0010_normal_opengl_1k.png",
+  },
+  {
+    destination: "public/model/asteroid/ground_0010_roughness_1k.jpg",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/ground_0010_roughness_1k.jpg",
+  },
+  {
+    destination: "public/model/asteroid/rock_0005_ao_1k.jpg",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/rock_0005_ao_1k.jpg",
+  },
+  {
+    destination: "public/model/asteroid/rock_0005_color_1k.jpg",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/rock_0005_color_1k.jpg",
+  },
+  {
+    destination: "public/model/asteroid/rock_0005_height_1k.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/rock_0005_height_1k.png",
+  },
+  {
+    destination: "public/model/asteroid/rock_0005_normal_opengl_1k.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/rock_0005_normal_opengl_1k.png",
+  },
+  {
+    destination: "public/model/asteroid/rock_0005_roughness_1k.jpg",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/asteroid/rock_0005_roughness_1k.jpg",
+  },
+  {
     destination: "public/model/colmftr1/COLMFTR1.3DS",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/colmftr1/COLMFTR1.3DS",
   },

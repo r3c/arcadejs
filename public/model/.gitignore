@@ -2,5 +2,7 @@
 *.bin
 *.gltf
 *.jpg
+*.mtl
+*.obj
 *.png
 *.webp

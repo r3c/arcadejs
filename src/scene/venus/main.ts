@@ -7,8 +7,11 @@ import {
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import {
+  Model,
+  changeModelCenter,
   loadModelFrom3ds,
   loadModelFromJson,
+  loadModelFromObj,
 } from "../../engine/graphic/model";
 import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -40,6 +43,11 @@ type Light = {
   position: MutableVector3;
 };
 
+type Star = {
+  position: MutableVector3;
+  variant: number;
+};
+
 type ApplicationState = {
   camera: Camera;
   input: Input;
@@ -47,7 +55,7 @@ type ApplicationState = {
   models: {
     light: GlModel;
     ship: GlModel;
-    star: GlModel;
+    stars: GlModel[];
   };
   move: number;
   player: Player;
@@ -56,7 +64,7 @@ type ApplicationState = {
   projectionMatrix: Matrix4;
   sceneRenderer: ForwardLightingRenderer;
   sprite: GlTexture;
-  stars: MutableVector3[];
+  stars: Star[];
   target: GlTarget;
   time: number;
   viewMatrix: MutableMatrix4;
@@ -125,9 +133,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
       transform: Matrix4.fromCustom(["translate", { x: 0, y: 4, z: 0 }]),
     });
 
-    const starModel = await loadModelFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromCustom(["scale", { x: 0.1, y: 0.1, z: 0.1 }]),
-    });
+    const starModel = await loadModelFromObj(
+      "model/asteroid/Asteroid_Asset_Pack.obj",
+      { format: { variables: { type: "rock_0005" } } }
+    );
+
+    const starModels: Model[] = starModel.meshes.map((mesh) =>
+      changeModelCenter({ meshes: [mesh] })
+    );
 
     // Load textures
     const spriteImage = await loadFromURL("model/particle/fire.png");
@@ -178,7 +191,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       models: {
         light: createModel(gl, lightModel),
         ship: createModel(gl, shipModel),
-        star: createModel(gl, starModel),
+        stars: starModels.map((model) => createModel(gl, model)),
       },
       move: 0,
       player: {
@@ -194,13 +207,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
         noShadow: true,
       }),
       sprite,
-      stars: range(starFieldCount).map(() =>
-        Vector3.fromObject({
+      stars: range(starFieldCount).map(() => ({
+        position: Vector3.fromObject({
           x: (Math.random() * 2 - 1) * starFieldRadius,
           y: (Math.random() * 2 - 1) * starFieldRadius,
           z: (Math.random() * 2 - 1) * starFieldRadius,
-        })
-      ),
+        }),
+        variant: Math.floor(Math.random() * starModels.length),
+      })),
       target,
       time: 0,
       viewMatrix: Matrix4.fromIdentity(),
@@ -232,9 +246,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
           ),
           model: models.ship,
         },
-        ...state.stars.map((position) => ({
+        ...state.stars.map(({ position, variant }) => ({
           matrix: Matrix4.fromCustom(["translate", position]),
-          model: models.star,
+          model: models.stars[variant],
         })),
         ...state.lights.map(({ position }) => ({
           matrix: Matrix4.fromCustom(["translate", position]),
@@ -306,10 +320,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     starCenter.invert();
 
-    for (const star of stars) {
-      star.x = warp(star.x, starCenter.v30, 50);
-      star.y = warp(star.y, starCenter.v31, 50);
-      star.z = warp(star.z, starCenter.v32, 50);
+    for (const { position } of stars) {
+      position.x = warp(position.x, starCenter.v30, 50);
+      position.y = warp(position.y, starCenter.v31, 50);
+      position.z = warp(position.z, starCenter.v32, 50);
     }
 
     // Update light positions
