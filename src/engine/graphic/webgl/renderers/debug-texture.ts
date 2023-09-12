@@ -1,5 +1,5 @@
 import { Matrix4 } from "../../../math/matrix";
-import { model } from "./resources/quad";
+import { mesh as quadMesh } from "./resources/quad";
 import { GlRuntime, GlTarget } from "../../webgl";
 import {
   GlShader,
@@ -186,7 +186,7 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
     const shader = createShader(runtime, configuration);
 
     this.painter = createPainter(shader);
-    this.quad = createModel(runtime.context, model);
+    this.quad = createModel(runtime.context, quadMesh);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
     this.shader = shader;
@@ -208,7 +208,7 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
     gl.cullFace(gl.BACK);
 
     // FIXME: create dedicated mesh
-    const primitive = this.quad.meshes[0].primitives[0];
+    const primitive = this.quad.mesh.primitives[0];
 
     this.painter.paint(this.target, {
       coordinate: primitive.polygon.coordinate!,

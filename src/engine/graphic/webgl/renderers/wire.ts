@@ -2,7 +2,7 @@ import { range } from "../../../language/iterable";
 import { Matrix4 } from "../../../math/matrix";
 import { Vector3 } from "../../../math/vector";
 import { Renderer } from "../../display";
-import { Model, Polygon, flattenModel } from "../../model";
+import { Mesh, Polygon, flattenMesh } from "../../model";
 import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
 import { WirePainter } from "../painters/wire";
 import {
@@ -64,27 +64,27 @@ const createWirePainter = (shader: GlShader): GlPainter<WireScene> => {
   );
 };
 
-const extractModelNormals = (
+const extractMeshNormals = (
   gl: WebGL2RenderingContext,
-  model: Model,
+  mesh: Mesh,
   lineLength: number
 ): WireModel =>
   extractLines(
     gl,
-    model,
+    mesh,
     (polygon) => polygon.normals,
     (n) => Vector3.fromCustom(["set", n], ["normalize"], ["scale", lineLength]),
     () => ({ x: 0, y: 1, z: 0 })
   );
 
-const extractModelTangents = (
+const extractMeshTangents = (
   gl: WebGL2RenderingContext,
-  model: Model,
+  mesh: Mesh,
   lineLength: number
 ): WireModel =>
   extractLines(
     gl,
-    model,
+    mesh,
     (polygon) => polygon.tangents,
     (t) => Vector3.fromCustom(["set", t], ["normalize"], ["scale", lineLength]),
     () => ({ x: 1, y: 0, z: 0 })
@@ -92,7 +92,7 @@ const extractModelTangents = (
 
 const extractLines = (
   gl: WebGL2RenderingContext,
-  model: Model,
+  mesh: Mesh,
   extractor: (polygon: Polygon) => Vector3[] | undefined,
   wireLength: (input: Vector3) => Vector3,
   wireTint: (input: Vector3) => Vector3
@@ -103,12 +103,11 @@ const extractLines = (
   const tintBuffer = createStaticArrayBuffer(gl, Float32Array);
   const tint = createAttribute(tintBuffer, 3);
 
-  const { meshes } = flattenModel(model);
-
+  const flat = flattenMesh(mesh);
   const positionArray = [];
   const tintArray = [];
 
-  for (const polygon of meshes[0].polygons) {
+  for (const polygon of flat.polygons) {
     const positions = polygon.positions;
     const values = extractor(polygon);
 
@@ -216,6 +215,6 @@ export {
   type WireObject,
   type WireScene,
   WireRenderer,
-  extractModelNormals,
-  extractModelTangents,
+  extractMeshNormals,
+  extractMeshTangents,
 };

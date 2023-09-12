@@ -2,14 +2,7 @@ import { asciiCodec } from "../../../text/encoding";
 import { optionalMap } from "../../../language/optional";
 import { Channel, loadFromURL, mapChannels } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
-import {
-  Interpolation,
-  Material,
-  Mesh,
-  Model,
-  Polygon,
-  Wrap,
-} from "../definition";
+import { Interpolation, Material, Mesh, Polygon, Wrap } from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import {
   BinaryFormat,
@@ -711,7 +704,7 @@ const loadRoot = async (
   url: string,
   structure: any,
   embedded: ArrayBuffer | undefined
-): Promise<Model> => {
+): Promise<Mesh> => {
   const defaultScene = <number | undefined>structure.scene;
   const version: string =
     optionalMap(structure.asset, (asset) => asset.version) ?? "unknown";
@@ -799,9 +792,11 @@ const loadRoot = async (
   );
 
   return {
-    meshes: scenes[defaultScene].nodes.map((node) =>
+    children: scenes[defaultScene].nodes.map((node) =>
       expandNode(url, node, outputMaterials)
     ),
+    polygons: [],
+    transform: Matrix4.identity,
   };
 };
 
@@ -873,7 +868,7 @@ const loadTexture = (
   };
 };
 
-const load = async (url: string): Promise<Model> => {
+const load = async (url: string): Promise<Mesh> => {
   const buffer = await readURL(BinaryFormat, url);
   const codec = asciiCodec;
   const reader = new BinaryReader(buffer, Endian.Little);

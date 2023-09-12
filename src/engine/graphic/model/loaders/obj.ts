@@ -4,7 +4,7 @@ import {
   Interpolation,
   Library,
   Material,
-  Model,
+  Mesh,
   Texture,
   Wrap,
 } from "../definition";
@@ -50,7 +50,7 @@ const load = async (
   url: string,
   _: Library,
   configuration: Partial<WavefrontOBJConfiguration> | undefined
-): Promise<Model> => {
+): Promise<Mesh> => {
   const data = await readURL(StringFormat, url);
 
   return loadObject(data, url, configuration?.variables ?? {});
@@ -168,7 +168,7 @@ const loadObject = async (
   data: string,
   fileName: string,
   variables: Record<string, string>
-): Promise<Model> => {
+): Promise<Mesh> => {
   const allCoordinates: Vector2[] = [];
   const allMaterials = new Map<string | undefined, Material>();
   const allNormals: Vector3[] = [];
@@ -286,7 +286,7 @@ const loadObject = async (
   }
 
   // Convert
-  const meshes = objects.map((obj) => {
+  const children = objects.map((obj) => {
     // Convert groups into polygons by transforming multi-component face indices into scalar indices
     const polygons = obj.groups.map((group) => {
       const coordinates: Vector2[] = [];
@@ -371,7 +371,7 @@ const loadObject = async (
     };
   });
 
-  return { meshes };
+  return { children, polygons: [], transform: Matrix4.identity };
 };
 
 const loadTexture = async (

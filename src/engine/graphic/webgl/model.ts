@@ -2,7 +2,7 @@ import { optionalMap } from "../../language/optional";
 import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
-import { Material, Mesh, Model, Polygon, Texture } from "../model";
+import { Material, Mesh, Polygon, Texture } from "../model";
 import {
   GlBuffer,
   GlContext,
@@ -49,7 +49,7 @@ type GlMesh = Disposable & {
 
 type GlModel = Disposable & {
   library: GlLibrary | undefined;
-  meshes: GlMesh[];
+  mesh: GlMesh;
 };
 
 type GlModelConfiguration = {
@@ -99,7 +99,7 @@ const defaultMaterial: GlMaterial = {
   shininess: 30,
 };
 
-const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
+const createLibrary = (gl: GlContext, mesh: Mesh): GlLibrary => {
   const materials = new Map<Material, GlMaterial>();
   const textures = new Map<Texture, GlTexture>();
 
@@ -117,9 +117,7 @@ const loadLibrary = (gl: GlContext, model: Model): GlLibrary => {
     }
   };
 
-  for (const mesh of model.meshes) {
-    loadMesh(mesh);
-  }
+  loadMesh(mesh);
 
   return {
     dispose: () => {
@@ -241,9 +239,9 @@ const loadMesh = (gl: GlContext, mesh: Mesh, library: GlLibrary): GlMesh => {
  * is passed, every compatible material it contains will be recycled to avoid
  * deleting and loading its textures again, then it will be deleted.
  */
-const loadModel = (
+const createModel = (
   gl: GlContext,
-  model: Model,
+  mesh: Mesh,
   config?: GlModelConfiguration
 ): GlModel => {
   let ownedLibrary: GlLibrary | undefined;
@@ -253,11 +251,11 @@ const loadModel = (
     ownedLibrary = undefined;
     usedLibrary = config?.library;
   } else {
-    ownedLibrary = loadLibrary(gl, model);
+    ownedLibrary = createLibrary(gl, mesh);
     usedLibrary = ownedLibrary;
   }
 
-  const meshes = model.meshes.map((mesh) => loadMesh(gl, mesh, usedLibrary));
+  const ownedMesh = loadMesh(gl, mesh, usedLibrary);
 
   return {
     dispose: () => {
@@ -267,12 +265,10 @@ const loadModel = (
         }
       }
 
-      for (const mesh of meshes) {
-        mesh.dispose();
-      }
+      ownedMesh.dispose();
     },
     library: ownedLibrary,
-    meshes,
+    mesh: ownedMesh,
   };
 };
 
@@ -380,6 +376,6 @@ export {
   type GlModel,
   type GlObject,
   type GlPolygon,
-  loadLibrary,
-  loadModel as createModel,
+  createLibrary,
+  createModel,
 };

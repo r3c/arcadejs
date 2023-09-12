@@ -22,36 +22,38 @@ const group = (
   batchByMaterial: Map<GlMaterial, ObjectBatch[]>,
   viewMatrix: Matrix4,
   parentMatrix: Matrix4,
-  meshes: Iterable<GlMesh>
+  mesh: GlMesh
 ) => {
-  for (const { children, primitives, transform } of meshes) {
-    const modelMatrix = Matrix4.fromObject(parentMatrix);
+  const { children, primitives, transform } = mesh;
 
-    modelMatrix.multiply(transform);
+  const modelMatrix = Matrix4.fromObject(parentMatrix);
 
-    const normalMatrix = Matrix3.fromObject(viewMatrix);
+  modelMatrix.multiply(transform);
 
-    normalMatrix.multiply(modelMatrix);
-    normalMatrix.invert();
+  const normalMatrix = Matrix3.fromObject(viewMatrix);
 
-    for (const { index, material, polygon } of primitives) {
-      let meshBatches = batchByMaterial.get(material);
+  normalMatrix.multiply(modelMatrix);
+  normalMatrix.invert();
 
-      if (meshBatches === undefined) {
-        meshBatches = [];
+  for (const { index, material, polygon } of primitives) {
+    let meshBatches = batchByMaterial.get(material);
 
-        batchByMaterial.set(material, meshBatches);
-      }
+    if (meshBatches === undefined) {
+      meshBatches = [];
 
-      meshBatches.push({
-        index,
-        modelMatrix,
-        normalMatrix,
-        polygon,
-      });
+      batchByMaterial.set(material, meshBatches);
     }
 
-    group(batchByMaterial, viewMatrix, modelMatrix, children);
+    meshBatches.push({
+      index,
+      modelMatrix,
+      normalMatrix,
+      polygon,
+    });
+  }
+
+  for (let i = 0; i < children.length; ++i) {
+    group(batchByMaterial, viewMatrix, modelMatrix, children[i]);
   }
 };
 
@@ -85,7 +87,7 @@ const createObjectPainter = <TScene extends ObjectScene>(
       const materialMap: MaterialMap = new Map();
 
       for (const { matrix, model } of objects) {
-        group(materialMap, viewMatrix, matrix, model.meshes);
+        group(materialMap, viewMatrix, matrix, model.mesh);
       }
 
       sceneBinding.bind(scene);

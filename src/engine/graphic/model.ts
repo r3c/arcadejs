@@ -8,7 +8,6 @@ import {
   Library,
   Material,
   Mesh,
-  Model,
   Polygon,
   Texture,
   Wrap,
@@ -27,10 +26,10 @@ type Configuration<TFormat> = {
   transform?: Matrix4;
 };
 
-const changeModelCenter = (model: Model): Model => {
-  const center = computeCenter(model);
+const changeMeshCenter = (mesh: Mesh): Mesh => {
+  const center = computeCenter(mesh);
 
-  reduceMeshes(model.meshes, Matrix4.identity, false, (_, polygon) => {
+  reduceMesh(mesh, Matrix4.identity, false, (_, polygon) => {
     polygon.positions = polygon.positions.map((position) =>
       Vector3.fromCustom(["set", position], ["sub", center])
     );
@@ -38,15 +37,15 @@ const changeModelCenter = (model: Model): Model => {
     return false;
   });
 
-  return { meshes: model.meshes };
+  return mesh;
 };
 
 /**
  * Compute bouding box around given model.
  */
-const computeBoundingBox = (model: Model): BoundingBox => {
+const computeBoundingBox = (mesh: Mesh): BoundingBox => {
   return reduceMeshPositions<BoundingBox>(
-    model.meshes,
+    mesh,
     Matrix4.identity,
     {
       xMax: Number.MIN_VALUE,
@@ -68,11 +67,11 @@ const computeBoundingBox = (model: Model): BoundingBox => {
 };
 
 /**
- * Compute center position from a model.
+ * Compute center position from a mesh.
  */
-const computeCenter = (model: Model): Vector3 => {
+const computeCenter = (mesh: Mesh): Vector3 => {
   const { count, sum } = reduceMeshPositions(
-    model.meshes,
+    mesh,
     Matrix4.identity,
     { count: 0, sum: Vector3.fromZero() },
     ({ count, sum }, position) => {
@@ -166,39 +165,36 @@ const computeTangents = (
   return tangents;
 };
 
-const createLoadModel = <TSource, TLoad>(
+const createLoadMesh = <TSource, TLoad>(
   loadCallback: (
     source: TSource,
     library: Library,
     loadConfiguration: TLoad | undefined
-  ) => Promise<Model>
+  ) => Promise<Mesh>
 ): ((
   source: TSource,
   configuration?: Configuration<TLoad>
-) => Promise<Model>) => {
+) => Promise<Mesh>) => {
   return async (source, configurationOrUndefined) => {
     // Load model using underlying loading callback
     const configuration = configurationOrUndefined ?? {};
     const library = configuration.library ?? { textures: new Map() };
-    const model = await loadCallback(source, library, configuration.format);
+    const mesh = await loadCallback(source, library, configuration.format);
 
     // Transform top-level meshes using provided transform matrix if any
     const transform = configuration.transform;
 
     if (transform !== undefined) {
-      model.meshes.forEach((node) => {
-        const matrix = Matrix4.fromObject(transform);
-
-        matrix.multiply(node.transform);
-
-        node.transform = matrix;
-      });
+      mesh.transform = Matrix4.fromCustom(
+        ["set", transform],
+        ["multiply", mesh.transform]
+      );
     }
 
     // Finalize meshes recursively
-    model.meshes.forEach((mesh) => finalizeMesh(mesh, configuration));
+    finalizeMesh(mesh, configuration);
 
-    return model;
+    return mesh;
   };
 };
 
@@ -240,30 +236,30 @@ const finalizePolygon = (polygon: Polygon): void => {
   }
 };
 
-const flattenModel = (model: Model): Model => {
+const flattenMesh = (mesh: Mesh): Mesh => {
   type Fragment = { polygon: Polygon; transform: Matrix4 };
 
   // Recursively collect fragments by material name from model
   const fragmentsByMaterial = new Map<Material | undefined, Fragment[]>();
-  const flattenFragments = (meshes: Mesh[], parentTransform: Matrix4): void => {
-    const transform = Matrix4.fromIdentity();
+  const flattenFragments = (mesh: Mesh, parentTransform: Matrix4): void => {
+    const transform = Matrix4.fromCustom(
+      ["set", parentTransform],
+      ["multiply", mesh.transform]
+    );
 
-    for (const mesh of meshes) {
-      transform.set(parentTransform);
-      transform.multiply(mesh.transform);
+    for (const polygon of mesh.polygons) {
+      const fragments = fragmentsByMaterial.get(polygon.material) ?? [];
 
-      for (const polygon of mesh.polygons) {
-        const fragments = fragmentsByMaterial.get(polygon.material) ?? [];
+      fragmentsByMaterial.set(polygon.material, fragments);
+      fragments.push({ polygon, transform });
+    }
 
-        fragmentsByMaterial.set(polygon.material, fragments);
-        fragments.push({ polygon, transform });
-      }
-
-      flattenFragments(mesh.children, transform);
+    for (const child of mesh.children) {
+      flattenFragments(child, transform);
     }
   };
 
-  flattenFragments(model.meshes, Matrix4.identity);
+  flattenFragments(mesh, Matrix4.identity);
 
   // Merge polygons by material name
   const polygons: Polygon[] = [];
@@ -351,59 +347,58 @@ const flattenModel = (model: Model): Model => {
   }
 
   // Create and return flattened model
-  return {
-    meshes: [{ children: [], polygons, transform: Matrix4.identity }],
-  };
+  return { children: [], polygons, transform: Matrix4.identity };
 };
 
-const loadModelFrom3ds = createLoadModel(loadFrom3ds);
-const loadModelFromGltf = createLoadModel(loadFromGltf);
-const loadModelFromJson = createLoadModel(loadFromJson);
-const loadModelFromObj = createLoadModel(loadFromObj);
+const loadModelFrom3ds = createLoadMesh(loadFrom3ds);
+const loadModelFromGltf = createLoadMesh(loadFromGltf);
+const loadModelFromJson = createLoadMesh(loadFromJson);
+const loadModelFromObj = createLoadMesh(loadFromObj);
 
-const mergeModels = (instances: Iterable<Instance>): Model => {
-  const meshes: Mesh[] = [];
+const mergeMeshes = (instances: Iterable<Instance>): Mesh => {
+  const children: Mesh[] = [];
 
-  for (const { model, transform } of instances) {
-    meshes.push({
-      children: model.meshes,
+  for (const { mesh, transform } of instances) {
+    children.push({
+      children: [mesh],
       polygons: [],
       transform,
     });
   }
 
-  return { meshes };
+  return { children, polygons: [], transform: Matrix4.identity };
 };
 
-const reduceMeshes = <TState>(
-  meshes: Mesh[],
+const reduceMesh = <TState>(
+  mesh: Mesh,
   parent: Matrix4,
   state: TState,
   reduce: (previous: TState, geometry: Polygon, transform: Matrix4) => TState
 ): TState => {
-  for (const mesh of meshes) {
-    const transform = Matrix4.fromObject(parent);
+  const transform = Matrix4.fromCustom(
+    ["set", parent],
+    ["multiply", mesh.transform]
+  );
 
-    transform.multiply(mesh.transform);
+  for (const polygon of mesh.polygons) {
+    state = reduce(state, polygon, transform);
+  }
 
-    for (const polygon of mesh.polygons) {
-      state = reduce(state, polygon, transform);
-    }
-
-    state = reduceMeshes(mesh.children, transform, state, reduce);
+  for (const child of mesh.children) {
+    state = reduceMesh(child, transform, state, reduce);
   }
 
   return state;
 };
 
 const reduceMeshPositions = <TState>(
-  meshes: Mesh[],
+  mesh: Mesh,
   parent: Matrix4,
   state: TState,
   reduce: (previous: TState, position: Vector3) => TState
 ): TState => {
-  return reduceMeshes(
-    meshes,
+  return reduceMesh(
+    mesh,
     parent,
     state,
     (previous: TState, polygon: Polygon, transform: Matrix4) => {
@@ -430,20 +425,19 @@ export {
   type Filter,
   type Material,
   type Mesh,
-  type Model,
   type Polygon,
   type Texture,
   Interpolation,
   Wrap,
   defaultColor,
   defaultFilter,
-  changeModelCenter,
+  changeMeshCenter,
   computeBoundingBox,
   computeCenter,
-  flattenModel,
+  flattenMesh,
   loadModelFrom3ds,
   loadModelFromGltf,
   loadModelFromJson,
   loadModelFromObj,
-  mergeModels,
+  mergeMeshes,
 };

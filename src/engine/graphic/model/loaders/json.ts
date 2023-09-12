@@ -4,7 +4,7 @@ import {
   Interpolation,
   Library,
   Material,
-  Model,
+  Mesh,
   Polygon,
   Texture,
   Wrap,
@@ -31,7 +31,7 @@ const load = async (
   urlOrData: any,
   library: Library,
   configuration: Partial<JsonConfiguration> | undefined
-): Promise<Model> => {
+): Promise<Mesh> => {
   let directory: string;
   let root: any;
 
@@ -59,15 +59,11 @@ const load = async (
       : new Map<string, Material>();
 
   return {
-    meshes: [
-      {
-        children: [],
-        polygons: toArrayOf("polygons", root.polygons, toPolygon, {
-          materials,
-        }),
-        transform: Matrix4.identity,
-      },
-    ],
+    children: [],
+    polygons: toArrayOf("polygons", root.polygons, toPolygon, {
+      materials,
+    }),
+    transform: Matrix4.identity,
   };
 };
 

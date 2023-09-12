@@ -1,7 +1,7 @@
-import { flattenModel, mergeModels } from "../../engine/graphic/model";
-import { Instance, Model } from "../../engine/graphic/model/definition";
+import { flattenMesh, mergeMeshes } from "../../engine/graphic/model";
+import { Instance, Mesh } from "../../engine/graphic/model/definition";
 import { GlRuntime } from "../../engine/graphic/webgl";
-import { loadLibrary, createModel } from "../../engine/graphic/webgl/model";
+import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -100,7 +100,7 @@ const createWorldGraphic = (
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,
-  models: Model[][]
+  meshes: Mesh[][]
 ): WorldGraphic => {
   const offsetSize = {
     x: chunkCount.x * chunkSize.x,
@@ -125,7 +125,16 @@ const createWorldGraphic = (
   const chunkObjects = range(chunks.length).map<ForwardLightingObject>(() => ({
     dispose: () => {},
     matrix: Matrix4.identity,
-    model: { dispose: () => {}, library: undefined, meshes: [] },
+    model: {
+      dispose: () => {},
+      library: undefined,
+      mesh: {
+        children: [],
+        dispose: () => {},
+        primitives: [],
+        transform: Matrix4.identity,
+      },
+    },
     noShadow: false,
   }));
 
@@ -175,12 +184,12 @@ const createWorldGraphic = (
     );
   };
 
-  const library = loadLibrary(
+  const library = createLibrary(
     runtime.context,
-    mergeModels(
-      models.flatMap((faces) =>
+    mergeMeshes(
+      meshes.flatMap((faces) =>
         faces.map((face) => ({
-          model: face,
+          mesh: face,
           transform: Matrix4.identity,
         }))
       )
@@ -229,15 +238,15 @@ const createWorldGraphic = (
 
               if (!nextValid || !chunk.cubes.has(offsetToKey(nextOffset))) {
                 instances.push({
-                  model: models[modelIndex][faceIndex],
+                  mesh: meshes[modelIndex][faceIndex],
                   transform,
                 });
               }
             }
           }
 
-          const mergedModel = mergeModels(instances);
-          const flattenedModel = flattenModel(mergedModel);
+          const mergedModel = mergeMeshes(instances);
+          const flattenedModel = flattenMesh(mergedModel);
           const model = createModel(runtime.context, flattenedModel, {
             library,
           });

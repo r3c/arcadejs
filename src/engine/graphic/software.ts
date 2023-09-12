@@ -1,6 +1,6 @@
 import { Context2DScreen } from "./display";
 import { Matrix4 } from "../math/matrix";
-import { Material, Model, Mesh, defaultColor } from "../graphic/model";
+import { Material, Mesh, defaultColor } from "../graphic/model";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 import { Renderer } from "./display";
 
@@ -59,9 +59,9 @@ const drawLine = (image: Image, begin: Vector3, end: Vector3) => {
   }
 };
 
-const drawMeshes = (
+const drawMesh = (
   image: Image,
-  meshes: Iterable<Mesh>,
+  mesh: Mesh,
   modelViewProjection: Matrix4,
   drawMode: SoftwareDrawMode
 ) => {
@@ -72,45 +72,45 @@ const drawMeshes = (
       ? drawTriangleTexture
       : drawTriangleWireframe;
 
-  for (const mesh of meshes) {
-    drawMeshes(image, mesh.children, modelViewProjection, drawMode);
+  for (const child of mesh.children) {
+    drawMesh(image, child, modelViewProjection, drawMode);
+  }
 
-    for (const polygon of mesh.polygons) {
-      const { coordinates, indices, material, positions, tints } = polygon;
+  for (const polygon of mesh.polygons) {
+    const { coordinates, indices, material, positions, tints } = polygon;
 
-      for (let i = 0; i < indices.length; ++i) {
-        const vertex0 = projectVertexToScreen(
-          modelViewProjection,
-          halfWidth,
-          halfHeight,
-          positions,
-          tints,
-          coordinates,
-          indices[i].x
-        );
+    for (let i = 0; i < indices.length; ++i) {
+      const vertex0 = projectVertexToScreen(
+        modelViewProjection,
+        halfWidth,
+        halfHeight,
+        positions,
+        tints,
+        coordinates,
+        indices[i].x
+      );
 
-        const vertex1 = projectVertexToScreen(
-          modelViewProjection,
-          halfWidth,
-          halfHeight,
-          positions,
-          tints,
-          coordinates,
-          indices[i].y
-        );
+      const vertex1 = projectVertexToScreen(
+        modelViewProjection,
+        halfWidth,
+        halfHeight,
+        positions,
+        tints,
+        coordinates,
+        indices[i].y
+      );
 
-        const vertex2 = projectVertexToScreen(
-          modelViewProjection,
-          halfWidth,
-          halfHeight,
-          positions,
-          tints,
-          coordinates,
-          indices[i].z
-        );
+      const vertex2 = projectVertexToScreen(
+        modelViewProjection,
+        halfWidth,
+        halfHeight,
+        positions,
+        tints,
+        coordinates,
+        indices[i].z
+      );
 
-        drawTriangle(image, vertex0, vertex1, vertex2, material);
-      }
+      drawTriangle(image, vertex0, vertex1, vertex2, material);
     }
   }
 };
@@ -339,7 +339,7 @@ const projectVertexToScreen = (
 
 type SoftwareObject = {
   matrix: Matrix4;
-  model: Model;
+  mesh: Mesh;
 };
 
 type SoftwareScene<TSceneState> = {
@@ -389,11 +389,11 @@ class SoftwareRenderer implements Renderer<SoftwareScene<SceneState>> {
 
     viewProjection.multiply(state.view);
 
-    for (const { matrix, model } of objects) {
+    for (const { matrix, mesh } of objects) {
       modelViewProjection.set(viewProjection);
       modelViewProjection.multiply(matrix);
 
-      drawMeshes(image, model.meshes, modelViewProjection, this.drawMode);
+      drawMesh(image, mesh, modelViewProjection, this.drawMode);
     }
 
     screen.context.putImageData(

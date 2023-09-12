@@ -5,7 +5,7 @@ import {
   defaultColor,
   Interpolation,
   Material,
-  Model,
+  Mesh,
   Texture,
   Wrap,
 } from "../definition";
@@ -52,7 +52,7 @@ const invalidChunk = (file: string, chunk: number, description: string) => {
   return Error(`invalid chunk ${chunk} in file ${file}: ${description}`);
 };
 
-const load = async (url: string): Promise<Model> => {
+const load = async (url: string): Promise<Mesh> => {
   const context = {
     codec: asciiCodec,
     directory: getPathDirectory(url),
@@ -71,23 +71,17 @@ const load = async (url: string): Promise<Model> => {
   );
 
   return {
-    meshes: [
-      {
-        children: [],
-        polygons: polygons.map(
-          ({ coordinates, indices, materialName, positions }) => ({
-            coordinates,
-            indices,
-            material:
-              materialName !== undefined
-                ? materials.get(materialName)
-                : undefined,
-            positions,
-          })
-        ),
-        transform: Matrix4.identity,
-      },
-    ],
+    children: [],
+    polygons: polygons.map(
+      ({ coordinates, indices, materialName, positions }) => ({
+        coordinates,
+        indices,
+        material:
+          materialName !== undefined ? materials.get(materialName) : undefined,
+        positions,
+      })
+    ),
+    transform: Matrix4.identity,
   };
 };
 

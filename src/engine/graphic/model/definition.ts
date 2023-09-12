@@ -37,7 +37,7 @@ interface Polygon {
 }
 
 interface Instance {
-  model: Model;
+  mesh: Mesh;
   transform: Matrix4;
 }
 
@@ -65,10 +65,6 @@ interface Mesh {
   children: Mesh[];
   polygons: Polygon[];
   transform: Matrix4;
-}
-
-interface Model {
-  meshes: Mesh[];
 }
 
 interface Texture {
@@ -103,7 +99,6 @@ export {
   type Library,
   type Material,
   type Mesh,
-  type Model,
   type Polygon,
   type Texture,
   Interpolation,

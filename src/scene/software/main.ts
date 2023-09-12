@@ -6,7 +6,7 @@ import {
 } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { Context2DScreen } from "../../engine/graphic/display";
-import { Model, loadModelFromJson } from "../../engine/graphic/model";
+import { Mesh, loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import {} from "../../engine/graphic/model";
 import {
@@ -30,8 +30,8 @@ const configuration = {
 
 type ApplicationState = {
   camera: Camera;
-  cubeWithColor: Model;
-  cubeWithTexture: Model;
+  cubeWithColor: Mesh;
+  cubeWithTexture: Mesh;
   input: Input;
   projection: Matrix4;
   rendererDefault: SoftwareRenderer;
@@ -72,11 +72,11 @@ const application: Application<Context2DScreen, ApplicationState> = {
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
     );
 
-    const model = tweak.renderMode === 2 ? cubeWithTexture : cubeWithColor;
+    const mesh = tweak.renderMode === 2 ? cubeWithTexture : cubeWithColor;
     const renderer = tweak.renderMode === 0 ? rendererWire : rendererDefault;
 
     renderer.render({
-      objects: [{ matrix: Matrix4.identity, model }],
+      objects: [{ matrix: Matrix4.identity, mesh }],
       state: { projection, view },
     });
   },

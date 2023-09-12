@@ -12,7 +12,7 @@ import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
 import { ObjectScene, createObjectPainter } from "../painters/object";
 import { parallaxPerturb } from "../shaders/parallax";
 import { phongLight } from "../shaders/phong";
-import { model as quadModel } from "./resources/quad";
+import { mesh as quadMesh } from "./resources/quad";
 import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
@@ -654,7 +654,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       gl.drawingBufferWidth,
       gl.drawingBufferHeight
     );
-    const quad = createModel(gl, quadModel);
+    const quad = createModel(gl, quadMesh);
 
     this.albedoAndShininessBuffer = geometry.setupColorTexture(
       GlTextureFormat.RGBA8,

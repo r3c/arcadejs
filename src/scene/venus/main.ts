@@ -7,8 +7,8 @@ import {
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import {
-  Model,
-  changeModelCenter,
+  Mesh,
+  changeMeshCenter,
   loadModelFrom3ds,
   loadModelFromJson,
   loadModelFromObj,
@@ -133,13 +133,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
       transform: Matrix4.fromCustom(["translate", { x: 0, y: 4, z: 0 }]),
     });
 
-    const starModel = await loadModelFromObj(
+    const starMesh = await loadModelFromObj(
       "model/asteroid/Asteroid_Asset_Pack.obj",
       { format: { variables: { type: "rock_0005" } } }
     );
 
-    const starModels: Model[] = starModel.meshes.map((mesh) =>
-      changeModelCenter({ meshes: [mesh] })
+    const starMeshes: Mesh[] = starMesh.children.map((child) =>
+      changeMeshCenter(child)
     );
 
     // Load textures
@@ -191,7 +191,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       models: {
         light: createModel(gl, lightModel),
         ship: createModel(gl, shipModel),
-        stars: starModels.map((model) => createModel(gl, model)),
+        stars: starMeshes.map((mesh) => createModel(gl, mesh)),
       },
       move: 0,
       player: {
@@ -213,7 +213,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           y: (Math.random() * 2 - 1) * starFieldRadius,
           z: (Math.random() * 2 - 1) * starFieldRadius,
         }),
-        variant: Math.floor(Math.random() * starModels.length),
+        variant: Math.floor(Math.random() * starMeshes.length),
       })),
       target,
       time: 0,
