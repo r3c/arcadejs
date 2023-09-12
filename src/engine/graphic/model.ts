@@ -27,8 +27,22 @@ type Configuration<TFormat> = {
   transform?: Matrix4;
 };
 
+const changeModelCenter = (model: Model): Model => {
+  const center = computeCenter(model);
+
+  reduceMeshes(model.meshes, Matrix4.identity, false, (_, polygon) => {
+    polygon.positions = polygon.positions.map((position) =>
+      Vector3.fromCustom(["set", position], ["sub", center])
+    );
+
+    return false;
+  });
+
+  return { meshes: model.meshes };
+};
+
 /**
- ** Compute bouding box around given model.
+ * Compute bouding box around given model.
  */
 const computeBoundingBox = (model: Model): BoundingBox => {
   return reduceMeshPositions<BoundingBox>(
@@ -51,6 +65,26 @@ const computeBoundingBox = (model: Model): BoundingBox => {
       zMin: Math.min(previous.zMin, position.z),
     })
   );
+};
+
+/**
+ * Compute center position from a model.
+ */
+const computeCenter = (model: Model): Vector3 => {
+  const { count, sum } = reduceMeshPositions(
+    model.meshes,
+    Matrix4.identity,
+    { count: 0, sum: Vector3.fromZero() },
+    ({ count, sum }, position) => {
+      sum.add(position);
+
+      return { count: count + 1, sum };
+    }
+  );
+
+  sum.scale(1 / count);
+
+  return sum;
 };
 
 /**
@@ -373,9 +407,11 @@ const reduceMeshPositions = <TState>(
     parent,
     state,
     (previous: TState, polygon: Polygon, transform: Matrix4) => {
+      let current = previous;
+
       for (const position of polygon.positions) {
-        state = reduce(
-          previous,
+        current = reduce(
+          current,
           Matrix4.transform(transform, {
             x: position.x,
             y: position.y,
@@ -385,7 +421,7 @@ const reduceMeshPositions = <TState>(
         );
       }
 
-      return state;
+      return current;
     }
   );
 };
@@ -401,7 +437,9 @@ export {
   Wrap,
   defaultColor,
   defaultFilter,
+  changeModelCenter,
   computeBoundingBox,
+  computeCenter,
   flattenModel,
   loadModelFrom3ds,
   loadModelFromGltf,
