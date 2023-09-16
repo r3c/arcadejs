@@ -17,10 +17,10 @@ import {
   DebugTextureSelect,
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import {
-  DeferredShadingLightModel,
-  DeferredShadingRenderer,
-} from "../../engine/graphic/webgl/renderers/deferred-shading";
-import { WebGLScreen } from "../../engine/graphic/display";
+  DeferredLightingLightModel,
+  DeferredLightingRenderer,
+} from "../../engine/graphic/webgl/renderers/deferred-lighting";
+import { Renderer, WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadModelFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -28,26 +28,42 @@ import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createCircleMover, createOrbitMover } from "../move";
 import { Camera } from "../view";
-import { DeferredShadingScene } from "../../engine/graphic/webgl/renderers/deferred-shading";
+import { DeferredLightingScene } from "../../engine/graphic/webgl/renderers/deferred-lighting";
 import {
   DirectionalLight,
   PointLight,
 } from "../../engine/graphic/webgl/shaders/light";
 import { brightColor } from "../../engine/graphic/color";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
+import { GlTexture } from "../../engine/graphic/webgl/texture";
+import {
+  DeferredShadingLightModel,
+  DeferredShadingRenderer,
+  DeferredShadingScene,
+} from "../../engine/graphic/webgl/renderers/deferred-shading";
 
 /*
  ** What changed?
  */
 
 const configuration = {
+  technique: ["Deferred shading", "Deferred lighting"],
   nbDirectionals: [".0", "1", "2", "5"],
   nbPoints: ["0", ".20", "100", "500", "2000"],
   animate: true,
   ambient: true,
   diffuse: true,
   specular: true,
-  debugMode: [".None", "Depth", "Albedo", "Normal", "Shininess", "Gloss"],
+  debugMode: [
+    ".None",
+    "Depth",
+    "Albedo (DS only)",
+    "Normal",
+    "Shininess",
+    "Gloss",
+    "Diffuse light (DL only)",
+    "Specular light (DL only)",
+  ],
 };
 
 const debugConfigurations = [
@@ -64,12 +80,20 @@ const debugConfigurations = [
     format: DebugTextureFormat.Spheremap,
   },
   {
-    select: DebugTextureSelect.Alpha,
+    select: DebugTextureSelect.Blue,
     format: DebugTextureFormat.Monochrome,
   },
   {
     select: DebugTextureSelect.Alpha,
     format: DebugTextureFormat.Monochrome,
+  },
+  {
+    select: DebugTextureSelect.RedGreenBlue,
+    format: DebugTextureFormat.Logarithm,
+  },
+  {
+    select: DebugTextureSelect.Alpha,
+    format: DebugTextureFormat.Logarithm,
   },
 ];
 
@@ -98,6 +122,11 @@ type ScenePointLight = PointLight & {
   position: MutableVector3;
 };
 
+type SceneRenderer = {
+  renderer: Renderer<DeferredLightingScene & DeferredShadingScene>;
+  textures: (GlTexture | undefined)[];
+};
+
 type ApplicationState = {
   camera: Camera;
   debugRendererMemo: Memo<number, DebugTextureRenderer>;
@@ -109,15 +138,16 @@ type ApplicationState = {
     ground: GlModel;
     pointLight: GlModel;
   };
+  time: number;
   pointLights: ScenePointLight[];
   projectionMatrix: Matrix4;
-  sceneRendererMemo: Memo<boolean[], DeferredShadingRenderer>;
+  sceneRendererMemo: Memo<boolean[], SceneRenderer>;
   target: GlTarget;
-  time: number;
   tweak: Tweak<typeof configuration>;
 };
 
 const getOptions = (tweak: Tweak<typeof configuration>) => [
+  tweak.technique !== 0,
   tweak.ambient !== 0,
   tweak.diffuse !== 0,
   tweak.specular !== 0,
@@ -178,18 +208,55 @@ const application: Application<WebGLScreen, ApplicationState> = {
         radius: 0,
       })),
       projectionMatrix: Matrix4.identity,
-      sceneRendererMemo: memoize(
-        indexBooleans,
-        (flags) =>
-          new DeferredShadingRenderer(runtime, target, {
-            lightModel: DeferredShadingLightModel.Phong,
-            lightModelPhongNoAmbient: !flags[0],
-            lightModelPhongNoDiffuse: !flags[1],
-            lightModelPhongNoSpecular: !flags[2],
+      sceneRendererMemo: memoize(indexBooleans, (flags) => {
+        if (flags[0]) {
+          const renderer = new DeferredLightingRenderer(runtime, target, {
+            lightModel: DeferredLightingLightModel.Phong,
+            lightModelPhongNoAmbient: !flags[1],
+            lightModelPhongNoDiffuse: !flags[2],
+            lightModelPhongNoSpecular: !flags[3],
             useHeightMap: true,
             useNormalMap: true,
-          })
-      ),
+          });
+
+          return {
+            dispose: renderer.dispose,
+            renderer,
+            textures: [
+              renderer.depthBuffer,
+              undefined,
+              renderer.normalAndGlossinessBuffer,
+              renderer.normalAndGlossinessBuffer,
+              renderer.normalAndGlossinessBuffer,
+              renderer.lightBuffer,
+              renderer.lightBuffer,
+            ],
+          };
+        } else {
+          const renderer = new DeferredShadingRenderer(runtime, target, {
+            lightModel: DeferredShadingLightModel.Phong,
+            lightModelPhongNoAmbient: !flags[1],
+            lightModelPhongNoDiffuse: !flags[2],
+            lightModelPhongNoSpecular: !flags[3],
+            useHeightMap: true,
+            useNormalMap: true,
+          });
+
+          return {
+            dispose: renderer.dispose,
+            renderer,
+            textures: [
+              renderer.depthBuffer,
+              renderer.albedoAndShininessBuffer,
+              renderer.normalAndGlossinessBuffer,
+              renderer.albedoAndShininessBuffer,
+              renderer.normalAndGlossinessBuffer,
+              undefined,
+              undefined,
+            ],
+          };
+        }
+      }),
       target,
       time: 0,
       tweak,
@@ -217,13 +284,20 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
 
     // Draw scene
-    const sceneRenderer = sceneRendererMemo.get(getOptions(tweak));
-    const scene: DeferredShadingScene = {
+    const { renderer, textures } = sceneRendererMemo.get(getOptions(tweak));
+    const scene: DeferredLightingScene = {
       ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
       directionalLights,
       objects: [
         {
-          matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
+          matrix: Matrix4.fromCustom([
+            "translate",
+            {
+              x: 0,
+              y: -1.5,
+              z: 0,
+            },
+          ]),
           model: models.ground,
         },
       ]
@@ -238,6 +312,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
               },
             ]),
             model: models.cube,
+            state: undefined,
           }))
         )
         .concat(
@@ -250,6 +325,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
             return {
               matrix: Matrix4.fromCustom(["translate", direction]),
               model: models.directionalLight,
+              state: undefined,
             };
           })
         )
@@ -257,6 +333,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           pointLights.map((light) => ({
             matrix: Matrix4.fromCustom(["translate", light.position]),
             model: models.pointLight,
+            state: undefined,
           }))
         ),
       pointLights,
@@ -270,21 +347,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     target.clear(0);
 
-    sceneRenderer.render(scene);
+    renderer.render(scene);
 
     // Draw debug
-    if (tweak.debugMode !== 0) {
+    const debugTexture =
+      tweak.debugMode !== 0 ? textures[tweak.debugMode - 1] : undefined;
+
+    if (debugTexture !== undefined) {
       const debugRenderer = debugRendererMemo.get(tweak.debugMode - 1);
 
-      debugRenderer.render(
-        [
-          sceneRenderer.depthBuffer,
-          sceneRenderer.albedoAndShininessBuffer,
-          sceneRenderer.normalAndGlossinessBuffer,
-          sceneRenderer.albedoAndShininessBuffer,
-          sceneRenderer.normalAndGlossinessBuffer,
-        ][tweak.debugMode - 1]
-      );
+      debugRenderer.render(debugTexture);
     }
   },
 
@@ -297,7 +369,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     state.sceneRendererMemo
       .get(getOptions(state.tweak))
-      .resize(screen.getWidth(), screen.getHeight());
+      .renderer.resize(screen.getWidth(), screen.getHeight());
 
     state.projectionMatrix = Matrix4.fromPerspective(
       Math.PI / 4,
@@ -314,7 +386,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
       state;
     const pointLightRadius = pointLightParameters[tweak.nbPoints].radius;
 
-    // Update light positions
     for (let i = 0; i < directionalLights.length; ++i) {
       const { direction, mover } = directionalLights[i];
 
@@ -336,6 +407,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 };
 
-const process = declare("Deferred shading", WebGLScreen, application);
+const process = declare("Deferred rendering", WebGLScreen, application);
 
 export { process };
