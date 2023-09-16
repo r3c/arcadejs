@@ -106,11 +106,11 @@ layout(location=0) out vec4 normalAndGlossiness;
 void main(void) {
 	mat3 tbn = mat3(tangent, bitangent, normal);
 
-	vec3 eyeDirection = normalize(-point);
+	vec3 eye = normalize(-point);
 	vec2 coordParallax = ${parallaxPerturb.invoke(
     "heightMap",
     "coord",
-    "eyeDirection",
+    "eye",
     "heightParallaxScale",
     "heightParallaxBias",
     "tbn"
@@ -230,7 +230,7 @@ void main(void) {
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
-	vec3 eyeDirection = normalize(-point);
+	vec3 eye = normalize(-point);
 
 	// Compute lightning parameters
 	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
@@ -252,7 +252,7 @@ void main(void) {
     "glossiness",
     "shininess",
     "normal",
-    "eyeDirection"
+    "eye"
   )};
 
 	// Emit lighting parameters
@@ -326,19 +326,18 @@ void main(void) {
 	// Read material properties from uniforms
 	mat3 tbn = mat3(tangent, bitangent, normal);
 
-	vec3 eyeDirection = normalize(-point);
+	vec3 eye = normalize(-point);
 	vec2 coordParallax = ${parallaxPerturb.invoke(
     "heightMap",
     "coord",
-    "eyeDirection",
+    "eye",
     "heightParallaxScale",
     "heightParallaxBias",
     "tbn"
   )};
 
-	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke(
-    "texture(albedoMap, coordParallax).rgb"
-  )};
+  vec4 albedoSample = texture(albedoMap, coordParallax);
+	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke("albedoSample.rgb")};
 	float glossiness = glossinessFactor * texture(glossinessMap, coordParallax).r;
 
 	// Emit final fragment color
@@ -353,8 +352,8 @@ type DeferredLightingConfiguration = {
   lightModelPhongNoAmbient?: boolean;
   lightModelPhongNoDiffuse?: boolean;
   lightModelPhongNoSpecular?: boolean;
-  useHeightMap: boolean;
-  useNormalMap: boolean;
+  noHeightMap?: boolean;
+  noNormalMap?: boolean;
 };
 
 type DeferredLightingScene = {
@@ -446,27 +445,26 @@ const loadGeometryPainter = (
     );
   }
 
-  if (configuration.useHeightMap) {
-    materialBinding.setUniform(
-      "heightMap",
-      shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
-    );
-    materialBinding.setUniform(
-      "heightParallaxBias",
-      shaderUniform.number(({ heightParallaxBias }) => heightParallaxBias)
-    );
-    materialBinding.setUniform(
-      "heightParallaxScale",
-      shaderUniform.number(({ heightParallaxScale }) => heightParallaxScale)
-    );
-  }
-
-  if (configuration.useNormalMap) {
-    materialBinding.setUniform(
-      "normalMap",
-      shaderUniform.tex2dNormal(({ normalMap }) => normalMap)
-    );
-  }
+  materialBinding.setUniform(
+    "heightMap",
+    !configuration.noHeightMap
+      ? shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
+      : shaderUniform.tex2dBlack(() => undefined)
+  );
+  materialBinding.setUniform(
+    "heightParallaxBias",
+    shaderUniform.number(({ heightParallaxBias }) => heightParallaxBias)
+  );
+  materialBinding.setUniform(
+    "heightParallaxScale",
+    shaderUniform.number(({ heightParallaxScale }) => heightParallaxScale)
+  );
+  materialBinding.setUniform(
+    "normalMap",
+    !configuration.noNormalMap
+      ? shaderUniform.tex2dNormal(({ normalMap }) => normalMap)
+      : shaderUniform.tex2dNormal(() => undefined)
+  );
 
   return createObjectPainter(
     sceneBinding,
@@ -664,20 +662,20 @@ const loadMaterialPainter = (
     );
   }
 
-  if (configuration.useHeightMap) {
-    materialBinding.setUniform(
-      "heightMap",
-      shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
-    );
-    materialBinding.setUniform(
-      "heightParallaxBias",
-      shaderUniform.number(({ heightParallaxBias }) => heightParallaxBias)
-    );
-    materialBinding.setUniform(
-      "heightParallaxScale",
-      shaderUniform.number(({ heightParallaxScale }) => heightParallaxScale)
-    );
-  }
+  materialBinding.setUniform(
+    "heightMap",
+    !configuration.noHeightMap
+      ? shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
+      : shaderUniform.tex2dBlack(() => undefined)
+  );
+  materialBinding.setUniform(
+    "heightParallaxBias",
+    shaderUniform.number(({ heightParallaxBias }) => heightParallaxBias)
+  );
+  materialBinding.setUniform(
+    "heightParallaxScale",
+    shaderUniform.number(({ heightParallaxScale }) => heightParallaxScale)
+  );
 
   return createObjectPainter(
     sceneBinding,

@@ -60,7 +60,7 @@ const configuration = {
     "Albedo (DS only)",
     "Normal",
     "Shininess",
-    "Gloss",
+    "Glossiness",
     "Diffuse light (DL only)",
     "Specular light (DL only)",
   ],
@@ -68,32 +68,32 @@ const configuration = {
 
 const debugConfigurations = [
   {
-    select: DebugTextureChannel.Red,
-    format: DebugTextureEncoding.Depth,
+    channel: DebugTextureChannel.Red,
+    encoding: DebugTextureEncoding.Depth,
   },
   {
-    select: DebugTextureChannel.RedGreenBlue,
-    format: DebugTextureEncoding.LinearRGB,
+    channel: DebugTextureChannel.RedGreenBlue,
+    encoding: DebugTextureEncoding.LinearRGB,
   },
   {
-    select: DebugTextureChannel.RedGreen,
-    format: DebugTextureEncoding.Spheremap,
+    channel: DebugTextureChannel.RedGreen,
+    encoding: DebugTextureEncoding.Spheremap,
   },
   {
-    select: DebugTextureChannel.Blue,
-    format: DebugTextureEncoding.Monochrome,
+    channel: DebugTextureChannel.Blue,
+    encoding: DebugTextureEncoding.Monochrome,
   },
   {
-    select: DebugTextureChannel.Alpha,
-    format: DebugTextureEncoding.Monochrome,
+    channel: DebugTextureChannel.Alpha,
+    encoding: DebugTextureEncoding.Monochrome,
   },
   {
-    select: DebugTextureChannel.RedGreenBlue,
-    format: DebugTextureEncoding.Log2RGB,
+    channel: DebugTextureChannel.RedGreenBlue,
+    encoding: DebugTextureEncoding.Log2RGB,
   },
   {
-    select: DebugTextureChannel.Alpha,
-    format: DebugTextureEncoding.Log2RGB,
+    channel: DebugTextureChannel.Alpha,
+    encoding: DebugTextureEncoding.Log2RGB,
   },
 ];
 
@@ -182,8 +182,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
         indexNumber,
         (index) =>
           new DebugTextureRenderer(runtime, target, {
-            encoding: debugConfigurations[index].format,
-            channel: debugConfigurations[index].select,
+            channel: debugConfigurations[index].channel,
+            encoding: debugConfigurations[index].encoding,
             zNear: 0.1,
             zFar: 100,
           })
@@ -215,8 +215,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
             lightModelPhongNoAmbient: !flags[1],
             lightModelPhongNoDiffuse: !flags[2],
             lightModelPhongNoSpecular: !flags[3],
-            useHeightMap: true,
-            useNormalMap: true,
           });
 
           return {
@@ -238,8 +236,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
             lightModelPhongNoAmbient: !flags[1],
             lightModelPhongNoDiffuse: !flags[2],
             lightModelPhongNoSpecular: !flags[3],
-            useHeightMap: true,
-            useNormalMap: true,
           });
 
           return {
