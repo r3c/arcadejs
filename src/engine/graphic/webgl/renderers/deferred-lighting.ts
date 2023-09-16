@@ -116,7 +116,7 @@ void main(void) {
     "tbn"
   )};
 
-	// Color target: [normal, normal, shininess, glossiness]
+	// Color target: [normal.xy, shininess, glossiness]
 	vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",

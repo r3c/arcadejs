@@ -37,6 +37,7 @@ import { GlMaterial, GlObject, GlPolygon, createModel } from "../model";
 import { GlTexture } from "../texture";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
+import { linearToStandard, standardToLinear } from "../shaders/rgb";
 
 const enum DeferredShadingLightModel {
   None,
@@ -49,15 +50,15 @@ const enum DeferredShadingLightType {
 }
 
 const geometryVertexShader = `
-in vec2 coordinate;
-in vec3 normals; // FIXME: remove plural
-in vec3 position;
-in vec3 tangents;
-
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
+
+in vec2 coordinate;
+in vec3 normals; // FIXME: remove plural
+in vec3 position;
+in vec3 tangents;
 
 out vec3 bitangent; // Bitangent at point in camera space
 out vec2 coord; // Texture coordinate
@@ -92,6 +93,7 @@ ${normalEncode.declare()}
 ${normalPerturb.declare()}
 ${parallaxPerturb.declare()}
 ${shininessEncode.declare()}
+${standardToLinear.declare()}
 
 in vec3 bitangent;
 in vec2 coord;
@@ -116,12 +118,12 @@ void main(void) {
   )};
 
 	// Color target 1: [albedo.rgb, shininess]
-	vec3 albedo = albedoFactor.rgb * texture(albedoMap, coordParallax).rgb;
+	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke("texture(albedoMap, coordParallax).rgb")};
 	float shininessPack = ${shininessEncode.invoke("shininess")};
 
 	albedoAndShininess = vec4(albedo, shininessPack);
 
-	// Color target 2: [normal.pp, zero, glossiness]
+	// Color target 2: [normal.xy, zero, glossiness]
 	vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
@@ -154,6 +156,8 @@ void main(void) {
 const ambientFragmentShader = `
 ${ambientHeaderShader}
 
+${linearToStandard.declare()}
+
 uniform sampler2D albedoAndShininess;
 
 layout(location=0) out vec4 fragColor;
@@ -166,8 +170,9 @@ void main(void) {
 
 	// Decode geometry and material properties from samples
 	vec3 materialAlbedo = albedoAndShininessSample.rgb;
+  vec3 albedo = ${linearToStandard.invoke("ambientLightColor * materialAlbedo")};
 
-	fragColor = vec4(ambientLightColor * materialAlbedo * float(LIGHT_MODEL_AMBIENT), 1.0);
+	fragColor = vec4(albedo * float(LIGHT_MODEL_AMBIENT), 1.0);
 }`;
 
 const lightHeaderShader = `

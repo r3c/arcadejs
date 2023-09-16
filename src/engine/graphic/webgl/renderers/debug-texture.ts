@@ -12,6 +12,9 @@ import { GlBuffer } from "../resource";
 import { Renderer } from "../../display";
 import { GlTexture } from "../texture";
 import { GlModel, createModel } from "../model";
+import { linearToStandard } from "../shaders/rgb";
+import { normalDecode } from "../shaders/normal";
+import { linearDepth } from "../shaders/depth";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -28,99 +31,87 @@ void main(void) {
 }`;
 
 const fragmentSource = `
+${linearDepth.declare()}
+${linearToStandard.declare()}
+${normalDecode.declare()}
+
 uniform sampler2D source;
 
 in vec2 coord;
 
 layout(location=0) out vec4 fragColor;
 
-// Spheremap transform
-// See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
-vec3 decodeNormalSpheremap(in vec2 normalPack) {
-	vec2 fenc = normalPack * 4.0 - 2.0;
-	float f = dot(fenc, fenc);
-	float g = sqrt(1.0 - f * 0.25);
-
-	return normalize(vec3(fenc * g, 1.0 - f * 0.5)) * 0.5 + 0.5;
-}
-
-// Linearize depth
-// See: http://glampert.com/2014/01-26/visualizing-the-depth-buffer/
-vec3 linearizeDepth(in float depth)
-{
-	float zNear = float(ZNEAR);
-	float zFar = float(ZFAR);
-
-	return vec3(2.0 * zNear / (zFar + zNear - depth * (zFar - zNear)));
-}
-
 void main(void) {
 	vec4 encoded;
 	vec4 raw = texture(source, coord);
 
 	// Read 4 bytes, 1 possible configuration
-	#if SELECT == 0
+	#if CHANNEL == ${DebugTextureChannel.Identity}
 		encoded = raw;
 
 	// Read 3 bytes, 2 possible configurations
-	#elif SELECT == 1
+	#elif CHANNEL == ${DebugTextureChannel.RedGreenBlue}
 		encoded = vec4(raw.rgb, 1.0);
-	#elif SELECT == 2
+	#elif CHANNEL == ${DebugTextureChannel.GreenBlueAlpha}
 		encoded = vec4(raw.gba, 1.0);
 
 	// Read 2 bytes, 3 possible configurations
-	#elif SELECT == 3
+	#elif CHANNEL == ${DebugTextureChannel.RedGreen}
 		encoded = vec4(raw.rg, raw.rg);
-	#elif SELECT == 4
+	#elif CHANNEL == ${DebugTextureChannel.GreenBlue}
 		encoded = vec4(raw.gb, raw.gb);
-	#elif SELECT == 5
+	#elif CHANNEL == ${DebugTextureChannel.BlueAlpha}
 		encoded = vec4(raw.ba, raw.ba);
 
 	// Read 1 byte, 4 possible configurations
-	#elif SELECT == 6
+	#elif CHANNEL == ${DebugTextureChannel.Red}
 		encoded = vec4(raw.r);
-	#elif SELECT == 7
+	#elif CHANNEL == ${DebugTextureChannel.Green}
 		encoded = vec4(raw.g);
-	#elif SELECT == 8
+	#elif CHANNEL == ${DebugTextureChannel.Blue}
 		encoded = vec4(raw.b);
-	#elif SELECT == 9
+	#elif CHANNEL == ${DebugTextureChannel.Alpha}
 		encoded = vec4(raw.a);
 	#endif
 
 	// Format output
-	#if FORMAT == 0
+	#if ENCODING == ${DebugTextureEncoding.Identity}
 		fragColor = encoded;
-	#elif FORMAT == 1
-		fragColor = vec4(encoded.rgb, 1.0);
-	#elif FORMAT == 2
+	#elif ENCODING == ${DebugTextureEncoding.LinearRGB}
+		fragColor = vec4(${linearToStandard.invoke("encoded.rgb")}, 1.0);
+	#elif ENCODING == ${DebugTextureEncoding.Monochrome}
 		fragColor = vec4(encoded.rrr, 1.0);
-	#elif FORMAT == 3
-		fragColor = vec4(linearizeDepth(encoded.r), 1.0);
-	#elif FORMAT == 4
-		fragColor = vec4(decodeNormalSpheremap(encoded.rg), 1.0);
-	#elif FORMAT == 5
+	#elif ENCODING == ${DebugTextureEncoding.Depth}
+		fragColor = vec4(${linearDepth.invoke(
+      "encoded.r",
+      "float(ZNEAR)",
+      "float(ZFAR)"
+    )}, 1.0);
+	#elif ENCODING == ${DebugTextureEncoding.Spheremap}
+		fragColor = vec4(${normalDecode.invoke("encoded.rg")}, 1.0);
+	#elif ENCODING == ${DebugTextureEncoding.Log2RGB}
 		fragColor = vec4(-log2(encoded.rgb), 1.0);
 	#endif
 }`;
 
 type DebugTextureConfiguration = {
-  format: DebugTextureFormat;
+  channel: DebugTextureChannel;
+  encoding: DebugTextureEncoding;
   scale?: number;
-  select: DebugTextureSelect;
   zFar: number;
   zNear: number;
 };
 
-const enum DebugTextureFormat {
+const enum DebugTextureEncoding {
   Identity,
-  Colorful,
+  LinearRGB,
   Monochrome,
   Depth,
   Spheremap,
-  Logarithm,
+  Log2RGB,
 }
 
-const enum DebugTextureSelect {
+const enum DebugTextureChannel {
   Identity,
   RedGreenBlue,
   GreenBlueAlpha,
@@ -163,8 +154,8 @@ const createShader = (
   configuration: DebugTextureConfiguration
 ): GlShader => {
   return runtime.createShader(vertexSource, fragmentSource, {
-    FORMAT: shaderDirective.number(configuration.format),
-    SELECT: shaderDirective.number(configuration.select),
+    CHANNEL: shaderDirective.number(configuration.channel),
+    ENCODING: shaderDirective.number(configuration.encoding),
     ZFAR: shaderDirective.number(configuration.zFar),
     ZNEAR: shaderDirective.number(configuration.zNear),
   });
@@ -225,4 +216,4 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
   public resize(_width: number, _height: number) {}
 }
 
-export { DebugTextureFormat, DebugTextureRenderer, DebugTextureSelect };
+export { DebugTextureChannel, DebugTextureEncoding, DebugTextureRenderer };

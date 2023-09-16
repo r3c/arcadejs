@@ -12,9 +12,9 @@ import {
 } from "../../engine/language/memo";
 import { Input } from "../../engine/io/controller";
 import {
-  DebugTextureFormat,
+  DebugTextureEncoding,
   DebugTextureRenderer,
-  DebugTextureSelect,
+  DebugTextureChannel,
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import {
   DeferredLightingLightModel,
@@ -68,32 +68,32 @@ const configuration = {
 
 const debugConfigurations = [
   {
-    select: DebugTextureSelect.Red,
-    format: DebugTextureFormat.Depth,
+    select: DebugTextureChannel.Red,
+    format: DebugTextureEncoding.Depth,
   },
   {
-    select: DebugTextureSelect.RedGreenBlue,
-    format: DebugTextureFormat.Colorful,
+    select: DebugTextureChannel.RedGreenBlue,
+    format: DebugTextureEncoding.LinearRGB,
   },
   {
-    select: DebugTextureSelect.RedGreen,
-    format: DebugTextureFormat.Spheremap,
+    select: DebugTextureChannel.RedGreen,
+    format: DebugTextureEncoding.Spheremap,
   },
   {
-    select: DebugTextureSelect.Blue,
-    format: DebugTextureFormat.Monochrome,
+    select: DebugTextureChannel.Blue,
+    format: DebugTextureEncoding.Monochrome,
   },
   {
-    select: DebugTextureSelect.Alpha,
-    format: DebugTextureFormat.Monochrome,
+    select: DebugTextureChannel.Alpha,
+    format: DebugTextureEncoding.Monochrome,
   },
   {
-    select: DebugTextureSelect.RedGreenBlue,
-    format: DebugTextureFormat.Logarithm,
+    select: DebugTextureChannel.RedGreenBlue,
+    format: DebugTextureEncoding.Log2RGB,
   },
   {
-    select: DebugTextureSelect.Alpha,
-    format: DebugTextureFormat.Logarithm,
+    select: DebugTextureChannel.Alpha,
+    format: DebugTextureEncoding.Log2RGB,
   },
 ];
 
@@ -182,8 +182,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
         indexNumber,
         (index) =>
           new DebugTextureRenderer(runtime, target, {
-            format: debugConfigurations[index].format,
-            select: debugConfigurations[index].select,
+            encoding: debugConfigurations[index].format,
+            channel: debugConfigurations[index].select,
             zNear: 0.1,
             zFar: 100,
           })

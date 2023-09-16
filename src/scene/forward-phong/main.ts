@@ -22,8 +22,8 @@ import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import {
   DebugTextureRenderer,
-  DebugTextureFormat,
-  DebugTextureSelect,
+  DebugTextureEncoding,
+  DebugTextureChannel,
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 
@@ -90,8 +90,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       debugRenderer: new DebugTextureRenderer(runtime, target, {
-        format: DebugTextureFormat.Monochrome,
-        select: DebugTextureSelect.Red,
+        encoding: DebugTextureEncoding.Monochrome,
+        channel: DebugTextureChannel.Red,
         zNear: 0.1,
         zFar: 100,
       }),
