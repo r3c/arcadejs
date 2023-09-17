@@ -31,7 +31,12 @@ import {
   directionalLightBillboard,
   pointLightBillboard,
 } from "./objects/billboard";
-import { GlShaderDirectives, shaderDirective, shaderUniform } from "../shader";
+import {
+  GlShaderAttribute,
+  GlShaderDirectives,
+  shaderDirective,
+  shaderUniform,
+} from "../shader";
 import { Renderer } from "../../display";
 import { GlMaterial, GlObject, GlPolygon, createModel } from "../model";
 import { GlTexture } from "../texture";
@@ -107,20 +112,19 @@ layout(location=1) out vec4 normalAndGlossiness;
 void main(void) {
 	mat3 tbn = mat3(tangent, bitangent, normal);
 
-	vec3 eyeDirection = normalize(-point);
+	vec3 eye = normalize(-point);
 	vec2 coordParallax = ${parallaxPerturb.invoke(
     "heightMap",
     "coord",
-    "eyeDirection",
+    "eye",
     "heightParallaxScale",
     "heightParallaxBias",
     "tbn"
   )};
 
 	// Color target 1: [albedo.rgb, shininess]
-	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke(
-    "texture(albedoMap, coordParallax).rgb"
-  )};
+  vec4 albedoSample = texture(albedoMap, coordParallax);
+	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke("albedoSample.rgb")};
 	float shininessPack = ${shininessEncode.invoke("shininess")};
 
 	albedoAndShininess = vec4(albedo, shininessPack);
@@ -158,8 +162,6 @@ void main(void) {
 const ambientFragmentShader = `
 ${ambientHeaderShader}
 
-${linearToStandard.declare()}
-
 uniform sampler2D albedoAndShininess;
 
 layout(location=0) out vec4 fragColor;
@@ -172,9 +174,7 @@ void main(void) {
 
 	// Decode geometry and material properties from samples
 	vec3 materialAlbedo = albedoAndShininessSample.rgb;
-  vec3 albedo = ${linearToStandard.invoke(
-    "ambientLightColor * materialAlbedo"
-  )};
+  vec3 albedo = ambientLightColor * materialAlbedo;
 
 	fragColor = vec4(albedo * float(LIGHT_MODEL_AMBIENT), 1.0);
 }`;
@@ -278,7 +278,7 @@ void main(void) {
 
 	// Compute point in camera space from fragment coord and depth buffer
 	vec3 point = getPoint(depthSample.r);
-	vec3 eyeDirection = normalize(-point);
+	vec3 eye = normalize(-point);
 
 	// Compute lightning
 	#if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
@@ -300,10 +300,31 @@ void main(void) {
     "glossiness",
     "shininess",
     "normal",
-    "eyeDirection"
+    "eye"
   )};
 
 	fragColor = vec4(color, 1.0);
+}`;
+
+const postVertexShader = `
+in vec3 position;
+
+void main(void) {
+	gl_Position = vec4(position, 1.0);
+}`;
+
+const postFragmentShader = `
+${linearToStandard.declare()}
+  
+uniform sampler2D source;
+
+layout(location=0) out vec4 fragColor;
+
+void main(void) {
+  ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
+  vec3 scene = texelFetch(source, bufferCoord, 0).rgb;
+
+	fragColor = vec4(${linearToStandard.invoke("scene")}, 1.0);
 }`;
 
 type DeferredShadingConfiguration = {
@@ -355,6 +376,12 @@ type DirectionalLightScene = LightScene & {
 type PointLightScene = LightScene & {
   billboardMatrix: Matrix4;
   polygon: GlPointLightPolygon;
+};
+
+type PostScene = {
+  index: GlBuffer;
+  position: GlShaderAttribute;
+  source: GlTexture;
 };
 
 const loadAmbientPainter = (
@@ -634,10 +661,24 @@ const loadPointLightPainter = (
   return new SinglePainter<PointLightScene>(binding, ({ index }) => index);
 };
 
+const loadPostPainter = (runtime: GlRuntime) => {
+  const shader = runtime.createShader(postVertexShader, postFragmentShader, {});
+  const binding = shader.declare<PostScene>();
+
+  binding.setAttribute("position", ({ position }) => position);
+  binding.setUniform(
+    "source",
+    shaderUniform.tex2dBlack(({ source }) => source)
+  );
+
+  return new SinglePainter<PostScene>(binding, ({ index }) => index);
+};
+
 class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
   public readonly albedoAndShininessBuffer: GlTexture;
   public readonly depthBuffer: GlTexture;
   public readonly normalAndGlossinessBuffer: GlTexture;
+  public readonly sceneBuffer: GlTexture;
 
   private readonly ambientLightPainter: GlPainter<AmbientLightScene>;
   private readonly ambientLightObjects: GlObject[];
@@ -649,6 +690,8 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
   private readonly pointLightBillboard: GlPointLightBillboard;
   private readonly pointLightPainter: GlPainter<PointLightScene>;
   private readonly runtime: GlRuntime;
+  private readonly scenePainter: GlPainter<PostScene>;
+  private readonly sceneTarget: GlTarget;
   private readonly target: GlTarget;
 
   public constructor(
@@ -657,20 +700,25 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     configuration: DeferredShadingConfiguration
   ) {
     const gl = runtime.context;
-    const geometry = new GlTarget(
+    const geometryTarget = new GlTarget(
       gl,
       gl.drawingBufferWidth,
       gl.drawingBufferHeight
     );
     const quad = createModel(gl, quadMesh);
+    const sceneTarget = new GlTarget(
+      gl,
+      gl.drawingBufferWidth,
+      gl.drawingBufferHeight
+    );
 
-    this.albedoAndShininessBuffer = geometry.setupColorTexture(
+    this.albedoAndShininessBuffer = geometryTarget.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
     this.ambientLightPainter = loadAmbientPainter(runtime, configuration);
     this.ambientLightObjects = [{ matrix: Matrix4.identity, model: quad }];
-    this.depthBuffer = geometry.setupDepthTexture(
+    this.depthBuffer = geometryTarget.setupDepthTexture(
       GlTextureFormat.Depth16,
       GlTextureType.Quad
     );
@@ -681,14 +729,20 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     );
     this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
     this.geometryPainter = loadGeometryPainter(runtime, configuration);
-    this.geometryTarget = geometry;
+    this.geometryTarget = geometryTarget;
     this.pointLightBillboard = pointLightBillboard(gl);
-    this.normalAndGlossinessBuffer = geometry.setupColorTexture(
+    this.normalAndGlossinessBuffer = geometryTarget.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
     this.pointLightPainter = loadPointLightPainter(runtime, configuration);
     this.runtime = runtime;
+    this.sceneBuffer = sceneTarget.setupColorTexture(
+      GlTextureFormat.RGBA8,
+      GlTextureType.Quad
+    );
+    this.scenePainter = loadPostPainter(runtime);
+    this.sceneTarget = sceneTarget;
     this.target = target;
   }
 
@@ -742,9 +796,11 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE);
 
+    this.sceneTarget.clear(0);
+
     // Draw ambient light using fullscreen quad
     if (ambientLightColor !== undefined) {
-      this.ambientLightPainter.paint(this.target, {
+      this.ambientLightPainter.paint(this.sceneTarget, {
         albedoAndShininessBuffer: this.albedoAndShininessBuffer,
         ambientLightColor,
         objects: this.ambientLightObjects,
@@ -764,7 +820,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       modelMatrix.invert();
 
       for (const directionalLight of directionalLights) {
-        this.directionalLightPainter.paint(this.target, {
+        this.directionalLightPainter.paint(this.sceneTarget, {
           albedoAndShininessBuffer: this.albedoAndShininessBuffer,
           depthBuffer: this.depthBuffer,
           directionalLight,
@@ -783,7 +839,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     if (pointLights !== undefined) {
       this.pointLightBillboard.set(pointLights);
 
-      this.pointLightPainter.paint(this.target, {
+      this.pointLightPainter.paint(this.sceneTarget, {
         albedoAndShininessBuffer: this.albedoAndShininessBuffer,
         billboardMatrix,
         depthBuffer: this.depthBuffer,
@@ -796,10 +852,18 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
         viewportSize,
       });
     }
+
+    // Draw scene
+    this.scenePainter.paint(this.target, {
+      index: this.directionalLightBillboard.index, // FIXME: dedicated quad
+      position: this.directionalLightBillboard.polygon.lightPosition,
+      source: this.sceneBuffer,
+    });
   }
 
   public resize(width: number, height: number) {
     this.geometryTarget.resize(width, height);
+    this.sceneTarget.resize(width, height);
   }
 }
 
