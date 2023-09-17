@@ -334,12 +334,12 @@ void main(void) {
   if (!directionalLights[${i}].castShadow || shadowMapSample${i} >= directionalLightShadows[${i}].z) {
   #endif
 
-    ${resultLightType} light${i} = ${directionalLight.invoke(
+    ${resultLightType} directionalLight${i} = ${directionalLight.invoke(
         `directionalLights[${i}]`,
         `directionalLightDistances[${i}]`
       )};
 
-    color += getLight(light${i}, material, modifiedNormal, eyeDirection);
+    color += getLight(directionalLight${i}, material, modifiedNormal, eyeDirection);
 
   #ifdef HAS_SHADOW
   }
@@ -355,12 +355,12 @@ void main(void) {
   if (true) { // FIXME
   #endif
 
-    ${resultLightType} light${i} = ${pointLight.invoke(
+    ${resultLightType} pointLight${i} = ${pointLight.invoke(
         `pointLights[${i}]`,
         `pointLightDistances[${i}]`
       )};
 
-    color += getLight(light${i}, material, modifiedNormal, eyeDirection);
+    color += getLight(pointLight${i}, material, modifiedNormal, eyeDirection);
 
   #ifdef HAS_SHADOW
   }
