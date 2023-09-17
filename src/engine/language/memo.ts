@@ -1,15 +1,36 @@
 import { Disposable } from "./lifecycle";
 
-type Indexer<TKey> = (key: TKey) => number;
+type Indexer<TKey> = {
+  bitsize: number;
+  index: (key: TKey) => number;
+};
 
 type Memo<TKey, TValue> = Disposable & {
   get: (key: TKey) => TValue;
 };
 
-const indexBooleans: Indexer<boolean[]> = (key) =>
-  key.reduce((sum, value, index) => sum + (value ? Math.pow(2, index) : 0), 0);
+const createBooleansIndexer = (nbBooleans: number): Indexer<boolean[]> => ({
+  bitsize: nbBooleans,
+  index: (key) => {
+    let power = 1;
+    let value = 0;
 
-const indexNumber: Indexer<number> = (key) => key;
+    for (let i = 0; i < nbBooleans; ++i) {
+      if (key[i]) {
+        value += power;
+      }
+
+      power <<= 1;
+    }
+
+    return value;
+  },
+});
+
+const createNumberIndexer = (min: number, max: number): Indexer<number> => ({
+  bitsize: Math.ceil(Math.log2(max - min + 1)),
+  index: (key) => Math.max(Math.min(key, max), min) - min,
+});
 
 const memoize = <TKey, TValue extends Disposable>(
   indexer: Indexer<TKey>,
@@ -27,7 +48,7 @@ const memoize = <TKey, TValue extends Disposable>(
       }
     },
     get: (key) => {
-      const currentIndex = indexer(key);
+      const currentIndex = indexer.index(key);
 
       if (currentIndex !== lastIndex) {
         if (lastValue !== undefined) {
@@ -43,4 +64,4 @@ const memoize = <TKey, TValue extends Disposable>(
   };
 };
 
-export { type Memo, indexBooleans, indexNumber, memoize };
+export { type Memo, createBooleansIndexer, createNumberIndexer, memoize };

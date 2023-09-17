@@ -18,7 +18,11 @@ import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createCircleMover, createOrbitMover } from "../move";
 import { Camera } from "../view";
-import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
+import {
+  Memo,
+  createBooleansIndexer,
+  memoize,
+} from "../../engine/language/memo";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import {
   DebugTextureRenderer,
@@ -111,7 +115,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       })),
       projectionMatrix: Matrix4.identity,
       rendererMemo: memoize(
-        indexBooleans,
+        createBooleansIndexer(5),
         (flags) =>
           new ForwardLightingRenderer(runtime, target, {
             maxDirectionalLights: 3,

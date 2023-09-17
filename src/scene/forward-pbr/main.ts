@@ -4,7 +4,11 @@ import {
   configure,
   declare,
 } from "../../engine/application";
-import { Memo, indexBooleans, memoize } from "../../engine/language/memo";
+import {
+  Memo,
+  createBooleansIndexer,
+  memoize,
+} from "../../engine/language/memo";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
@@ -147,7 +151,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       projectionMatrix: Matrix4.identity,
       rendererMemo: memoize(
-        indexBooleans,
+        createBooleansIndexer(6),
         (flags) =>
           new ForwardLightingRenderer(runtime, target, {
             maxPointLights: 3,

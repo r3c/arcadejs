@@ -6,8 +6,8 @@ import {
 } from "../../engine/application";
 import {
   Memo,
-  indexBooleans,
-  indexNumber,
+  createBooleansIndexer,
+  createNumberIndexer,
   memoize,
 } from "../../engine/language/memo";
 import { Input } from "../../engine/io/controller";
@@ -179,7 +179,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       debugRendererMemo: memoize(
-        indexNumber,
+        createNumberIndexer(0, 6),
         (index) =>
           new DebugTextureRenderer(runtime, target, {
             channel: debugConfigurations[index].channel,
@@ -208,7 +208,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         radius: 0,
       })),
       projectionMatrix: Matrix4.identity,
-      sceneRendererMemo: memoize(indexBooleans, (flags) => {
+      sceneRendererMemo: memoize(createBooleansIndexer(4), (flags) => {
         if (flags[0]) {
           const renderer = new DeferredLightingRenderer(runtime, target, {
             lightModel: DeferredLightingLightModel.Phong,
