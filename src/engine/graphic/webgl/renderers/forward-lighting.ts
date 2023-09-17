@@ -38,12 +38,12 @@ import { GlTexture } from "../texture";
 type ForwardLightingConfiguration = {
   maxDirectionalLights?: number;
   maxPointLights?: number;
-  model?: ForwardLightingLightModel;
-  modelPhongNoAmbient?: boolean;
-  modelPhongNoDiffuse?: boolean;
-  modelPhongNoSpecular?: boolean;
-  modelPhysicalNoAmbient?: boolean;
-  modelPhysicalNoIBL?: boolean;
+  lightModel?: ForwardLightingLightModel;
+  lightModelPhongNoAmbient?: boolean;
+  lightModelPhongNoDiffuse?: boolean;
+  lightModelPhongNoSpecular?: boolean;
+  lightModelPhysicalNoAmbient?: boolean;
+  lightModelPhysicalNoIBL?: boolean;
   noAlbedoMap?: boolean;
   noEmissiveMap?: boolean;
   noGlossMap?: boolean;
@@ -402,30 +402,30 @@ const createLightShader = (
   configuration: Required<ForwardLightingConfiguration>
 ): GlShader => {
   const directives: GlShaderDirectives = {
-    ["LIGHT_MODEL"]: shaderDirective.number(<number>configuration.model),
+    ["LIGHT_MODEL"]: shaderDirective.number(configuration.lightModel),
   };
 
-  switch (configuration.model) {
+  switch (configuration.lightModel) {
     case ForwardLightingLightModel.Phong:
       directives["LIGHT_AMBIENT"] = shaderDirective.boolean(
-        !configuration.modelPhongNoAmbient
+        !configuration.lightModelPhongNoAmbient
       );
       directives["LIGHT_MODEL_PHONG_DIFFUSE"] = shaderDirective.boolean(
-        !configuration.modelPhongNoDiffuse
+        !configuration.lightModelPhongNoDiffuse
       );
       directives["LIGHT_MODEL_PHONG_SPECULAR"] = shaderDirective.boolean(
-        !configuration.modelPhongNoSpecular
+        !configuration.lightModelPhongNoSpecular
       );
 
       break;
 
     case ForwardLightingLightModel.Physical:
-      if (!configuration.modelPhysicalNoIBL) {
+      if (!configuration.lightModelPhysicalNoIBL) {
         directives["LIGHT_MODEL_PBR_IBL"] = shaderDirective.number(1);
       }
 
       directives["LIGHT_AMBIENT"] = shaderDirective.boolean(
-        !configuration.modelPhysicalNoAmbient
+        !configuration.lightModelPhysicalNoAmbient
       );
 
       break;
@@ -507,7 +507,7 @@ const createLightPainter = (
     shaderUniform.array4f(({ albedoFactor }) => albedoFactor)
   );
 
-  switch (configuration.model) {
+  switch (configuration.lightModel) {
     case ForwardLightingLightModel.Phong:
       materialBinding.setUniform(
         "glossinessMap",
@@ -527,7 +527,7 @@ const createLightPainter = (
       break;
 
     case ForwardLightingLightModel.Physical:
-      if (!configuration.modelPhysicalNoIBL) {
+      if (!configuration.lightModelPhysicalNoIBL) {
         sceneBinding.setUniform(
           "environmentBrdfMap",
           shaderUniform.tex2dBlack(
@@ -630,43 +630,42 @@ const createLightPainter = (
       sceneBinding.setUniform(
         `directionalLights[${index}].castShadow`,
         shaderUniform.boolean(
-          ({ directionalShadowLights: directionalLights }) =>
-            index < directionalLights.length && directionalLights[index].shadow
+          ({ directionalShadowLights }) =>
+            index < directionalShadowLights.length &&
+            directionalShadowLights[index].shadow
         )
       );
       sceneBinding.setUniform(
         `directionalLights[${index}].shadowViewMatrix`,
-        shaderUniform.matrix4f(
-          ({ directionalShadowLights: directionalLights }) =>
-            index < directionalLights.length
-              ? directionalLights[index].shadowViewMatrix
-              : Matrix4.identity
+        shaderUniform.matrix4f(({ directionalShadowLights }) =>
+          index < directionalShadowLights.length
+            ? directionalShadowLights[index].shadowViewMatrix
+            : Matrix4.identity
         )
       );
       sceneBinding.setUniform(
         `directionalLightShadowMaps[${index}]`,
-        shaderUniform.tex2dBlack(
-          ({ directionalShadowLights: directionalLights }) =>
-            index < directionalLights.length
-              ? directionalLights[index].shadowMap
-              : undefined
+        shaderUniform.tex2dBlack(({ directionalShadowLights }) =>
+          index < directionalShadowLights.length
+            ? directionalShadowLights[index].shadowMap
+            : undefined
         )
       );
     }
 
     sceneBinding.setUniform(
       `directionalLights[${i}].color`,
-      shaderUniform.vector3f(({ directionalShadowLights: directionalLights }) =>
-        index < directionalLights.length
-          ? directionalLights[index].color
+      shaderUniform.vector3f(({ directionalShadowLights }) =>
+        index < directionalShadowLights.length
+          ? directionalShadowLights[index].color
           : defaultColor
       )
     );
     sceneBinding.setUniform(
       `directionalLights[${i}].direction`,
-      shaderUniform.vector3f(({ directionalShadowLights: directionalLights }) =>
-        index < directionalLights.length
-          ? directionalLights[index].direction
+      shaderUniform.vector3f(({ directionalShadowLights }) =>
+        index < directionalShadowLights.length
+          ? directionalShadowLights[index].direction
           : defaultDirection
       )
     );
@@ -677,22 +676,24 @@ const createLightPainter = (
 
     sceneBinding.setUniform(
       `pointLights[${i}].color`,
-      shaderUniform.vector3f(({ pointShadowLights: pointLights }) =>
-        index < pointLights.length ? pointLights[index].color : defaultColor
+      shaderUniform.vector3f(({ pointShadowLights }) =>
+        index < pointShadowLights.length
+          ? pointShadowLights[index].color
+          : defaultColor
       )
     );
     sceneBinding.setUniform(
       `pointLights[${i}].position`,
-      shaderUniform.vector3f(({ pointShadowLights: pointLights }) =>
-        index < pointLights.length
-          ? pointLights[index].position
+      shaderUniform.vector3f(({ pointShadowLights }) =>
+        index < pointShadowLights.length
+          ? pointShadowLights[index].position
           : defaultPosition
       )
     );
     sceneBinding.setUniform(
       `pointLights[${i}].radius`,
-      shaderUniform.number(({ pointShadowLights: pointLights }) =>
-        index < pointLights.length ? pointLights[index].radius : 0
+      shaderUniform.number(({ pointShadowLights }) =>
+        index < pointShadowLights.length ? pointShadowLights[index].radius : 0
       )
     );
   }
@@ -773,14 +774,16 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     const targetWidth = 1024;
 
     const fullConfiguration: Required<ForwardLightingConfiguration> = {
-      maxDirectionalLights: configuration.maxDirectionalLights ?? 0,
-      maxPointLights: configuration.maxPointLights ?? 0,
-      model: configuration.model ?? ForwardLightingLightModel.Phong,
-      modelPhongNoAmbient: configuration.modelPhongNoAmbient ?? false,
-      modelPhongNoDiffuse: configuration.modelPhongNoDiffuse ?? false,
-      modelPhongNoSpecular: configuration.modelPhongNoSpecular ?? false,
-      modelPhysicalNoAmbient: configuration.modelPhysicalNoAmbient ?? false,
-      modelPhysicalNoIBL: configuration.modelPhysicalNoIBL ?? false,
+      maxDirectionalLights: configuration.maxDirectionalLights ?? 4,
+      maxPointLights: configuration.maxPointLights ?? 4,
+      lightModel: configuration.lightModel ?? ForwardLightingLightModel.Phong,
+      lightModelPhongNoAmbient: configuration.lightModelPhongNoAmbient ?? false,
+      lightModelPhongNoDiffuse: configuration.lightModelPhongNoDiffuse ?? false,
+      lightModelPhongNoSpecular:
+        configuration.lightModelPhongNoSpecular ?? false,
+      lightModelPhysicalNoAmbient:
+        configuration.lightModelPhysicalNoAmbient ?? false,
+      lightModelPhysicalNoIBL: configuration.lightModelPhysicalNoIBL ?? false,
       noAlbedoMap: configuration.noAlbedoMap ?? false,
       noEmissiveMap: configuration.noEmissiveMap ?? false,
       noGlossMap: configuration.noGlossMap ?? false,
@@ -877,11 +880,12 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     const directionalShadowLights = [];
 
     if (directionalLights !== undefined) {
-      for (
-        let i = 0;
-        i < Math.min(directionalLights.length, this.maxDirectionalLights);
-        ++i
-      ) {
+      const nbDirectionalLights = Math.min(
+        directionalLights.length,
+        this.maxDirectionalLights
+      );
+
+      for (let i = 0; i < nbDirectionalLights; ++i) {
         const light = directionalLights[i];
         const shadowDirection = {
           x: -light.direction.x,

@@ -116,10 +116,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
           new ForwardLightingRenderer(runtime, target, {
             maxDirectionalLights: 3,
             maxPointLights: 3,
-            model: ForwardLightingLightModel.Phong,
-            modelPhongNoAmbient: !flags[0],
-            modelPhongNoDiffuse: !flags[1],
-            modelPhongNoSpecular: !flags[2],
+            lightModel: ForwardLightingLightModel.Phong,
+            lightModelPhongNoAmbient: !flags[0],
+            lightModelPhongNoDiffuse: !flags[1],
+            lightModelPhongNoSpecular: !flags[2],
             noHeightMap: !flags[3],
             noNormalMap: !flags[4],
           })

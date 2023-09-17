@@ -151,9 +151,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
         (flags) =>
           new ForwardLightingRenderer(runtime, target, {
             maxPointLights: 3,
-            model: ForwardLightingLightModel.Physical,
-            modelPhysicalNoAmbient: !flags[0],
-            modelPhysicalNoIBL: !flags[3],
+            lightModel: ForwardLightingLightModel.Physical,
+            lightModelPhysicalNoAmbient: !flags[0],
+            lightModelPhysicalNoIBL: !flags[3],
             noEmissiveMap: !flags[1],
             noHeightMap: !flags[4],
             noNormalMap: !flags[5],
