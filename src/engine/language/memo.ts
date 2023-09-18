@@ -27,6 +27,15 @@ const createBooleansIndexer = (nbBooleans: number): Indexer<boolean[]> => ({
   },
 });
 
+const createCompositeIndexer = <T1, T2>(
+  indexer1: Indexer<T1>,
+  indexer2: Indexer<T2>
+): Indexer<[T1, T2]> => ({
+  bitsize: indexer1.bitsize + indexer2.bitsize,
+  index: ([key1, key2]) =>
+    indexer1.index(key1) + (indexer2.index(key2) << indexer1.bitsize),
+});
+
 const createNumberIndexer = (min: number, max: number): Indexer<number> => ({
   bitsize: Math.ceil(Math.log2(max - min + 1)),
   index: (key) => Math.max(Math.min(key, max), min) - min,
@@ -64,4 +73,10 @@ const memoize = <TKey, TValue extends Disposable>(
   };
 };
 
-export { type Memo, createBooleansIndexer, createNumberIndexer, memoize };
+export {
+  type Memo,
+  createBooleansIndexer,
+  createCompositeIndexer,
+  createNumberIndexer,
+  memoize,
+};

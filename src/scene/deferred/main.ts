@@ -7,6 +7,7 @@ import {
 import {
   Memo,
   createBooleansIndexer,
+  createCompositeIndexer,
   createNumberIndexer,
   memoize,
 } from "../../engine/language/memo";
@@ -112,6 +113,8 @@ const pointLightParameters = [
   { count: 2000, radius: 1 },
 ];
 
+type Scene = DeferredLightingScene & DeferredShadingScene;
+
 type SceneDirectionalLight = DirectionalLight & {
   mover: Mover;
   direction: MutableVector3;
@@ -123,7 +126,7 @@ type ScenePointLight = PointLight & {
 };
 
 type SceneRenderer = {
-  renderer: Renderer<DeferredLightingScene & DeferredShadingScene>;
+  renderer: Renderer<Scene>;
   textures: (GlTexture | undefined)[];
 };
 
@@ -141,13 +144,12 @@ type ApplicationState = {
   time: number;
   pointLights: ScenePointLight[];
   projectionMatrix: Matrix4;
-  sceneRendererMemo: Memo<boolean[], SceneRenderer>;
+  sceneRendererMemo: Memo<[number, boolean[]], SceneRenderer>;
   target: GlTarget;
   tweak: Tweak<typeof configuration>;
 };
 
 const getOptions = (tweak: Tweak<typeof configuration>) => [
-  tweak.technique !== 0,
   tweak.ambient !== 0,
   tweak.diffuse !== 0,
   tweak.specular !== 0,
@@ -208,51 +210,62 @@ const application: Application<WebGLScreen, ApplicationState> = {
         radius: 0,
       })),
       projectionMatrix: Matrix4.identity,
-      sceneRendererMemo: memoize(createBooleansIndexer(4), (flags) => {
-        if (flags[0]) {
-          const renderer = new DeferredLightingRenderer(runtime, target, {
-            lightModel: DeferredLightingLightModel.Phong,
-            lightModelPhongNoAmbient: !flags[1],
-            lightModelPhongNoDiffuse: !flags[2],
-            lightModelPhongNoSpecular: !flags[3],
-          });
+      sceneRendererMemo: memoize(
+        createCompositeIndexer(
+          createNumberIndexer(0, 2),
+          createBooleansIndexer(3)
+        ),
+        ([technique, flags]) => {
+          switch (technique) {
+            case 0:
+            default: {
+              const renderer = new DeferredShadingRenderer(runtime, target, {
+                lightModel: DeferredShadingLightModel.Phong,
+                lightModelPhongNoAmbient: !flags[0],
+                lightModelPhongNoDiffuse: !flags[1],
+                lightModelPhongNoSpecular: !flags[2],
+              });
 
-          return {
-            dispose: renderer.dispose,
-            renderer,
-            textures: [
-              renderer.depthBuffer,
-              undefined,
-              renderer.normalAndGlossinessBuffer,
-              renderer.normalAndGlossinessBuffer,
-              renderer.normalAndGlossinessBuffer,
-              renderer.lightBuffer,
-              renderer.lightBuffer,
-            ],
-          };
-        } else {
-          const renderer = new DeferredShadingRenderer(runtime, target, {
-            lightModel: DeferredShadingLightModel.Phong,
-            lightModelPhongNoAmbient: !flags[1],
-            lightModelPhongNoDiffuse: !flags[2],
-            lightModelPhongNoSpecular: !flags[3],
-          });
+              return {
+                dispose: () => renderer.dispose(),
+                renderer,
+                textures: [
+                  renderer.depthBuffer,
+                  renderer.albedoAndShininessBuffer,
+                  renderer.normalAndGlossinessBuffer,
+                  renderer.albedoAndShininessBuffer,
+                  renderer.normalAndGlossinessBuffer,
+                  undefined,
+                  undefined,
+                ],
+              };
+            }
 
-          return {
-            dispose: renderer.dispose,
-            renderer,
-            textures: [
-              renderer.depthBuffer,
-              renderer.albedoAndShininessBuffer,
-              renderer.normalAndGlossinessBuffer,
-              renderer.albedoAndShininessBuffer,
-              renderer.normalAndGlossinessBuffer,
-              undefined,
-              undefined,
-            ],
-          };
+            case 1: {
+              const renderer = new DeferredLightingRenderer(runtime, target, {
+                lightModel: DeferredLightingLightModel.Phong,
+                lightModelPhongNoAmbient: !flags[0],
+                lightModelPhongNoDiffuse: !flags[1],
+                lightModelPhongNoSpecular: !flags[2],
+              });
+
+              return {
+                dispose: () => renderer.dispose(),
+                renderer,
+                textures: [
+                  renderer.depthBuffer,
+                  undefined,
+                  renderer.normalAndGlossinessBuffer,
+                  renderer.normalAndGlossinessBuffer,
+                  renderer.normalAndGlossinessBuffer,
+                  renderer.lightBuffer,
+                  renderer.lightBuffer,
+                ],
+              };
+            }
+          }
         }
-      }),
+      ),
       target,
       time: 0,
       tweak,
@@ -280,7 +293,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
 
     // Draw scene
-    const { renderer, textures } = sceneRendererMemo.get(getOptions(tweak));
+    const { renderer, textures } = sceneRendererMemo.get([
+      tweak.technique,
+      getOptions(tweak),
+    ]);
+
     const scene: DeferredLightingScene = {
       ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
       directionalLights,
@@ -364,7 +381,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
 
     state.sceneRendererMemo
-      .get(getOptions(state.tweak))
+      .get([state.tweak.technique, getOptions(state.tweak)])
       .renderer.resize(screen.getWidth(), screen.getHeight());
 
     state.projectionMatrix = Matrix4.fromPerspective(
