@@ -716,7 +716,7 @@ class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
     const light = new GlTarget(
       gl,
       gl.drawingBufferWidth,
-      gl.drawingBufferWidth
+      gl.drawingBufferHeight
     );
 
     this.depthBuffer = geometry.setupDepthTexture(
