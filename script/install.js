@@ -124,6 +124,10 @@ downloadFiles([
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_roughness.png",
   },
   {
+    destination: "public/model/particle/fire.png",
+    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/particle/fire.png",
+  },
+  {
     destination: "public/model/damaged-helmet/DamagedHelmet.bin",
     url: "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/fb85803eaeb9208d1b6f04e3f3769ebc8aa706f6/2.0/DamagedHelmet/glTF/DamagedHelmet.bin",
   },
