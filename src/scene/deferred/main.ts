@@ -175,7 +175,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const pointLightModel = await loadModelFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromCustom(["scale", { x: 0.1, y: 0.1, z: 0.1 }]),
     });
-    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
+    const target = new GlTarget(gl, screen.getSize());
 
     // Create state
     return {
@@ -373,25 +373,23 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
   },
 
-  resize(state, screen) {
+  resize(state, size) {
     if (state.tweak.debugMode !== 0) {
-      state.debugRendererMemo
-        .get(state.tweak.debugMode - 1)
-        .resize(screen.getWidth(), screen.getHeight());
+      state.debugRendererMemo.get(state.tweak.debugMode - 1).resize(size);
     }
 
     state.sceneRendererMemo
       .get([state.tweak.technique, getOptions(state.tweak)])
-      .renderer.resize(screen.getWidth(), screen.getHeight());
+      .renderer.resize(size);
 
     state.projectionMatrix = Matrix4.fromPerspective(
       Math.PI / 4,
-      screen.getRatio(),
+      size.x / size.y,
       0.1,
       100
     );
 
-    state.target.resize(screen.getWidth(), screen.getHeight());
+    state.target.resize(size);
   },
 
   update(state, dt) {

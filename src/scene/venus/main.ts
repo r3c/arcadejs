@@ -120,7 +120,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
-    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
+    const target = new GlTarget(gl, screen.getSize());
 
     configure(undefined);
 
@@ -269,17 +269,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
     particleRenderer.render(scene);
   },
 
-  resize(state, screen) {
+  resize(state, size) {
     state.projectionMatrix = Matrix4.fromPerspective(
       Math.PI / 4,
-      screen.getRatio(),
+      size.x / size.y,
       0.1,
       10000
     );
 
-    state.particleRenderer.resize(screen.getWidth(), screen.getHeight());
-    state.sceneRenderer.resize(screen.getWidth(), screen.getHeight());
-    state.target.resize(screen.getWidth(), screen.getHeight());
+    state.particleRenderer.resize(size);
+    state.sceneRenderer.resize(size);
+    state.target.resize(size);
   },
 
   update(state, dt) {

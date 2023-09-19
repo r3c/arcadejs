@@ -1,64 +1,63 @@
 import { Disposable } from "../language/lifecycle";
+import { MutableVector2, Vector2 } from "../math/vector";
 
 type Renderer<TScene> = Disposable & {
   render(scene: TScene): void;
-  resize(width: number, height: number): void;
+  resize(size: Vector2): void;
 };
 
 class Screen {
   public readonly canvas: HTMLCanvasElement;
-  public readonly resizeHandlers: Set<() => void>;
+  public readonly resizeHandlers: Set<(size: Vector2) => void>;
+  public readonly size: MutableVector2;
 
   protected constructor(container: HTMLElement) {
     const canvas = document.createElement("canvas");
-    const resizeHandlers = new Set<() => void>();
-
-    const onResize = () => {
-      canvas.width = canvas.clientWidth;
-      canvas.height = canvas.clientHeight;
-
-      for (const resizeHandler of resizeHandlers) {
-        resizeHandler();
-      }
-    };
 
     container.appendChild(canvas);
 
     canvas.tabIndex = 1;
-    canvas.addEventListener("fullscreenchange", onResize);
-    canvas.addEventListener("resize", onResize);
     canvas.focus();
 
-    onResize();
-
     this.canvas = canvas;
-    this.resizeHandlers = resizeHandlers;
+    this.resizeHandlers = new Set<() => void>();
+    this.size = Vector2.fromZero();
+
+    this.resize();
   }
 
-  public addResizeHandler(resizeHandler: () => void): void {
+  public addResizeHandler(resizeHandler: (size: Vector2) => void): () => void {
     this.resizeHandlers.add(resizeHandler);
 
-    resizeHandler();
+    resizeHandler(this.size);
+
+    return () => this.resizeHandlers.delete(resizeHandler);
   }
 
-  public getHeight() {
-    return this.canvas.clientHeight;
-  }
-
-  public getRatio() {
-    return this.canvas.clientWidth / this.canvas.clientHeight;
-  }
-
-  public getWidth() {
-    return this.canvas.clientWidth;
-  }
-
-  public removeResizeHandler(resizeHandler: () => void): void {
-    this.resizeHandlers.delete(resizeHandler);
+  public getSize(): Vector2 {
+    return this.size;
   }
 
   public requestFullscreen() {
     this.canvas.requestFullscreen?.();
+  }
+
+  public resize() {
+    const height = this.canvas.clientHeight;
+    const width = this.canvas.clientWidth;
+
+    if (width === this.size.x && height === this.size.y) {
+      return;
+    }
+
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.size.x = width;
+    this.size.y = height;
+
+    for (const resizeHandler of this.resizeHandlers) {
+      resizeHandler(this.size);
+    }
   }
 }
 

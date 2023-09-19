@@ -1,9 +1,10 @@
 import { Screen } from "./graphic/display";
+import { Vector2 } from "./math/vector";
 
 interface Application<TScreen extends Screen, TState> {
   prepare: (screen: TScreen) => Promise<TState>;
   render: (state: TState) => void;
-  resize: (state: TState, screen: TScreen) => void;
+  resize: (state: TState, size: Vector2) => void;
   update: (state: TState, dt: number) => void;
 }
 
@@ -177,9 +178,7 @@ const declare = <TScreen extends Screen, TState>(
       const screen = new screenConstructor(container);
       const state = await prepare(screen);
 
-      if (resize !== undefined) {
-        screen.addResizeHandler(() => resize(state, screen));
-      }
+      screen.addResizeHandler((size) => resize(state, size));
 
       runtime = { screen, state };
     },
@@ -188,7 +187,9 @@ const declare = <TScreen extends Screen, TState>(
         return;
       }
 
-      const { state } = runtime;
+      const { screen, state } = runtime;
+
+      screen.resize();
 
       update(state, dt);
       requestAnimationFrame(() => render(state));

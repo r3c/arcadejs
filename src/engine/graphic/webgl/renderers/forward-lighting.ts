@@ -16,7 +16,7 @@ import { parallaxPerturb } from "../shaders/parallax";
 import { pbrEnvironment, pbrLight } from "../shaders/pbr";
 import { phongLight } from "../shaders/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
-import { Vector3 } from "../../../math/vector";
+import { Vector2, Vector3 } from "../../../math/vector";
 import {
   GlGeometry,
   GlPainter,
@@ -770,8 +770,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     configuration: ForwardLightingConfiguration
   ) {
     const gl = runtime.context;
-    const targetHeight = 1024;
-    const targetWidth = 1024;
+    const targetSize = { x: 1024, y: 1024 };
 
     const fullConfiguration: Required<ForwardLightingConfiguration> = {
       maxDirectionalLights: configuration.maxDirectionalLights ?? 4,
@@ -797,10 +796,10 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
 
     const directionalShadowTargets = range(
       fullConfiguration.maxDirectionalLights
-    ).map(() => new GlTarget(gl, targetWidth, targetHeight));
+    ).map(() => new GlTarget(gl, targetSize));
     const lightShader = createLightShader(runtime, fullConfiguration);
     const pointShadowTargets = range(fullConfiguration.maxPointLights).map(
-      () => new GlTarget(gl, targetWidth, targetHeight)
+      () => new GlTarget(gl, targetSize)
     );
 
     this.directionalShadowBuffers = directionalShadowTargets.map((target) =>
@@ -945,7 +944,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     });
   }
 
-  public resize(_width: number, _height: number) {}
+  public resize(_size: Vector2) {}
 }
 
 export {

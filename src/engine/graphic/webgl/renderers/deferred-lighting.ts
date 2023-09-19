@@ -708,16 +708,14 @@ class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
     configuration: DeferredLightingConfiguration
   ) {
     const gl = runtime.context;
-    const geometry = new GlTarget(
-      gl,
-      gl.drawingBufferWidth,
-      gl.drawingBufferHeight
-    );
-    const light = new GlTarget(
-      gl,
-      gl.drawingBufferWidth,
-      gl.drawingBufferHeight
-    );
+    const geometry = new GlTarget(gl, {
+      x: gl.drawingBufferWidth,
+      y: gl.drawingBufferHeight,
+    });
+    const light = new GlTarget(gl, {
+      x: gl.drawingBufferWidth,
+      y: gl.drawingBufferHeight,
+    });
 
     this.depthBuffer = geometry.setupDepthTexture(
       GlTextureFormat.Depth16,
@@ -858,9 +856,9 @@ class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
     });
   }
 
-  public resize(width: number, height: number) {
-    this.geometryTarget.resize(width, height);
-    this.lightTarget.resize(width, height);
+  public resize(size: Vector2) {
+    this.geometryTarget.resize(size);
+    this.lightTarget.resize(size);
   }
 }
 

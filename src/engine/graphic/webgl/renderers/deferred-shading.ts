@@ -700,17 +700,15 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     configuration: DeferredShadingConfiguration
   ) {
     const gl = runtime.context;
-    const geometryTarget = new GlTarget(
-      gl,
-      gl.drawingBufferWidth,
-      gl.drawingBufferHeight
-    );
+    const geometryTarget = new GlTarget(gl, {
+      x: gl.drawingBufferWidth,
+      y: gl.drawingBufferHeight,
+    });
     const quad = createModel(gl, quadMesh);
-    const sceneTarget = new GlTarget(
-      gl,
-      gl.drawingBufferWidth,
-      gl.drawingBufferHeight
-    );
+    const sceneTarget = new GlTarget(gl, {
+      x: gl.drawingBufferWidth,
+      y: gl.drawingBufferHeight,
+    });
 
     this.albedoAndShininessBuffer = geometryTarget.setupColorTexture(
       GlTextureFormat.RGBA8,
@@ -861,9 +859,9 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     });
   }
 
-  public resize(width: number, height: number) {
-    this.geometryTarget.resize(width, height);
-    this.sceneTarget.resize(width, height);
+  public resize(size: Vector2) {
+    this.geometryTarget.resize(size);
+    this.sceneTarget.resize(size);
   }
 }
 

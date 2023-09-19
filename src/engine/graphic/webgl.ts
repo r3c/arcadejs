@@ -1,7 +1,7 @@
 import { range } from "../language/iterable";
 import { Matrix3, Matrix4 } from "../math/matrix";
 import { Filter, Interpolation, Wrap, defaultFilter } from "./model";
-import { Vector4 } from "../math/vector";
+import { MutableVector2, Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
 import { Disposable } from "../language/lifecycle";
 import {
@@ -169,18 +169,16 @@ class GlTarget {
   private depthAttachment: GlAttachment;
   private depthClear: number;
   private framebuffers: WebGLFramebuffer[];
-  private viewHeight: number;
-  private viewWidth: number;
+  private viewSize: MutableVector2;
 
-  public constructor(gl: GlContext, width: number, height: number) {
+  public constructor(gl: GlContext, size: Vector2) {
     this.colorAttachment = { renderbuffer: undefined, textures: [] };
     this.colorClear = { x: 0, y: 0, z: 0, w: 0 };
     this.depthAttachment = { renderbuffer: undefined, textures: [] };
     this.depthClear = 1;
     this.framebuffers = [];
     this.gl = gl;
-    this.viewHeight = height;
-    this.viewWidth = width;
+    this.viewSize = Vector2.fromObject(size);
   }
 
   public clear(framebufferIndex: number) {
@@ -192,7 +190,7 @@ class GlTarget {
         ? this.framebuffers[framebufferIndex]
         : null
     );
-    gl.viewport(0, 0, this.viewWidth, this.viewHeight);
+    gl.viewport(0, 0, this.viewSize.x, this.viewSize.y);
 
     gl.clearColor(
       this.colorClear.x,
@@ -224,13 +222,13 @@ class GlTarget {
         ? this.framebuffers[framebufferIndex]
         : null
     );
-    gl.viewport(0, 0, this.viewWidth, this.viewHeight);
+    gl.viewport(0, 0, this.viewSize.x, this.viewSize.y);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
     gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
   }
 
-  public resize(width: number, height: number) {
+  public resize(size: Vector2) {
     const gl = this.gl;
 
     for (const attachment of [this.colorAttachment, this.depthAttachment]) {
@@ -239,8 +237,8 @@ class GlTarget {
         renderbufferConfigure(
           gl,
           attachment.renderbuffer.handle,
-          width,
-          height,
+          size.x,
+          size.y,
           attachment.renderbuffer.format,
           1
         );
@@ -252,8 +250,8 @@ class GlTarget {
           gl,
           texture.handle,
           GlTextureType.Quad,
-          width,
-          height,
+          size.x,
+          size.y,
           texture.format,
           defaultFilter,
           undefined
@@ -261,8 +259,7 @@ class GlTarget {
       }
     }
 
-    this.viewHeight = height;
-    this.viewWidth = width;
+    this.viewSize.set(size);
   }
 
   public setClearColor(r: number, g: number, b: number, a: number) {
@@ -394,8 +391,8 @@ class GlTarget {
     const renderbuffer = renderbufferConfigure(
       gl,
       renderbufferCreate(gl),
-      this.viewWidth,
-      this.viewHeight,
+      this.viewSize.x,
+      this.viewSize.y,
       format,
       1
     );
@@ -461,8 +458,8 @@ class GlTarget {
       gl,
       undefined,
       type,
-      this.viewWidth,
-      this.viewHeight,
+      this.viewSize.x,
+      this.viewSize.y,
       format,
       filter,
       undefined

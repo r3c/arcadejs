@@ -92,7 +92,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
-    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
+    const target = new GlTarget(gl, screen.getSize());
     const tweak = configure(configuration);
 
     // Load meshes
@@ -239,18 +239,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     rendererMemo.get(getOptions(tweak)).render(scene);
   },
 
-  resize(state, screen) {
-    state.rendererMemo
-      .get(getOptions(state.tweak))
-      .resize(screen.getWidth(), screen.getHeight());
-
+  resize(state, size) {
+    state.rendererMemo.get(getOptions(state.tweak)).resize(size);
     state.projectionMatrix = Matrix4.fromPerspective(
       Math.PI / 4,
-      screen.getRatio(),
+      size.x / size.y,
       0.1,
       100
     );
-    state.target.resize(screen.getWidth(), screen.getHeight());
+    state.target.resize(size);
   },
 
   update(state, dt) {

@@ -81,10 +81,10 @@ const application: Application<Context2DScreen, ApplicationState> = {
     });
   },
 
-  resize(state, screen) {
+  resize(state, size) {
     state.projection = Matrix4.fromPerspective(
       Math.PI / 4,
-      screen.getRatio(),
+      size.x / size.y,
       0.1,
       100
     );

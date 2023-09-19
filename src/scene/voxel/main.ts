@@ -55,7 +55,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
-    const target = new GlTarget(gl, screen.getWidth(), screen.getHeight());
+    const target = new GlTarget(gl, screen.getSize());
 
     configure(undefined);
 
@@ -178,7 +178,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     };
   },
 
-  update(state: ApplicationState, dt: number) {
+  update(state, dt) {
     const { camera, input, lights, worldPhysic, worldGraphic } = state;
 
     // Move camera & define view matrix accordingly
@@ -289,7 +289,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     state.move += dt;
   },
 
-  render(state: ApplicationState) {
+  render(state) {
     const {
       currentOffset,
       models,
@@ -333,18 +333,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     lightRenderer.render(lightScene);
   },
 
-  resize(state: ApplicationState, screen: WebGLScreen) {
-    state.renderers.forwardLighting.resize(
-      screen.getWidth(),
-      screen.getHeight()
-    );
+  resize(state, size) {
+    state.renderers.forwardLighting.resize(size);
     state.projectionMatrix = Matrix4.fromPerspective(
       Math.PI / 4,
-      screen.getRatio(),
+      size.x / size.y,
       0.1,
       100
     );
-    state.target.resize(screen.getWidth(), screen.getHeight());
+    state.target.resize(size);
   },
 };
 

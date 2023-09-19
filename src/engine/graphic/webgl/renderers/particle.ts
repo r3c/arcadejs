@@ -391,7 +391,7 @@ class ParticleRenderer implements Renderer<ParticleScene> {
     }
   }
 
-  public resize(_width: number, _height: number) {}
+  public resize(_size: Vector2) {}
 
   public update(dt: number) {
     for (const billboard of this.billboards) {

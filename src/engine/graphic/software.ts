@@ -12,8 +12,7 @@ const enum SoftwareDrawMode {
 type Image = {
   colors: Uint8ClampedArray;
   depths: Float32Array;
-  height: number;
-  width: number;
+  size: Vector2;
 };
 
 type Vertex = {
@@ -36,8 +35,8 @@ const drawLine = (image: Image, begin: Vector3, end: Vector3) => {
   let err = dx - dy;
 
   while (x0 !== x1 || y0 !== y1) {
-    if (x0 >= 0 && x0 < image.width && y0 >= 0 && y0 < image.height) {
-      const index = (x0 + y0 * image.width) * 4;
+    if (x0 >= 0 && x0 < image.size.x && y0 >= 0 && y0 < image.size.y) {
+      const index = (x0 + y0 * image.size.x) * 4;
 
       image.colors[index + 0] = 255;
       image.colors[index + 1] = 255;
@@ -65,8 +64,8 @@ const drawMesh = (
   modelViewProjection: Matrix4,
   drawMode: SoftwareDrawMode
 ) => {
-  const halfWidth = image.width * 0.5;
-  const halfHeight = image.height * 0.5;
+  const halfWidth = image.size.x * 0.5;
+  const halfHeight = image.size.y * 0.5;
   const drawTriangle =
     drawMode === SoftwareDrawMode.Default
       ? drawTriangleTexture
@@ -124,7 +123,7 @@ const drawScanline = (
   vd: Vertex,
   material: Material | undefined
 ) => {
-  if (y < 0 || y >= image.height) {
+  if (y < 0 || y >= image.size.y) {
     return;
   }
 
@@ -149,10 +148,10 @@ const drawScanline = (
     [begin, end] = [end, begin];
   }
 
-  const offset = ~~y * image.width;
+  const offset = ~~y * image.size.x;
   const length = Math.max(end.x - begin.x, 1);
   const start = Math.max(begin.x, 0);
-  const stop = Math.min(end.x, image.width - 1);
+  const stop = Math.min(end.x, image.size.x - 1);
 
   for (var x = start; x <= stop; ++x) {
     const ratio = (x - begin.x) / length;
@@ -368,18 +367,16 @@ class SoftwareRenderer implements Renderer<SoftwareScene<SceneState>> {
   public render(scene: SoftwareScene<SceneState>) {
     const { objects, state } = scene;
     const screen = this.screen;
-    const height = screen.getHeight();
-    const width = screen.getWidth();
+    const size = screen.getSize();
 
-    if (height === 0 && width === 0) {
+    if (size.x === 0 || size.y === 0) {
       return;
     }
 
     const image = {
-      colors: new Uint8ClampedArray(width * height * 4),
-      depths: new Float32Array(width * height),
-      height,
-      width,
+      colors: new Uint8ClampedArray(size.x * size.y * 4),
+      depths: new Float32Array(size.x * size.y),
+      size,
     };
 
     image.depths.fill(Math.pow(2, 127));
@@ -397,13 +394,13 @@ class SoftwareRenderer implements Renderer<SoftwareScene<SceneState>> {
     }
 
     screen.context.putImageData(
-      new ImageData(image.colors, image.width, image.height),
+      new ImageData(image.colors, image.size.x, image.size.y),
       0,
       0
     );
   }
 
-  public resize(_width: number, _height: number) {
+  public resize() {
     // No-op
   }
 }

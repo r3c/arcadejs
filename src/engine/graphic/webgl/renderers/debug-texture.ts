@@ -15,6 +15,7 @@ import { GlModel, createModel } from "../model";
 import { linearToStandard } from "../shaders/rgb";
 import { normalDecode } from "../shaders/normal";
 import { linearDepth } from "../shaders/depth";
+import { Vector2 } from "../../../math/vector";
 
 const vertexSource = `
 uniform mat4 modelMatrix;
@@ -213,7 +214,7 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
     });
   }
 
-  public resize(_width: number, _height: number) {}
+  public resize(_size: Vector2) {}
 }
 
 export { DebugTextureChannel, DebugTextureEncoding, DebugTextureRenderer };
