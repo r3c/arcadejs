@@ -11,7 +11,11 @@ import { Matrix4 } from "../../../math/matrix";
 import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
 import { ObjectScene, createObjectPainter } from "../painters/object";
 import { parallaxPerturb } from "../shaders/parallax";
-import { phongLight } from "../shaders/phong";
+import {
+  phongLightApply,
+  phongLightCast,
+  phongLightType,
+} from "../shaders/phong";
 import { mesh as quadMesh } from "./resources/quad";
 import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -241,7 +245,11 @@ uniform sampler2D depth;
 uniform sampler2D normalAndGlossiness;
 
 ${normalDecode.declare()}
-${phongLight.declare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
+${phongLightApply.declare(
+  "LIGHT_MODEL_PHONG_DIFFUSE",
+  "LIGHT_MODEL_PHONG_SPECULAR"
+)}
+${phongLightCast.declare()}
 ${shininessDecode.declare()}
 
 #if LIGHT_TYPE == ${DeferredShadingLightType.Directional}
@@ -294,14 +302,15 @@ void main(void) {
 )};
 	#endif
 
-	vec3 color = ${phongLight.invoke(
-    "light",
-    "albedo",
-    "glossiness",
-    "shininess",
-    "normal",
-    "eye"
-  )};
+  ${phongLightType} phongLight = ${phongLightCast.invoke(
+  "light",
+  "glossiness",
+  "shininess",
+  "normal",
+  "eye"
+)};
+
+	vec3 color = ${phongLightApply.invoke("phongLight", "albedo")};
 
 	fragColor = vec4(color, 1.0);
 }`;

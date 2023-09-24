@@ -12,9 +12,9 @@ import { normalEncode, normalPerturb, normalDecode } from "../shaders/normal";
 import { ObjectScene, createObjectPainter } from "../painters/object";
 import { parallaxPerturb } from "../shaders/parallax";
 import {
-  phoneLightInvokeDiffusePower,
-  phoneLightInvokeSpecularPower,
-  phongLight,
+  phongLightApply,
+  phongLightCast,
+  phongLightType,
 } from "../shaders/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { shininessDecode, shininessEncode } from "../shaders/shininess";
@@ -184,8 +184,6 @@ void main(void) {
 const lightFragmentShader = `
 ${lightHeaderShader}
 
-#define ZERO 0
-
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
@@ -193,7 +191,8 @@ uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossinessBuffer;
 
 ${normalDecode.declare()}
-${phongLight.declare("ZERO", "ZERO")}
+${phongLightApply.declare("1", "1")}
+${phongLightCast.declare()}
 ${shininessDecode.declare()}
 
 #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
@@ -246,18 +245,16 @@ void main(void) {
 )};
 	#endif
 
-	float lightDiffusePower = ${phoneLightInvokeDiffusePower("light", "normal")};
-	float lightSpecularPower = ${phoneLightInvokeSpecularPower(
-    "light",
-    "glossiness",
-    "shininess",
-    "normal",
-    "eye"
-  )};
+  ${phongLightType} phongLight = ${phongLightCast.invoke(
+  "light",
+  "glossiness",
+  "shininess",
+  "normal",
+  "eye"
+)};
 
 	// Emit lighting parameters
-	// FIXME: duplicate of "phong.lightInvoke" code
-	fragColor = exp2(-vec4(lightDiffusePower * light.color, lightSpecularPower) * light.power);
+	fragColor = exp2(-vec4(phongLight.diffuseFactor * phongLight.color, phongLight.specularFactor));
 }`;
 
 const materialVertexShader = `
@@ -341,7 +338,7 @@ void main(void) {
 	float glossiness = glossinessFactor * texture(glossinessMap, coordParallax).r;
 
 	// Emit final fragment color
-	// FIXME: duplicate of "phong.lightInvoke" code
+	// FIXME: partial duplicate of "phonglightApply" code
 	vec3 color = albedo * (ambientLight + diffuseLight) + glossiness * specularLight;
 
 	fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);

@@ -14,7 +14,11 @@ import { Matrix4 } from "../../../math/matrix";
 import { normalPerturb } from "../shaders/normal";
 import { parallaxPerturb } from "../shaders/parallax";
 import { pbrEnvironment, pbrLight } from "../shaders/pbr";
-import { phongLight } from "../shaders/phong";
+import {
+  phongLightApply,
+  phongLightCast,
+  phongLightType,
+} from "../shaders/phong";
 import { linearToStandard, standardToLinear } from "../shaders/rgb";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
@@ -244,7 +248,11 @@ ${normalPerturb.declare()}
 ${parallaxPerturb.declare()}
 
 #if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
-${phongLight.declare("LIGHT_MODEL_PHONG_DIFFUSE", "LIGHT_MODEL_PHONG_SPECULAR")}
+${phongLightApply.declare(
+  "LIGHT_MODEL_PHONG_DIFFUSE",
+  "LIGHT_MODEL_PHONG_SPECULAR"
+)}
+${phongLightCast.declare()}
 #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
 ${pbrEnvironment.declare("LIGHT_MODEL_PBR_IBL")}
 ${pbrLight.declare()}
@@ -266,14 +274,15 @@ layout(location=0) out vec4 fragColor;
 
 vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
 	#if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
-		return ${phongLight.invoke(
-      "light",
-      "material.albedo.rgb",
-      "material.glossiness",
-      "material.shininess",
-      "normal",
-      "eyeDirection"
-    )};
+    ${phongLightType} phongLight = ${phongLightCast.invoke(
+  "light",
+  "material.glossiness",
+  "material.shininess",
+  "normal",
+  "eyeDirection"
+)};
+
+		return ${phongLightApply.invoke("phongLight", "material.albedo.rgb")};
 	#elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
 		return ${pbrLight.invoke("light", "material", "normal", "eyeDirection")};
 	#endif
