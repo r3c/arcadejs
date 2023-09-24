@@ -6,10 +6,10 @@
 
 		<title>Let there be (gl)Light!</title>
 
-		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
-		<link rel="stylesheet" href="lib/css/zenburn.css">
-		<link rel="stylesheet" href="css/style.css">
+		<link rel="stylesheet" href="dist/reset.css">
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/black.css">
+		<link rel="stylesheet" href="plugin/highlight/zenburn.css">
 	</head>
 	<body>
 		<div class="reveal">
@@ -20,33 +20,26 @@
 				</section>
 
 				<section>
-					<p>3D is a big topic so we'll only see about:</p>
-					<ul>
-						<li>Real-time rendering (e.g. no offline)</li>
-						<li>Polygon-based (e.g. no voxel-based)</li>
-						<li>Using OpenGL (e.g. no DirectX)</li>
-					</ul>
+					<h4>Real-time 3D graphics what?</h4>
+					<img height="500" src="image/focus.svg" />
 				</section>
 
 				<section>
-					<p>Polygon-based = objects are made out of triangles</p>
-					<img height="300" src="image/wireframe.png" />
-					<p class="fragment">...so all we need is rendering 3D triangles!</p>
+					<h4>Rasterization engine</h4>
+					<img height="400" src="image/wireframe.svg" />
+					<p>Rasterize &raquo; render to pixels &raquo; render 3D triangles</p>
 				</section>
 
 				<section>
-					<p>Render 3D triangle = project to 2D screen + display</p>
-					<img height="300" src="image/projection.png" />
-					<p class="fragment">...so all we need is projecting a 3D point into 2D space.</p>
+					<h4>Render 3D triangle</h4>
+					<img height="350" src="image/projection.png" />
+					<p>Project 3D world points to 2D screen space</p>
 				</section>
 
 				<section>
-					<p>Transform points using projection matrix</p>
-					<ul>
-						<li>Project to (x, y, z) &isin; ([-1, 1], [-1, 1], [-1, 1]) space</li>
-						<li>Perspective projection will be used for demos</li>
-						<li>Math background is not part of this presentation 😇</li>
-					</ul>
+					<h4>3D points to screen space</h4>
+					<p>\[(x, y, z) &isin; ([-1, 1], [-1, 1], [-1, 1])\]</p>
+					<p>Math background not covered here 😇</p>
 					<img height="300" src="image/gl_projectionmatrix01.png" />
 				</section>
 
@@ -56,68 +49,77 @@
 				</section>
 
 				<section>
-					<p>Problem: 3D => 2D projection works</p>
+					<h4>Projections made easy</h4>
 					<ul>
-						<li>...but calculation is tedious...</li>
-						<li class="fragment" data-fragment-index="1">...especially with move & rotate</li>
-						<li class="fragment" data-fragment-index="2">...and relocate camera</li>
+						<li>Move &amp; rotate model?</li>
+						<li>Relocate camera?</li>
 					</ul>
 					<div>
-						<img class="fragment" data-fragment-index="2" height="250" src="image/world-to-view.png" />
+						<img height="300" src="image/world-to-view.png" />
 					</div>
-					<p class="fragment" data-fragment-index="2">Transformation matrices to the rescue <img style="background: none; border: none; vertical-align: bottom;" height="64" src="image/anadon.png" /></p>
+					<p>Transformation matrices 🙌</p>
 				</section>
 
 				<section>
-					<p>Solution: changing coordinate system</p>
+					<h4>Changing coordinate system</h4>
 					<ul>
-						<li>Translate point &hArr; p' = p + v</li>
-						<li>Rotate point &hArr; multiply by 3x3 matrix</li>
+						<li>
+							Translate point by vector <em>v</em>:
+							\[
+							\begin{bmatrix}
+							p'_x \\ p'_y \\ p'_z
+							\end{bmatrix}
+							=
+							\begin{bmatrix}
+							p_x \\ p_y \\ p_z
+							\end{bmatrix}
+							+
+							\begin{bmatrix}
+							v_x \\ v_y \\ v_z
+							\end{bmatrix}
+							\]
+						</li>
+						<li>
+							Rotate point of angle <em>θ</em> around <em>x</em> axis:
+							\[
+							\begin{bmatrix}
+							p'_x \\ p'_y \\ p'_z
+							\end{bmatrix}
+							=
+							\begin{bmatrix}
+							1 & 0 & 0 \\
+							0 & cos(θ) & sin(θ) \\
+							0 & -sin(θ) & cos(θ)
+							\end{bmatrix}
+							*
+							\begin{bmatrix}
+							p_x \\ p_y \\ p_z
+							\end{bmatrix}
+							\]
+						</li>
 					</ul>
-					<p>Example for rotation of angle θ around X axis:</p>
-					<blockquote>
-						<table class="matrix">
-							<tr>
-								<td>p'<sub>x</sub></td>
-							</tr>
-							<tr>
-								<td>p'<sub>y</sub></td>
-							</tr>
-							<tr>
-								<td>p'<sub>z</sub></td>
-							</tr>
-						</table>
+				</section>
+
+				<section>
+					<h4>Compose transforms</h4>
+					<p>
+						\[
+						\begin{bmatrix}
+						p'_x \\ p'_y \\ p'_z \\ w'
+						\end{bmatrix}
 						=
-						<table class="matrix">
-							<tr>
-								<td>p<sub>x</sub></td>
-							</tr>
-							<tr>
-								<td>p<sub>y</sub></td>
-							</tr>
-							<tr>
-								<td>p<sub>z</sub></td>
-							</tr>
-						</table>
+						\begin{bmatrix}
+						rot_{11} & rot_{12} & rot_{13} & tr_1 \\
+						rot_{21} & rot_{22} & rot_{23} & tr_2 \\
+						rot_{31} & rot_{32} & rot_{33} & tr_3 \\
+						0 & 0 & 0 & 1
+						\end{bmatrix}
 						*
-						<table class="matrix">
-							<tr>
-								<td>1</td>
-								<td>0</td>
-								<td>0</td>
-							</tr>
-							<tr>
-								<td>0</td>
-								<td>cos(θ)</td>
-								<td>-sin(θ)</td>
-							</tr>
-							<tr>
-								<td>0</td>
-								<td>sin(θ)</td>
-								<td>cos(θ)</td>
-							</tr>
-						</table>
-					</blockquote>
+						\begin{bmatrix}
+						p_x \\ p_y \\ p_z \\ 1
+						\end{bmatrix}
+						\]
+					</p>
 				</section>
 
 				<section>
@@ -125,13 +127,13 @@
 				</section>
 
 				<section>
-					<p>Moving out of wireframe: rasterizing triangles</p>
-					<img height="300" src="image/scanline.png" />
-					<ul>
-						<li>Horizontally split triangle at middle vertex's height</li>
-						<li>Draw both of them with horizontal lines</li>
-						<li>Use linear interpolation between x<sub>t</sub>, x<sub>m1</sub>, x<sub>m2</sub> &amp; x<sub>b</sub>
-					</ul>
+					<p>Rasterizing triangles</p>
+					<div class="r-stack">
+						<img height="400" src="image/scanline-1.svg" />
+						<img height="400" src="image/scanline-2.svg" class="fragment fade-in" data-fragment-index="1" />
+					</div>
+					<p class="fragment fade-in" data-fragment-index="1">\[s1_x = b1_x + (a_x - b1_x) * y / (b1_y -
+						a1_y)\]</p>
 				</section>
 
 				<section>
@@ -197,7 +199,8 @@
 						<ul>
 							<li>Popularized in 2004 from Cornell University research</li>
 							<li>More reallistic lighting model than Phong one</li>
-							<li>Approximate real world physical properties (conservation of energy, fresnel reflectivity, etc.)</li>
+							<li>Approximate real world physical properties (conservation of energy, fresnel
+								reflectivity, etc.)</li>
 							<li>Used in modern 3D engines (UE4, Unity)</li>
 						</ul>
 					</section>
@@ -282,34 +285,39 @@
 					<p>Resources:</p>
 					<ul>
 						<li><a href="https://glumpy.github.io/modern-gl.html">Model OpenGL</a></li>
-						<li><a href="https://blenderartists.org/forum/showthread.php?401209-Cycles-Parallax-(step)-mapping-shader-with-Silhouette-Occlusion-Download">Blender Artists</a></li>
-						<li><a href="https://learnopengl.com/Advanced-Lighting/Deferred-Shading">LearnOpenGL - Deferred Shading</a></li>
-						<li><a href="https://en.wikipedia.org/wiki/Phong_reflection_model">Phong reflection model</a></li>
-						<li><a href="https://www.scratchapixel.com/lessons/3d-basic-rendering/phong-shader-BRDF">The Phong Model and the concepts of Illumination Models and BRDF</a></li>
+						<li><a
+								href="https://blenderartists.org/forum/showthread.php?401209-Cycles-Parallax-(step)-mapping-shader-with-Silhouette-Occlusion-Download">Blender
+								Artists</a></li>
+						<li><a href="https://learnopengl.com/Advanced-Lighting/Deferred-Shading">LearnOpenGL - Deferred
+								Shading</a></li>
+						<li><a href="https://en.wikipedia.org/wiki/Phong_reflection_model">Phong reflection model</a>
+						</li>
+						<li><a href="https://www.scratchapixel.com/lessons/3d-basic-rendering/phong-shader-BRDF">The
+								Phong Model and the concepts of Illumination Models and BRDF</a></li>
 						<li><a href="http://webreference.com/3d/lesson18/part2.html">3D Animation Workshop</a></li>
-						<li><a href="http://www.songho.ca/opengl/gl_projectionmatrix.html">OpenGL Projection Matrix</a></li>
+						<li><a href="http://www.songho.ca/opengl/gl_projectionmatrix.html">OpenGL Projection Matrix</a>
+						</li>
 					</ul>
 				</section>
 			</div>
 		</div>
 
-		<script src="lib/js/head.min.js"></script>
-		<script src="js/reveal.js"></script>
+		<script src="dist/reveal.js"></script>
+		<script src="plugin/notes/notes.js"></script>
+		<script src="plugin/markdown/markdown.js"></script>
+		<script src="plugin/math/math.js"></script>
+		<script src="plugin/highlight/highlight.js"></script>
 
 		<script>
 			Reveal.initialize({
-				allottedTime: 45 * 60 * 1000,
-				controlsTutorial: false,
-				defaultTiming: 120,
-				dependencies: [
-					{ src: 'plugin/elapsed-time-bar/elapsed-time-bar.js' },
-					{ src: 'plugin/markdown/marked.js' },
-					{ src: 'plugin/markdown/markdown.js' },
-					{ src: 'plugin/notes/notes.js', async: true },
-					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
-				],
 				history: true,
-				transition:'convex'
+				plugins: [
+					RevealMarkdown,
+					RevealHighlight,
+					RevealMath.KaTeX,
+					RevealNotes
+				],
+				transition: 'convex'
 			});
 		</script>
 	</body>
