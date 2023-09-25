@@ -116,7 +116,7 @@ vec3 pbrLight(in ${resultLightType} light, in ${materialType} material, in vec3 
 	vec3 specularContrib = F * G * D / (4.0 * NdotL * NdotV);
 
 	// Obtain final intensity as reflectance (BRDF) scaled by the energy of the light (cosine law)
-	return light.color * light.power * NdotL * (diffuseContrib + specularContrib);
+	return light.color * light.strength * NdotL * (diffuseContrib + specularContrib);
 }`,
 
   invoke: (

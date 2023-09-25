@@ -33,7 +33,7 @@ struct ${directionalLightType} {
 struct ${resultLightType} {
 	vec3 color;
 	vec3 direction;
-	float power;
+	float strength;
 };
 #endif
 
@@ -62,7 +62,7 @@ struct ${pointLightType} {
 struct ${resultLightType} {
 	vec3 color;
 	vec3 direction;
-	float power;
+	float strength;
 };
 #endif
 

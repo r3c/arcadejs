@@ -95,6 +95,7 @@ uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 uniform sampler2D glossinessMap;
+uniform float glossinessStrength;
 uniform sampler2D normalMap;
 uniform float shininess;
 
@@ -141,7 +142,7 @@ void main(void) {
   )};
 	vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-	float glossiness = texture(glossinessMap, coordParallax).r;
+	float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
 	float unused = 0.0;
 
 	normalAndGlossiness = vec4(normalPack, unused, glossiness);
@@ -304,13 +305,12 @@ void main(void) {
 
   ${phongLightType} phongLight = ${phongLightCast.invoke(
   "light",
-  "glossiness",
   "shininess",
   "normal",
   "eye"
 )};
 
-	vec3 color = ${phongLightApply.invoke("phongLight", "albedo")};
+	vec3 color = ${phongLightApply.invoke("phongLight", "albedo", "glossiness")};
 
 	fragColor = vec4(color, 1.0);
 }`;
@@ -511,6 +511,10 @@ const loadGeometryPainter = (
     materialBinding.setUniform(
       "glossinessMap",
       shaderUniform.tex2dWhite(({ albedoMap: a, glossMap: g }) => g ?? a)
+    );
+    materialBinding.setUniform(
+      "glossinessStrength",
+      shaderUniform.number(({ glossFactor }) => glossFactor[0])
     );
     materialBinding.setUniform(
       "shininess",

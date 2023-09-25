@@ -84,6 +84,7 @@ void main(void) {
 
 const geometryFragmentShader = `
 uniform sampler2D glossinessMap;
+uniform float glossinessStrength;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -124,7 +125,7 @@ void main(void) {
   )};
 	vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-	float glossiness = texture(glossinessMap, coordParallax).r;
+	float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
 	float shininessPack = ${shininessEncode.invoke("shininess")};
 
 	normalAndGlossiness = vec4(normalPack, shininessPack, glossiness);
@@ -247,14 +248,16 @@ void main(void) {
 
   ${phongLightType} phongLight = ${phongLightCast.invoke(
   "light",
-  "glossiness",
   "shininess",
   "normal",
   "eye"
 )};
 
 	// Emit lighting parameters
-	fragColor = exp2(-vec4(phongLight.diffuseFactor * phongLight.color, phongLight.specularFactor));
+	vec3 diffuseColor = phongLight.diffuseStrength * phongLight.color;
+	float specularColor = phongLight.specularStrength; // Note: specular light approximate using ony channel
+
+	fragColor = exp2(-vec4(diffuseColor, specularColor));
 }`;
 
 const materialVertexShader = `
@@ -293,8 +296,8 @@ uniform sampler2D lightBuffer;
 
 uniform vec4 albedoFactor;
 uniform sampler2D albedoMap;
-uniform float glossinessFactor;
 uniform sampler2D glossinessMap;
+uniform float glossinessStrength;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -316,10 +319,6 @@ void main(void) {
 	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 	vec4 lightSample = -log2(texelFetch(lightBuffer, bufferCoord, 0));
 
-	vec3 ambientLight = ambientLightColor * float(LIGHT_MODEL_AMBIENT);
-	vec3 diffuseLight = lightSample.rgb * float(LIGHT_MODEL_PHONG_DIFFUSE);
-	vec3 specularLight = lightSample.rgb * lightSample.a * float(LIGHT_MODEL_PHONG_SPECULAR); // FIXME: not accurate, depends on diffuse RGB instead of specular RGB
-
 	// Read material properties from uniforms
 	mat3 tbn = mat3(tangent, bitangent, normal);
 
@@ -335,11 +334,16 @@ void main(void) {
 
   vec4 albedoSample = texture(albedoMap, coordParallax);
 	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke("albedoSample.rgb")};
-	float glossiness = glossinessFactor * texture(glossinessMap, coordParallax).r;
+	float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
 
 	// Emit final fragment color
-	// FIXME: partial duplicate of "phonglightApply" code
-	vec3 color = albedo * (ambientLight + diffuseLight) + glossiness * specularLight;
+  vec3 diffuseLightColor = lightSample.rgb;
+  vec3 specularLightColor = vec3(lightSample.a); // Note: specular light approximate using ony channel
+
+  vec3 color =
+    albedo * ambientLightColor * float(LIGHT_MODEL_AMBIENT) +
+    albedo * diffuseLightColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
+    glossiness * specularLightColor * float(LIGHT_MODEL_PHONG_SPECULAR);
 
 	fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
@@ -435,6 +439,10 @@ const loadGeometryPainter = (
     materialBinding.setUniform(
       "glossinessMap",
       shaderUniform.tex2dWhite(({ albedoMap: a, glossMap: g }) => g ?? a)
+    );
+    materialBinding.setUniform(
+      "glossinessStrength",
+      shaderUniform.number(({ glossFactor }) => glossFactor[0])
     );
     materialBinding.setUniform(
       "shininess",
@@ -650,12 +658,12 @@ const loadMaterialPainter = (
 
   if (configuration.lightModel >= DeferredLightingLightModel.Phong) {
     materialBinding.setUniform(
-      "glossinessFactor",
-      shaderUniform.number(({ glossFactor }) => glossFactor[0])
-    );
-    materialBinding.setUniform(
       "glossinessMap",
       shaderUniform.tex2dBlack(({ glossMap }) => glossMap)
+    );
+    materialBinding.setUniform(
+      "glossinessStrength",
+      shaderUniform.number(({ glossFactor }) => glossFactor[0])
     );
   }
 

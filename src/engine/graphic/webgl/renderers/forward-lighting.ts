@@ -276,13 +276,16 @@ vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 
 	#if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
     ${phongLightType} phongLight = ${phongLightCast.invoke(
   "light",
-  "material.glossiness",
   "material.shininess",
   "normal",
   "eyeDirection"
 )};
 
-		return ${phongLightApply.invoke("phongLight", "material.albedo.rgb")};
+		return ${phongLightApply.invoke(
+      "phongLight",
+      "material.albedo.rgb",
+      "material.glossiness"
+    )};
 	#elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
 		return ${pbrLight.invoke("light", "material", "normal", "eyeDirection")};
 	#endif

@@ -3,36 +3,36 @@ import { resultLightType } from "./light";
 
 const phongLightType = "PhongLight";
 
-const phongLightApply: GlShaderFunction<[string, string], [string, string]> = {
+const phongLightApply: GlShaderFunction<
+  [string, string],
+  [string, string, string]
+> = {
   declare: (diffuseDirective: string, specularDirective: string) => `
 struct ${phongLightType} {
   vec3 color;
-  float diffuseFactor;
-  float specularFactor;
+  float diffuseStrength;
+  float specularStrength;
 };
 
-vec3 phongLightApply(in ${phongLightType} lightCast, in vec3 materialAlbedo) {
+vec3 phongLightApply(in ${phongLightType} lightCast, in vec3 albedo, in float glossiness) {
   return
-    lightCast.diffuseFactor * lightCast.color * materialAlbedo * float(${diffuseDirective}) +
-    lightCast.specularFactor * lightCast.color * float(${specularDirective});
+    lightCast.diffuseStrength * lightCast.color * albedo * float(${diffuseDirective}) +
+    lightCast.specularStrength * lightCast.color * glossiness * float(${specularDirective});
 }`,
 
-  invoke: (lightCast: string, materialAlbedo: string) =>
-    `phongLightApply(${lightCast}, ${materialAlbedo})`,
+  invoke: (lightCast: string, albedo: string, glossiness: string) =>
+    `phongLightApply(${lightCast}, ${albedo}, ${glossiness})`,
 };
 
-const phongLightCast: GlShaderFunction<
-  [],
-  [string, string, string, string, string]
-> = {
+const phongLightCast: GlShaderFunction<[], [string, string, string, string]> = {
   declare: () => `
-float phongLightDiffusePower(in ${resultLightType} light, in vec3 normal) {
+float phongLightDiffuseStrength(in ${resultLightType} light, in vec3 normal) {
   float lightNormalCosine = dot(normal, light.direction);
 
   return clamp(lightNormalCosine, 0.0, 1.0);
 }
 
-float phongLightSpecularPower(in ${resultLightType} light, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eye) {
+float phongLightSpecularStrength(in ${resultLightType} light, in float shininess, in vec3 normal, in vec3 eye) {
   float lightNormalCosine = dot(normal, light.direction);
   float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
@@ -48,24 +48,18 @@ float phongLightSpecularPower(in ${resultLightType} light, in float materialGlos
     float lightCosine = max(dot(normal, cameraLightMidway), 0.0);
   #endif
 
-  return materialGlossiness * pow(lightCosine, materialShininess) * lightVisible;
+  return pow(lightCosine, shininess) * lightVisible;
 }
 
-${phongLightType} phongLightCast(in ${resultLightType} light, in float materialGlossiness, in float materialShininess, in vec3 normal, in vec3 eye) {
-  float diffuseFactor = phongLightDiffusePower(light, normal);
-  float specularFactor = phongLightSpecularPower(light, materialGlossiness, materialShininess, normal, eye);
+${phongLightType} phongLightCast(in ${resultLightType} light, in float shininess, in vec3 normal, in vec3 eye) {
+  float diffuseStrength = phongLightDiffuseStrength(light, normal);
+  float specularStrength = phongLightSpecularStrength(light, shininess, normal, eye);
 
-  return ${phongLightType}(light.color, diffuseFactor * light.power, specularFactor * light.power);
+  return ${phongLightType}(light.color, diffuseStrength * light.strength, specularStrength * light.strength);
 }`,
 
-  invoke: (
-    light: string,
-    materialGlossiness: string,
-    materialShininess: string,
-    normal: string,
-    eye: string
-  ) =>
-    `phongLightCast(${light}, ${materialGlossiness}, ${materialShininess}, ${normal}, ${eye})`,
+  invoke: (light: string, shininess: string, normal: string, eye: string) =>
+    `phongLightCast(${light}, ${shininess}, ${normal}, ${eye})`,
 };
 
 export { phongLightApply, phongLightCast, phongLightType };
