@@ -2,21 +2,19 @@
 
 ## ToDo
 
-- Fix sRGB/RGB not applied in deferred shading
-- Strong typing for tweaks
-- Strong typing for snippets
 - Implement directional light shadow maps for deferred {shading,lighting}
 - Implement point light shadow maps
 - Implement smooth shadows
 - Implement PBR lighting model for deferred {shading,lighting}
-- Use RGB standard to linear conversion in deferred shader
 - Extract model textures out of materials to factorize bitmaps
 - Split scene update and draw to perform batch sorting only on change
 - Support animated models and load animations from glTF files
 
 ## Done
 
-- Fix deferred point lights bug when light is behind camera (due to quad not being drawn) [billboard-hack]
+- Fix sRGB/RGB not applied in deferred shading
+- Strong typing for tweaks
+- Strong typing for snippets- Fix deferred point lights bug when light is behind camera (due to quad not being drawn) [billboard-hack]
 - Fix directional shadow scene
 - Provide `VectorN.fromXYZ(x, y, z)` and replace compatible usages of `VectorN.fromObject(o)`
 - Rename WebGL types and import them individually to avoid webgl.Type references
