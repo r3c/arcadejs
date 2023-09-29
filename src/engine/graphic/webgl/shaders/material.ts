@@ -20,32 +20,32 @@ const materialSample: GlShaderFunction<
 > = {
   declare: () => `
 struct ${materialType} {
-	vec4 albedo;
-	float glossiness;
-	float metalness;
-	float roughness;
-	float shininess;
+  vec4 albedo;
+  float glossiness;
+  float metalness;
+  float roughness;
+  float shininess;
 };
 
 ${materialType} materialSample(
-	in sampler2D albedoMap, in vec4 albedoFactor, in sampler2D glossinessMap, in float glossinessStrength,
-	in sampler2D metalnessMap, in float metalnessStrength, in sampler2D roughnessMap, in float roughnessStrength,
-	in float shininess, in vec2 coordinate) {
+  in sampler2D albedoMap, in vec4 albedoFactor, in sampler2D glossinessMap, in float glossinessStrength,
+  in sampler2D metalnessMap, in float metalnessStrength, in sampler2D roughnessMap, in float roughnessStrength,
+  in float shininess, in vec2 coordinate) {
   vec4 albedoSample = texture(albedoMap, coordinate);
-	vec4 albedo = albedoFactor * vec4(${standardToLinear.invoke(
+  vec4 albedo = albedoFactor * vec4(${standardToLinear.invoke(
     `albedoSample.rgb`
   )}, albedoSample.a);
-	float glossiness = glossinessStrength * texture(glossinessMap, coordinate).r;
-	float metalness = metalnessStrength * texture(metalnessMap, coordinate).r;
-	float roughness = roughnessStrength * texture(roughnessMap, coordinate).r;
+  float glossiness = glossinessStrength * texture(glossinessMap, coordinate).r;
+  float metalness = metalnessStrength * texture(metalnessMap, coordinate).r;
+  float roughness = roughnessStrength * texture(roughnessMap, coordinate).r;
 
-	return ${materialType}(
-		albedo,
-		glossiness,
-		clamp(metalness, 0.0, 1.0),
-		clamp(roughness, 0.04, 1.0),
-		shininess
-	);
+  return ${materialType}(
+    albedo,
+    glossiness,
+    clamp(metalness, 0.0, 1.0),
+    clamp(roughness, 0.04, 1.0),
+    shininess
+  );
 }`,
 
   invoke: (

@@ -308,7 +308,6 @@ class Input {
 
   /**
    * Reset mouse offset location.
-   * input:	input instance
    */
   private mouseRelocate() {
     let mouseOffsetX = 0;

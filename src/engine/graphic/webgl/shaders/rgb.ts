@@ -15,7 +15,7 @@ const linearToStandard: GlShaderFunction<[], [string]> = {
 const standardToLinear: GlShaderFunction<[], [string]> = {
   declare: (): string => `
 vec3 rgbStandardToLinear(vec3 standard) {
-	return pow(standard.rgb, vec3(2.2));
+  return pow(standard.rgb, vec3(2.2));
 }`,
 
   invoke: (standard: string): string => `rgbStandardToLinear(${standard})`,

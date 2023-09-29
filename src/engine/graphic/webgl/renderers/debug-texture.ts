@@ -26,9 +26,9 @@ in vec3 position;
 out vec2 coord;
 
 void main(void) {
-	coord = coordinate;
+  coord = coordinate;
 
-	gl_Position = modelMatrix * vec4(position, 1.0);
+  gl_Position = modelMatrix * vec4(position, 1.0);
 }`;
 
 const fragmentSource = `
@@ -43,56 +43,56 @@ in vec2 coord;
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-	vec4 encoded;
-	vec4 raw = texture(source, coord);
+  vec4 encoded;
+  vec4 raw = texture(source, coord);
 
-	// Read 4 bytes, 1 possible configuration
-	#if CHANNEL == ${DebugTextureChannel.Identity}
-		encoded = raw;
+  // Read 4 bytes, 1 possible configuration
+  #if CHANNEL == ${DebugTextureChannel.Identity}
+    encoded = raw;
 
-	// Read 3 bytes, 2 possible configurations
-	#elif CHANNEL == ${DebugTextureChannel.RedGreenBlue}
-		encoded = vec4(raw.rgb, 1.0);
-	#elif CHANNEL == ${DebugTextureChannel.GreenBlueAlpha}
-		encoded = vec4(raw.gba, 1.0);
+  // Read 3 bytes, 2 possible configurations
+  #elif CHANNEL == ${DebugTextureChannel.RedGreenBlue}
+    encoded = vec4(raw.rgb, 1.0);
+  #elif CHANNEL == ${DebugTextureChannel.GreenBlueAlpha}
+    encoded = vec4(raw.gba, 1.0);
 
-	// Read 2 bytes, 3 possible configurations
-	#elif CHANNEL == ${DebugTextureChannel.RedGreen}
-		encoded = vec4(raw.rg, raw.rg);
-	#elif CHANNEL == ${DebugTextureChannel.GreenBlue}
-		encoded = vec4(raw.gb, raw.gb);
-	#elif CHANNEL == ${DebugTextureChannel.BlueAlpha}
-		encoded = vec4(raw.ba, raw.ba);
+  // Read 2 bytes, 3 possible configurations
+  #elif CHANNEL == ${DebugTextureChannel.RedGreen}
+    encoded = vec4(raw.rg, raw.rg);
+  #elif CHANNEL == ${DebugTextureChannel.GreenBlue}
+    encoded = vec4(raw.gb, raw.gb);
+  #elif CHANNEL == ${DebugTextureChannel.BlueAlpha}
+    encoded = vec4(raw.ba, raw.ba);
 
-	// Read 1 byte, 4 possible configurations
-	#elif CHANNEL == ${DebugTextureChannel.Red}
-		encoded = vec4(raw.r);
-	#elif CHANNEL == ${DebugTextureChannel.Green}
-		encoded = vec4(raw.g);
-	#elif CHANNEL == ${DebugTextureChannel.Blue}
-		encoded = vec4(raw.b);
-	#elif CHANNEL == ${DebugTextureChannel.Alpha}
-		encoded = vec4(raw.a);
-	#endif
+  // Read 1 byte, 4 possible configurations
+  #elif CHANNEL == ${DebugTextureChannel.Red}
+    encoded = vec4(raw.r);
+  #elif CHANNEL == ${DebugTextureChannel.Green}
+    encoded = vec4(raw.g);
+  #elif CHANNEL == ${DebugTextureChannel.Blue}
+    encoded = vec4(raw.b);
+  #elif CHANNEL == ${DebugTextureChannel.Alpha}
+    encoded = vec4(raw.a);
+  #endif
 
-	// Format output
-	#if ENCODING == ${DebugTextureEncoding.Identity}
-		fragColor = encoded;
-	#elif ENCODING == ${DebugTextureEncoding.LinearRGB}
-		fragColor = vec4(${linearToStandard.invoke("encoded.rgb")}, 1.0);
-	#elif ENCODING == ${DebugTextureEncoding.Monochrome}
-		fragColor = vec4(encoded.rrr, 1.0);
-	#elif ENCODING == ${DebugTextureEncoding.Depth}
-		fragColor = vec4(${linearDepth.invoke(
+  // Format output
+  #if ENCODING == ${DebugTextureEncoding.Identity}
+    fragColor = encoded;
+  #elif ENCODING == ${DebugTextureEncoding.LinearRGB}
+    fragColor = vec4(${linearToStandard.invoke("encoded.rgb")}, 1.0);
+  #elif ENCODING == ${DebugTextureEncoding.Monochrome}
+    fragColor = vec4(encoded.rrr, 1.0);
+  #elif ENCODING == ${DebugTextureEncoding.Depth}
+    fragColor = vec4(${linearDepth.invoke(
       "encoded.r",
       "float(ZNEAR)",
       "float(ZFAR)"
     )}, 1.0);
-	#elif ENCODING == ${DebugTextureEncoding.Spheremap}
-		fragColor = vec4(${normalDecode.invoke("encoded.rg")}, 1.0);
-	#elif ENCODING == ${DebugTextureEncoding.Log2RGB}
-		fragColor = vec4(-log2(encoded.rgb), 1.0);
-	#endif
+  #elif ENCODING == ${DebugTextureEncoding.Spheremap}
+    fragColor = vec4(${normalDecode.invoke("encoded.rg")}, 1.0);
+  #elif ENCODING == ${DebugTextureEncoding.Log2RGB}
+    fragColor = vec4(-log2(encoded.rgb), 1.0);
+  #endif
 }`;
 
 type DebugTextureConfiguration = {

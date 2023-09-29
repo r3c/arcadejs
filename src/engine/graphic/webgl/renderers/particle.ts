@@ -92,12 +92,12 @@ out vec2 coordinate;
 out vec4 tint;
 
 void main(void) {
-	  coordinate = particleCoordinate;
+    coordinate = particleCoordinate;
     tint = particleTint;
 
     gl_Position =
       projectionMatrix * billboardMatrix * vec4(particleCorner, 0.0, 0.0) +
-		  projectionMatrix * viewMatrix * vec4(particlePosition, 1.0);
+      projectionMatrix * viewMatrix * vec4(particlePosition, 1.0);
 }`;
 
 const particleFragmentShader = `
@@ -109,9 +109,9 @@ in vec4 tint;
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-	vec4 emissiveColor = texture(sprite, coordinate);
+  vec4 emissiveColor = texture(sprite, coordinate);
 
-	fragColor = emissiveColor * tint;
+  fragColor = emissiveColor * tint;
 }`;
 
 const createBillboard = (

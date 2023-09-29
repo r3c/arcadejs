@@ -70,16 +70,16 @@ out vec3 point; // Point position in camera space
 out vec3 tangent; // Tangent at point in camera space
 
 void main(void) {
-	vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
+  vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
 
-	coord = coordinate;
-	normal = normalize(normalMatrix * normals);
-	point = pointCamera.xyz;
-	tangent = normalize(normalMatrix * tangents);
+  coord = coordinate;
+  normal = normalize(normalMatrix * normals);
+  point = pointCamera.xyz;
+  tangent = normalize(normalMatrix * tangents);
 
-	bitangent = cross(normal, tangent);
+  bitangent = cross(normal, tangent);
 
-	gl_Position = projectionMatrix * pointCamera;
+  gl_Position = projectionMatrix * pointCamera;
 }`;
 
 const geometryFragmentShader = `
@@ -105,10 +105,10 @@ in vec3 tangent;
 layout(location=0) out vec4 normalAndGlossiness;
 
 void main(void) {
-	mat3 tbn = mat3(tangent, bitangent, normal);
+  mat3 tbn = mat3(tangent, bitangent, normal);
 
-	vec3 eye = normalize(-point);
-	vec2 coordParallax = ${parallaxPerturb.invoke(
+  vec3 eye = normalize(-point);
+  vec2 coordParallax = ${parallaxPerturb.invoke(
     "heightMap",
     "coord",
     "eye",
@@ -117,18 +117,18 @@ void main(void) {
     "tbn"
   )};
 
-	// Color target: [normal.xy, shininess, glossiness]
-	vec3 normalModified = ${normalPerturb.invoke(
+  // Color target: [normal.xy, shininess, glossiness]
+  vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
     "tbn"
   )};
-	vec2 normalPack = ${normalEncode.invoke("normalModified")};
+  vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-	float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
-	float shininessPack = ${shininessEncode.invoke("shininess")};
+  float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
+  float shininessPack = ${shininessEncode.invoke("shininess")};
 
-	normalAndGlossiness = vec4(normalPack, shininessPack, glossiness);
+  normalAndGlossiness = vec4(normalPack, shininessPack, glossiness);
 }`;
 
 const lightHeaderShader = `
@@ -160,26 +160,26 @@ out float pointLightRadius;
 #endif
 
 vec3 toCameraDirection(in vec3 worldDirection) {
-	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
+  return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
 }
 
 vec3 toCameraPosition(in vec3 worldPosition) {
-	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
+  return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
 }
 
 void main(void) {
-	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-		lightDistanceCamera = toCameraDirection(directionalLight.direction);
-	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
-		lightPositionCamera = toCameraPosition(lightPosition);
+  #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
+    lightDistanceCamera = toCameraDirection(directionalLight.direction);
+  #elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
+    lightPositionCamera = toCameraPosition(lightPosition);
     pointLightColor = lightColor;
     pointLightPosition = lightPosition;
     pointLightRadius = lightRadius;
-	#endif
+  #endif
 
-	gl_Position =
-		projectionMatrix * viewMatrix * modelMatrix * vec4(lightPosition, 1.0) +
-		projectionMatrix * billboardMatrix * modelMatrix * vec4(lightShift, 0.0);
+  gl_Position =
+    projectionMatrix * viewMatrix * modelMatrix * vec4(lightPosition, 1.0) +
+    projectionMatrix * billboardMatrix * modelMatrix * vec4(lightShift, 0.0);
 }`;
 
 const lightFragmentShader = `
@@ -208,43 +208,43 @@ in float pointLightRadius;
 layout(location=0) out vec4 fragColor;
 
 vec3 getPoint(in vec2 fragCoord, in float fragDepth) {
-	vec4 pointClip = vec4(fragCoord, fragDepth, 1.0) * 2.0 - 1.0;
-	vec4 pointCamera = inverseProjectionMatrix * pointClip;
+  vec4 pointClip = vec4(fragCoord, fragDepth, 1.0) * 2.0 - 1.0;
+  vec4 pointCamera = inverseProjectionMatrix * pointClip;
 
-	return pointCamera.xyz / pointCamera.w;
+  return pointCamera.xyz / pointCamera.w;
 }
 
 void main(void) {
-	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
+  ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
-	// Read samples from texture buffers
-	vec4 normalAndGlossinessSample = texelFetch(normalAndGlossinessBuffer, bufferCoord, 0);
-	vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
+  // Read samples from texture buffers
+  vec4 normalAndGlossinessSample = texelFetch(normalAndGlossinessBuffer, bufferCoord, 0);
+  vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
-	// Decode geometry
-	vec3 normal = ${normalDecode.invoke("normalAndGlossinessSample.rg")};
+  // Decode geometry
+  vec3 normal = ${normalDecode.invoke("normalAndGlossinessSample.rg")};
 
-	// Decode material properties
-	float glossiness = normalAndGlossinessSample.a;
-	float shininess = ${shininessDecode.invoke("normalAndGlossinessSample.b")};
+  // Decode material properties
+  float glossiness = normalAndGlossinessSample.a;
+  float shininess = ${shininessDecode.invoke("normalAndGlossinessSample.b")};
 
-	// Compute point in camera space from fragment coord and depth buffer
-	vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
-	vec3 eye = normalize(-point);
+  // Compute point in camera space from fragment coord and depth buffer
+  vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
+  vec3 eye = normalize(-point);
 
-	// Compute lightning parameters
-	#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-		${resultLightType} light = ${directionalLight.invoke(
+  // Compute lightning parameters
+  #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
+    ${resultLightType} light = ${directionalLight.invoke(
   "directionalLight",
   "lightDistanceCamera"
 )};
-	#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
+  #elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
     ${pointLightType} pointLight = ${pointLightType}(pointLightColor, pointLightPosition, pointLightRadius);
-		${resultLightType} light = ${pointLight.invoke(
+    ${resultLightType} light = ${pointLight.invoke(
   "pointLight",
   "lightPositionCamera - point"
 )};
-	#endif
+  #endif
 
   ${phongLightType} phongLight = ${phongLightCast.invoke(
   "light",
@@ -253,11 +253,11 @@ void main(void) {
   "eye"
 )};
 
-	// Emit lighting parameters
-	vec3 diffuseColor = phongLight.diffuseStrength * phongLight.color;
-	float specularColor = phongLight.specularStrength; // Note: specular light approximate using ony channel
+  // Emit lighting parameters
+  vec3 diffuseColor = phongLight.diffuseStrength * phongLight.color;
+  float specularColor = phongLight.specularStrength; // Note: specular light approximate using ony channel
 
-	fragColor = exp2(-vec4(diffuseColor, specularColor));
+  fragColor = exp2(-vec4(diffuseColor, specularColor));
 }`;
 
 const materialVertexShader = `
@@ -278,16 +278,16 @@ out vec3 point;
 out vec3 tangent;
 
 void main(void) {
-	vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
+  vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
 
-	normal = normalize(normalMatrix * normals);
-	tangent = normalize(normalMatrix * tangents);
+  normal = normalize(normalMatrix * normals);
+  tangent = normalize(normalMatrix * tangents);
 
-	bitangent = cross(normal, tangent);
-	coord = coordinate;
-	point = pointCamera.xyz;
+  bitangent = cross(normal, tangent);
+  coord = coordinate;
+  point = pointCamera.xyz;
 
-	gl_Position = projectionMatrix * pointCamera;
+  gl_Position = projectionMatrix * pointCamera;
 }`;
 
 const materialFragmentShader = `
@@ -315,15 +315,15 @@ in vec3 tangent;
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-	// Read light properties from texture buffers
-	ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
-	vec4 lightSample = -log2(texelFetch(lightBuffer, bufferCoord, 0));
+  // Read light properties from texture buffers
+  ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
+  vec4 lightSample = -log2(texelFetch(lightBuffer, bufferCoord, 0));
 
-	// Read material properties from uniforms
-	mat3 tbn = mat3(tangent, bitangent, normal);
+  // Read material properties from uniforms
+  mat3 tbn = mat3(tangent, bitangent, normal);
 
-	vec3 eye = normalize(-point);
-	vec2 coordParallax = ${parallaxPerturb.invoke(
+  vec3 eye = normalize(-point);
+  vec2 coordParallax = ${parallaxPerturb.invoke(
     "heightMap",
     "coord",
     "eye",
@@ -333,10 +333,12 @@ void main(void) {
   )};
 
   vec4 albedoSample = texture(albedoMap, coordParallax);
-	vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke("albedoSample.rgb")};
-	float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
+  vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke(
+    "albedoSample.rgb"
+  )};
+  float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
 
-	// Emit final fragment color
+  // Emit final fragment color
   vec3 diffuseLightColor = lightSample.rgb;
   vec3 specularLightColor = vec3(lightSample.a); // Note: specular light approximate using ony channel
 
@@ -345,7 +347,7 @@ void main(void) {
     albedo * diffuseLightColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
     glossiness * specularLightColor * float(LIGHT_MODEL_PHONG_SPECULAR);
 
-	fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
+  fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
 
 type DeferredLightingConfiguration = {

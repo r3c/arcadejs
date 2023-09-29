@@ -118,10 +118,10 @@ ${directionalLight.declare("HAS_SHADOW")}
 ${pointLight.declare("HAS_SHADOW")}
 
 const mat4 texUnitConverter = mat4(
-	0.5, 0.0, 0.0, 0.0,
-	0.0, 0.5, 0.0, 0.0,
-	0.0, 0.0, 0.5, 0.0,
-	0.5, 0.5, 0.5, 1.0
+  0.5, 0.0, 0.0, 0.0,
+  0.0, 0.5, 0.0, 0.0,
+  0.0, 0.0, 0.5, 0.0,
+  0.5, 0.5, 0.5, 1.0
 );
 
 uniform vec3 ambientLightColor;
@@ -171,46 +171,46 @@ out vec3 pointLightDistances[${Math.max(maxPointLights, 1)}];
 out vec3 pointLightShadows[${Math.max(maxPointLights, 1)}];
 
 vec3 toCameraDirection(in vec3 worldDirection) {
-	return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
+  return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
 }
 
 vec3 toCameraPosition(in vec3 worldPosition) {
-	return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
+  return (viewMatrix * vec4(worldPosition, 1.0)).xyz;
 }
 
 void main(void) {
-	vec4 pointWorld = modelMatrix * vec4(position, 1.0);
-	vec4 pointCamera = viewMatrix * pointWorld;
+  vec4 pointWorld = modelMatrix * vec4(position, 1.0);
+  vec4 pointCamera = viewMatrix * pointWorld;
 
-	// Process directional lights
-	for (int i = 0; i < ${maxDirectionalLights}; ++i) {
-		#ifdef HAS_SHADOW
-			if (directionalLights[i].castShadow) {
-				vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * pointWorld;
+  // Process directional lights
+  for (int i = 0; i < ${maxDirectionalLights}; ++i) {
+    #ifdef HAS_SHADOW
+      if (directionalLights[i].castShadow) {
+        vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * pointWorld;
 
-				directionalLightShadows[i] = pointShadow.xyz;
-			}
-		#endif
+        directionalLightShadows[i] = pointShadow.xyz;
+      }
+    #endif
 
-		directionalLightDistances[i] = toCameraDirection(directionalLights[i].direction);
-	}
+    directionalLightDistances[i] = toCameraDirection(directionalLights[i].direction);
+  }
 
-	// Process point lights
-	for (int i = 0; i < ${maxPointLights}; ++i) {
-		#ifdef HAS_SHADOW
-			// FIXME: shadow map code
-		#endif
+  // Process point lights
+  for (int i = 0; i < ${maxPointLights}; ++i) {
+    #ifdef HAS_SHADOW
+      // FIXME: shadow map code
+    #endif
 
-		pointLightDistances[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
-	}
+    pointLightDistances[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
+  }
 
-	coord = coordinate;
-	eye = -pointCamera.xyz;
-	normal = normalize(normalMatrix * normals);
-	tangent = normalize(normalMatrix * tangents);
-	bitangent = cross(normal, tangent);
+  coord = coordinate;
+  eye = -pointCamera.xyz;
+  normal = normalize(normalMatrix * normals);
+  tangent = normalize(normalMatrix * tangents);
+  bitangent = cross(normal, tangent);
 
-	gl_Position = projectionMatrix * pointCamera;
+  gl_Position = projectionMatrix * pointCamera;
 }`;
 
 const lightFragmentShader = (
@@ -273,7 +273,7 @@ in vec3 pointLightShadows[${Math.max(maxPointLights, 1)}];
 layout(location=0) out vec4 fragColor;
 
 vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
-	#if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
+  #if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
     ${phongLightType} phongLight = ${phongLightCast.invoke(
   "light",
   "material.shininess",
@@ -281,21 +281,21 @@ vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 
   "eyeDirection"
 )};
 
-		return ${phongLightApply.invoke(
+    return ${phongLightApply.invoke(
       "phongLight",
       "material.albedo.rgb",
       "material.glossiness"
     )};
-	#elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
-		return ${pbrLight.invoke("light", "material", "normal", "eyeDirection")};
-	#endif
+  #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
+    return ${pbrLight.invoke("light", "material", "normal", "eyeDirection")};
+  #endif
 }
 
 void main(void) {
-	mat3 tbn = mat3(tangent, bitangent, normal);
+  mat3 tbn = mat3(tangent, bitangent, normal);
 
-	vec3 eyeDirection = normalize(eye);
-	vec2 coordParallax = ${parallaxPerturb.invoke(
+  vec3 eyeDirection = normalize(eye);
+  vec2 coordParallax = ${parallaxPerturb.invoke(
     "heightMap",
     "coord",
     "eyeDirection",
@@ -303,13 +303,13 @@ void main(void) {
     "heightParallaxBias",
     "tbn"
   )};
-	vec3 modifiedNormal = ${normalPerturb.invoke(
+  vec3 modifiedNormal = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
     "tbn"
   )};
 
-	${materialType} material = ${materialSample.invoke(
+  ${materialType} material = ${materialSample.invoke(
   "albedoMap",
   "albedoFactor",
   "glossinessMap",
@@ -322,11 +322,11 @@ void main(void) {
   "coordParallax"
 )};
 
-	// Apply environment (ambient or influence-based) lighting
+  // Apply environment (ambient or influence-based) lighting
   #if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
   vec3 color = material.albedo.rgb * ambientLightColor * float(LIGHT_AMBIENT);
   #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
-	vec3 color = ${pbrEnvironment.invoke(
+  vec3 color = ${pbrEnvironment.invoke(
     "environmentBrdfMap",
     "environmentDiffuseMap",
     "environmentSpecularMap",
@@ -336,7 +336,7 @@ void main(void) {
   )} * ambientLightColor * float(LIGHT_AMBIENT);
   #endif
 
-	// Apply components from directional lights
+  // Apply components from directional lights
   ${range(maxDirectionalLights)
     .map(
       (i) => `
@@ -359,7 +359,7 @@ void main(void) {
     )
     .join("\n")}
 
-	// Apply components from point lights
+  // Apply components from point lights
   ${range(maxPointLights)
     .map(
       (i) => `
@@ -380,15 +380,15 @@ void main(void) {
     )
     .join("\n")}
 
-	// Apply occlusion component
-	color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
+  // Apply occlusion component
+  color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
-	// Apply emissive component
+  // Apply emissive component
   color += emissiveFactor.rgb * ${standardToLinear.invoke(
     "texture(emissiveMap, coordParallax).rgb"
   )};
 
-	fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
+  fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
 
 const shadowDirectionalVertexShader = `
@@ -399,14 +399,14 @@ uniform mat4 viewMatrix;
 in vec4 position;
 
 void main(void) {
-	gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
 }`;
 
 const shadowDirectionalFragmentShader = `
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-	fragColor = vec4(1, 1, 1, 1);
+  fragColor = vec4(1, 1, 1, 1);
 }`;
 
 const createLightShader = (
