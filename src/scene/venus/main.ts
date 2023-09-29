@@ -45,6 +45,9 @@ type Light = {
 
 type Star = {
   position: MutableVector3;
+  rotationAmount: number;
+  rotationAxis: Vector3;
+  rotationSpeed: number;
   variant: number;
 };
 
@@ -207,14 +210,23 @@ const application: Application<WebGLScreen, ApplicationState> = {
         noShadow: true,
       }),
       sprite,
-      stars: range(starFieldCount).map(() => ({
-        position: Vector3.fromObject({
-          x: (Math.random() * 2 - 1) * starFieldRadius,
-          y: (Math.random() * 2 - 1) * starFieldRadius,
-          z: (Math.random() * 2 - 1) * starFieldRadius,
-        }),
-        variant: Math.floor(Math.random() * starMeshes.length),
-      })),
+      stars: range(starFieldCount).map(() => {
+        const x = Math.random() * 2 - 1;
+        const y = Math.random() * 2 - 1;
+        const z = Math.sqrt(x * x + y * y);
+
+        return {
+          position: Vector3.fromObject({
+            x: (Math.random() * 2 - 1) * starFieldRadius,
+            y: (Math.random() * 2 - 1) * starFieldRadius,
+            z: (Math.random() * 2 - 1) * starFieldRadius,
+          }),
+          rotationAmount: 0,
+          rotationAxis: { x, y, z },
+          rotationSpeed: Math.random() * 0.001,
+          variant: Math.floor(Math.random() * starMeshes.length),
+        };
+      }),
       target,
       time: 0,
       viewMatrix: Matrix4.fromIdentity(),
@@ -246,10 +258,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
           ),
           model: models.ship,
         },
-        ...state.stars.map(({ position, variant }) => ({
-          matrix: Matrix4.fromCustom(["translate", position]),
-          model: models.stars[variant],
-        })),
+        ...state.stars.map(
+          ({ position, rotationAmount, rotationAxis, variant }) => ({
+            matrix: Matrix4.fromCustom(
+              ["translate", position],
+              ["rotate", rotationAxis, rotationAmount]
+            ),
+            model: models.stars[variant],
+          })
+        ),
         ...state.lights.map(({ position }) => ({
           matrix: Matrix4.fromCustom(["translate", position]),
           model: models.light,
@@ -320,10 +337,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     starCenter.invert();
 
-    for (const { position } of stars) {
+    for (let i = stars.length; i-- > 0; ) {
+      const { position } = stars[i];
+
       position.x = warp(position.x, starCenter.v30, 50);
       position.y = warp(position.y, starCenter.v31, 50);
       position.z = warp(position.z, starCenter.v32, 50);
+
+      stars[i].rotationAmount += dt * stars[i].rotationSpeed;
     }
 
     // Update light positions

@@ -28,7 +28,7 @@ import { GlTexture } from "../texture";
 type ParticleBillboard = {
   dispose: () => void;
   finalize: (nbSources: number) => void;
-  prepare: (nbSources: number) => void;
+  reserve: (nbSources: number) => void;
   write: (sourceIndex: number) => void;
   index: GlBuffer;
   polygon: ParticlePolygon;
@@ -169,7 +169,7 @@ const createBillboard = (
       // sources array so we need to render less indices than last allocation.
       index.length = nbSources * nbSparks * nbQuadIndices;
     },
-    prepare: (nbSources) => {
+    reserve: (nbSources) => {
       // Prepare index buffer and vertex attributes so they can store up to
       // `nbSources` instances of particle effects with `nbSparks` each.
       const nbIndices = nbSources * nbSparks * nbQuadIndices;
@@ -395,7 +395,7 @@ class ParticleRenderer implements Renderer<ParticleScene> {
 
   public update(dt: number) {
     for (const billboard of this.billboards) {
-      const { finalize, prepare, sources, sparks, write } = billboard;
+      const { finalize, reserve: prepare, sources, sparks, write } = billboard;
 
       prepare(sources.length);
 
