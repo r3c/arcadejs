@@ -141,25 +141,26 @@
 				</section>
 
 				<section>
-					<p>Problem: most time (CPU) spent on</p>
+					<p>High CPU cost:</p>
 					<ul>
-						<li>Projecting 3D points to 2D using vector instructions</li>
-						<li>Interpolating pixel colors with floating point ops</li>
+						<li>Matrix & vector instructions</li>
+						<li>Interpolate pixels</li>
 					</ul>
-					<p class="fragment" data-fragment-index="1">Fortunately this is heavily parallelizable 🤹‍♂️</p>
-					<p class="fragment" data-fragment-index="1">GPU to the rescue!</p>
+					<p class="fragment" data-fragment-index="1">Parallelize on GPU!</p>
 				</section>
 
 				<section>
-					<p>Meet OpenGL: rendering-oriented &amp; GPU-designed API</p>
-					<ul>
-						<li>Released in January 1992 by Silicon Graphics</li>
-						<li>Managed by Khronos Group since 2006</li>
-						<li>Cross-platform &amp; language independant API</li>
-						<li>Wildly used, supported and documented</li>
-						<li>Superseeded by Vulkan since 2016</li>
-					</ul>
-					<p>Let's use WebGL, an HTML5 API based on OpenGL ES</p>
+					<p>Meet <s>Open</s> WebGL:</p>
+					<p>Rendering-oriented &amp; GPU-designed API</p>
+					<aside class="notes">
+						<ul>
+							<li>Jan 1992: released by Silicon Graphics</li>
+							<li>2006: managed by Khronos Group</li>
+							<li>Cross-platform &amp; language independant API</li>
+							<li>Wildly used, supported, documented</li>
+							<li>Superseeded by Vulkan since 2016</li>
+						</ul>
+					</aside>
 				</section>
 
 				<section>
@@ -167,7 +168,7 @@
 					<div style="background: white;">
 						<img height="200" src="image/gl-pipeline.png" />
 					</div>
-					<p>Customize highlighted steps with <em>shader</em> programs.</p>
+					<p>Customize with <em>shader</em> programs</p>
 				</section>
 
 				<section>
@@ -175,44 +176,72 @@
 				</section>
 
 				<section>
-					<p>Problem: doesn't look realistic at all 😢</p>
+					<p>Lack realism 😢</p>
+					<div>
+						<img height="300" src="image/lighting-off.jpg" />
+						<img height="300" src="image/lighting-on.jpg" />
+					</div>
 					<ul>
-						<li>Simulate material properties, not a simple color</li>
-						<li>Realistic rendering requires lighting computation</li>
+						<li>Simulate material properties</li>
+						<li>Require lighting computation</li>
 					</ul>
-					<img height="300" src="image/lighting-off.jpg" />
-					<img height="300" src="image/lighting-on.jpg" />
 				</section>
 
 				<section>
 					<section>
-						<p>Solution: Phong model (Bui Tuong Phong, 1975)</p>
+						<p>Phong model</p>
+						<div>
+							<img height="400" src="image/shad2-roughsurface.png" />
+						</div>
 						<ul>
-							<li>Blinn-Phong variant (Jim Blinn, 1977) mostly used (default in OpenGL &amp; DirectX)</li>
-							<li>Empirical model with diffuse (rough) + specular (smooth) components</li>
+							<li>Empirical BRDF approximation</li>
+							<li>Diffuse + specular components</li>
 						</ul>
-						<img height="300" src="image/shad2-roughsurface.png" />
+						<aside class="notes">
+							<ul>
+								<li>BRDR = Bidirectional Reflectance Distribution Function</li>
+								<li>4 variables: radiance, irradiance, light angle, normal</li>
+								<li>Bui Tuong Phong, 1975</li>
+								<li>Blinn-Phong variant (Jim Blinn, 1977) used to be OpenGL & DirectX default</li>
+							</ul>
+						</aside>
 					</section>
 
 					<section>
-						<p>Solution: Physical-based rendering</p>
+						<p>Physically-based rendering models</p>
+						<div>
+							<img height="150" src="image/ndf.png" />
+						</div>
 						<ul>
-							<li>Popularized in 2004 from Cornell University research</li>
-							<li>More reallistic lighting model than Phong one</li>
-							<li>Approximate real world physical properties (conservation of energy, fresnel
-								reflectivity, etc.)</li>
-							<li>Used in modern 3D engines (UE4, Unity)</li>
+							<li>Based on the theory of microfacets</li>
+							<li>Cook-Torrance BRDF mostly used</li>
 						</ul>
+						<aside class="notes">
+							<ul>
+								<li>Explored by Disney</li>
+								<li>Approximate real world physical properties (conservation of energy, fresnel
+									reflectivity, etc.)</li>
+								<li>Introduced for real-time display by Epic Games in UE4+</li>
+							</ul>
+						</aside>
 					</section>
 				</section>
 
 				<section>
-					<p>Use tricks to improve final result, e.g.</p>
+					<p>Tricks to improve final result:</p>
 					<ul>
-						<li>Normal mapping: perturb normals using 2D texture</li>
-						<li>Height mapping: simulate height on flat surfaces</li>
+						<li>Normal mapping</li>
+						<li>Height mapping</li>
 					</ul>
-					<img height="350" src="image/maps.jpg" />
+					<div>
+						<img height="350" src="image/maps.jpg" />
+					</div>
+					<aside class="notes">
+						<ul>
+							<li>Normal mapping: perturb normals using 2D texture</li>
+							<li>Height mapping: simulate height on flat surfaces</li>
+						</ul>
+					</aside>
 				</section>
 
 				<section>
@@ -220,9 +249,9 @@
 				</section>
 
 				<section>
-					<p>Problem: complexity = O(nbLights * nbModels) 😥</p>
+					<p>Complexity = O(nbLights * nbModels) 😥</p>
 					<img height="350" src="image/deferred_example.png" />
-					<p>What if we want hundreds of lights?</p>
+					<p>Want hundreds of lights?</p>
 				</section>
 
 				<section>
