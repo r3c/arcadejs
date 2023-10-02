@@ -8,8 +8,11 @@ type Renderer<TScene> = Disposable & {
 
 class Screen {
   public readonly canvas: HTMLCanvasElement;
-  public readonly resizeHandlers: Set<(size: Vector2) => void>;
-  public readonly size: MutableVector2;
+
+  private readonly resizeHandlers: Set<(size: Vector2) => void>;
+  private readonly size: MutableVector2;
+
+  private pixelRatio: number;
 
   protected constructor(container: HTMLElement) {
     const canvas = document.createElement("canvas");
@@ -20,6 +23,7 @@ class Screen {
     canvas.focus();
 
     this.canvas = canvas;
+    this.pixelRatio = 2;
     this.resizeHandlers = new Set<() => void>();
     this.size = Vector2.fromZero();
 
@@ -43,8 +47,8 @@ class Screen {
   }
 
   public resize() {
-    const height = this.canvas.clientHeight;
-    const width = this.canvas.clientWidth;
+    const height = this.canvas.clientHeight * this.pixelRatio;
+    const width = this.canvas.clientWidth * this.pixelRatio;
 
     if (width === this.size.x && height === this.size.y) {
       return;
