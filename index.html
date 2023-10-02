@@ -245,59 +245,53 @@
 				</section>
 
 				<section>
-					<p>Demo 06: forward rendering</p>
+					<p>Demo 06: forward Phong rendering</p>
+					<p>Demo 07: forward PBR rendering</p>
 				</section>
 
 				<section>
-					<p>Complexity = O(nbLights * nbModels) 😥</p>
+					<p>\[O(nbLights * nbModels) 😥\]</p>
 					<img height="350" src="image/deferred_example.png" />
 					<p>Want hundreds of lights?</p>
 				</section>
 
 				<section>
 					<section>
-						<p>Solution: deferred shading (~2007)</p>
+						<p>Deferred shading</p>
 						<ul>
-							<li>Used in StarCraft II, GTA IV, CryENGINE3...</li>
-							<li class="fragment">
-								Draw models and store only geometry information:
-								<ul>
-									<li>Point depth (used to rebuild position)</li>
-									<li>Normal at point (thanks Irénée!)</li>
-									<li>Material properties (e.g. shininess)</li>
-								</ul>
+							<li>StarCraft II, GTA IV, CryENGINE3...</li>
+							<li>Multi-step rendering pipeline:
+								<ol>
+									<li>Draw models, store depth, normal &amp; material</li>
+									<li>Process lights for the whole geometry at once</li>
+								</ol>
 							</li>
-							<li class="fragment">Process lights for the whole geometry at once</li>
 						</ul>
-						<div class="fragment">
-							<p>Pro: O(nbLights + nbModels) complexity</p>
-							<p>Con: limited material capabilities (no transparency, only 1 type of material)</p>
-						</div>
+						<p>\[O(nbLights + nbModels) 😁\]</p>
+						<aside class="notes">
+							<ul>Reconstruct point from depth + buffer coordinates</ul>
+							<ul>Apply lighting from point + stored material properties</ul>
+							<ul>Limitation: no transparency, rigid material support</ul>
+						</aside>
 					</section>
 
 					<section>
-						<p>Solution: deferred lighting (aka light pre-pass, ~2008)</p>
+						<p>Deferred lighting</p>
 						<ul>
-							<li>Used in BioShock Inf., Assassin's Creed 3, MGS V...</li>
-							<li class="fragment">
-								Draw models and store geometry information:
-								<ul>
-									<li>Point depth (position)</li>
-									<li>Normal at point</li>
-								</ul>
+							<li>BioShock Infinite, Assassin's Creed 3, MGS V...</li>
+							<li>Multi-step rendering pipeline:
+								<ol>
+									<li>Draw models, store depth &amp; normal</li>
+									<li>Draw lights &amp; store radiance data</li>
+									<li>Draw models again and apply lights to surfaces</li>
+								</ol>
 							</li>
-							<li class="fragment">
-								Draw lights and store radiance information:
-								<ul>
-									<li>Amount of received diffuse/specular light</li>
-								</ul>
-							</li>
-							<li class="fragment">Draw models again and apply lights to materials</li>
 						</ul>
-						<div class="fragment">
-							<p>Pro: better material flexibility than deferred shading</p>
-							<p>Con: 2 passes per model instead of 1</p>
-						</div>
+						<p>\[O(nbLights + nbModels) 😁\]</p>
+						<aside class="notes">
+							<ul>Better material flexibility than deferred shading</ul>
+							<ul>2 passes per model instead of 1</ul>
+						</aside>
 					</section>
 				</section>
 
@@ -307,7 +301,7 @@
 				</section>
 
 				<section>
-					<p>Now back to work 😛</p>
+					<p>That's all folks!</p>
 				</section>
 
 				<section>
