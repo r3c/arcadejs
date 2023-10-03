@@ -329,13 +329,12 @@ void main(void) {
   )};
 
   vec4 diffuseSample = texture(diffuseMap, coordParallax);
-  vec3 diffuse = diffuseColor.rgb * ${standardToLinear.invoke(
-    "diffuseSample.rgb"
-  )};
+  vec3 diffuseLinear = ${standardToLinear.invoke("diffuseSample.rgb")};
+  vec3 diffuse = diffuseColor.rgb * diffuseLinear;
+
   vec4 specularSample = texture(specularMap, coordParallax);
-  vec3 specular = specularColor.rgb * ${standardToLinear.invoke(
-    "specularSample.rgb"
-  )};
+  vec3 specularLinear = ${standardToLinear.invoke("specularSample.rgb")};
+  vec3 specular = specularColor.rgb * specularLinear;
 
   // Emit final fragment color
   vec3 diffuseLightColor = lightSample.rgb;

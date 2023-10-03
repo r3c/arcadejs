@@ -46,7 +46,7 @@ import { GlMaterial, GlObject, GlPolygon, createModel } from "../model";
 import { GlTexture } from "../texture";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
-import { linearToStandard, standardToLinear } from "../shaders/rgb";
+import { linearToStandard, luminance, standardToLinear } from "../shaders/rgb";
 
 const enum DeferredShadingLightModel {
   None,
@@ -99,6 +99,7 @@ uniform sampler2D specularMap;
 uniform sampler2D normalMap;
 uniform float shininess;
 
+${luminance.declare()}
 ${normalEncode.declare()}
 ${normalPerturb.declare()}
 ${parallaxPerturb.declare()}
@@ -145,9 +146,9 @@ void main(void) {
 
   vec4 specularSample = texture(specularMap, coordParallax);
   vec3 specularLinear = ${standardToLinear.invoke("specularSample.rgb")};
-  vec3 specular = specularColor.rgb * specularLinear;
+  float specular = ${luminance.invoke("specularColor.rgb * specularLinear")};
 
-  normalAndSpecular = vec4(normalPack, specular.r, 0.0); // FIXME: average specular colors
+  normalAndSpecular = vec4(normalPack, specular, 0.0);
 }`;
 
 const ambientHeaderShader = `
