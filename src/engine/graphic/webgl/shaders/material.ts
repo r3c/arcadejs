@@ -21,21 +21,28 @@ const materialSample: GlShaderFunction<
   declare: () => `
 struct ${materialType} {
   vec4 diffuseColor;
-  float specularColor;
+  vec4 specularColor;
   float metalness;
   float roughness;
   float shininess;
 };
 
 ${materialType} materialSample(
-  in vec4 diffuseColor, in sampler2D diffuseMap, in float specularColor, in sampler2D specularMap,
+  in vec4 diffuseColor, in sampler2D diffuseMap, in vec4 specularColor, in sampler2D specularMap,
   in sampler2D metalnessMap, in float metalnessStrength, in sampler2D roughnessMap, in float roughnessStrength,
   in float shininess, in vec2 coordinate) {
   vec4 diffuseSample = texture(diffuseMap, coordinate);
-  vec4 combinedDiffuseColor = diffuseColor * vec4(${standardToLinear.invoke(
+  vec4 diffuseLinear = vec4(${standardToLinear.invoke(
     `diffuseSample.rgb`
   )}, diffuseSample.a);
-  float combinedSpecularColor = specularColor * texture(specularMap, coordinate).r;
+  vec4 combinedDiffuseColor = diffuseColor * diffuseLinear;
+
+  vec4 specularSample = texture(specularMap, coordinate);
+  vec4 specularLinear = vec4(${standardToLinear.invoke(
+    `specularSample.rgb`
+  )}, specularSample.a);
+  vec4 combinedSpecularColor = specularColor * specularLinear;
+
   float metalness = metalnessStrength * texture(metalnessMap, coordinate).r;
   float roughness = roughnessStrength * texture(roughnessMap, coordinate).r;
 

@@ -44,7 +44,7 @@ interface Instance {
 interface Material {
   diffuseColor?: Vector4;
   diffuseMap?: Texture;
-  emissiveFactor?: Vector4;
+  emissiveColor?: Vector4;
   emissiveMap?: Texture;
   heightMap?: Texture;
   heightParallaxBias?: number;

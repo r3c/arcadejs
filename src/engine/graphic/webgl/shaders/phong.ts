@@ -14,7 +14,7 @@ struct ${phongLightType} {
   float specularStrength;
 };
 
-vec3 phongLightApply(in ${phongLightType} lightCast, in vec3 diffuseColor, in float specularColor) {
+vec3 phongLightApply(in ${phongLightType} lightCast, in vec3 diffuseColor, in vec3 specularColor) {
   return
     lightCast.diffuseStrength * lightCast.color * diffuseColor * float(${diffuseDirective}) +
     lightCast.specularStrength * lightCast.color * specularColor * float(${specularDirective});

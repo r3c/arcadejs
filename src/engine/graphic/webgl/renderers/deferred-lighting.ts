@@ -83,8 +83,6 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
-uniform float specularColor;
-uniform sampler2D specularMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -117,7 +115,7 @@ void main(void) {
     "tbn"
   )};
 
-  // Color target: [normal.xy, shininess, specular]
+  // Color target: [normal.xy, shininess, unused]
   vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
@@ -125,10 +123,9 @@ void main(void) {
   )};
   vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-  float specular = specularColor * texture(specularMap, coordParallax).r;
   float shininessPack = ${shininessEncode.invoke("shininess")};
 
-  normalAndGloss = vec4(normalPack, shininessPack, specular);
+  normalAndGloss = vec4(normalPack, shininessPack, 0.0);
 }`;
 
 const lightHeaderShader = `
@@ -225,7 +222,6 @@ void main(void) {
   vec3 normal = ${normalDecode.invoke("normalAndGlossSample.rg")};
 
   // Decode material properties
-  float specular = normalAndGlossSample.a; // FIXME: unused
   float shininess = ${shininessDecode.invoke("normalAndGlossSample.b")};
 
   // Compute point in camera space from fragment coord and depth buffer
@@ -255,9 +251,9 @@ void main(void) {
 
   // Emit lighting parameters
   vec3 diffuseColor = phongLight.diffuseStrength * phongLight.color;
-  float specularColor = phongLight.specularStrength; // Note: specular light approximate using ony channel
+  float specularStrength = phongLight.specularStrength; // Note: specular light approximate using ony channel
 
-  fragColor = exp2(-vec4(diffuseColor, specularColor));
+  fragColor = exp2(-vec4(diffuseColor, specularStrength));
 }`;
 
 const materialVertexShader = `
@@ -296,7 +292,7 @@ uniform sampler2D lightBuffer;
 
 uniform vec4 diffuseColor;
 uniform sampler2D diffuseMap;
-uniform float specularColor;
+uniform vec4 specularColor;
 uniform sampler2D specularMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
@@ -336,7 +332,10 @@ void main(void) {
   vec3 diffuse = diffuseColor.rgb * ${standardToLinear.invoke(
     "diffuseSample.rgb"
   )};
-  float specular = specularColor * texture(specularMap, coordParallax).r;
+  vec4 specularSample = texture(specularMap, coordParallax);
+  vec3 specular = specularColor.rgb * ${standardToLinear.invoke(
+    "specularSample.rgb"
+  )};
 
   // Emit final fragment color
   vec3 diffuseLightColor = lightSample.rgb;
@@ -441,14 +440,6 @@ const loadGeometryPainter = (
     materialBinding.setUniform(
       "shininess",
       shaderUniform.number(({ shininess }) => shininess)
-    );
-    materialBinding.setUniform(
-      "specularColor",
-      shaderUniform.number(({ specularColor }) => specularColor[0])
-    );
-    materialBinding.setUniform(
-      "specularMap",
-      shaderUniform.tex2dWhite(({ diffuseMap: d, specularMap: s }) => s ?? d)
     );
   }
 
@@ -651,7 +642,7 @@ const loadMaterialPainter = (
 
   materialBinding.setUniform(
     "diffuseColor",
-    shaderUniform.array4f(({ diffuseColor }) => diffuseColor)
+    shaderUniform.vector4f(({ diffuseColor }) => diffuseColor)
   );
   materialBinding.setUniform(
     "diffuseMap",
@@ -661,7 +652,7 @@ const loadMaterialPainter = (
   if (configuration.lightModel >= DeferredLightingLightModel.Phong) {
     materialBinding.setUniform(
       "specularColor",
-      shaderUniform.number(({ specularColor }) => specularColor[0])
+      shaderUniform.vector4f(({ specularColor }) => specularColor)
     );
     materialBinding.setUniform(
       "specularMap",

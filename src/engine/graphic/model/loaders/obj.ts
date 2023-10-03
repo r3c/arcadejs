@@ -88,7 +88,7 @@ const loadMaterial = async (
           throw invalidLine(fileName, lineIndex, "emissive color");
         }
 
-        current.emissiveFactor = parseVector4(fields);
+        current.emissiveColor = parseVector4(fields);
 
         break;
 

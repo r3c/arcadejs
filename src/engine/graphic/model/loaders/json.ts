@@ -174,9 +174,9 @@ const toMaterial = async (
       material.diffuseMap,
       state
     ),
-    emissiveFactor: toOptional(
-      `${name}.emissiveFactor`,
-      material.emissiveFactor,
+    emissiveColor: toOptional(
+      `${name}.emissiveColor`,
+      material.emissiveColor,
       toColor
     ),
     emissiveMap: await toTexture(

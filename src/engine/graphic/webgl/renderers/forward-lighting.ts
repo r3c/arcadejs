@@ -221,9 +221,9 @@ ${lightHeaderShader(maxDirectionalLights, maxPointLights)}
 
 uniform vec4 diffuseColor;
 uniform sampler2D diffuseMap;
-uniform vec4 emissiveFactor;
+uniform vec4 emissiveColor;
 uniform sampler2D emissiveMap;
-uniform float specularColor;
+uniform vec4 specularColor;
 uniform sampler2D specularMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
@@ -284,7 +284,7 @@ vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 
     return ${phongLightApply.invoke(
       "phongLight",
       "material.diffuseColor.rgb",
-      "material.specularColor"
+      "material.specularColor.rgb"
     )};
   #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
     return ${pbrLight.invoke("light", "material", "normal", "eyeDirection")};
@@ -384,7 +384,7 @@ void main(void) {
   color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
 
   // Apply emissive component
-  color += emissiveFactor.rgb * ${standardToLinear.invoke(
+  color += emissiveColor.rgb * ${standardToLinear.invoke(
     "texture(emissiveMap, coordParallax).rgb"
   )};
 
@@ -510,7 +510,7 @@ const createLightPainter = (
 
   materialBinding.setUniform(
     "diffuseColor",
-    shaderUniform.array4f(({ diffuseColor }) => diffuseColor)
+    shaderUniform.vector4f(({ diffuseColor }) => diffuseColor)
   );
   materialBinding.setUniform(
     "diffuseMap",
@@ -527,7 +527,7 @@ const createLightPainter = (
       );
       materialBinding.setUniform(
         "specularColor",
-        shaderUniform.number(({ specularColor }) => specularColor[0])
+        shaderUniform.vector4f(({ specularColor }) => specularColor)
       );
       materialBinding.setUniform(
         "specularMap",
@@ -593,8 +593,8 @@ const createLightPainter = (
       : shaderUniform.tex2dBlack(() => undefined)
   );
   materialBinding.setUniform(
-    "emissiveFactor",
-    shaderUniform.array4f(({ emissiveFactor }) => emissiveFactor)
+    "emissiveColor",
+    shaderUniform.vector4f(({ emissiveColor }) => emissiveColor)
   );
   materialBinding.setUniform(
     "heightMap",

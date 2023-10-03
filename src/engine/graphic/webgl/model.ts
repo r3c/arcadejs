@@ -22,9 +22,9 @@ type GlLibrary = Disposable & {
 };
 
 type GlMaterial = Disposable & {
-  diffuseColor: number[];
+  diffuseColor: Vector4;
   diffuseMap: GlTexture | undefined;
-  emissiveFactor: number[];
+  emissiveColor: Vector4;
   emissiveMap: GlTexture | undefined;
   heightMap: GlTexture | undefined;
   heightParallaxBias: number;
@@ -37,7 +37,7 @@ type GlMaterial = Disposable & {
   roughnessMap: GlTexture | undefined;
   roughnessStrength: number;
   shininess: number;
-  specularColor: number[];
+  specularColor: Vector4;
   specularMap: GlTexture | undefined;
 };
 
@@ -76,13 +76,13 @@ type GlPrimitive = Disposable & {
   polygon: GlPolygon;
 };
 
-const colorWhite = Vector4.toArray({ x: 1, y: 1, z: 1, w: 1 });
+const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
 const defaultMaterial: GlMaterial = {
   dispose: () => {},
   diffuseColor: colorWhite,
   diffuseMap: undefined,
-  emissiveFactor: colorWhite,
+  emissiveColor: colorWhite,
   emissiveMap: undefined,
   heightMap: undefined,
   heightParallaxBias: 0,
@@ -175,13 +175,9 @@ const loadMaterial = (
       roughnessMap?.dispose();
       specularMap?.dispose();
     },
-    diffuseColor:
-      optionalMap(material.diffuseColor, Vector4.toArray) ??
-      defaultMaterial.diffuseColor,
+    diffuseColor: material.diffuseColor ?? defaultMaterial.diffuseColor,
     diffuseMap,
-    emissiveFactor:
-      optionalMap(material.emissiveFactor, Vector4.toArray) ??
-      defaultMaterial.emissiveFactor,
+    emissiveColor: material.emissiveColor ?? defaultMaterial.emissiveColor,
     emissiveMap,
     heightMap,
     heightParallaxBias:
@@ -199,9 +195,7 @@ const loadMaterial = (
     roughnessStrength:
       material.roughnessStrength ?? defaultMaterial.roughnessStrength,
     shininess: material.shininess ?? defaultMaterial.shininess,
-    specularColor:
-      optionalMap(material.specularColor, Vector4.toArray) ??
-      defaultMaterial.specularColor,
+    specularColor: material.specularColor ?? defaultMaterial.specularColor,
     specularMap,
   };
 };

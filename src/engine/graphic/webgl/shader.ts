@@ -1,6 +1,6 @@
 import { Disposable } from "../../language/lifecycle";
 import { Matrix3, Matrix4 } from "../../math/matrix";
-import { Vector2, Vector3 } from "../../math/vector";
+import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { GlBuffer, GlContext } from "./resource";
 import { GlTexture } from "./texture";
 
@@ -329,15 +329,6 @@ const shaderUniform = {
     setUniform: (g, l, v) => g.uniform1i(l, v),
   }),
 
-  array4f: <TState>(
-    getter: (state: TState) => number[]
-  ): GlShaderUniform<TState, number[]> => ({
-    allocateTexture: false,
-    createValue: () => [],
-    readValue: (state) => getter(state),
-    setUniform: (g, l, v) => g.uniform4fv(l, v),
-  }),
-
   matrix3f: <TState>(
     getter: (state: TState) => Matrix3
   ): GlShaderUniform<TState, Float32Array> => {
@@ -463,6 +454,24 @@ const shaderUniform = {
       return value;
     },
     setUniform: (g, l, v) => g.uniform3fv(l, v),
+  }),
+
+  vector4f: <TState>(
+    getter: (state: TState) => Vector4
+  ): GlShaderUniform<TState, Float32Array> => ({
+    allocateTexture: false,
+    createValue: () => new Float32Array(4),
+    readValue: (state, value) => {
+      const vector = getter(state);
+
+      value[0] = vector.x;
+      value[1] = vector.y;
+      value[2] = vector.z;
+      value[3] = vector.w;
+
+      return value;
+    },
+    setUniform: (g, l, v) => g.uniform4fv(l, v),
   }),
 };
 

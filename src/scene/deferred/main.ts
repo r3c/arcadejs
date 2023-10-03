@@ -85,7 +85,7 @@ const debugConfigurations = [
     encoding: DebugTextureEncoding.Monochrome,
   },
   {
-    channel: DebugTextureChannel.Alpha,
+    channel: DebugTextureChannel.Blue,
     encoding: DebugTextureEncoding.Monochrome,
   },
   {

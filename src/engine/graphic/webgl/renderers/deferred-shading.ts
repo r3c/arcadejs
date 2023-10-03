@@ -94,7 +94,7 @@ uniform sampler2D diffuseMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
-uniform float specularColor;
+uniform vec4 specularColor;
 uniform sampler2D specularMap;
 uniform sampler2D normalMap;
 uniform float shininess;
@@ -129,9 +129,8 @@ void main(void) {
 
   // Color target 1: [diffuse.rgb, shininess]
   vec4 diffuseSample = texture(diffuseMap, coordParallax);
-  vec3 diffuse = diffuseColor.rgb * ${standardToLinear.invoke(
-    "diffuseSample.rgb"
-  )};
+  vec3 diffuseLinear = ${standardToLinear.invoke("diffuseSample.rgb")};
+  vec3 diffuse = diffuseColor.rgb * diffuseLinear;
   float shininessPack = ${shininessEncode.invoke("shininess")};
 
   diffuseAndShininess = vec4(diffuse, shininessPack);
@@ -144,10 +143,11 @@ void main(void) {
   )};
   vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-  float specular = specularColor * texture(specularMap, coordParallax).r;
-  float unused = 0.0;
+  vec4 specularSample = texture(specularMap, coordParallax);
+  vec3 specularLinear = ${standardToLinear.invoke("specularSample.rgb")};
+  vec3 specular = specularColor.rgb * specularLinear;
 
-  normalAndSpecular = vec4(normalPack, unused, specular);
+  normalAndSpecular = vec4(normalPack, specular.r, 0.0); // FIXME: average specular colors
 }`;
 
 const ambientHeaderShader = `
@@ -284,7 +284,7 @@ void main(void) {
   // Decode geometry and material properties from samples
   vec3 diffuseColor = diffuseAndShininessSample.rgb;
   vec3 normal = ${normalDecode.invoke("normalAndSpecularSample.rg")};
-  float specularColor = normalAndSpecularSample.a;
+  vec3 specularColor = normalAndSpecularSample.bbb;
   float shininess = ${shininessDecode.invoke("diffuseAndShininessSample.a")};
 
   // Compute point in camera space from fragment coord and depth buffer
@@ -506,7 +506,7 @@ const loadGeometryPainter = (
 
   materialBinding.setUniform(
     "diffuseColor",
-    shaderUniform.array4f(({ diffuseColor }) => diffuseColor)
+    shaderUniform.vector4f(({ diffuseColor }) => diffuseColor)
   );
   materialBinding.setUniform(
     "diffuseMap",
@@ -520,7 +520,7 @@ const loadGeometryPainter = (
     );
     materialBinding.setUniform(
       "specularColor",
-      shaderUniform.number(({ specularColor }) => specularColor[0])
+      shaderUniform.vector4f(({ specularColor }) => specularColor)
     );
     materialBinding.setUniform(
       "specularMap",
