@@ -168,8 +168,8 @@ const readMaterial = async (
 
       break;
 
-    case 0xa020: // Albedo color
-      state.material.albedoFactor = await scan(
+    case 0xa020: // Diffuse color
+      state.material.diffuseColor = await scan(
         context,
         end,
         readColor,
@@ -179,7 +179,7 @@ const readMaterial = async (
       break;
 
     case 0xa030: // Specular color
-      state.material.glossFactor = await scan(
+      state.material.specularColor = await scan(
         context,
         end,
         readColor,
@@ -194,7 +194,7 @@ const readMaterial = async (
       break;
 
     case 0xa200: // Texture 1
-      state.material.albedoMap = await scan(
+      state.material.diffuseMap = await scan(
         context,
         end,
         readMaterialMap,
@@ -203,8 +203,8 @@ const readMaterial = async (
 
       break;
 
-    case 0xa204: // Gloss map
-      state.material.glossMap = await scan(
+    case 0xa204: // Specular map
+      state.material.specularMap = await scan(
         context,
         end,
         readMaterialMap,

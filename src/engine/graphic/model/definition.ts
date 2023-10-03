@@ -42,12 +42,10 @@ interface Instance {
 }
 
 interface Material {
-  albedoFactor?: Vector4;
-  albedoMap?: Texture;
+  diffuseColor?: Vector4;
+  diffuseMap?: Texture;
   emissiveFactor?: Vector4;
   emissiveMap?: Texture;
-  glossFactor?: Vector4;
-  glossMap?: Texture;
   heightMap?: Texture;
   heightParallaxBias?: number;
   heightParallaxScale?: number;
@@ -59,6 +57,8 @@ interface Material {
   roughnessMap?: Texture;
   roughnessStrength?: number;
   shininess?: number;
+  specularColor?: Vector4;
+  specularMap?: Texture;
 }
 
 interface Mesh {

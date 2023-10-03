@@ -14,14 +14,14 @@ struct ${phongLightType} {
   float specularStrength;
 };
 
-vec3 phongLightApply(in ${phongLightType} lightCast, in vec3 albedo, in float glossiness) {
+vec3 phongLightApply(in ${phongLightType} lightCast, in vec3 diffuseColor, in float specularColor) {
   return
-    lightCast.diffuseStrength * lightCast.color * albedo * float(${diffuseDirective}) +
-    lightCast.specularStrength * lightCast.color * glossiness * float(${specularDirective});
+    lightCast.diffuseStrength * lightCast.color * diffuseColor * float(${diffuseDirective}) +
+    lightCast.specularStrength * lightCast.color * specularColor * float(${specularDirective});
 }`,
 
-  invoke: (lightCast: string, albedo: string, glossiness: string) =>
-    `phongLightApply(${lightCast}, ${albedo}, ${glossiness})`,
+  invoke: (lightCast: string, diffuseColor: string, specularColor: string) =>
+    `phongLightApply(${lightCast}, ${diffuseColor}, ${specularColor})`,
 };
 
 const phongLightCast: GlShaderFunction<[], [string, string, string, string]> = {

@@ -1,10 +1,10 @@
 {
   "materials": {
     "side": {
-      "albedoMap": "level_{{level}}_albedo.png",
-      "glossMap": "level_{{level}}_gloss.png",
+      "diffuseMap": "level_{{level}}_albedo.png",
       "normalMap": "level_{{level}}_normal.png",
-      "shininess": 100
+      "shininess": 100,
+      "specularMap": "level_{{level}}_gloss.png"
     }
   },
   "polygons": [

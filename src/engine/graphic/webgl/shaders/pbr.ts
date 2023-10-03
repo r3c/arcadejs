@@ -18,8 +18,8 @@ const vec3 PBR_ENVIRONMENT_F0 = vec3(0.04);
 // See our README.md on Environment Maps [3] for additional discussion.
 vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentDiffuseMap, in samplerCube environmentSpecularMap, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
   #ifdef ${environmentEnable}
-    vec3 diffuseColor = material.albedo.rgb * (vec3(1.0) - PBR_ENVIRONMENT_F0) * (1.0 - material.metalness);
-    vec3 specularColor = mix(PBR_ENVIRONMENT_F0, material.albedo.rgb, material.metalness);
+    vec3 diffuseColor = material.diffuseColor.rgb * (vec3(1.0) - PBR_ENVIRONMENT_F0) * (1.0 - material.metalness);
+    vec3 specularColor = mix(PBR_ENVIRONMENT_F0, material.diffuseColor.rgb, material.metalness);
 
     vec3 diffuseLight = ${standardToLinear.invoke(
       `texture(environmentDiffuseMap, normal).rgb`
@@ -39,7 +39,7 @@ vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentD
 
     return diffuse + specular;
   #else
-    return material.albedo;
+    return material.diffuseColor.rgb;
   #endif
 }`,
 
@@ -88,8 +88,8 @@ vec3 pbrSpecularReflection(vec3 reflectance0, vec3 reflectance90, float VdotH) {
 }
 
 vec3 pbrLight(in ${resultLightType} light, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
-  vec3 diffuseColor = material.albedo.rgb * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
-  vec3 specularColor = mix(PBR_F0, material.albedo.rgb, material.metalness);
+  vec3 diffuseColor = material.diffuseColor.rgb * (vec3(1.0) - PBR_F0) * (1.0 - material.metalness);
+  vec3 specularColor = mix(PBR_F0, material.diffuseColor.rgb, material.metalness);
 
   // Compute reflectance
   float reflectance = max(max(specularColor.r, specularColor.g), specularColor.b);

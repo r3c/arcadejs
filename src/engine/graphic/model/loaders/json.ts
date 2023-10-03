@@ -164,12 +164,16 @@ const toMaterial = async (
   const material = instance as any;
 
   return {
-    albedoFactor: toOptional(
-      `${name}.albedoFactor`,
-      material.albedoFactor,
+    diffuseColor: toOptional(
+      `${name}.diffuseColor`,
+      material.diffuseColor,
       toColor
     ),
-    albedoMap: await toTexture(`${name}.albedoMap`, material.albedoMap, state),
+    diffuseMap: await toTexture(
+      `${name}.diffuseMap`,
+      material.diffuseMap,
+      state
+    ),
     emissiveFactor: toOptional(
       `${name}.emissiveFactor`,
       material.emissiveFactor,
@@ -180,12 +184,6 @@ const toMaterial = async (
       material.emissiveMap,
       state
     ),
-    glossFactor: toOptional(
-      `${name}.glossFactor`,
-      material.glossFactor,
-      toColor
-    ),
-    glossMap: await toTexture(`${name}.glossMap`, material.glossMap, state),
     heightMap: await toTexture(`${name}.heightMap`, material.heightMap, state),
     heightParallaxBias: toOptional(
       `${name}.heightParallaxBias`,
@@ -229,6 +227,16 @@ const toMaterial = async (
       toDecimal
     ),
     shininess: toOptional(`${name}.shininess`, material.shininess, toInteger),
+    specularColor: toOptional(
+      `${name}.specularColor`,
+      material.specularColor,
+      toColor
+    ),
+    specularMap: await toTexture(
+      `${name}.specularMap`,
+      material.specularMap,
+      state
+    ),
   };
 };
 

@@ -1,15 +1,15 @@
 {
   "materials": {
     "side": {
-      "albedoMap": "ground-albedo.png",
-      "glossMap": "ground-gloss.png",
+      "diffuseMap": "ground-albedo.png",
       "heightMap": "ground-height.png",
       "heightParallaxBias": 0.02,
       "heightParallaxScale": 0.04,
       "metalnessStrength": 0.2,
       "normalMap": "ground-normal.png",
       "roughnessStrength": 0.3,
-      "shininess": 10
+      "shininess": 10,
+      "specularMap": "ground-gloss.png"
     }
   },
   "polygons": [

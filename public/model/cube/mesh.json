@@ -1,8 +1,7 @@
 {
   "materials": {
     "side": {
-      "albedoMap": "mybricks1_basecolor.png",
-      "glossMap": "mybricks1_gloss.png",
+      "diffuseMap": "mybricks1_basecolor.png",
       "heightMap": "mybricks1_height.png",
       "heightParallaxBias": 0.02,
       "heightParallaxScale": 0.04,
@@ -10,7 +9,8 @@
       "normalMap": "mybricks1_normal.png",
       "occlusionMap": "mybricks1_AO.png",
       "roughnessMap": "mybricks1_roughness.png",
-      "shininess": 100
+      "shininess": 100,
+      "specularMap": "mybricks1_gloss.png"
     }
   },
   "polygons": [

@@ -89,13 +89,13 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
-uniform vec4 albedoFactor;
-uniform sampler2D albedoMap;
+uniform vec4 diffuseColor;
+uniform sampler2D diffuseMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
-uniform sampler2D glossinessMap;
-uniform float glossinessStrength;
+uniform float specularColor;
+uniform sampler2D specularMap;
 uniform sampler2D normalMap;
 uniform float shininess;
 
@@ -111,8 +111,8 @@ in vec3 normal;
 in vec3 point;
 in vec3 tangent;
 
-layout(location=0) out vec4 albedoAndShininess;
-layout(location=1) out vec4 normalAndGlossiness;
+layout(location=0) out vec4 diffuseAndShininess;
+layout(location=1) out vec4 normalAndSpecular;
 
 void main(void) {
   mat3 tbn = mat3(tangent, bitangent, normal);
@@ -127,16 +127,16 @@ void main(void) {
     "tbn"
   )};
 
-  // Color target 1: [albedo.rgb, shininess]
-  vec4 albedoSample = texture(albedoMap, coordParallax);
-  vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke(
-    "albedoSample.rgb"
+  // Color target 1: [diffuse.rgb, shininess]
+  vec4 diffuseSample = texture(diffuseMap, coordParallax);
+  vec3 diffuse = diffuseColor.rgb * ${standardToLinear.invoke(
+    "diffuseSample.rgb"
   )};
   float shininessPack = ${shininessEncode.invoke("shininess")};
 
-  albedoAndShininess = vec4(albedo, shininessPack);
+  diffuseAndShininess = vec4(diffuse, shininessPack);
 
-  // Color target 2: [normal.xy, zero, glossiness]
+  // Color target 2: [normal.xy, zero, specular]
   vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
@@ -144,10 +144,10 @@ void main(void) {
   )};
   vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-  float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
+  float specular = specularColor * texture(specularMap, coordParallax).r;
   float unused = 0.0;
 
-  normalAndGlossiness = vec4(normalPack, unused, glossiness);
+  normalAndSpecular = vec4(normalPack, unused, specular);
 }`;
 
 const ambientHeaderShader = `
@@ -169,7 +169,7 @@ void main(void) {
 const ambientFragmentShader = `
 ${ambientHeaderShader}
 
-uniform sampler2D albedoAndShininess;
+uniform sampler2D diffuseAndShininess;
 
 layout(location=0) out vec4 fragColor;
 
@@ -177,13 +177,13 @@ void main(void) {
   ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
   // Read samples from texture buffers
-  vec4 albedoAndShininessSample = texelFetch(albedoAndShininess, bufferCoord, 0);
+  vec4 diffuseAndShininessSample = texelFetch(diffuseAndShininess, bufferCoord, 0);
 
   // Decode geometry and material properties from samples
-  vec3 materialAlbedo = albedoAndShininessSample.rgb;
-  vec3 albedo = ambientLightColor * materialAlbedo;
+  vec3 materialDiffuse = diffuseAndShininessSample.rgb;
+  vec3 ambient = ambientLightColor * materialDiffuse;
 
-  fragColor = vec4(albedo * float(LIGHT_MODEL_AMBIENT), 1.0);
+  fragColor = vec4(ambient * float(LIGHT_MODEL_AMBIENT), 1.0);
 }`;
 
 const lightHeaderShader = `
@@ -243,9 +243,9 @@ ${lightHeaderShader}
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
-uniform sampler2D albedoAndShininess;
+uniform sampler2D diffuseAndShininess;
 uniform sampler2D depth;
-uniform sampler2D normalAndGlossiness;
+uniform sampler2D normalAndSpecular;
 
 ${normalDecode.declare()}
 ${phongLightApply.declare(
@@ -277,15 +277,15 @@ void main(void) {
   ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
   // Read samples from texture buffers
-  vec4 albedoAndShininessSample = texelFetch(albedoAndShininess, bufferCoord, 0);
+  vec4 diffuseAndShininessSample = texelFetch(diffuseAndShininess, bufferCoord, 0);
   vec4 depthSample = texelFetch(depth, bufferCoord, 0);
-  vec4 normalAndGlossinessSample = texelFetch(normalAndGlossiness, bufferCoord, 0);
+  vec4 normalAndSpecularSample = texelFetch(normalAndSpecular, bufferCoord, 0);
 
   // Decode geometry and material properties from samples
-  vec3 albedo = albedoAndShininessSample.rgb;
-  vec3 normal = ${normalDecode.invoke("normalAndGlossinessSample.rg")};
-  float glossiness = normalAndGlossinessSample.a;
-  float shininess = ${shininessDecode.invoke("albedoAndShininessSample.a")};
+  vec3 diffuseColor = diffuseAndShininessSample.rgb;
+  vec3 normal = ${normalDecode.invoke("normalAndSpecularSample.rg")};
+  float specularColor = normalAndSpecularSample.a;
+  float shininess = ${shininessDecode.invoke("diffuseAndShininessSample.a")};
 
   // Compute point in camera space from fragment coord and depth buffer
   vec3 point = getPoint(depthSample.r);
@@ -312,7 +312,11 @@ void main(void) {
   "eye"
 )};
 
-  vec3 color = ${phongLightApply.invoke("phongLight", "albedo", "glossiness")};
+  vec3 color = ${phongLightApply.invoke(
+    "phongLight",
+    "diffuseColor",
+    "specularColor"
+  )};
 
   fragColor = vec4(color, 1.0);
 }`;
@@ -357,7 +361,7 @@ type DeferredShadingScene = {
 };
 
 type AmbientLightScene = ObjectScene & {
-  albedoAndShininessBuffer: GlTexture;
+  diffuseAndShininessBuffer: GlTexture;
   ambientLightColor: Vector3;
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
@@ -369,10 +373,10 @@ type GeometryScene = ObjectScene & {
 };
 
 type LightScene = {
-  albedoAndShininessBuffer: GlTexture;
+  diffuseAndShininessBuffer: GlTexture;
   depthBuffer: GlTexture;
   index: GlBuffer;
-  normalAndGlossinessBuffer: GlTexture;
+  normalAndSpecularBuffer: GlTexture;
   projectionMatrix: Matrix4;
   viewportSize: Vector2;
   modelMatrix: Matrix4;
@@ -441,8 +445,8 @@ const loadAmbientPainter = (
     shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
   );
   sceneBinding.setUniform(
-    "albedoAndShininess",
-    shaderUniform.tex2dBlack((state) => state.albedoAndShininessBuffer)
+    "diffuseAndShininess",
+    shaderUniform.tex2dBlack((state) => state.diffuseAndShininessBuffer)
   );
   sceneBinding.setUniform(
     "ambientLightColor",
@@ -501,26 +505,26 @@ const loadGeometryPainter = (
   const materialBinding = shader.declare<GlMaterial>();
 
   materialBinding.setUniform(
-    "albedoFactor",
-    shaderUniform.array4f(({ albedoFactor }) => albedoFactor)
+    "diffuseColor",
+    shaderUniform.array4f(({ diffuseColor }) => diffuseColor)
   );
   materialBinding.setUniform(
-    "albedoMap",
-    shaderUniform.tex2dWhite(({ albedoMap }) => albedoMap)
+    "diffuseMap",
+    shaderUniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
   );
 
   if (configuration.lightModel === DeferredShadingLightModel.Phong) {
     materialBinding.setUniform(
-      "glossinessMap",
-      shaderUniform.tex2dWhite(({ albedoMap: a, glossMap: g }) => g ?? a)
-    );
-    materialBinding.setUniform(
-      "glossinessStrength",
-      shaderUniform.number(({ glossFactor }) => glossFactor[0])
-    );
-    materialBinding.setUniform(
       "shininess",
       shaderUniform.number(({ shininess }) => shininess)
+    );
+    materialBinding.setUniform(
+      "specularColor",
+      shaderUniform.number(({ specularColor }) => specularColor[0])
+    );
+    materialBinding.setUniform(
+      "specularMap",
+      shaderUniform.tex2dWhite(({ diffuseMap: a, specularMap: s }) => s ?? a)
     );
   }
 
@@ -612,16 +616,16 @@ const loadLightBinding = <TScene extends LightScene>(
     shaderUniform.vector2f(({ viewportSize }) => viewportSize)
   );
   binding.setUniform(
-    "albedoAndShininess",
-    shaderUniform.tex2dBlack((state) => state.albedoAndShininessBuffer)
+    "diffuseAndShininess",
+    shaderUniform.tex2dBlack((state) => state.diffuseAndShininessBuffer)
   );
   binding.setUniform(
     "depth",
     shaderUniform.tex2dBlack(({ depthBuffer }) => depthBuffer)
   );
   binding.setUniform(
-    "normalAndGlossiness",
-    shaderUniform.tex2dBlack((state) => state.normalAndGlossinessBuffer)
+    "normalAndSpecular",
+    shaderUniform.tex2dBlack((state) => state.normalAndSpecularBuffer)
   );
 
   return binding;
@@ -690,9 +694,9 @@ const loadPostPainter = (runtime: GlRuntime) => {
 };
 
 class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
-  public readonly albedoAndShininessBuffer: GlTexture;
+  public readonly diffuseAndShininessBuffer: GlTexture;
   public readonly depthBuffer: GlTexture;
-  public readonly normalAndGlossinessBuffer: GlTexture;
+  public readonly normalAndSpecularBuffer: GlTexture;
   public readonly sceneBuffer: GlTexture;
 
   private readonly ambientLightPainter: GlPainter<AmbientLightScene>;
@@ -725,7 +729,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       y: gl.drawingBufferHeight,
     });
 
-    this.albedoAndShininessBuffer = geometryTarget.setupColorTexture(
+    this.diffuseAndShininessBuffer = geometryTarget.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
@@ -744,7 +748,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     this.geometryPainter = loadGeometryPainter(runtime, configuration);
     this.geometryTarget = geometryTarget;
     this.pointLightBillboard = pointLightBillboard(gl);
-    this.normalAndGlossinessBuffer = geometryTarget.setupColorTexture(
+    this.normalAndSpecularBuffer = geometryTarget.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
@@ -814,7 +818,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
     // Draw ambient light using fullscreen quad
     if (ambientLightColor !== undefined) {
       this.ambientLightPainter.paint(this.sceneTarget, {
-        albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+        diffuseAndShininessBuffer: this.diffuseAndShininessBuffer,
         ambientLightColor,
         objects: this.ambientLightObjects,
         projectionMatrix: this.fullscreenProjection,
@@ -834,12 +838,12 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
 
       for (const directionalLight of directionalLights) {
         this.directionalLightPainter.paint(this.sceneTarget, {
-          albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+          diffuseAndShininessBuffer: this.diffuseAndShininessBuffer,
           depthBuffer: this.depthBuffer,
           directionalLight,
           index: this.directionalLightBillboard.index,
           modelMatrix,
-          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+          normalAndSpecularBuffer: this.normalAndSpecularBuffer,
           polygon: this.directionalLightBillboard.polygon,
           projectionMatrix: this.fullscreenProjection,
           viewMatrix,
@@ -853,12 +857,12 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       this.pointLightBillboard.set(pointLights);
 
       this.pointLightPainter.paint(this.sceneTarget, {
-        albedoAndShininessBuffer: this.albedoAndShininessBuffer,
+        diffuseAndShininessBuffer: this.diffuseAndShininessBuffer,
         billboardMatrix,
         depthBuffer: this.depthBuffer,
         index: this.pointLightBillboard.index,
         modelMatrix: Matrix4.identity, // FIXME: remove from shader
-        normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+        normalAndSpecularBuffer: this.normalAndSpecularBuffer,
         polygon: this.pointLightBillboard.polygon,
         projectionMatrix,
         viewMatrix,

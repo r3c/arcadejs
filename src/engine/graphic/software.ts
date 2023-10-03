@@ -172,18 +172,18 @@ const drawScanline = (
 
     // Apply material properties
     if (material !== undefined) {
-      // Albedo color
-      if (material.albedoFactor !== undefined) {
-        color.x *= material.albedoFactor.x;
-        color.y *= material.albedoFactor.y;
-        color.z *= material.albedoFactor.z;
-        color.w *= material.albedoFactor.w;
+      // Diffuse color
+      if (material.diffuseColor !== undefined) {
+        color.x *= material.diffuseColor.x;
+        color.y *= material.diffuseColor.y;
+        color.z *= material.diffuseColor.z;
+        color.w *= material.diffuseColor.w;
       }
 
-      // Albedo map
-      if (material.albedoMap !== undefined) {
+      // Diffuse map
+      if (material.diffuseMap !== undefined) {
         const coord = lerpVector2(begin.coord, end.coord, ratio);
-        const image = material.albedoMap.image;
+        const image = material.diffuseMap.image;
 
         const x = ~~(coord.x * image.width) % image.width;
         const y = ~~(coord.y * image.height) % image.height;

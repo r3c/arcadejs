@@ -22,12 +22,10 @@ type GlLibrary = Disposable & {
 };
 
 type GlMaterial = Disposable & {
-  albedoFactor: number[];
-  albedoMap: GlTexture | undefined;
+  diffuseColor: number[];
+  diffuseMap: GlTexture | undefined;
   emissiveFactor: number[];
   emissiveMap: GlTexture | undefined;
-  glossFactor: number[];
-  glossMap: GlTexture | undefined;
   heightMap: GlTexture | undefined;
   heightParallaxBias: number;
   heightParallaxScale: number;
@@ -39,6 +37,8 @@ type GlMaterial = Disposable & {
   roughnessMap: GlTexture | undefined;
   roughnessStrength: number;
   shininess: number;
+  specularColor: number[];
+  specularMap: GlTexture | undefined;
 };
 
 type GlMesh = Disposable & {
@@ -80,12 +80,10 @@ const colorWhite = Vector4.toArray({ x: 1, y: 1, z: 1, w: 1 });
 
 const defaultMaterial: GlMaterial = {
   dispose: () => {},
-  albedoFactor: colorWhite,
-  albedoMap: undefined,
+  diffuseColor: colorWhite,
+  diffuseMap: undefined,
   emissiveFactor: colorWhite,
   emissiveMap: undefined,
-  glossFactor: colorWhite,
-  glossMap: undefined,
   heightMap: undefined,
   heightParallaxBias: 0,
   heightParallaxScale: 0,
@@ -97,6 +95,8 @@ const defaultMaterial: GlMaterial = {
   roughnessMap: undefined,
   roughnessStrength: 0,
   shininess: 30,
+  specularColor: colorWhite,
+  specularMap: undefined,
 };
 
 const createLibrary = (gl: GlContext, mesh: Mesh): GlLibrary => {
@@ -155,38 +155,34 @@ const loadMaterial = (
     return glTexture;
   };
 
-  const albedoMap = optionalMap(material.albedoMap, toColorMap);
+  const diffuseMap = optionalMap(material.diffuseMap, toColorMap);
   const emissiveMap = optionalMap(material.emissiveMap, toColorMap);
-  const glossMap = optionalMap(material.glossMap, toColorMap);
   const heightMap = optionalMap(material.heightMap, toColorMap);
   const metalnessMap = optionalMap(material.metalnessMap, toColorMap);
   const normalMap = optionalMap(material.normalMap, toColorMap);
   const occlusionMap = optionalMap(material.occlusionMap, toColorMap);
   const roughnessMap = optionalMap(material.roughnessMap, toColorMap);
+  const specularMap = optionalMap(material.specularMap, toColorMap);
 
   return {
     dispose: () => {
-      albedoMap?.dispose();
+      diffuseMap?.dispose();
       emissiveMap?.dispose();
-      glossMap?.dispose();
       heightMap?.dispose();
       metalnessMap?.dispose();
       normalMap?.dispose();
       occlusionMap?.dispose();
       roughnessMap?.dispose();
+      specularMap?.dispose();
     },
-    albedoFactor:
-      optionalMap(material.albedoFactor, Vector4.toArray) ??
-      defaultMaterial.albedoFactor,
-    albedoMap,
+    diffuseColor:
+      optionalMap(material.diffuseColor, Vector4.toArray) ??
+      defaultMaterial.diffuseColor,
+    diffuseMap,
     emissiveFactor:
       optionalMap(material.emissiveFactor, Vector4.toArray) ??
       defaultMaterial.emissiveFactor,
     emissiveMap,
-    glossFactor:
-      optionalMap(material.glossFactor, Vector4.toArray) ??
-      defaultMaterial.glossFactor,
-    glossMap,
     heightMap,
     heightParallaxBias:
       material.heightParallaxBias ?? defaultMaterial.heightParallaxBias,
@@ -203,6 +199,10 @@ const loadMaterial = (
     roughnessStrength:
       material.roughnessStrength ?? defaultMaterial.roughnessStrength,
     shininess: material.shininess ?? defaultMaterial.shininess,
+    specularColor:
+      optionalMap(material.specularColor, Vector4.toArray) ??
+      defaultMaterial.specularColor,
+    specularMap,
   };
 };
 

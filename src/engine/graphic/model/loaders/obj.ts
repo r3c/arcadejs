@@ -69,21 +69,21 @@ const loadMaterial = async (
       case "#":
       case "d": // Transparency (not supported)
       case "illum": // Illumination model (not supported)
-      case "Ka": // Ambient light color (not supported)
+      case "Ka": // Ambient color (not supported)
       case "Ni": // Optical density (not supported)
       case "Tr": // Transparency (not supported)
         break;
 
-      case "Kd": // Diffuse light color
+      case "Kd": // Diffuse color
         if (fields.length < 4 || current === undefined) {
-          throw invalidLine(fileName, lineIndex, "albedo color");
+          throw invalidLine(fileName, lineIndex, "diffuse color");
         }
 
-        current.albedoFactor = parseVector4(fields);
+        current.diffuseColor = parseVector4(fields);
 
         break;
 
-      case "Ke": // Emissive light color
+      case "Ke": // Emissive color
         if (fields.length < 4 || current === undefined) {
           throw invalidLine(fileName, lineIndex, "emissive color");
         }
@@ -92,12 +92,12 @@ const loadMaterial = async (
 
         break;
 
-      case "Ks": // Specular light color
+      case "Ks": // Specular color
         if (fields.length < 4 || current === undefined) {
-          throw invalidLine(fileName, lineIndex, "gloss color");
+          throw invalidLine(fileName, lineIndex, "specular color");
         }
 
-        current.glossFactor = parseVector4(fields);
+        current.specularColor = parseVector4(fields);
 
         break;
 
@@ -112,10 +112,10 @@ const loadMaterial = async (
 
       case "map_Kd": // Diffuse map texture
         if (fields.length < 2 || current === undefined) {
-          throw invalidLine(fileName, lineIndex, "albedo map");
+          throw invalidLine(fileName, lineIndex, "diffuse map");
         }
 
-        current.albedoMap = await loadTexture(fileName, fields[1]);
+        current.diffuseMap = await loadTexture(fileName, fields[1]);
 
         break;
 
@@ -124,7 +124,7 @@ const loadMaterial = async (
           throw invalidLine(fileName, lineIndex, "specular map");
         }
 
-        current.glossMap = await loadTexture(fileName, fields[1]);
+        current.specularMap = await loadTexture(fileName, fields[1]);
 
         break;
 

@@ -83,8 +83,8 @@ void main(void) {
 }`;
 
 const geometryFragmentShader = `
-uniform sampler2D glossinessMap;
-uniform float glossinessStrength;
+uniform float specularColor;
+uniform sampler2D specularMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -102,7 +102,7 @@ in vec3 normal;
 in vec3 point;
 in vec3 tangent;
 
-layout(location=0) out vec4 normalAndGlossiness;
+layout(location=0) out vec4 normalAndGloss;
 
 void main(void) {
   mat3 tbn = mat3(tangent, bitangent, normal);
@@ -117,7 +117,7 @@ void main(void) {
     "tbn"
   )};
 
-  // Color target: [normal.xy, shininess, glossiness]
+  // Color target: [normal.xy, shininess, specular]
   vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
     "coordParallax",
@@ -125,10 +125,10 @@ void main(void) {
   )};
   vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-  float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
+  float specular = specularColor * texture(specularMap, coordParallax).r;
   float shininessPack = ${shininessEncode.invoke("shininess")};
 
-  normalAndGlossiness = vec4(normalPack, shininessPack, glossiness);
+  normalAndGloss = vec4(normalPack, shininessPack, specular);
 }`;
 
 const lightHeaderShader = `
@@ -189,7 +189,7 @@ uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
 
 uniform sampler2D depthBuffer;
-uniform sampler2D normalAndGlossinessBuffer;
+uniform sampler2D normalAndGlossBuffer;
 
 ${normalDecode.declare()}
 ${phongLightApply.declare("1", "1")}
@@ -218,15 +218,15 @@ void main(void) {
   ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
 
   // Read samples from texture buffers
-  vec4 normalAndGlossinessSample = texelFetch(normalAndGlossinessBuffer, bufferCoord, 0);
+  vec4 normalAndGlossSample = texelFetch(normalAndGlossBuffer, bufferCoord, 0);
   vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
   // Decode geometry
-  vec3 normal = ${normalDecode.invoke("normalAndGlossinessSample.rg")};
+  vec3 normal = ${normalDecode.invoke("normalAndGlossSample.rg")};
 
   // Decode material properties
-  float glossiness = normalAndGlossinessSample.a;
-  float shininess = ${shininessDecode.invoke("normalAndGlossinessSample.b")};
+  float specular = normalAndGlossSample.a; // FIXME: unused
+  float shininess = ${shininessDecode.invoke("normalAndGlossSample.b")};
 
   // Compute point in camera space from fragment coord and depth buffer
   vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
@@ -294,10 +294,10 @@ const materialFragmentShader = `
 uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
 
-uniform vec4 albedoFactor;
-uniform sampler2D albedoMap;
-uniform sampler2D glossinessMap;
-uniform float glossinessStrength;
+uniform vec4 diffuseColor;
+uniform sampler2D diffuseMap;
+uniform float specularColor;
+uniform sampler2D specularMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -332,20 +332,20 @@ void main(void) {
     "tbn"
   )};
 
-  vec4 albedoSample = texture(albedoMap, coordParallax);
-  vec3 albedo = albedoFactor.rgb * ${standardToLinear.invoke(
-    "albedoSample.rgb"
+  vec4 diffuseSample = texture(diffuseMap, coordParallax);
+  vec3 diffuse = diffuseColor.rgb * ${standardToLinear.invoke(
+    "diffuseSample.rgb"
   )};
-  float glossiness = glossinessStrength * texture(glossinessMap, coordParallax).r;
+  float specular = specularColor * texture(specularMap, coordParallax).r;
 
   // Emit final fragment color
   vec3 diffuseLightColor = lightSample.rgb;
   vec3 specularLightColor = vec3(lightSample.a); // Note: specular light approximate using ony channel
 
   vec3 color =
-    albedo * ambientLightColor * float(LIGHT_MODEL_AMBIENT) +
-    albedo * diffuseLightColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
-    glossiness * specularLightColor * float(LIGHT_MODEL_PHONG_SPECULAR);
+    diffuse * ambientLightColor * float(LIGHT_MODEL_AMBIENT) +
+    diffuse * diffuseLightColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
+    specular * specularLightColor * float(LIGHT_MODEL_PHONG_SPECULAR);
 
   fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
@@ -372,7 +372,7 @@ type LightScene = {
   depthBuffer: GlTexture;
   index: GlBuffer;
   modelMatrix: Matrix4;
-  normalAndGlossinessBuffer: GlTexture;
+  normalAndGlossBuffer: GlTexture;
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
   viewportSize: Vector2;
@@ -439,16 +439,16 @@ const loadGeometryPainter = (
 
   if (configuration.lightModel === DeferredLightingLightModel.Phong) {
     materialBinding.setUniform(
-      "glossinessMap",
-      shaderUniform.tex2dWhite(({ albedoMap: a, glossMap: g }) => g ?? a)
-    );
-    materialBinding.setUniform(
-      "glossinessStrength",
-      shaderUniform.number(({ glossFactor }) => glossFactor[0])
-    );
-    materialBinding.setUniform(
       "shininess",
       shaderUniform.number(({ shininess }) => shininess)
+    );
+    materialBinding.setUniform(
+      "specularColor",
+      shaderUniform.number(({ specularColor }) => specularColor[0])
+    );
+    materialBinding.setUniform(
+      "specularMap",
+      shaderUniform.tex2dWhite(({ diffuseMap: d, specularMap: s }) => s ?? d)
     );
   }
 
@@ -526,8 +526,8 @@ const loadLightBinding = <TScene extends LightScene>(
     shaderUniform.tex2dBlack(({ depthBuffer }) => depthBuffer)
   );
   binding.setUniform(
-    "normalAndGlossinessBuffer",
-    shaderUniform.tex2dBlack((state) => state.normalAndGlossinessBuffer)
+    "normalAndGlossBuffer",
+    shaderUniform.tex2dBlack((state) => state.normalAndGlossBuffer)
   );
 
   return binding;
@@ -650,22 +650,22 @@ const loadMaterialPainter = (
   const materialBinding = shader.declare<GlMaterial>();
 
   materialBinding.setUniform(
-    "albedoFactor",
-    shaderUniform.array4f(({ albedoFactor }) => albedoFactor)
+    "diffuseColor",
+    shaderUniform.array4f(({ diffuseColor }) => diffuseColor)
   );
   materialBinding.setUniform(
-    "albedoMap",
-    shaderUniform.tex2dWhite(({ albedoMap }) => albedoMap)
+    "diffuseMap",
+    shaderUniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
   );
 
   if (configuration.lightModel >= DeferredLightingLightModel.Phong) {
     materialBinding.setUniform(
-      "glossinessMap",
-      shaderUniform.tex2dBlack(({ glossMap }) => glossMap)
+      "specularColor",
+      shaderUniform.number(({ specularColor }) => specularColor[0])
     );
     materialBinding.setUniform(
-      "glossinessStrength",
-      shaderUniform.number(({ glossFactor }) => glossFactor[0])
+      "specularMap",
+      shaderUniform.tex2dBlack(({ specularMap }) => specularMap)
     );
   }
 
@@ -695,7 +695,7 @@ const loadMaterialPainter = (
 class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
   public readonly depthBuffer: GlTexture;
   public readonly lightBuffer: GlTexture;
-  public readonly normalAndGlossinessBuffer: GlTexture;
+  public readonly normalAndGlossBuffer: GlTexture;
 
   private readonly directionalLightBillboard: GlDirectionalLightBillboard;
   private readonly directionalLightPainter: GlPainter<DirectionalLightScene>;
@@ -744,7 +744,7 @@ class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
     this.materialPainter = loadMaterialPainter(runtime, configuration);
     this.pointLightBillboard = pointLightBillboard(gl);
     this.pointLightPainter = loadPointLightPainter(runtime, configuration);
-    this.normalAndGlossinessBuffer = geometry.setupColorTexture(
+    this.normalAndGlossBuffer = geometry.setupColorTexture(
       GlTextureFormat.RGBA8,
       GlTextureType.Quad
     );
@@ -822,7 +822,7 @@ class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
           directionalLight,
           index: this.directionalLightBillboard.index,
           modelMatrix,
-          normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+          normalAndGlossBuffer: this.normalAndGlossBuffer,
           polygon: this.directionalLightBillboard.polygon,
           projectionMatrix: this.fullscreenProjection,
           viewMatrix,
@@ -840,7 +840,7 @@ class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
         depthBuffer: this.depthBuffer,
         index: this.pointLightBillboard.index,
         modelMatrix: Matrix4.identity, // FIXME: remove from shader
-        normalAndGlossinessBuffer: this.normalAndGlossinessBuffer,
+        normalAndGlossBuffer: this.normalAndGlossBuffer,
         polygon: this.pointLightBillboard.polygon,
         projectionMatrix,
         viewMatrix,

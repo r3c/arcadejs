@@ -48,15 +48,15 @@ type ForwardLightingConfiguration = {
   lightModelPhongNoSpecular?: boolean;
   lightModelPhysicalNoAmbient?: boolean;
   lightModelPhysicalNoIBL?: boolean;
-  noAlbedoMap?: boolean;
+  noDiffuseMap?: boolean;
   noEmissiveMap?: boolean;
-  noGlossMap?: boolean;
   noHeightMap?: boolean;
   noMetalnessMap?: boolean;
   noNormalMap?: boolean;
   noOcclusionMap?: boolean;
   noRoughnessMap?: boolean;
   noShadow?: boolean;
+  noSpecularMap?: boolean;
 };
 
 enum ForwardLightingLightModel {
@@ -219,12 +219,12 @@ const lightFragmentShader = (
 ) => `
 ${lightHeaderShader(maxDirectionalLights, maxPointLights)}
 
-uniform vec4 albedoFactor;
-uniform sampler2D albedoMap;
+uniform vec4 diffuseColor;
+uniform sampler2D diffuseMap;
 uniform vec4 emissiveFactor;
 uniform sampler2D emissiveMap;
-uniform float glossinessStrength;
-uniform sampler2D glossinessMap;
+uniform float specularColor;
+uniform sampler2D specularMap;
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
@@ -283,8 +283,8 @@ vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 
 
     return ${phongLightApply.invoke(
       "phongLight",
-      "material.albedo.rgb",
-      "material.glossiness"
+      "material.diffuseColor.rgb",
+      "material.specularColor"
     )};
   #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
     return ${pbrLight.invoke("light", "material", "normal", "eyeDirection")};
@@ -310,10 +310,10 @@ void main(void) {
   )};
 
   ${materialType} material = ${materialSample.invoke(
-  "albedoMap",
-  "albedoFactor",
-  "glossinessMap",
-  "glossinessStrength",
+  "diffuseColor",
+  "diffuseMap",
+  "specularColor",
+  "specularMap",
   "metalnessMap",
   "metalnessStrength",
   "roughnessMap",
@@ -324,7 +324,7 @@ void main(void) {
 
   // Apply environment (ambient or influence-based) lighting
   #if LIGHT_MODEL == ${ForwardLightingLightModel.Phong}
-  vec3 color = material.albedo.rgb * ambientLightColor * float(LIGHT_AMBIENT);
+  vec3 color = material.diffuseColor.rgb * ambientLightColor * float(LIGHT_AMBIENT);
   #elif LIGHT_MODEL == ${ForwardLightingLightModel.Physical}
   vec3 color = ${pbrEnvironment.invoke(
     "environmentBrdfMap",
@@ -509,31 +509,33 @@ const createLightPainter = (
   const materialBinding = shader.declare<GlMaterial>();
 
   materialBinding.setUniform(
-    "albedoMap",
-    !configuration.noAlbedoMap
-      ? shaderUniform.tex2dWhite(({ albedoMap }) => albedoMap)
-      : shaderUniform.tex2dWhite(() => undefined)
+    "diffuseColor",
+    shaderUniform.array4f(({ diffuseColor }) => diffuseColor)
   );
   materialBinding.setUniform(
-    "albedoFactor",
-    shaderUniform.array4f(({ albedoFactor }) => albedoFactor)
+    "diffuseMap",
+    !configuration.noDiffuseMap
+      ? shaderUniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
+      : shaderUniform.tex2dWhite(() => undefined)
   );
 
   switch (configuration.lightModel) {
     case ForwardLightingLightModel.Phong:
       materialBinding.setUniform(
-        "glossinessMap",
-        !configuration.noGlossMap
-          ? shaderUniform.tex2dWhite(({ albedoMap: a, glossMap: g }) => g ?? a)
-          : shaderUniform.tex2dWhite(() => undefined)
-      );
-      materialBinding.setUniform(
-        "glossinessStrength",
-        shaderUniform.number(({ glossFactor }) => glossFactor[0])
-      );
-      materialBinding.setUniform(
         "shininess",
         shaderUniform.number(({ shininess }) => shininess)
+      );
+      materialBinding.setUniform(
+        "specularColor",
+        shaderUniform.number(({ specularColor }) => specularColor[0])
+      );
+      materialBinding.setUniform(
+        "specularMap",
+        !configuration.noSpecularMap
+          ? shaderUniform.tex2dWhite(
+              ({ diffuseMap: d, specularMap: s }) => s ?? d
+            )
+          : shaderUniform.tex2dWhite(() => undefined)
       );
 
       break;
@@ -795,15 +797,15 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
       lightModelPhysicalNoAmbient:
         configuration.lightModelPhysicalNoAmbient ?? false,
       lightModelPhysicalNoIBL: configuration.lightModelPhysicalNoIBL ?? false,
-      noAlbedoMap: configuration.noAlbedoMap ?? false,
+      noDiffuseMap: configuration.noDiffuseMap ?? false,
       noEmissiveMap: configuration.noEmissiveMap ?? false,
-      noGlossMap: configuration.noGlossMap ?? false,
       noHeightMap: configuration.noHeightMap ?? false,
       noMetalnessMap: configuration.noMetalnessMap ?? false,
       noNormalMap: configuration.noNormalMap ?? false,
       noOcclusionMap: configuration.noOcclusionMap ?? false,
       noRoughnessMap: configuration.noRoughnessMap ?? false,
       noShadow: configuration.noShadow ?? false,
+      noSpecularMap: configuration.noSpecularMap ?? false,
     };
 
     const directionalShadowTargets = range(

@@ -210,8 +210,8 @@ const expandMaterial = (material: TfMaterial): Material => {
     }));
 
   return {
-    albedoFactor: material.baseColorFactor,
-    albedoMap: toMap(material.baseColorTexture),
+    diffuseColor: material.baseColorFactor,
+    diffuseMap: toMap(material.baseColorTexture),
     emissiveFactor: material.emissiveFactor,
     emissiveMap: toMap(material.emissiveTexture),
     metalnessMap: toMap(material.metallicRoughnessTexture, [Channel.Blue]),

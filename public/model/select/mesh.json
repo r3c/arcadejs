@@ -1,5 +1,5 @@
 {
-  "materials": { "side": { "albedoMap": "select.png" } },
+  "materials": { "side": { "diffuseMap": "select.png" } },
   "polygons": [
     {
       "coordinates": [

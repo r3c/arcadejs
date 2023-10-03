@@ -20,28 +20,28 @@ const materialSample: GlShaderFunction<
 > = {
   declare: () => `
 struct ${materialType} {
-  vec4 albedo;
-  float glossiness;
+  vec4 diffuseColor;
+  float specularColor;
   float metalness;
   float roughness;
   float shininess;
 };
 
 ${materialType} materialSample(
-  in sampler2D albedoMap, in vec4 albedoFactor, in sampler2D glossinessMap, in float glossinessStrength,
+  in vec4 diffuseColor, in sampler2D diffuseMap, in float specularColor, in sampler2D specularMap,
   in sampler2D metalnessMap, in float metalnessStrength, in sampler2D roughnessMap, in float roughnessStrength,
   in float shininess, in vec2 coordinate) {
-  vec4 albedoSample = texture(albedoMap, coordinate);
-  vec4 albedo = albedoFactor * vec4(${standardToLinear.invoke(
-    `albedoSample.rgb`
-  )}, albedoSample.a);
-  float glossiness = glossinessStrength * texture(glossinessMap, coordinate).r;
+  vec4 diffuseSample = texture(diffuseMap, coordinate);
+  vec4 combinedDiffuseColor = diffuseColor * vec4(${standardToLinear.invoke(
+    `diffuseSample.rgb`
+  )}, diffuseSample.a);
+  float combinedSpecularColor = specularColor * texture(specularMap, coordinate).r;
   float metalness = metalnessStrength * texture(metalnessMap, coordinate).r;
   float roughness = roughnessStrength * texture(roughnessMap, coordinate).r;
 
   return ${materialType}(
-    albedo,
-    glossiness,
+    combinedDiffuseColor,
+    combinedSpecularColor,
     clamp(metalness, 0.0, 1.0),
     clamp(roughness, 0.04, 1.0),
     shininess
@@ -49,10 +49,10 @@ ${materialType} materialSample(
 }`,
 
   invoke: (
-    albedoMap: string,
-    albedoFactor: string,
-    glossinessMap: string,
-    glossinessStrength: string,
+    diffuseColor: string,
+    diffuseMap: string,
+    specularColor: string,
+    specularMap: string,
     metalnessMap: string,
     metalnessStrength: string,
     roughnessMap: string,
@@ -60,7 +60,7 @@ ${materialType} materialSample(
     shininess: string,
     coordinate: string
   ) =>
-    `materialSample(${albedoMap}, ${albedoFactor}, ${glossinessMap}, ${glossinessStrength}, ${metalnessMap}, ${metalnessStrength}, ${roughnessMap}, ${roughnessStrength}, ${shininess}, ${coordinate})`,
+    `materialSample(${diffuseColor}, ${diffuseMap}, ${specularColor}, ${specularMap}, ${metalnessMap}, ${metalnessStrength}, ${roughnessMap}, ${roughnessStrength}, ${shininess}, ${coordinate})`,
 };
 
 export { materialSample, materialType };
