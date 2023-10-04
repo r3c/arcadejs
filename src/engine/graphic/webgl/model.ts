@@ -1,4 +1,4 @@
-import { optionalMap } from "../../language/optional";
+import { mapOptional } from "../../language/optional";
 import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
@@ -155,14 +155,14 @@ const loadMaterial = (
     return glTexture;
   };
 
-  const diffuseMap = optionalMap(material.diffuseMap, toColorMap);
-  const emissiveMap = optionalMap(material.emissiveMap, toColorMap);
-  const heightMap = optionalMap(material.heightMap, toColorMap);
-  const metalnessMap = optionalMap(material.metalnessMap, toColorMap);
-  const normalMap = optionalMap(material.normalMap, toColorMap);
-  const occlusionMap = optionalMap(material.occlusionMap, toColorMap);
-  const roughnessMap = optionalMap(material.roughnessMap, toColorMap);
-  const specularMap = optionalMap(material.specularMap, toColorMap);
+  const diffuseMap = mapOptional(material.diffuseMap, toColorMap);
+  const emissiveMap = mapOptional(material.emissiveMap, toColorMap);
+  const heightMap = mapOptional(material.heightMap, toColorMap);
+  const metalnessMap = mapOptional(material.metalnessMap, toColorMap);
+  const normalMap = mapOptional(material.normalMap, toColorMap);
+  const occlusionMap = mapOptional(material.occlusionMap, toColorMap);
+  const roughnessMap = mapOptional(material.roughnessMap, toColorMap);
+  const specularMap = mapOptional(material.specularMap, toColorMap);
 
   return {
     dispose: () => {
@@ -280,7 +280,7 @@ const loadPrimitive = (
     source.indices.length * 3
   );
 
-  const coordinate = optionalMap(source.coordinates, (coordinates) => {
+  const coordinate = mapOptional(source.coordinates, (coordinates) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
     buffer.set(
@@ -291,7 +291,7 @@ const loadPrimitive = (
     return createAttribute(buffer, 2);
   });
 
-  const normal = optionalMap(source.normals, (normals) => {
+  const normal = mapOptional(source.normals, (normals) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
     buffer.set(
@@ -311,7 +311,7 @@ const loadPrimitive = (
 
   const position = createAttribute(positionBuffer, 3);
 
-  const tangent = optionalMap(source.tangents, (tangents) => {
+  const tangent = mapOptional(source.tangents, (tangents) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
     buffer.set(
@@ -322,7 +322,7 @@ const loadPrimitive = (
     return createAttribute(buffer, 3);
   });
 
-  const tint = optionalMap(source.tints, (tints) => {
+  const tint = mapOptional(source.tints, (tints) => {
     const buffer = createStaticArrayBuffer(gl, Float32Array);
 
     buffer.set(

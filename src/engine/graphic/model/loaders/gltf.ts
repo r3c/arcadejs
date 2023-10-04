@@ -1,5 +1,5 @@
 import { asciiCodec } from "../../../text/encoding";
-import { optionalMap } from "../../../language/optional";
+import { mapOptional } from "../../../language/optional";
 import { Channel, loadFromURL, mapChannels } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import { Interpolation, Material, Mesh, Polygon, Wrap } from "../definition";
@@ -196,7 +196,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     textureOrUndefined: TfTexture | undefined,
     channels?: Channel[]
   ) =>
-    optionalMap(textureOrUndefined, (texture) => ({
+    mapOptional(textureOrUndefined, (texture) => ({
       filter: {
         magnifier: texture.sampler.magnifier,
         minifier: texture.sampler.minifier,
@@ -219,7 +219,7 @@ const expandMaterial = (material: TfMaterial): Material => {
     //normalFactor: material.normalFactor, // FIXME: normalFactor is not supported yet
     normalMap: toMap(material.normalTexture),
     occlusionMap: toMap(material.occlusionTexture),
-    occlusionStrength: optionalMap(material.occlusionFactor, (factor) =>
+    occlusionStrength: mapOptional(material.occlusionFactor, (factor) =>
       Math.max(factor.x, factor.y, factor.z, factor.w)
     ),
     roughnessMap: toMap(material.metallicRoughnessTexture, [Channel.Green]),
@@ -246,7 +246,7 @@ const expandMesh = (
     const indexValues = expandAccessor(url, indices, 1, (i) => i[0], "index");
 
     return {
-      coordinates: optionalMap(coordinates, (coordinates) =>
+      coordinates: mapOptional(coordinates, (coordinates) =>
         expandAccessor(url, coordinates, 2, Vector2.fromArray, "coordinates")
       ),
       indices: range(Math.floor(indexValues.length / 3)).map((i) => ({
@@ -256,7 +256,7 @@ const expandMesh = (
       })),
       material:
         materialName !== undefined ? materials.get(materialName) : undefined,
-      normals: optionalMap(normals, (normals) =>
+      normals: mapOptional(normals, (normals) =>
         expandAccessor(url, normals, 3, Vector3.fromArray, "normals")
       ),
       positions: expandAccessor(
@@ -266,10 +266,10 @@ const expandMesh = (
         Vector3.fromArray,
         "positions"
       ),
-      tangents: optionalMap(tangents, (tangents) =>
+      tangents: mapOptional(tangents, (tangents) =>
         expandAccessor(url, tangents, 3, Vector3.fromArray, "tangents")
       ),
-      tints: optionalMap(tints, (tints) =>
+      tints: mapOptional(tints, (tints) =>
         expandAccessor(url, tints, 4, Vector4.fromArray, "tints")
       ),
     };
@@ -283,7 +283,7 @@ const expandNode = (
 ): Mesh => ({
   children: node.children.map((child) => expandNode(url, child, materials)),
   polygons:
-    optionalMap(node.mesh, (mesh) => expandMesh(url, mesh, materials)) ?? [],
+    mapOptional(node.mesh, (mesh) => expandMesh(url, mesh, materials)) ?? [],
   transform: node.transform,
 });
 
@@ -500,7 +500,7 @@ const loadMaterial = (
   const source = `material[${index}]`;
 
   const toFactor = (property: any) =>
-    optionalMap(property, (factor) => ({
+    mapOptional(property, (factor) => ({
       x: factor[0],
       y: factor[1],
       z: factor[2],
@@ -508,7 +508,7 @@ const loadMaterial = (
     }));
 
   const toTexture = (property: any, name: string) =>
-    optionalMap(property, (texture) =>
+    mapOptional(property, (texture) =>
       convertReferenceTo(url, source + "." + name, texture.index, textures)
     );
 
@@ -619,7 +619,7 @@ const loadNode = (
 
     nodes[index] = {
       children,
-      mesh: optionalMap(node.mesh, (mesh) =>
+      mesh: mapOptional(node.mesh, (mesh) =>
         convertReferenceTo(url, source + ".mesh", mesh, meshes)
       ),
       transform,
@@ -707,7 +707,7 @@ const loadRoot = async (
 ): Promise<Mesh> => {
   const defaultScene = <number | undefined>structure.scene;
   const version: string =
-    optionalMap(structure.asset, (asset) => asset.version) ?? "unknown";
+    mapOptional(structure.asset, (asset) => asset.version) ?? "unknown";
   if (defaultScene === undefined)
     throw invalidData(url, "no default scene is defined");
 
