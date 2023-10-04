@@ -9,9 +9,9 @@ import { range } from "../../engine/language/iterable";
 import {
   Mesh,
   changeMeshCenter,
-  loadModelFrom3ds,
-  loadModelFromJson,
-  loadModelFromObj,
+  loadMeshFrom3ds,
+  loadMeshFromJson,
+  loadMeshFromObj,
 } from "../../engine/graphic/model";
 import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -128,15 +128,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     configure(undefined);
 
     // Load meshes
-    const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
+    const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromCustom(["scale", { x: 0.25, y: 0.25, z: 0.25 }]),
     });
 
-    const shipModel = await loadModelFrom3ds("model/colmftr1/COLMFTR1.3DS", {
+    const shipModel = await loadMeshFrom3ds("model/colmftr1/COLMFTR1.3DS", {
       transform: Matrix4.fromCustom(["translate", { x: 0, y: 4, z: 0 }]),
     });
 
-    const starMesh = await loadModelFromObj(
+    const starMesh = await loadMeshFromObj(
       "model/asteroid/Asteroid_Asset_Pack.obj",
       { format: { variables: { type: "rock_0005" } } }
     );

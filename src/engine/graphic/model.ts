@@ -21,9 +21,9 @@ import { load as loadFromJson } from "./model/loaders/json";
 import { load as loadFromObj } from "./model/loaders/obj";
 
 type Configuration<TFormat> = {
-  format?: TFormat;
-  library?: Library;
-  transform?: Matrix4;
+  format: TFormat;
+  library: Library;
+  transform: Matrix4;
 };
 
 const changeMeshCenter = (mesh: Mesh): Mesh => {
@@ -165,15 +165,15 @@ const computeTangents = (
   return tangents;
 };
 
-const createLoadMesh = <TSource, TLoad>(
+const createMeshLoader = <TSource, TFormat>(
   loadCallback: (
     source: TSource,
     library: Library,
-    loadConfiguration: TLoad | undefined
+    formatConfiguration: TFormat | undefined
   ) => Promise<Mesh>
 ): ((
   source: TSource,
-  configuration?: Configuration<TLoad>
+  configurationOrUndefined?: Partial<Configuration<TFormat>>
 ) => Promise<Mesh>) => {
   return async (source, configurationOrUndefined) => {
     // Load model using underlying loading callback
@@ -192,14 +192,14 @@ const createLoadMesh = <TSource, TLoad>(
     }
 
     // Finalize meshes recursively
-    finalizeMesh(mesh, configuration);
+    finalizeMesh(mesh);
 
     return mesh;
   };
 };
 
-const finalizeMesh = (mesh: Mesh, config: Configuration<unknown>): void => {
-  mesh.children.forEach((child) => finalizeMesh(child, config));
+const finalizeMesh = (mesh: Mesh): void => {
+  mesh.children.forEach((child) => finalizeMesh(child));
   mesh.polygons.forEach((mesh) => finalizePolygon(mesh));
 };
 
@@ -237,123 +237,103 @@ const finalizePolygon = (polygon: Polygon): void => {
 };
 
 const flattenMesh = (mesh: Mesh): Mesh => {
-  type Fragment = { polygon: Polygon; transform: Matrix4 };
+  const flatPolygons = new Map<Material | undefined, Polygon>();
 
-  // Recursively collect fragments by material name from model
-  const fragmentsByMaterial = new Map<Material | undefined, Fragment[]>();
-  const flattenFragments = (mesh: Mesh, parentTransform: Matrix4): void => {
-    const transform = Matrix4.fromCustom(
-      ["set", parentTransform],
-      ["multiply", mesh.transform]
-    );
+  flattenPolygons(flatPolygons, mesh, Matrix4.identity);
 
-    for (const polygon of mesh.polygons) {
-      const fragments = fragmentsByMaterial.get(polygon.material) ?? [];
-
-      fragmentsByMaterial.set(polygon.material, fragments);
-      fragments.push({ polygon, transform });
-    }
-
-    for (const child of mesh.children) {
-      flattenFragments(child, transform);
-    }
+  return {
+    children: [],
+    polygons: Array.from(flatPolygons.values()),
+    transform: Matrix4.identity,
   };
-
-  flattenFragments(mesh, Matrix4.identity);
-
-  // Merge polygons by material name
-  const polygons: Polygon[] = [];
-  const concatFragments = <T>(
-    fragments: Fragment[],
-    extractor: (polygon: Polygon) => T[] | undefined,
-    converter: (value: T, matrix: Matrix4) => T
-  ): T[] | undefined => {
-    const concatenated: T[] = [];
-    let isDefined = false;
-
-    for (const { polygon, transform } of fragments) {
-      const values = extractor(polygon);
-
-      if (values === undefined) {
-        continue;
-      }
-
-      for (const value of values) {
-        concatenated.push(converter(value, transform));
-      }
-
-      isDefined = true;
-    }
-
-    return isDefined ? concatenated : undefined;
-  };
-
-  for (const [material, fragments] of fragmentsByMaterial.entries()) {
-    // Build concatenated points
-    const points = concatFragments(
-      fragments,
-      (p) => p.positions,
-      (value, matrix) =>
-        Matrix4.transform(matrix, { x: value.x, y: value.y, z: value.z, w: 1 })
-    );
-
-    if (points === undefined) {
-      throw Error("got undefined attribute when flattening model points");
-    }
-
-    // Build concatenated indices
-    const indices: Vector3[] = [];
-
-    let indexShift = 0;
-
-    for (const { polygon } of fragments) {
-      for (const index of polygon.indices) {
-        indices.push({
-          x: index.x + indexShift,
-          y: index.y + indexShift,
-          z: index.z + indexShift,
-        });
-      }
-
-      indexShift += polygon.positions.length;
-    }
-
-    // Build output polygon with concatenated vertex arrays
-    polygons.push({
-      coordinates: concatFragments(
-        fragments,
-        (p) => p.coordinates,
-        (c) => c
-      ),
-      indices,
-      material,
-      normals: concatFragments(
-        fragments,
-        (p) => p.normals,
-        (n) => n // FIXME: missing multiplication by normalMatrix
-      ),
-      positions: points,
-      tangents: concatFragments(
-        fragments,
-        (p) => p.tangents,
-        (t) => t // FIXME: missing multiplication by normalMatrix
-      ),
-      tints: concatFragments(
-        fragments,
-        (p) => p.tints,
-        (t) => t
-      ),
-    });
-  }
-
-  // Create and return flattened model
-  return { children: [], polygons, transform: Matrix4.identity };
 };
 
-const loadModelFrom3ds = createLoadMesh(loadFrom3ds);
-const loadModelFromGltf = createLoadMesh(loadFromGltf);
-const loadModelFromJson = createLoadMesh(loadFromJson);
-const loadModelFromObj = createLoadMesh(loadFromObj);
+const flattenPolygons = (
+  flatPolygons: Map<Material | undefined, Polygon>,
+  mesh: Mesh,
+  parentTransform: Matrix4
+): void => {
+  const transform = Matrix4.fromCustom(
+    ["set", parentTransform],
+    ["multiply", mesh.transform]
+  );
+
+  for (const polygon of mesh.polygons) {
+    const flatPolygon: Polygon = flatPolygons.get(polygon.material) ?? {
+      coordinates: undefined,
+      indices: [],
+      material: polygon.material,
+      normals: undefined,
+      positions: [],
+      tangents: undefined,
+      tints: undefined,
+    };
+
+    const indexShift = flatPolygon.positions.length;
+
+    for (const index of polygon.indices) {
+      flatPolygon.indices.push({
+        x: index.x + indexShift,
+        y: index.y + indexShift,
+        z: index.z + indexShift,
+      });
+    }
+
+    for (const position of polygon.positions) {
+      flatPolygon.positions.push(
+        Matrix4.transform(transform, {
+          x: position.x,
+          y: position.y,
+          z: position.z,
+          w: 1,
+        })
+      );
+    }
+
+    if (polygon.coordinates !== undefined) {
+      flatPolygon.coordinates = flatPolygon.coordinates ?? [];
+
+      for (const coordinate of polygon.coordinates) {
+        flatPolygon.coordinates.push(coordinate);
+      }
+    }
+
+    if (polygon.normals !== undefined) {
+      flatPolygon.normals = flatPolygon.normals ?? [];
+
+      for (const normal of polygon.normals) {
+        flatPolygon.normals.push(normal); // FIXME: multiply by normalMatrix
+      }
+    }
+
+    if (polygon.tangents !== undefined) {
+      flatPolygon.tangents = flatPolygon.tangents ?? [];
+
+      for (const tangent of polygon.tangents) {
+        flatPolygon.tangents.push(tangent); // FIXME: multiply by normalMatrix
+      }
+    }
+
+    if (polygon.tints !== undefined) {
+      flatPolygon.tints = flatPolygon.tints ?? [];
+
+      for (const tint of polygon.tints) {
+        flatPolygon.tints.push(tint);
+      }
+    }
+
+    flatPolygons.set(polygon.material, flatPolygon);
+  }
+
+  for (const child of mesh.children) {
+    flattenPolygons(flatPolygons, child, transform);
+  }
+};
+
+const loadMeshFrom3ds = createMeshLoader(loadFrom3ds);
+const loadMeshFromGltf = createMeshLoader(loadFromGltf);
+const loadMeshFromJson = createMeshLoader(loadFromJson);
+const loadMeshFromObj = createMeshLoader(loadFromObj);
 
 const mergeMeshes = (instances: Iterable<Instance>): Mesh => {
   const children: Mesh[] = [];
@@ -435,9 +415,9 @@ export {
   computeBoundingBox,
   computeCenter,
   flattenMesh,
-  loadModelFrom3ds,
-  loadModelFromGltf,
-  loadModelFromJson,
-  loadModelFromObj,
+  loadMeshFrom3ds,
+  loadMeshFromGltf,
+  loadMeshFromJson,
+  loadMeshFromObj,
   mergeMeshes,
 };

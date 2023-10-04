@@ -14,8 +14,8 @@ import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
 import {
-  loadModelFromGltf,
-  loadModelFromJson,
+  loadMeshFromGltf,
+  loadMeshFromJson,
 } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -96,8 +96,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const groundModel = await loadModelFromJson("model/ground/mesh.json");
-    const helmetModel = await loadModelFromGltf(
+    const groundModel = await loadMeshFromJson("model/ground/mesh.json");
+    const helmetModel = await loadMeshFromGltf(
       "model/damaged-helmet/DamagedHelmet.gltf",
       {
         transform: Matrix4.fromCustom(
@@ -106,7 +106,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         ),
       }
     );
-    const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
+    const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromCustom(["scale", { x: 0.2, y: 0.2, z: 0.2 }]),
     });
 

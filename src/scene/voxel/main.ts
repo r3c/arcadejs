@@ -6,7 +6,7 @@ import {
   ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
-import { loadModelFromJson } from "../../engine/graphic/model";
+import { loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { Camera } from "../view";
@@ -72,7 +72,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       range(10).map((level) =>
         Promise.all(
           range(6).map((faceIndex) =>
-            loadModelFromJson(`model/voxel/face${faceIndex}.json`, {
+            loadMeshFromJson(`model/voxel/face${faceIndex}.json`, {
               library,
               format: { variables: { level: level.toString() } },
               transform,
@@ -85,7 +85,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     worldScaleVector.set(worldScale);
     worldScaleVector.scale(0.55);
 
-    const selectModel = await loadModelFromJson("model/select/mesh.json", {
+    const selectModel = await loadMeshFromJson("model/select/mesh.json", {
       transform: Matrix4.fromCustom(["scale", worldScaleVector]),
     });
 

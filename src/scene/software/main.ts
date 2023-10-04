@@ -6,7 +6,7 @@ import {
 } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { Context2DScreen } from "../../engine/graphic/display";
-import { Mesh, loadModelFromJson } from "../../engine/graphic/model";
+import { Mesh, loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import {} from "../../engine/graphic/model";
 import {
@@ -45,8 +45,8 @@ const application: Application<Context2DScreen, ApplicationState> = {
 
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
-      cubeWithColor: await loadModelFromJson("model/cube-color/mesh.json"),
-      cubeWithTexture: await loadModelFromJson("model/cube/mesh.json"),
+      cubeWithColor: await loadMeshFromJson("model/cube-color/mesh.json"),
+      cubeWithTexture: await loadMeshFromJson("model/cube/mesh.json"),
       input: new Input(screen.canvas),
       projection: Matrix4.identity,
       rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),

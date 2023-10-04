@@ -23,7 +23,7 @@ import {
 } from "../../engine/graphic/webgl/renderers/deferred-lighting";
 import { Renderer, WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
-import { loadModelFromJson } from "../../engine/graphic/model";
+import { loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
@@ -162,17 +162,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const tweak = configure(configuration);
 
     // Load meshes
-    const cubeModel = await loadModelFromJson("model/cube/mesh.json", {
+    const cubeModel = await loadMeshFromJson("model/cube/mesh.json", {
       transform: Matrix4.fromCustom(["scale", { x: 0.4, y: 0.4, z: 0.4 }]),
     });
-    const directionalLightModel = await loadModelFromJson(
+    const directionalLightModel = await loadMeshFromJson(
       "model/sphere/mesh.json",
       {
         transform: Matrix4.fromCustom(["scale", { x: 0.5, y: 0.5, z: 0.5 }]),
       }
     );
-    const groundModel = await loadModelFromJson("model/ground/mesh.json");
-    const pointLightModel = await loadModelFromJson("model/sphere/mesh.json", {
+    const groundModel = await loadMeshFromJson("model/ground/mesh.json");
+    const pointLightModel = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromCustom(["scale", { x: 0.1, y: 0.1, z: 0.1 }]),
     });
     const target = new GlTarget(gl, screen.getSize());

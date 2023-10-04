@@ -12,7 +12,7 @@ import {
   ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
-import { loadModelFromJson } from "../../engine/graphic/model";
+import { loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
@@ -84,9 +84,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const tweak = configure(configuration);
 
     // Load models
-    const cubeModel = await loadModelFromJson("model/cube/mesh.json");
-    const groundModel = await loadModelFromJson("model/ground/mesh.json");
-    const lightModel = await loadModelFromJson("model/sphere/mesh.json", {
+    const cubeModel = await loadMeshFromJson("model/cube/mesh.json");
+    const groundModel = await loadMeshFromJson("model/ground/mesh.json");
+    const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromCustom(["scale", { x: 0.2, y: 0.2, z: 0.2 }]),
     });
 
