@@ -16,7 +16,7 @@ import {
   phongLightCast,
   phongLightType,
 } from "../shaders/phong";
-import { linearToStandard, standardToLinear } from "../shaders/rgb";
+import { linearToStandard, luminance, standardToLinear } from "../shaders/rgb";
 import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
@@ -188,6 +188,7 @@ uniform vec2 viewportSize;
 uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossBuffer;
 
+${luminance.declare()}
 ${normalDecode.declare()}
 ${phongLightApply.declare("1", "1")}
 ${phongLightCast.declare()}
@@ -250,10 +251,12 @@ void main(void) {
 )};
 
   // Emit lighting parameters
+  // Note: specular light approximate using ony channel
   vec3 diffuseColor = phongLight.diffuseStrength * phongLight.color;
-  float specularStrength = phongLight.specularStrength; // Note: specular light approximate using ony channel
+  vec3 specularColor = phongLight.specularStrength * phongLight.color;
+  float specularValue = ${luminance.invoke("specularColor")};
 
-  fragColor = exp2(-vec4(diffuseColor, specularStrength));
+  fragColor = exp2(-vec4(diffuseColor, specularValue));
 }`;
 
 const materialVertexShader = `
@@ -337,8 +340,9 @@ void main(void) {
   vec3 specular = specularColor.rgb * specularLinear;
 
   // Emit final fragment color
+  // Note: specular light approximate using ony channel
   vec3 diffuseLightColor = lightSample.rgb;
-  vec3 specularLightColor = vec3(lightSample.a); // Note: specular light approximate using ony channel
+  vec3 specularLightColor = lightSample.aaa;
 
   vec3 color =
     diffuse * ambientLightColor * float(LIGHT_MODEL_AMBIENT) +
