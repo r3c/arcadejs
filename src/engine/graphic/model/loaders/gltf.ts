@@ -570,7 +570,8 @@ const loadNode = (
       node.scale !== undefined &&
       node.translation !== undefined
     ) {
-      transform = Matrix4.fromCustom(
+      transform = Matrix4.fromObject(
+        Matrix4.identity,
         [
           "translate",
           {

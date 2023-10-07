@@ -906,7 +906,8 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
           z: -light.direction.z,
         };
 
-        const viewMatrix = Matrix4.fromCustom(
+        const viewMatrix = Matrix4.fromObject(
+          Matrix4.identity,
           ["translate", { x: 0, y: 0, z: -10 }],
           [
             "multiply",

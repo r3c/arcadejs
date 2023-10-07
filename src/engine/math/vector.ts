@@ -52,14 +52,13 @@ class Vector2 {
     return new MutableVector2(values[0], values[1]);
   }
 
-  public static fromCustom(
+  public static fromObject(
+    origin: Vector2,
     ...invokes: InvokeOf<MutableVector2>[]
   ): MutableVector2 {
-    return invokeOnObject(Vector2.fromZero(), invokes);
-  }
+    const { x, y } = origin;
 
-  public static fromObject(vector: Vector2): MutableVector2 {
-    return new MutableVector2(vector.x, vector.y);
+    return invokeOnObject(Vector2.fromXY(x, y), invokes);
   }
 
   public static fromXY(x: number, y: number): MutableVector2 {
@@ -161,14 +160,13 @@ class Vector3 {
     return new MutableVector3(values[0], values[1], values[2]);
   }
 
-  public static fromCustom(
+  public static fromObject(
+    origin: Vector3,
     ...invokes: InvokeOf<MutableVector3>[]
   ): MutableVector3 {
-    return invokeOnObject(Vector3.fromZero(), invokes);
-  }
+    const { x, y, z } = origin;
 
-  public static fromObject(vector: Vector3): MutableVector3 {
-    return new MutableVector3(vector.x, vector.y, vector.z);
+    return invokeOnObject(Vector3.fromXYZ(x, y, z), invokes);
   }
 
   public static fromXYZ(x: number, y: number, z: number): MutableVector3 {
@@ -233,14 +231,13 @@ class Vector4 {
     return new MutableVector4(values[0], values[1], values[2], values[3]);
   }
 
-  public static fromCustom(
+  public static fromObject(
+    origin: Vector4,
     ...invokes: InvokeOf<MutableVector4>[]
   ): MutableVector4 {
-    return invokeOnObject(Vector4.fromZero(), invokes);
-  }
+    const { x, y, z, w } = origin;
 
-  public static fromObject(vector: Vector4): MutableVector4 {
-    return new MutableVector4(vector.x, vector.y, vector.z, vector.w);
+    return invokeOnObject(Vector4.fromXYZW(x, y, z, w), invokes);
   }
 
   public static fromXYZW(

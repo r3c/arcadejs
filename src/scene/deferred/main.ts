@@ -163,17 +163,26 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Load meshes
     const cubeModel = await loadMeshFromJson("model/cube/mesh.json", {
-      transform: Matrix4.fromCustom(["scale", { x: 0.4, y: 0.4, z: 0.4 }]),
+      transform: Matrix4.fromObject(Matrix4.identity, [
+        "scale",
+        { x: 0.4, y: 0.4, z: 0.4 },
+      ]),
     });
     const directionalLightModel = await loadMeshFromJson(
       "model/sphere/mesh.json",
       {
-        transform: Matrix4.fromCustom(["scale", { x: 0.5, y: 0.5, z: 0.5 }]),
+        transform: Matrix4.fromObject(Matrix4.identity, [
+          "scale",
+          { x: 0.5, y: 0.5, z: 0.5 },
+        ]),
       }
     );
     const groundModel = await loadMeshFromJson("model/ground/mesh.json");
     const pointLightModel = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromCustom(["scale", { x: 0.1, y: 0.1, z: 0.1 }]),
+      transform: Matrix4.fromObject(Matrix4.identity, [
+        "scale",
+        { x: 0.1, y: 0.1, z: 0.1 },
+      ]),
     });
     const target = new GlTarget(gl, screen.getSize());
 
@@ -303,7 +312,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       directionalLights,
       objects: [
         {
-          matrix: Matrix4.fromCustom([
+          matrix: Matrix4.fromObject(Matrix4.identity, [
             "translate",
             {
               x: 0,
@@ -316,7 +325,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ]
         .concat(
           range(16).map((i) => ({
-            matrix: Matrix4.fromCustom([
+            matrix: Matrix4.fromObject(Matrix4.identity, [
               "translate",
               {
                 x: ((i % 4) - 1.5) * 2,
@@ -330,13 +339,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
         )
         .concat(
           directionalLights.map((light) => {
-            const direction = Vector3.fromObject(light.direction);
-
-            direction.normalize();
-            direction.scale(10);
+            const direction = Vector3.fromObject(
+              light.direction,
+              ["normalize"],
+              ["scale", 10]
+            );
 
             return {
-              matrix: Matrix4.fromCustom(["translate", direction]),
+              matrix: Matrix4.fromObject(Matrix4.identity, [
+                "translate",
+                direction,
+              ]),
               model: models.directionalLight,
               state: undefined,
             };
@@ -344,14 +357,18 @@ const application: Application<WebGLScreen, ApplicationState> = {
         )
         .concat(
           pointLights.map((light) => ({
-            matrix: Matrix4.fromCustom(["translate", light.position]),
+            matrix: Matrix4.fromObject(Matrix4.identity, [
+              "translate",
+              light.position,
+            ]),
             model: models.pointLight,
             state: undefined,
           }))
         ),
       pointLights,
       projectionMatrix: state.projectionMatrix,
-      viewMatrix: Matrix4.fromCustom(
+      viewMatrix: Matrix4.fromObject(
+        Matrix4.identity,
         ["translate", camera.position],
         ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
         ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]

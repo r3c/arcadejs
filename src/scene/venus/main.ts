@@ -129,11 +129,17 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Load meshes
     const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromCustom(["scale", { x: 0.25, y: 0.25, z: 0.25 }]),
+      transform: Matrix4.fromObject(Matrix4.identity, [
+        "scale",
+        { x: 0.25, y: 0.25, z: 0.25 },
+      ]),
     });
 
     const shipModel = await loadMeshFrom3ds("model/colmftr1/COLMFTR1.3DS", {
-      transform: Matrix4.fromCustom(["translate", { x: 0, y: 4, z: 0 }]),
+      transform: Matrix4.fromObject(Matrix4.identity, [
+        "translate",
+        { x: 0, y: 4, z: 0 },
+      ]),
     });
 
     const starMesh = await loadMeshFromObj(
@@ -252,7 +258,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ambientLightColor: Vector3.zero,
       objects: [
         {
-          matrix: Matrix4.fromCustom(
+          matrix: Matrix4.fromObject(
+            Matrix4.identity,
             ["translate", player.position],
             ["rotate", { x: 0, y: 1, z: 0 }, Math.PI]
           ),
@@ -260,7 +267,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
         },
         ...state.stars.map(
           ({ position, rotationAmount, rotationAxis, variant }) => ({
-            matrix: Matrix4.fromCustom(
+            matrix: Matrix4.fromObject(
+              Matrix4.identity,
               ["translate", position],
               ["rotate", rotationAxis, rotationAmount]
             ),
@@ -268,7 +276,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           })
         ),
         ...state.lights.map(({ position }) => ({
-          matrix: Matrix4.fromCustom(["translate", position]),
+          matrix: Matrix4.fromObject(Matrix4.identity, ["translate", position]),
           model: models.light,
           noShadow: true,
         })),

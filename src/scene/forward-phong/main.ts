@@ -87,7 +87,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const cubeModel = await loadMeshFromJson("model/cube/mesh.json");
     const groundModel = await loadMeshFromJson("model/ground/mesh.json");
     const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromCustom(["scale", { x: 0.2, y: 0.2, z: 0.2 }]),
+      transform: Matrix4.fromObject(Matrix4.identity, [
+        "scale",
+        { x: 0.2, y: 0.2, z: 0.2 },
+      ]),
     });
 
     // Create state
@@ -168,14 +171,20 @@ const application: Application<WebGLScreen, ApplicationState> = {
           noShadow: false,
         },
         {
-          matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
+          matrix: Matrix4.fromObject(Matrix4.identity, [
+            "translate",
+            { x: 0, y: -1.5, z: 0 },
+          ]),
           model: models.ground,
           noShadow: false,
         },
       ]
         .concat(
           pointLights.slice(0, tweak.nbPointLights).map(({ position }) => ({
-            matrix: Matrix4.fromCustom(["translate", position]),
+            matrix: Matrix4.fromObject(Matrix4.identity, [
+              "translate",
+              position,
+            ]),
             model: models.light,
             noShadow: true,
           }))
@@ -184,7 +193,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
           directionalLights
             .slice(0, tweak.nbDirectionalLights)
             .map(({ direction }) => ({
-              matrix: Matrix4.fromCustom(["translate", direction]),
+              matrix: Matrix4.fromObject(Matrix4.identity, [
+                "translate",
+                direction,
+              ]),
               model: models.light,
               noShadow: true,
             }))
@@ -197,7 +209,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
           radius: 5,
         })),
       projectionMatrix,
-      viewMatrix: Matrix4.fromCustom(
+      viewMatrix: Matrix4.fromObject(
+        Matrix4.identity,
         ["translate", camera.position],
         ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
         ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]

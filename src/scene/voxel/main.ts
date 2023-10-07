@@ -66,7 +66,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
     worldScaleVector.scale(0.5);
 
     const library: Library = { textures: new Map() };
-    const transform = Matrix4.fromCustom(["scale", worldScaleVector]);
+    const transform = Matrix4.fromObject(Matrix4.identity, [
+      "scale",
+      worldScaleVector,
+    ]);
 
     const levelModels = await Promise.all(
       range(10).map((level) =>
@@ -86,7 +89,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
     worldScaleVector.scale(0.55);
 
     const selectModel = await loadMeshFromJson("model/select/mesh.json", {
-      transform: Matrix4.fromCustom(["scale", worldScaleVector]),
+      transform: Matrix4.fromObject(Matrix4.identity, [
+        "scale",
+        worldScaleVector,
+      ]),
     });
 
     const select = createModel(gl, selectModel);
@@ -184,14 +190,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Move camera & define view matrix accordingly
     camera.move(input, dt);
 
-    const viewMatrix = Matrix4.fromCustom(
+    const viewMatrix = Matrix4.fromObject(
+      Matrix4.identity,
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
     );
 
     // Locate cell being looked at
-    const viewMatrixInverse = Matrix4.fromCustom(
+    const viewMatrixInverse = Matrix4.fromObject(
+      Matrix4.identity,
       ["set", viewMatrix],
       ["invert"]
     );

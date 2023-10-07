@@ -128,18 +128,15 @@ class MutableMatrix3 implements Matrix3 {
 }
 
 class Matrix3 {
-  public static fromCustom(
-    ...invokes: InvokeOf<MutableMatrix3>[]
-  ): MutableMatrix3 {
-    return invokeOnObject(Matrix3.fromIdentity(), invokes);
-  }
-
   public static fromIdentity(): MutableMatrix3 {
     return new MutableMatrix3(Matrix3.identity);
   }
 
-  public static fromObject(source: Matrix3): MutableMatrix3 {
-    return new MutableMatrix3(source);
+  public static fromObject(
+    origin: Matrix3,
+    ...invokes: InvokeOf<MutableMatrix3>[]
+  ): MutableMatrix3 {
+    return invokeOnObject(new MutableMatrix3(origin), invokes);
   }
 
   public static readonly identity: Matrix3 = {
@@ -395,11 +392,11 @@ class MutableMatrix4 implements Matrix4 {
    */
   public rotate(axis: Vector3, angle: number): void {
     // Normalized axis
-    const modInverse =
-      1 / Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
-    const x = axis.x * modInverse;
-    const y = axis.y * modInverse;
-    const z = axis.z * modInverse;
+    const { x: ax, y: ay, z: az } = axis;
+    const invertMagnitude = 1 / Math.sqrt(ax * ax + ay * ay + az * az);
+    const x = ax * invertMagnitude;
+    const y = ay * invertMagnitude;
+    const z = az * invertMagnitude;
 
     // Rotation angle
     const cos = Math.cos(angle);
@@ -605,31 +602,15 @@ class Matrix4 {
     });
   }
 
-  public static fromCustom(
-    ...invokes: InvokeOf<MutableMatrix4>[]
-  ): MutableMatrix4 {
-    return invokeOnObject(Matrix4.fromIdentity(), invokes);
-  }
-
   /*
    ** Create new matrix for "looking to given direction" transformation.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
    */
   public static fromDirection(direction: Vector3, up: Vector3): MutableMatrix4 {
-    const f = Vector3.fromObject(direction);
-
-    f.normalize();
-
-    const s = Vector3.fromObject(f);
-    const upVector = Vector3.fromObject(up);
-
-    upVector.normalize();
-    s.cross(upVector);
-
-    const u = Vector3.fromObject(s);
-
-    u.normalize();
-    u.cross(f);
+    const f = Vector3.fromObject(direction, ["normalize"]);
+    const upVector = Vector3.fromObject(up, ["normalize"]);
+    const s = Vector3.fromObject(f, ["cross", upVector]);
+    const u = Vector3.fromObject(s, ["normalize"], ["cross", f]);
 
     return new MutableMatrix4({
       v00: s.x,
@@ -655,8 +636,11 @@ class Matrix4 {
     return new MutableMatrix4(Matrix4.identity);
   }
 
-  public static fromObject(source: Matrix4): MutableMatrix4 {
-    return new MutableMatrix4(source);
+  public static fromObject(
+    origin: Matrix4,
+    ...invokes: InvokeOf<MutableMatrix4>[]
+  ): MutableMatrix4 {
+    return invokeOnObject(new MutableMatrix4(origin), invokes);
   }
 
   /*

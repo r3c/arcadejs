@@ -13,10 +13,7 @@ import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
-import {
-  loadMeshFromGltf,
-  loadMeshFromJson,
-} from "../../engine/graphic/model";
+import { loadMeshFromGltf, loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
@@ -100,14 +97,18 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const helmetModel = await loadMeshFromGltf(
       "model/damaged-helmet/DamagedHelmet.gltf",
       {
-        transform: Matrix4.fromCustom(
+        transform: Matrix4.fromObject(
+          Matrix4.identity,
           ["rotate", { x: 0, y: 1, z: 0 }, Math.PI],
           ["rotate", { x: 1, y: 0, z: 0 }, -Math.PI * 0.5]
         ),
       }
     );
     const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromCustom(["scale", { x: 0.2, y: 0.2, z: 0.2 }]),
+      transform: Matrix4.fromObject(Matrix4.identity, [
+        "scale",
+        { x: 0.2, y: 0.2, z: 0.2 },
+      ]),
     });
 
     // Load textures
@@ -191,7 +192,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
       .slice(0, tweak.nbLights)
       .map((light) => light.position);
 
-    const viewMatrix = Matrix4.fromCustom(
+    const viewMatrix = Matrix4.fromObject(
+      Matrix4.identity,
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
@@ -208,13 +210,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
     };
 
     const ground = {
-      matrix: Matrix4.fromCustom(["translate", { x: 0, y: -1.5, z: 0 }]),
+      matrix: Matrix4.fromObject(Matrix4.identity, [
+        "translate",
+        { x: 0, y: -1.5, z: 0 },
+      ]),
       model: models.ground,
       noShadow: false,
     };
 
     const lights = lightPositions.map((position) => ({
-      matrix: Matrix4.fromCustom(["translate", position]),
+      matrix: Matrix4.fromObject(Matrix4.identity, ["translate", position]),
       model: models.light,
       noShadow: true,
     }));

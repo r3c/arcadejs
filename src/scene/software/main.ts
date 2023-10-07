@@ -66,7 +66,8 @@ const application: Application<Context2DScreen, ApplicationState> = {
       tweak,
     } = state;
 
-    const view = Matrix4.fromCustom(
+    const view = Matrix4.fromObject(
+      Matrix4.identity,
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
       ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]

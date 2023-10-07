@@ -58,10 +58,10 @@ interface WorldPhysic {
 
 const aboveIncrement: Vector3 = { x: 0, y: 1, z: 0 };
 const belowIncrement: Vector3 = { x: 0, y: -1, z: 0 };
-const gravityIncrement: Vector3 = Vector3.fromCustom(
-  ["set", belowIncrement],
-  ["scale", 0.02]
-);
+const gravityIncrement: Vector3 = Vector3.fromObject(belowIncrement, [
+  "scale",
+  0.02,
+]);
 
 interface WorldCubeFace {
   faceIndex: number;
@@ -114,7 +114,7 @@ const createWorldGraphic = (
     z: offsetSize.z * scale.z,
   };
 
-  const shift = Vector3.fromCustom(["set", renderSize], ["scale", -0.5]);
+  const shift = Vector3.fromObject(renderSize, ["scale", -0.5]);
 
   const chunks = range(
     chunkCount.x * chunkCount.y * chunkCount.z
@@ -272,7 +272,10 @@ const createWorldGraphic = (
 
       if (modelIndex !== undefined) {
         const position = worldGraphic.findRenderPosition(offset);
-        const transform = Matrix4.fromCustom(["translate", position]);
+        const transform = Matrix4.fromObject(Matrix4.identity, [
+          "translate",
+          position,
+        ]);
 
         chunk.cubes.set(key, { modelIndex, transform });
       } else {
@@ -439,10 +442,7 @@ function createWorldPhysic(
           );
         } else {
           const activeOffset = offsetOf(activeIndex);
-          const nextOffset = Vector3.fromCustom(
-            ["set", activeOffset],
-            ["add", move]
-          );
+          const nextOffset = Vector3.fromObject(activeOffset, ["add", move]);
           const nextIndex = indexOf(nextOffset);
 
           state.shift.sub(move);
@@ -459,10 +459,10 @@ function createWorldPhysic(
             onChange.call(worldPhysic, nextOffset, activeBlock.voxel);
 
             // Activate block above moved one if any
-            const aboveOffset = Vector3.fromCustom(
-              ["set", activeOffset],
-              ["add", aboveIncrement]
-            );
+            const aboveOffset = Vector3.fromObject(activeOffset, [
+              "add",
+              aboveIncrement,
+            ]);
 
             if (isValid(aboveOffset)) {
               activeIndices.add(indexOf(aboveOffset));
@@ -494,10 +494,10 @@ function createWorldPhysic(
             }
 
             // Stop current block if on top of another one
-            const belowOffset = Vector3.fromCustom(
-              ["set", activeOffset],
-              ["add", belowIncrement]
-            );
+            const belowOffset = Vector3.fromObject(activeOffset, [
+              "add",
+              belowIncrement,
+            ]);
 
             if (
               !isValid(belowOffset) ||

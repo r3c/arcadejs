@@ -26,14 +26,12 @@ const group = (
 ) => {
   const { children, primitives, transform } = mesh;
 
-  const modelMatrix = Matrix4.fromObject(parentMatrix);
-
-  modelMatrix.multiply(transform);
-
-  const normalMatrix = Matrix3.fromObject(viewMatrix);
-
-  normalMatrix.multiply(modelMatrix);
-  normalMatrix.invert();
+  const modelMatrix = Matrix4.fromObject(parentMatrix, ["multiply", transform]);
+  const normalMatrix = Matrix3.fromObject(
+    viewMatrix,
+    ["multiply", modelMatrix],
+    ["invert"]
+  );
 
   for (const { index, material, polygon } of primitives) {
     let meshBatches = batchByMaterial.get(material);

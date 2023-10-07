@@ -31,7 +31,7 @@ const changeMeshCenter = (mesh: Mesh): Mesh => {
 
   reduceMesh(mesh, Matrix4.identity, false, (_, polygon) => {
     polygon.positions = polygon.positions.map((position) =>
-      Vector3.fromCustom(["set", position], ["sub", center])
+      Vector3.fromObject(position, ["sub", center])
     );
 
     return false;
@@ -94,11 +94,9 @@ const computeNormals = (indices: Vector3[], points: Vector3[]): Vector3[] => {
   const normals = range(points.length).map(Vector3.fromZero);
 
   for (const { x, y, z } of indices) {
-    const u = Vector3.fromObject(points[y]);
-    const v = Vector3.fromObject(points[z]);
+    const u = Vector3.fromObject(points[y], ["sub", points[x]]);
+    const v = Vector3.fromObject(points[z], ["sub", points[x]]);
 
-    u.sub(points[x]);
-    v.sub(points[x]);
     u.cross(v);
 
     normals[x].add(u);
@@ -127,24 +125,15 @@ const computeTangents = (
   const tangents = range(points.length).map(Vector3.fromZero);
 
   for (const { x, y, z } of indices) {
-    const coord2 = Vector2.fromObject(coords[y]);
-    const coord3 = Vector2.fromObject(coords[z]);
-    const point2 = Vector3.fromObject(points[y]);
-    const point3 = Vector3.fromObject(points[z]);
-
-    coord2.sub(coords[x]);
-    coord2.normalize();
-    coord3.sub(coords[x]);
-    coord3.normalize();
-    point2.sub(points[x]);
-    point2.normalize();
-    point3.sub(points[x]);
-    point3.normalize();
+    const c2 = Vector2.fromObject(coords[y], ["sub", coords[x]], ["normalize"]);
+    const c3 = Vector2.fromObject(coords[z], ["sub", coords[x]], ["normalize"]);
+    const p2 = Vector3.fromObject(points[y], ["sub", points[x]], ["normalize"]);
+    const p3 = Vector3.fromObject(points[z], ["sub", points[x]], ["normalize"]);
 
     const tangent = {
-      x: coord3.y * point2.x - coord2.y * point3.x,
-      y: coord3.y * point2.y - coord2.y * point3.y,
-      z: coord3.y * point2.z - coord2.y * point3.z,
+      x: c3.y * p2.x - c2.y * p3.x,
+      y: c3.y * p2.y - c2.y * p3.y,
+      z: c3.y * p2.z - c2.y * p3.z,
     };
 
     tangents[x].add(tangent);
@@ -185,10 +174,10 @@ const createMeshLoader = <TSource, TFormat>(
     const transform = configuration.transform;
 
     if (transform !== undefined) {
-      mesh.transform = Matrix4.fromCustom(
-        ["set", transform],
-        ["multiply", mesh.transform]
-      );
+      mesh.transform = Matrix4.fromObject(transform, [
+        "multiply",
+        mesh.transform,
+      ]);
     }
 
     // Finalize meshes recursively
@@ -206,12 +195,10 @@ const finalizeMesh = (mesh: Mesh): void => {
 const finalizePolygon = (polygon: Polygon): void => {
   // Transform normals or compute them from vertices
   if (polygon.normals !== undefined) {
-    for (let i = 0; i < polygon.normals.length; ++i) {
-      const normal = Vector3.fromObject(polygon.normals[i]);
+    const normals = polygon.normals;
 
-      normal.normalize();
-
-      polygon.normals[i] = normal;
+    for (let i = 0; i < normals.length; ++i) {
+      normals[i] = Vector3.fromObject(normals[i], ["normalize"]);
     }
   } else {
     polygon.normals = computeNormals(polygon.indices, polygon.positions);
@@ -219,12 +206,10 @@ const finalizePolygon = (polygon: Polygon): void => {
 
   // Transform tangents or compute them from vertices, normals and texture coordinates
   if (polygon.tangents !== undefined) {
-    for (let i = 0; i < polygon.tangents.length; ++i) {
-      const tangent = Vector3.fromObject(polygon.tangents[i]);
+    const tangents = polygon.tangents;
 
-      tangent.normalize();
-
-      polygon.tangents[i] = tangent;
+    for (let i = 0; i < tangents.length; ++i) {
+      tangents[i] = Vector3.fromObject(tangents[i], ["normalize"]);
     }
   } else if (polygon.coordinates !== undefined) {
     polygon.tangents = computeTangents(
@@ -253,10 +238,10 @@ const flattenPolygons = (
   mesh: Mesh,
   parentTransform: Matrix4
 ): void => {
-  const transform = Matrix4.fromCustom(
-    ["set", parentTransform],
-    ["multiply", mesh.transform]
-  );
+  const transform = Matrix4.fromObject(parentTransform, [
+    "multiply",
+    mesh.transform,
+  ]);
 
   for (const polygon of mesh.polygons) {
     const flatPolygon: Polygon = flatPolygons.get(polygon.material) ?? {
@@ -355,10 +340,7 @@ const reduceMesh = <TState>(
   state: TState,
   reduce: (previous: TState, geometry: Polygon, transform: Matrix4) => TState
 ): TState => {
-  const transform = Matrix4.fromCustom(
-    ["set", parent],
-    ["multiply", mesh.transform]
-  );
+  const transform = Matrix4.fromObject(parent, ["multiply", mesh.transform]);
 
   for (const polygon of mesh.polygons) {
     state = reduce(state, polygon, transform);

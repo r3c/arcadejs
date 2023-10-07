@@ -73,7 +73,7 @@ const extractMeshNormals = (
     gl,
     mesh,
     (polygon) => polygon.normals,
-    (n) => Vector3.fromCustom(["set", n], ["normalize"], ["scale", lineLength]),
+    (n) => Vector3.fromObject(n, ["normalize"], ["scale", lineLength]),
     () => ({ x: 0, y: 1, z: 0 })
   );
 
@@ -86,7 +86,7 @@ const extractMeshTangents = (
     gl,
     mesh,
     (polygon) => polygon.tangents,
-    (t) => Vector3.fromCustom(["set", t], ["normalize"], ["scale", lineLength]),
+    (t) => Vector3.fromObject(t, ["normalize"], ["scale", lineLength]),
     () => ({ x: 1, y: 0, z: 0 })
   );
 

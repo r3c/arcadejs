@@ -69,11 +69,7 @@ const createRuntime = (context: GlContext): GlRuntime => {
       new ImageData(
         new Uint8ClampedArray(
           Vector4.toArray(
-            Vector4.fromCustom(
-              ["set", color],
-              ["scale", 255],
-              ["map", Math.floor]
-            )
+            Vector4.fromObject(color, ["scale", 255], ["map", Math.floor])
           )
         ),
         1,
