@@ -13,7 +13,12 @@ import {
   loadMeshFromJson,
   loadMeshFromObj,
 } from "../../engine/graphic/model";
-import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
+import {
+  Matrix3,
+  Matrix4,
+  MutableMatrix3,
+  MutableMatrix4,
+} from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
   GlTarget,
@@ -33,6 +38,7 @@ import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
 
 type Player = {
+  orientation: MutableMatrix3;
   position: MutableVector3;
   smoke: number;
   velocity: MutableVector3;
@@ -76,29 +82,51 @@ type ApplicationState = {
 
 const pi2 = Math.PI * 2;
 
-const friction = 0.008;
+const friction = 0.001;
 const mass = 1000;
-const thrust = 0.1;
+const thrust = 0.05;
+
+const playerSmokeCenters: Vector3[] = [
+  { x: +0.7, y: +0.35, z: -4.2 },
+  { x: +0, y: +0.9, z: -4.2 },
+  { x: -0.7, y: +0.35, z: -4.2 },
+];
 
 const starFieldCount = 1000;
 const starFieldRadius = 1000;
 
 // See: https://gafferongames.com/post/integration_basics/
 const movePlayer = (input: Input, player: Player, dt: number): void => {
-  const x =
-    (input.isPressed("arrowleft") ? -1 : 0) +
-    (input.isPressed("arrowright") ? 1 : 0);
-  const y =
-    (input.isPressed("arrowdown") ? -1 : 0) +
-    (input.isPressed("arrowup") ? 1 : 0);
-  const z = input.isPressed("space") ? -1 : 0;
+  const rotationSpeed = 0.02;
 
-  const acceleration = Vector3.fromXYZ(x, y, z);
-  const velocity = Vector3.fromObject(player.velocity);
+  player.orientation.rotate(
+    { x: 0, y: 1, z: 0 },
+    ((input.isPressed("arrowleft") ? -1 : 0) +
+      (input.isPressed("arrowright") ? 1 : 0)) *
+      rotationSpeed
+  );
 
-  velocity.scale(Math.min(dt * friction, 1));
-  acceleration.scale((dt * thrust) / mass);
-  acceleration.sub(velocity);
+  player.orientation.rotate(
+    { x: 1, y: 0, z: 0 },
+    ((input.isPressed("arrowdown") ? -1 : 0) +
+      (input.isPressed("arrowup") ? 1 : 0)) *
+      rotationSpeed
+  );
+
+  const velocity = Vector3.fromObject(player.velocity, [
+    "scale",
+    Math.min(dt * friction, 1),
+  ]);
+
+  const acceleration = Vector3.fromObject(
+    Matrix3.transform(player.orientation, {
+      x: 0,
+      y: 0,
+      z: input.isPressed("space") ? 1 : 0,
+    }),
+    ["scale", (dt * thrust) / mass],
+    ["sub", velocity]
+  );
 
   player.velocity.add(acceleration);
 
@@ -204,6 +232,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       player: {
+        orientation: Matrix3.fromObject(Matrix3.identity, [
+          "rotate",
+          { x: 0, y: 1, z: 0 },
+          Math.PI,
+        ]),
         position: Vector3.fromZero(),
         smoke: 0,
         velocity: Vector3.fromZero(),
@@ -258,11 +291,24 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ambientLightColor: Vector3.zero,
       objects: [
         {
-          matrix: Matrix4.fromObject(
-            Matrix4.identity,
-            ["translate", player.position],
-            ["rotate", { x: 0, y: 1, z: 0 }, Math.PI]
-          ),
+          matrix: {
+            v00: player.orientation.v00,
+            v01: player.orientation.v01,
+            v02: player.orientation.v02,
+            v03: 0,
+            v10: player.orientation.v10,
+            v11: player.orientation.v11,
+            v12: player.orientation.v12,
+            v13: 0,
+            v20: player.orientation.v20,
+            v21: player.orientation.v21,
+            v22: player.orientation.v22,
+            v23: 0,
+            v30: player.position.x,
+            v31: player.position.y,
+            v32: player.position.z,
+            v33: 1,
+          },
           model: models.ship,
         },
         ...state.stars.map(
@@ -366,11 +412,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     player.smoke += dt;
 
     if (player.smoke >= 20) {
-      const { x, y, z } = player.position;
-
-      particleEmitter0({ x: x + 0.7, y: y + 0.35, z: z + 4.2 }, Math.random());
-      particleEmitter0({ x: x + 0, y: y + 0.9, z: z + 4.2 }, Math.random());
-      particleEmitter0({ x: x - 0.7, y: y + 0.35, z: z + 4.2 }, Math.random());
+      for (const smokeCenter of playerSmokeCenters) {
+        particleEmitter0(
+          Vector3.fromObject(player.position, [
+            "add",
+            Matrix3.transform(player.orientation, smokeCenter),
+          ]),
+          Math.random()
+        );
+      }
 
       player.smoke -= 20;
     }

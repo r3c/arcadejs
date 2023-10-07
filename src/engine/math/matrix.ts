@@ -82,6 +82,43 @@ class MutableMatrix3 implements Matrix3 {
     );
   }
 
+  /*
+   ** Rotate matrix around an arbitrary axis
+   ** From: https://fr.wikipedia.org/wiki/Matrice_de_rotation#Matrices_de_rotation_dans_le_cas_g%C3%A9n%C3%A9ral
+   */
+  public rotate(axis: Vector3, angle: number): void {
+    // Normalized axis
+    const { x: ax, y: ay, z: az } = axis;
+    const invertMagnitude = 1 / Math.sqrt(ax * ax + ay * ay + az * az);
+    const x = ax * invertMagnitude;
+    const y = ay * invertMagnitude;
+    const z = az * invertMagnitude;
+
+    // Rotation angle
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    // Factorized operands
+    const xCos = x * (1 - cos);
+    const yCos = y * (1 - cos);
+    const zCos = z * (1 - cos);
+    const xSin = x * sin;
+    const ySin = y * sin;
+    const zSin = z * sin;
+
+    this.compose(
+      xCos * x + cos,
+      xCos * y - zSin,
+      xCos * z + ySin,
+      xCos * y + zSin,
+      yCos * y + cos,
+      yCos * z - xSin,
+      xCos * z - ySin,
+      yCos * z + xSin,
+      zCos * z + cos
+    );
+  }
+
   public set(source: Matrix3): void {
     this.v00 = source.v00;
     this.v01 = source.v01;
@@ -137,6 +174,14 @@ class Matrix3 {
     ...invokes: InvokeOf<MutableMatrix3>[]
   ): MutableMatrix3 {
     return invokeOnObject(new MutableMatrix3(origin), invokes);
+  }
+
+  public static transform(source: Matrix3, vertex: Vector3): Vector3 {
+    return {
+      x: vertex.x * source.v00 + vertex.y * source.v10 + vertex.z * source.v20,
+      y: vertex.x * source.v01 + vertex.y * source.v11 + vertex.z * source.v21,
+      z: vertex.x * source.v02 + vertex.y * source.v12 + vertex.z * source.v22,
+    };
   }
 
   public static readonly identity: Matrix3 = {
