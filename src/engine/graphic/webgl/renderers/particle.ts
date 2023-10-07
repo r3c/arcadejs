@@ -1,3 +1,4 @@
+import { createFlexibleArray } from "../../../io/memory";
 import { range } from "../../../language/iterable";
 import { Matrix4, MutableMatrix4 } from "../../../math/matrix";
 import {
@@ -27,17 +28,21 @@ import { GlTexture } from "../texture";
 
 type ParticleBillboard = {
   dispose: () => void;
-  finalize: (nbSources: number) => void;
+  flush: () => void;
   reserve: (nbSources: number) => void;
-  write: (sourceIndex: number) => void;
+  write: (sparkIndex: number) => void;
   index: GlBuffer;
   polygon: ParticlePolygon;
   sources: ParticleSource[];
-  sparks: ParticleSpark[];
+  spark: ParticleSpark;
   sprite: GlTexture | undefined;
 };
 
-type ParticleEmitter<TSeed> = (center: Vector3, seed: TSeed) => void;
+type ParticleEmitter<TSeed> = (
+  count: number,
+  center: Vector3,
+  seed: TSeed
+) => void;
 
 type ParticlePolygon = {
   coordinate: GlShaderAttribute;
@@ -49,6 +54,7 @@ type ParticlePolygon = {
 type ParticleSource = {
   update: (spark: ParticleSpark, rankSpan: number, timeSpan: number) => void;
   center: Vector3;
+  count: number;
   duration: number;
   elapsed: number;
 };
@@ -116,24 +122,23 @@ void main(void) {
 
 const createBillboard = (
   gl: GlContext,
-  nbSparks: number,
   sprite: GlTexture | undefined,
   nbVariants: number
 ): ParticleBillboard => {
   const nbQuadIndices = 6;
   const nbQuadVertices = 4;
 
-  const coordinates = new Float32Array(nbSparks * nbQuadVertices * 2); // 2 coordinates & 4 vertices per spark
-  const corners = new Float32Array(nbSparks * nbQuadVertices * 2); // 2 coordinates & 4 vertices per spark
-  const indices = new Uint32Array(nbSparks * nbQuadIndices); // 6 indices per spark
-  const positions = new Float32Array(nbSparks * nbQuadVertices * 3); // 3 dimensions & 4 vertices per spark
-  const tints = new Float32Array(nbSparks * nbQuadVertices * 4); // 4 components & 4 vertices
+  const coordinates = createFlexibleArray(Float32Array, 10);
+  const corners = createFlexibleArray(Float32Array, 10);
+  const indices = createFlexibleArray(Uint32Array, 10);
+  const positions = createFlexibleArray(Float32Array, 10);
+  const tints = createFlexibleArray(Float32Array, 10);
 
-  const coordinate = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const corner = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
-  const position = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const tint = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const coordinateBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const cornerBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const indexBuffer = createDynamicIndexBuffer(gl, Uint32Array, 10);
+  const positionBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const tintBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
 
   const coordinatesByVariant = range(nbVariants).map<Vector2[]>((i) => {
     const coordinate0 = (i + 0) / nbVariants;
@@ -147,97 +152,89 @@ const createBillboard = (
     ];
   });
 
-  const sparks = range(nbSparks).map<ParticleSpark>(() => ({
+  const spark: ParticleSpark = {
     position: Vector3.fromZero(),
     radius: 0,
     rotation: 0,
     tint: Vector4.fromZero(),
     variant: 0,
-  }));
+  };
 
   return {
     dispose: () => {
-      coordinate.dispose();
-      corner.dispose();
-      index.dispose();
-      position.dispose();
-      tint.dispose();
+      coordinateBuffer.dispose();
+      cornerBuffer.dispose();
+      indexBuffer.dispose();
+      positionBuffer.dispose();
+      tintBuffer.dispose();
     },
-    finalize: (nbSources) => {
-      // Set index buffer length after updating all particle sources for a given
-      // billboard as some of them may have expired and been removed from
-      // sources array so we need to render less indices than last allocation.
-      index.length = nbSources * nbSparks * nbQuadIndices;
+    flush: () => {
+      coordinateBuffer.update(0, coordinates.buffer, coordinates.length);
+      cornerBuffer.update(0, corners.buffer, corners.length);
+      indexBuffer.update(0, indices.buffer, indices.length);
+      positionBuffer.update(0, positions.buffer, positions.length);
+      tintBuffer.update(0, tints.buffer, tints.length);
     },
-    reserve: (nbSources) => {
-      // Prepare index buffer and vertex attributes so they can store up to
-      // `nbSources` instances of particle effects with `nbSparks` each.
-      const nbIndices = nbSources * nbSparks * nbQuadIndices;
-      const nbVertices = nbSources * nbSparks * nbQuadVertices;
+    reserve: (nbSparks) => {
+      // Prepare buffers so they can store up to `nbSparks` each.
+      const nbIndices = nbSparks * nbQuadIndices;
+      const nbVertices = nbSparks * nbQuadVertices;
 
-      coordinate.reserve(nbVertices * 2);
-      corner.reserve(nbVertices * 2);
-      index.reserve(nbIndices);
-      position.reserve(nbVertices * 3);
-      tint.reserve(nbVertices * 4);
+      coordinates.resize(nbVertices * 2); // 2 coordinates per vertex
+      corners.resize(nbVertices * 2); // 2 coordinates per vertex
+      indices.resize(nbIndices); // 6 indices per spark
+      positions.resize(nbVertices * 3); // 3 dimensions per vertex
+      tints.resize(nbVertices * 4); // 4 components per vertex
+
+      coordinateBuffer.resize(nbVertices * 2);
+      cornerBuffer.resize(nbVertices * 2);
+      indexBuffer.resize(nbIndices);
+      positionBuffer.resize(nbVertices * 3);
+      tintBuffer.resize(nbVertices * 4);
     },
-    write: (sourceIndex) => {
-      const indexOffset = sourceIndex * nbSparks * nbQuadVertices;
+    write: (sparkIndex) => {
+      const { position, radius, rotation, tint, variant } = spark;
 
-      for (let i = nbSparks; i-- > 0; ) {
-        const { position, radius, rotation, tint, variant } = sparks[i];
-        const indexStart = i * nbQuadIndices;
-        const vertexStart = i * nbQuadVertices;
-        const variantCoordinates = coordinatesByVariant[variant];
+      const sparkCoordinates = coordinatesByVariant[variant];
+      const indexStart = sparkIndex * nbQuadIndices;
+      const vertexStart = sparkIndex * nbQuadVertices;
 
-        for (let vertexIndex = 0; vertexIndex < nbQuadVertices; ++vertexIndex) {
-          const angle = rotation + Math.PI * (vertexIndex * 0.5 + 0.25);
-          const start2 = (vertexStart + vertexIndex) * 2;
-          const start3 = (vertexStart + vertexIndex) * 3;
-          const start4 = (vertexStart + vertexIndex) * 4;
+      for (let vertexIndex = 0; vertexIndex < nbQuadVertices; ++vertexIndex) {
+        const angle = rotation + Math.PI * (vertexIndex * 0.5 + 0.25);
+        const coordinate = sparkCoordinates[vertexIndex];
+        const start2 = (vertexStart + vertexIndex) * 2;
+        const start3 = (vertexStart + vertexIndex) * 3;
+        const start4 = (vertexStart + vertexIndex) * 4;
 
-          coordinates[start2 + 0] = variantCoordinates[vertexIndex].x;
-          coordinates[start2 + 1] = variantCoordinates[vertexIndex].y;
-          corners[start2 + 0] = Math.cos(angle) * radius;
-          corners[start2 + 1] = Math.sin(angle) * radius;
-          positions[start3 + 0] = position.x;
-          positions[start3 + 1] = position.y;
-          positions[start3 + 2] = position.z;
-          tints[start4 + 0] = tint.x;
-          tints[start4 + 1] = tint.y;
-          tints[start4 + 2] = tint.z;
-          tints[start4 + 3] = tint.w;
-        }
-
-        indices[indexStart + 0] = indexOffset + vertexStart + 0;
-        indices[indexStart + 1] = indexOffset + vertexStart + 1;
-        indices[indexStart + 2] = indexOffset + vertexStart + 2;
-        indices[indexStart + 3] = indexOffset + vertexStart + 0;
-        indices[indexStart + 4] = indexOffset + vertexStart + 2;
-        indices[indexStart + 5] = indexOffset + vertexStart + 3;
+        coordinates.buffer[start2 + 0] = coordinate.x;
+        coordinates.buffer[start2 + 1] = coordinate.y;
+        corners.buffer[start2 + 0] = Math.cos(angle) * radius;
+        corners.buffer[start2 + 1] = Math.sin(angle) * radius;
+        positions.buffer[start3 + 0] = position.x;
+        positions.buffer[start3 + 1] = position.y;
+        positions.buffer[start3 + 2] = position.z;
+        tints.buffer[start4 + 0] = tint.x;
+        tints.buffer[start4 + 1] = tint.y;
+        tints.buffer[start4 + 2] = tint.z;
+        tints.buffer[start4 + 3] = tint.w;
       }
 
-      const indexStart = sourceIndex * nbSparks * nbQuadIndices;
-      const vertexStart = sourceIndex * nbSparks * nbQuadVertices;
-      const start2 = vertexStart * 2;
-      const start3 = vertexStart * 3;
-      const start4 = vertexStart * 4;
-
-      coordinate.update(start2, coordinates, coordinates.length);
-      corner.update(start2, corners, corners.length);
-      index.update(indexStart, indices, indices.length);
-      position.update(start3, positions, positions.length);
-      tint.update(start4, tints, tints.length);
+      indices.buffer[indexStart + 0] = vertexStart + 0;
+      indices.buffer[indexStart + 1] = vertexStart + 1;
+      indices.buffer[indexStart + 2] = vertexStart + 2;
+      indices.buffer[indexStart + 3] = vertexStart + 0;
+      indices.buffer[indexStart + 4] = vertexStart + 2;
+      indices.buffer[indexStart + 5] = vertexStart + 3;
     },
-    index,
+    index: indexBuffer,
     polygon: {
-      corner: createAttribute(corner, 2),
-      coordinate: createAttribute(coordinate, 2),
-      position: createAttribute(position, 3),
-      tint: createAttribute(tint, 4),
+      coordinate: createAttribute(coordinateBuffer, 2),
+      corner: createAttribute(cornerBuffer, 2),
+      position: createAttribute(positionBuffer, 3),
+      tint: createAttribute(tintBuffer, 4),
     },
     sources: [],
-    sparks,
+    spark,
     sprite,
   };
 };
@@ -318,24 +315,19 @@ class ParticleRenderer implements Renderer<ParticleScene> {
   }
 
   public register<TSeed>(
-    count: number,
     duration: number,
     sprite: GlTexture | undefined,
     variants: number,
     define: (seed: TSeed) => ParticleUpdater
   ): ParticleEmitter<TSeed> {
-    const billboard = createBillboard(
-      this.runtime.context,
-      count,
-      sprite,
-      variants
-    );
+    const billboard = createBillboard(this.runtime.context, sprite, variants);
 
     this.billboards.push(billboard);
 
-    return (center, seed) => {
+    return (count, center, seed) => {
       billboard.sources.push({
         center,
+        count,
         duration,
         elapsed: 0,
         update: define(seed),
@@ -395,9 +387,10 @@ class ParticleRenderer implements Renderer<ParticleScene> {
 
   public update(dt: number) {
     for (const billboard of this.billboards) {
-      const { finalize, reserve: prepare, sources, sparks, write } = billboard;
+      const { flush, reserve, sources, spark, write } = billboard;
 
-      prepare(sources.length);
+      // Update all sources and remove expired ones
+      let nbSparks = 0;
 
       for (let sourceIndex = 0; sourceIndex < sources.length; ) {
         const source = sources[sourceIndex];
@@ -411,21 +404,29 @@ class ParticleRenderer implements Renderer<ParticleScene> {
           continue;
         }
 
-        const { center, duration, elapsed, update } = source;
+        nbSparks += source.count;
 
-        // FIXME: write to a single "spark" instance, copy to GlArrays on each iteration and write to GlBuffers once
-        for (let i = sparks.length; i-- > 0; ) {
-          const spark = sparks[i];
-
-          update(spark, i / sparks.length, elapsed / duration);
-
-          spark.position.add(center);
-        }
-
-        write(sourceIndex++);
+        sourceIndex++;
       }
 
-      finalize(sources.length);
+      reserve(nbSparks);
+
+      let sparkIndex = 0;
+
+      for (let sourceIndex = 0; sourceIndex < sources.length; ++sourceIndex) {
+        const source = sources[sourceIndex];
+        const { center, count, duration, elapsed, update } = source;
+
+        for (let i = count; i-- > 0; ) {
+          update(spark, i / count, elapsed / duration);
+
+          spark.position.add(center);
+
+          write(sparkIndex++);
+        }
+      }
+
+      flush();
     }
   }
 }

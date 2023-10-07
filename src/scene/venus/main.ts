@@ -188,7 +188,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     const particleEasing0 = getEasing(EasingType.QuadraticOut);
     const particleEmitter0 = particleRenderer.register<number>(
-      10,
       1000,
       sprite,
       5,
@@ -414,6 +413,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     if (player.smoke >= 20) {
       for (const smokeCenter of playerSmokeCenters) {
         particleEmitter0(
+          10,
           Vector3.fromObject(player.position, [
             "add",
             Matrix3.transform(player.orientation, smokeCenter),

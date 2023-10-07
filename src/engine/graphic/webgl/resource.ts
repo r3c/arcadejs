@@ -21,7 +21,7 @@ type GlArrayConstructor =
   | Uint32ArrayConstructor;
 
 type GlBuffer = Disposable & {
-  reserve: (length: number) => void;
+  resize: (length: number) => void;
   set: (data: GlArray, length: number) => void;
   update: (offset: number, data: GlArray, length: number) => void;
   buffer: WebGLBuffer;
@@ -64,7 +64,10 @@ const createBuffer = (
   }
 
   const self: GlBuffer = {
-    reserve: (length: number) => {
+    dispose: () => {
+      gl.deleteBuffer(buffer);
+    },
+    resize: (length: number) => {
       if (self.capacity < length || self.capacity >= length * recycleRatio) {
         gl.bindBuffer(bufferTarget, buffer);
         gl.bufferData(bufferTarget, self.bytesPerElement * length, usage);
@@ -73,9 +76,6 @@ const createBuffer = (
       }
 
       self.length = length;
-    },
-    dispose: () => {
-      gl.deleteBuffer(buffer);
     },
     set: (data: GlArray, length: number) => {
       gl.bindBuffer(bufferTarget, buffer);

@@ -1,8 +1,8 @@
-type FlexibleBufferArray = Float32Array | Uint32Array;
+type FlexibleArrayBuffer = Float32Array | Uint32Array;
 
-type FlexibleBuffer<TArray extends FlexibleBufferArray> = {
-  reserve: (length: number) => void;
-  array: Omit<TArray, "length">;
+type FlexibleArray<TBuffer extends FlexibleArrayBuffer> = {
+  resize: (length: number) => void;
+  buffer: Omit<TBuffer, "length">;
   capacity: number;
   length: number;
 };
@@ -11,20 +11,20 @@ type FlexibleBuffer<TArray extends FlexibleBufferArray> = {
  * Create flexible array container that can be resized without causing extra
  * allocation, unless requested size is too far away from current capacity.
  */
-const createFlexibleBuffer = <TArray extends FlexibleBufferArray>(
+const createFlexibleArray = <TArray extends FlexibleArrayBuffer>(
   constructor: { new (length: number): TArray },
   recycle: number
-): FlexibleBuffer<TArray> => {
-  const instance: FlexibleBuffer<TArray> = {
-    reserve: (length) => {
+): FlexibleArray<TArray> => {
+  const instance: FlexibleArray<TArray> = {
+    resize: (length) => {
       if (instance.capacity < length || instance.capacity >= length * recycle) {
-        instance.array = new constructor(length);
+        instance.buffer = new constructor(length);
         instance.capacity = length;
       }
 
       instance.length = length;
     },
-    array: new constructor(0),
+    buffer: new constructor(0),
     capacity: 0,
     length: 0,
   };
@@ -32,4 +32,4 @@ const createFlexibleBuffer = <TArray extends FlexibleBufferArray>(
   return instance;
 };
 
-export { type FlexibleBuffer, createFlexibleBuffer };
+export { type FlexibleArray, createFlexibleArray };
