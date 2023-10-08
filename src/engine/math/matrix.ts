@@ -1,4 +1,5 @@
 import { InvokeOf, invokeOnObject } from "../language/dynamic";
+import { Quaternion } from "./quaternion";
 import { Vector3, Vector4 } from "./vector";
 
 interface Matrix3 {
@@ -174,6 +175,37 @@ class Matrix3 {
     ...invokes: InvokeOf<MutableMatrix3>[]
   ): MutableMatrix3 {
     return invokeOnObject(new MutableMatrix3(origin), invokes);
+  }
+
+  /**
+   * Create rotation matrix from quaternion.
+   * From: https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
+   */
+  public static fromQuaternion(quaternion: Quaternion): MutableMatrix3 {
+    const { scalar, vector } = quaternion;
+    const { x, y, z } = vector;
+
+    const sx = scalar * x;
+    const sy = scalar * y;
+    const sz = scalar * z;
+    const xx = x * x;
+    const xy = x * y;
+    const xz = x * z;
+    const yy = y * y;
+    const yz = y * z;
+    const zz = z * z;
+
+    return new MutableMatrix3({
+      v00: 1 - 2 * (yy + zz),
+      v01: 2 * (xy + sz),
+      v02: 2 * (xz - sy),
+      v10: 2 * (xy - sz),
+      v11: 1 - 2 * (xx + zz),
+      v12: 2 * (yz + sx),
+      v20: 2 * (xz + sy),
+      v21: 2 * (yz - sx),
+      v22: 1 - 2 * (xx + yy),
+    });
   }
 
   public static transform(source: Matrix3, vertex: Vector3): Vector3 {

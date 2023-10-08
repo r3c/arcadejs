@@ -13,12 +13,7 @@ import {
   loadMeshFromJson,
   loadMeshFromObj,
 } from "../../engine/graphic/model";
-import {
-  Matrix3,
-  Matrix4,
-  MutableMatrix3,
-  MutableMatrix4,
-} from "../../engine/math/matrix";
+import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
   GlTarget,
@@ -36,9 +31,10 @@ import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
+import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 
 type Player = {
-  orientation: MutableMatrix3;
+  rotation: MutableQuaternion;
   position: MutableVector3;
   smoke: number;
   velocity: MutableVector3;
@@ -99,18 +95,22 @@ const starFieldRadius = 1000;
 const movePlayer = (input: Input, player: Player, dt: number): void => {
   const rotationSpeed = 0.02;
 
-  player.orientation.rotate(
-    { x: 0, y: 1, z: 0 },
-    ((input.isPressed("arrowleft") ? -1 : 0) +
-      (input.isPressed("arrowright") ? 1 : 0)) *
-      rotationSpeed
+  player.rotation.multiply(
+    Quaternion.fromRotation(
+      { x: 0, y: 1, z: 0 },
+      ((input.isPressed("arrowleft") ? -1 : 0) +
+        (input.isPressed("arrowright") ? 1 : 0)) *
+        rotationSpeed
+    )
   );
 
-  player.orientation.rotate(
-    { x: 1, y: 0, z: 0 },
-    ((input.isPressed("arrowdown") ? -1 : 0) +
-      (input.isPressed("arrowup") ? 1 : 0)) *
-      rotationSpeed
+  player.rotation.multiply(
+    Quaternion.fromRotation(
+      { x: 1, y: 0, z: 0 },
+      ((input.isPressed("arrowdown") ? -1 : 0) +
+        (input.isPressed("arrowup") ? 1 : 0)) *
+        rotationSpeed
+    )
   );
 
   const velocity = Vector3.fromObject(player.velocity, [
@@ -119,11 +119,10 @@ const movePlayer = (input: Input, player: Player, dt: number): void => {
   ]);
 
   const acceleration = Vector3.fromObject(
-    Matrix3.transform(player.orientation, {
-      x: 0,
-      y: 0,
-      z: input.isPressed("space") ? 1 : 0,
-    }),
+    rotate(
+      { x: 0, y: 0, z: input.isPressed("space") ? 1 : 0 },
+      player.rotation
+    ),
     ["scale", (dt * thrust) / mass],
     ["sub", velocity]
   );
@@ -140,7 +139,18 @@ const movePlayer = (input: Input, player: Player, dt: number): void => {
   player.position.z = warp(player.position.z, 0, 1000);
 };
 
-const warp = (position: number, center: number, radius: number) => {
+const rotate = (vector: Vector3, quaternion: Quaternion): Vector3 => {
+  const q = Quaternion.fromObject(quaternion);
+  const q1 = Quaternion.fromObject(quaternion);
+
+  q1.invert();
+  q.multiply({ scalar: 0, vector });
+  q.multiply(q1);
+
+  return q.vector;
+};
+
+const warp = (position: number, center: number, radius: number): number => {
   const range = radius * 2;
   const shift = center - radius;
 
@@ -231,11 +241,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       player: {
-        orientation: Matrix3.fromObject(Matrix3.identity, [
-          "rotate",
-          { x: 0, y: 1, z: 0 },
-          Math.PI,
-        ]),
+        rotation: Quaternion.fromRotation({ x: 0, y: 1, z: 0 }, Math.PI),
         position: Vector3.fromZero(),
         smoke: 0,
         velocity: Vector3.fromZero(),
@@ -286,22 +292,24 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Draw scene
     target.clear(0);
 
+    const playerMatrix = Matrix3.fromQuaternion(player.rotation);
+
     const scene: ForwardLightingScene = {
       ambientLightColor: Vector3.zero,
       objects: [
         {
           matrix: {
-            v00: player.orientation.v00,
-            v01: player.orientation.v01,
-            v02: player.orientation.v02,
+            v00: playerMatrix.v00,
+            v01: playerMatrix.v01,
+            v02: playerMatrix.v02,
             v03: 0,
-            v10: player.orientation.v10,
-            v11: player.orientation.v11,
-            v12: player.orientation.v12,
+            v10: playerMatrix.v10,
+            v11: playerMatrix.v11,
+            v12: playerMatrix.v12,
             v13: 0,
-            v20: player.orientation.v20,
-            v21: player.orientation.v21,
-            v22: player.orientation.v22,
+            v20: playerMatrix.v20,
+            v21: playerMatrix.v21,
+            v22: playerMatrix.v22,
             v23: 0,
             v30: player.position.x,
             v31: player.position.y,
@@ -416,7 +424,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           10,
           Vector3.fromObject(player.position, [
             "add",
-            Matrix3.transform(player.orientation, smokeCenter),
+            rotate(smokeCenter, player.rotation),
           ]),
           Math.random()
         );
