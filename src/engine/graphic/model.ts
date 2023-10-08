@@ -146,7 +146,7 @@ const computeTangents = (
     const t = tangents[i];
 
     // Gram-Schmidt orthogonalize: t' = normalize(t - n * dot(n, t));
-    n.scale(n.dot(t));
+    n.scale(n.getDot(t));
     t.sub(n);
     t.normalize();
   }

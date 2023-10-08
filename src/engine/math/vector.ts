@@ -14,21 +14,39 @@ class MutableVector2 implements Vector2 {
     this.y = y;
   }
 
-  public len(): number {
+  public add(rhs: Vector2): void {
+    this.x += rhs.x;
+    this.y += rhs.y;
+  }
+
+  public getDot(rhs: Vector2): number {
+    return this.x * rhs.x + this.y * rhs.y;
+  }
+
+  public getNorm(): number {
     const { x, y } = this;
 
     return Math.sqrt(x * x + y * y);
   }
 
-  public normalize(): void {
-    const length = this.len();
+  public negate(): void {
+    this.x = -this.x;
+    this.y = -this.y;
+  }
 
-    if (length !== 0) {
-      const lengthInverse = 1 / length;
+  public normalize(): boolean {
+    const norm = this.getNorm();
 
-      this.x *= lengthInverse;
-      this.y *= lengthInverse;
+    if (norm === 0) {
+      return false;
     }
+
+    const normInverse = 1 / norm;
+
+    this.x *= normInverse;
+    this.y *= normInverse;
+
+    return true;
   }
 
   public scale(factor: number): void {
@@ -108,11 +126,11 @@ class MutableVector3 implements Vector3 {
     this.z = lx * ry - ly * rx;
   }
 
-  public dot(rhs: Vector3): number {
+  public getDot(rhs: Vector3): number {
     return this.x * rhs.x + this.y * rhs.y + this.z * rhs.z;
   }
 
-  public len(): number {
+  public getNorm(): number {
     const { x, y, z } = this;
 
     return Math.sqrt(x * x + y * y + z * z);
@@ -124,16 +142,26 @@ class MutableVector3 implements Vector3 {
     this.z = callback(this.z);
   }
 
-  public normalize(): void {
-    const length = this.len();
+  public negate(): void {
+    this.x = -this.x;
+    this.y = -this.y;
+    this.z = -this.z;
+  }
 
-    if (length !== 0) {
-      const lengthInverse = 1 / length;
+  public normalize(): boolean {
+    const norm = this.getNorm();
 
-      this.x *= lengthInverse;
-      this.y *= lengthInverse;
-      this.z *= lengthInverse;
+    if (norm === 0) {
+      return false;
     }
+
+    const normInverse = 1 / norm;
+
+    this.x *= normInverse;
+    this.y *= normInverse;
+    this.z *= normInverse;
+
+    return true;
   }
 
   public scale(factor: number): void {
