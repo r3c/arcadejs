@@ -69,32 +69,32 @@ const buttonGrabName = "mouseleft";
 const buttonDragName = "mouseright";
 const wheelSpeed = -1 / 32;
 
-const keys: [Key, string, string][] = [
-  [Key.Alt, "Alt", "alt"],
-  [Key.ArrowDown, "ArrowDown", "arrowdown"],
-  [Key.ArrowLeft, "ArrowLeft", "arrowleft"],
-  [Key.ArrowRight, "ArrowRight", "arrowright"],
-  [Key.ArrowUp, "ArrowUp", "arrowup"],
-  [Key.Backspace, "Backspace", "backspace"],
-  [Key.Capslock, "Capslock", "capslock"],
-  [Key.Control, "Control", "control"],
-  [Key.Delete, "Delete", "delete"],
-  [Key.End, "End", "end"],
-  [Key.Enter, "Enter", "enter"],
-  [Key.Escape, "Escape", "escape"],
-  [Key.Home, "Home", "home"],
-  [Key.Insert, "Insert", "insert"],
-  [Key.MouseLeft, "0", buttonGrabName],
-  [Key.MouseMiddle, "1", "mousemiddle"],
-  [Key.MouseRight, "2", buttonDragName],
-  [Key.Numlock, "NumLock", "numlock"],
-  [Key.OS, "OS", "os"],
-  [Key.PageDown, "PageDown", "pagedown"],
-  [Key.PageUp, "PageUp", "pageup"],
-  [Key.Pause, "Pause", "pause"],
-  [Key.Shift, "Shift", "shift"],
-  [Key.Space, " ", "space"],
-  [Key.Tab, "Tab", "tab"],
+const keys: { key: Key; code: string; button: string }[] = [
+  { key: Key.Alt, code: "Alt", button: "alt" },
+  { key: Key.ArrowDown, code: "ArrowDown", button: "arrowdown" },
+  { key: Key.ArrowLeft, code: "ArrowLeft", button: "arrowleft" },
+  { key: Key.ArrowRight, code: "ArrowRight", button: "arrowright" },
+  { key: Key.ArrowUp, code: "ArrowUp", button: "arrowup" },
+  { key: Key.Backspace, code: "Backspace", button: "backspace" },
+  { key: Key.Capslock, code: "Capslock", button: "capslock" },
+  { key: Key.Control, code: "Control", button: "control" },
+  { key: Key.Delete, code: "Delete", button: "delete" },
+  { key: Key.End, code: "End", button: "end" },
+  { key: Key.Enter, code: "Enter", button: "enter" },
+  { key: Key.Escape, code: "Escape", button: "escape" },
+  { key: Key.Home, code: "Home", button: "home" },
+  { key: Key.Insert, code: "Insert", button: "insert" },
+  { key: Key.MouseLeft, code: "0", button: buttonGrabName },
+  { key: Key.MouseMiddle, code: "1", button: "mousemiddle" },
+  { key: Key.MouseRight, code: "2", button: buttonDragName },
+  { key: Key.Numlock, code: "NumLock", button: "numlock" },
+  { key: Key.OS, code: "OS", button: "os" },
+  { key: Key.PageDown, code: "PageDown", button: "pagedown" },
+  { key: Key.PageUp, code: "PageUp", button: "pageup" },
+  { key: Key.Pause, code: "Pause", button: "pause" },
+  { key: Key.Shift, code: "Shift", button: "shift" },
+  { key: Key.Space, code: " ", button: "space" },
+  { key: Key.Tab, code: "Tab", button: "tab" },
 ];
 
 /*
@@ -131,7 +131,7 @@ class Input {
     this.touchPositions = new Map();
 
     // Define and attach event listeners
-    const keyByCode = new Map(keys.map(([key, code]) => [code, key]));
+    const keyByCode = new Map(keys.map(({ key, code }) => [code, key]));
     const handlers: { name: string; callback: (event: any) => void }[] = [
       { name: "contextmenu", callback: () => {} }, // NoOp, just disable context menu on canvas
       {
@@ -198,7 +198,7 @@ class Input {
     }
 
     // Register default buttons for known keys
-    for (const [key, _, button] of keys) {
+    for (const { key, button } of keys) {
       this.assign(key, button);
     }
 
