@@ -789,6 +789,30 @@ class Matrix4 {
     });
   }
 
+  public static fromRotationPosition(
+    rotation: Matrix3,
+    position: Vector3
+  ): MutableMatrix4 {
+    return new MutableMatrix4({
+      v00: rotation.v00,
+      v01: rotation.v01,
+      v02: rotation.v02,
+      v03: 0,
+      v10: rotation.v10,
+      v11: rotation.v11,
+      v12: rotation.v12,
+      v13: 0,
+      v20: rotation.v20,
+      v21: rotation.v21,
+      v22: rotation.v22,
+      v23: 0,
+      v30: position.x,
+      v31: position.y,
+      v32: position.z,
+      v33: 1,
+    });
+  }
+
   public static transform(source: Matrix4, vertex: Vector4): Vector4 {
     return {
       x:
