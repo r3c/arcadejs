@@ -11,11 +11,13 @@ on:
     - cron: "10 4 * * *"
 
 jobs:
-  check:
-    name: Check types
+  validate:
+    name: Validate
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
+      - run: npm install
       - run: npm run check
+      - run: npm run test
