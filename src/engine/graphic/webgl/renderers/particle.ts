@@ -326,7 +326,7 @@ class ParticleRenderer implements Renderer<ParticleScene> {
 
     return (count, center, seed) => {
       billboard.sources.push({
-        center,
+        center: { x: center.x, y: center.y, z: center.z },
         count,
         duration,
         elapsed: 0,

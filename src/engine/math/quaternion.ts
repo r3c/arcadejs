@@ -157,20 +157,9 @@ class Quaternion {
     );
   }
 
-  public static rotate(vector: Vector3, quaternion: Quaternion): Vector3 {
-    const q = Quaternion.fromSource(quaternion);
-    const q1 = Quaternion.fromSource(quaternion);
-
-    q1.invert();
-    q.multiply({ scalar: 0, vector });
-    q.multiply(q1);
-
-    return q.vector;
-  }
-
   public static readonly identity: Quaternion = {
     scalar: 1,
-    vector: Vector3.zero,
+    vector: { x: 0, y: 0, z: 0 },
   };
 }
 

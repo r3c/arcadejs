@@ -1,4 +1,6 @@
 import { InvokeOf, invokeOnObject } from "../language/dynamic";
+import { Matrix3, Matrix4 } from "./matrix";
+import { Quaternion } from "./quaternion";
 
 interface Vector2 {
   readonly x: number;
@@ -171,6 +173,17 @@ class MutableVector3 implements Vector3 {
     return true;
   }
 
+  public rotate(quaternion: Quaternion): void {
+    const q = Quaternion.fromSource(quaternion);
+    const q1 = Quaternion.fromSource(quaternion);
+
+    q1.invert();
+    q.multiply({ scalar: 0, vector: this });
+    q.multiply(q1);
+
+    this.set(q.vector);
+  }
+
   public scale(factor: number): void {
     this.x *= factor;
     this.y *= factor;
@@ -203,6 +216,16 @@ class MutableVector3 implements Vector3 {
     this.x -= rhs.x;
     this.y -= rhs.y;
     this.z -= rhs.z;
+  }
+
+  public transform(matrix: Matrix3): void {
+    const x = this.x * matrix.v00 + this.y * matrix.v10 + this.z * matrix.v20;
+    const y = this.x * matrix.v01 + this.y * matrix.v11 + this.z * matrix.v21;
+    const z = this.x * matrix.v02 + this.y * matrix.v12 + this.z * matrix.v22;
+
+    this.x = x;
+    this.y = y;
+    this.z = z;
   }
 }
 
@@ -282,6 +305,19 @@ class MutableVector4 implements Vector4 {
   }
 
   public setXYZW(x: number, y: number, z: number, w: number): void {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.w = w;
+  }
+
+  public transform(matrix: Matrix4): void {
+    const m = matrix;
+    const x = this.x * m.v00 + this.y * m.v10 + this.z * m.v20 + this.w * m.v30;
+    const y = this.x * m.v01 + this.y * m.v11 + this.z * m.v21 + this.w * m.v31;
+    const z = this.x * m.v02 + this.y * m.v12 + this.z * m.v22 + this.w * m.v32;
+    const w = this.x * m.v03 + this.y * m.v13 + this.z * m.v23 + this.w * m.v33;
+
     this.x = x;
     this.y = y;
     this.z = z;

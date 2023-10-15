@@ -1,6 +1,6 @@
 import { InvokeOf, invokeOnObject } from "../language/dynamic";
 import { Quaternion } from "./quaternion";
-import { Vector3, Vector4 } from "./vector";
+import { Vector3 } from "./vector";
 
 interface Matrix3 {
   readonly v00: number;
@@ -206,14 +206,6 @@ class Matrix3 {
     ...invokes: InvokeOf<MutableMatrix3>[]
   ): MutableMatrix3 {
     return invokeOnObject(new MutableMatrix3(source), invokes);
-  }
-
-  public static transform(source: Matrix3, vertex: Vector3): Vector3 {
-    return {
-      x: vertex.x * source.v00 + vertex.y * source.v10 + vertex.z * source.v20,
-      y: vertex.x * source.v01 + vertex.y * source.v11 + vertex.z * source.v21,
-      z: vertex.x * source.v02 + vertex.y * source.v12 + vertex.z * source.v22,
-    };
   }
 
   public static readonly identity: Matrix3 = {
@@ -785,31 +777,6 @@ class Matrix4 {
     ...invokes: InvokeOf<MutableMatrix4>[]
   ): MutableMatrix4 {
     return invokeOnObject(new MutableMatrix4(source), invokes);
-  }
-
-  public static transform(source: Matrix4, vertex: Vector4): Vector4 {
-    return {
-      x:
-        vertex.x * source.v00 +
-        vertex.y * source.v10 +
-        vertex.z * source.v20 +
-        vertex.w * source.v30,
-      y:
-        vertex.x * source.v01 +
-        vertex.y * source.v11 +
-        vertex.z * source.v21 +
-        vertex.w * source.v31,
-      z:
-        vertex.x * source.v02 +
-        vertex.y * source.v12 +
-        vertex.z * source.v22 +
-        vertex.w * source.v32,
-      w:
-        vertex.x * source.v03 +
-        vertex.y * source.v13 +
-        vertex.z * source.v23 +
-        vertex.w * source.v33,
-    };
   }
 
   public static readonly identity: Matrix4 = {

@@ -295,12 +295,15 @@ const projectPointToScreen = (
   halfHeight: number,
   position: Vector3
 ) => {
-  const point = Matrix4.transform(modelViewProjection, {
-    x: position.x,
-    y: position.y,
-    z: position.z,
-    w: 1,
-  });
+  const point = Vector4.fromSource(
+    {
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      w: 1,
+    },
+    ["transform", modelViewProjection]
+  );
 
   /*
    ** Normalize point and apply following conversions:

@@ -120,10 +120,8 @@ const movePlayer = (input: Input, player: Player, dt: number): void => {
   ]);
 
   const acceleration = Vector3.fromSource(
-    Quaternion.rotate(
-      { x: 0, y: 0, z: input.isPressed("space") ? 1 : 0 },
-      player.rotation
-    ),
+    { x: 0, y: 0, z: input.isPressed("space") ? 1 : 0 },
+    ["rotate", player.rotation],
     ["scale", (dt * thrust) / mass],
     ["sub", velocity]
   );
@@ -410,10 +408,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
       for (const smokeCenter of playerSmokeCenters) {
         particleEmitter0(
           10,
-          Vector3.fromSource(player.position, [
-            "add",
-            Quaternion.rotate(smokeCenter, player.rotation),
-          ]),
+          Vector3.fromSource(
+            smokeCenter,
+            ["rotate", player.rotation],
+            ["add", player.position]
+          ),
           Math.random()
         );
       }

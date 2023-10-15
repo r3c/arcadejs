@@ -1,5 +1,5 @@
 import { Matrix4 } from "../math/matrix";
-import { Vector2, Vector3 } from "../math/vector";
+import { Vector2, Vector3, Vector4 } from "../math/vector";
 import {
   BoundingBox,
   Filter,
@@ -266,12 +266,10 @@ const flattenPolygons = (
 
     for (const position of polygon.positions) {
       flatPolygon.positions.push(
-        Matrix4.transform(transform, {
-          x: position.x,
-          y: position.y,
-          z: position.z,
-          w: 1,
-        })
+        Vector4.fromSource(
+          { x: position.x, y: position.y, z: position.z, w: 1 },
+          ["transform", transform]
+        )
       );
     }
 
@@ -369,12 +367,10 @@ const reduceMeshPositions = <TState>(
       for (const position of polygon.positions) {
         current = reduce(
           current,
-          Matrix4.transform(transform, {
-            x: position.x,
-            y: position.y,
-            z: position.z,
-            w: 1,
-          })
+          Vector4.fromSource(
+            { x: position.x, y: position.y, z: position.z, w: 1 },
+            ["transform", transform]
+          )
         );
       }
 
