@@ -33,11 +33,8 @@ import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 
 type Player = {
-  cameraRotation: MutableQuaternion;
   rotation: MutableQuaternion;
   position: MutableVector3;
-  smoke: number;
-  velocity: MutableVector3;
 };
 
 type Light = {
@@ -52,6 +49,8 @@ type Star = {
   rotationSpeed: number;
   variant: number;
 };
+
+type Updater = (state: ApplicationState, dt: number) => void;
 
 type ApplicationState = {
   input: Input;
@@ -70,16 +69,12 @@ type ApplicationState = {
   sprite: GlTexture;
   stars: Star[];
   target: GlTarget;
-  time: number;
+  updaters: Updater[];
   viewMatrix: MutableMatrix4;
   zoom: number;
 };
 
 const pi2 = Math.PI * 2;
-
-const friction = 0.001;
-const mass = 1000;
-const thrust = 0.05;
 
 const playerSmokeCenters: Vector3[] = [
   { x: +0.7, y: +0.35, z: -4.2 },
@@ -90,52 +85,153 @@ const playerSmokeCenters: Vector3[] = [
 const starFieldCount = 1000;
 const starFieldRadius = 1000;
 
-// See: https://gafferongames.com/post/integration_basics/
-const movePlayer = (input: Input, player: Player, dt: number): void => {
+// Move camera
+const createCameraUpdater = (
+  state: Omit<ApplicationState, "updaters">
+): Updater => {
+  const position = Vector3.fromZero();
+  const rotation = Quaternion.fromSource(state.player.rotation);
+  const rotationInverse = Quaternion.fromIdentity();
+  const rotationMatrix3 = Matrix3.fromIdentity();
+  const rotationMatrix4 = Matrix4.fromIdentity();
+
+  return (state) => {
+    const { input, player, viewMatrix } = state;
+
+    state.zoom += input.fetchZoom() * 0.2;
+
+    position.set(player.position);
+    position.negate();
+
+    rotation.slerp(player.rotation, 0.05);
+    rotationInverse.set(rotation);
+    rotationInverse.conjugate();
+    rotationMatrix3.setQuaternion(rotationInverse);
+    rotationMatrix4.setRotationPosition(rotationMatrix3, Vector3.zero);
+
+    viewMatrix.set(Matrix4.identity);
+    viewMatrix.translate({ x: 0, y: 0, z: state.zoom });
+    viewMatrix.rotate({ x: 0, y: 1, z: 0 }, Math.PI);
+    viewMatrix.multiply(rotationMatrix4);
+    viewMatrix.translate(position);
+  };
+};
+
+// Update light positions
+const createLightUpdater = (): Updater => {
+  let time = 0;
+
+  return (state, dt) => {
+    const { lights, player } = state;
+
+    for (let i = lights.length; i-- > 0; ) {
+      const { mover, position } = lights[i];
+
+      position.set(mover(player.position, time * 0.001));
+    }
+
+    time += dt;
+  };
+};
+
+// Emit particles & update them
+const createParticleUpdater = (): Updater => {
+  const smokeOrigin = Vector3.fromZero();
+
+  let smoke = 0;
+
+  return (state, dt) => {
+    const { particleEmitter0, particleRenderer, player } = state;
+
+    smoke += dt;
+
+    if (smoke >= 20) {
+      for (const smokeCenter of playerSmokeCenters) {
+        smokeOrigin.set(smokeCenter);
+        smokeOrigin.rotate(player.rotation);
+        smokeOrigin.add(player.position);
+
+        particleEmitter0(10, smokeOrigin, Math.random());
+      }
+
+      smoke -= 20;
+    }
+
+    particleRenderer.update(dt);
+  };
+};
+
+// Move player
+const createPlayerUpdater = (): Updater => {
+  const friction = 0.001;
+  const mass = 1000;
   const rotationSpeed = 0.02;
+  const thrust = 0.05;
 
-  player.rotation.multiply(
-    Quaternion.fromIdentity([
-      "setRotation",
-      { x: 0, y: 1, z: 0 },
-      ((input.isPressed("arrowleft") ? 1 : 0) +
-        (input.isPressed("arrowright") ? -1 : 0)) *
-        rotationSpeed,
-    ])
-  );
+  const acceleration = Vector3.fromZero();
+  const rotation = Quaternion.fromIdentity();
+  const velocity = Vector3.fromZero();
+  const velocityDelta = Vector3.fromZero();
 
-  player.rotation.multiply(
-    Quaternion.fromIdentity([
-      "setRotation",
-      { x: 1, y: 0, z: 0 },
-      ((input.isPressed("arrowdown") ? 1 : 0) +
-        (input.isPressed("arrowup") ? -1 : 0)) *
-        rotationSpeed,
-    ])
-  );
+  return (state, dt) => {
+    const { input, player } = state;
 
-  const velocity = Vector3.fromSource(player.velocity, [
-    "scale",
-    Math.min(dt * friction, 1),
-  ]);
+    const horizontalRotationSpeed =
+      (input.isPressed("arrowleft") ? rotationSpeed : 0) +
+      (input.isPressed("arrowright") ? -rotationSpeed : 0);
+    const verticalRotationSpeed =
+      (input.isPressed("arrowdown") ? rotationSpeed : 0) +
+      (input.isPressed("arrowup") ? -rotationSpeed : 0);
 
-  const acceleration = Vector3.fromSource(
-    { x: 0, y: 0, z: input.isPressed("space") ? 1 : 0 },
-    ["rotate", player.rotation],
-    ["scale", (dt * thrust) / mass],
-    ["sub", velocity]
-  );
+    rotation.setRotation({ x: 0, y: 1, z: 0 }, horizontalRotationSpeed);
+    player.rotation.multiply(rotation);
+    rotation.setRotation({ x: 1, y: 0, z: 0 }, verticalRotationSpeed);
+    player.rotation.multiply(rotation);
 
-  player.velocity.add(acceleration);
+    // See: https://gafferongames.com/post/integration_basics/
+    const accelerationFactor = input.isPressed("space") ? 1 : 0;
 
-  velocity.set(player.velocity);
-  velocity.scale(dt);
+    velocityDelta.set(velocity);
+    velocityDelta.scale(Math.min(dt * friction, 1));
 
-  player.position.add(velocity);
+    acceleration.setXYZ(0, 0, accelerationFactor);
+    acceleration.rotate(player.rotation);
+    acceleration.scale((dt * thrust) / mass);
+    acceleration.sub(velocityDelta);
 
-  player.position.x = warp(player.position.x, 0, 1000);
-  player.position.y = warp(player.position.y, 0, 1000);
-  player.position.z = warp(player.position.z, 0, 1000);
+    velocity.add(acceleration);
+
+    velocityDelta.set(velocity);
+    velocityDelta.scale(dt);
+
+    player.position.add(velocityDelta);
+
+    player.position.x = warp(player.position.x, 0, 1000);
+    player.position.y = warp(player.position.y, 0, 1000);
+    player.position.z = warp(player.position.z, 0, 1000);
+  };
+};
+
+// Update star positions
+const createStarUpdater = (): Updater => {
+  const starCenter = Matrix4.fromIdentity();
+
+  return (state, dt) => {
+    const { stars, viewMatrix } = state;
+
+    starCenter.set(viewMatrix);
+    starCenter.invert();
+
+    for (let i = stars.length; i-- > 0; ) {
+      const { position } = stars[i];
+
+      position.x = warp(position.x, starCenter.v30, 50);
+      position.y = warp(position.y, starCenter.v31, 50);
+      position.z = warp(position.z, starCenter.v32, 50);
+
+      stars[i].rotationAmount += dt * stars[i].rotationSpeed;
+    }
+  };
 };
 
 const warp = (position: number, center: number, radius: number): number => {
@@ -215,7 +311,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
 
     // Create state
-    return {
+    const state: Omit<ApplicationState, "updaters"> = {
       input: new Input(screen.canvas),
       lights: range(2).map((i) => ({
         mover: createOrbitMover(i, 5, 5, 2),
@@ -228,19 +324,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       player: {
-        cameraRotation: Quaternion.fromIdentity([
-          "setRotation",
-          { x: 1, y: 0, z: 0 },
-          0,
-        ]),
         rotation: Quaternion.fromIdentity([
           "setRotation",
           { x: 1, y: 0, z: 0 },
           0,
         ]),
         position: Vector3.fromZero(),
-        smoke: 0,
-        velocity: Vector3.fromZero(),
       },
       particleEmitter0,
       particleRenderer,
@@ -268,9 +357,19 @@ const application: Application<WebGLScreen, ApplicationState> = {
         };
       }),
       target,
-      time: 0,
       viewMatrix: Matrix4.fromIdentity(),
       zoom: -25,
+    };
+
+    return {
+      ...state,
+      updaters: [
+        createCameraUpdater(state),
+        createPlayerUpdater(),
+        createParticleUpdater(),
+        createStarUpdater(),
+        createLightUpdater(),
+      ],
     };
   },
 
@@ -343,86 +442,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   update(state, dt) {
-    const {
-      input,
-      lights,
-      player,
-      particleEmitter0,
-      particleRenderer,
-      stars,
-      viewMatrix,
-    } = state;
-
-    // Move player
-    movePlayer(input, player, dt);
-
-    // Move camera
-    const zoom = input.fetchZoom();
-
-    state.zoom += zoom * 0.2;
-
-    player.cameraRotation.slerp(player.rotation, 0.05);
-
-    const cameraRotation = Matrix4.fromIdentity([
-      "setRotationPosition",
-      Matrix3.fromIdentity([
-        "setQuaternion",
-        Quaternion.fromSource(player.cameraRotation, ["conjugate"]),
-      ]),
-      Vector3.zero,
-    ]);
-    const cameraPosition = Vector3.fromSource(player.position, ["negate"]);
-
-    viewMatrix.set(Matrix4.identity);
-    viewMatrix.translate({ x: 0, y: 0, z: state.zoom });
-    viewMatrix.rotate({ x: 0, y: 1, z: 0 }, Math.PI);
-    viewMatrix.multiply(cameraRotation);
-    viewMatrix.translate(cameraPosition);
-
-    // Update star positions
-    const starCenter = Matrix4.fromSource(viewMatrix);
-
-    starCenter.invert();
-
-    for (let i = stars.length; i-- > 0; ) {
-      const { position } = stars[i];
-
-      position.x = warp(position.x, starCenter.v30, 50);
-      position.y = warp(position.y, starCenter.v31, 50);
-      position.z = warp(position.z, starCenter.v32, 50);
-
-      stars[i].rotationAmount += dt * stars[i].rotationSpeed;
+    for (const updater of state.updaters) {
+      updater(state, dt);
     }
-
-    // Update light positions
-    for (let i = lights.length; i-- > 0; ) {
-      const { mover, position } = lights[i];
-
-      position.set(mover(player.position, state.time * 0.001));
-    }
-
-    // Emit particles & update them
-    player.smoke += dt;
-
-    if (player.smoke >= 20) {
-      for (const smokeCenter of playerSmokeCenters) {
-        particleEmitter0(
-          10,
-          Vector3.fromSource(
-            smokeCenter,
-            ["rotate", player.rotation],
-            ["add", player.position]
-          ),
-          Math.random()
-        );
-      }
-
-      player.smoke -= 20;
-    }
-
-    particleRenderer.update(dt);
-
-    state.time += dt;
   },
 };
 
