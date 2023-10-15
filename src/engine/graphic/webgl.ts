@@ -69,7 +69,7 @@ const createRuntime = (context: GlContext): GlRuntime => {
       new ImageData(
         new Uint8ClampedArray(
           Vector4.toArray(
-            Vector4.fromObject(color, ["scale", 255], ["map", Math.floor])
+            Vector4.fromSource(color, ["scale", 255], ["map", Math.floor])
           )
         ),
         1,
@@ -174,7 +174,7 @@ class GlTarget {
     this.depthClear = 1;
     this.framebuffers = [];
     this.gl = gl;
-    this.viewSize = Vector2.fromObject(size);
+    this.viewSize = Vector2.fromSource(size);
   }
 
   public clear(framebufferIndex: number) {

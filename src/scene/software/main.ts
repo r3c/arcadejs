@@ -66,7 +66,7 @@ const application: Application<Context2DScreen, ApplicationState> = {
       tweak,
     } = state;
 
-    const view = Matrix4.fromObject(
+    const view = Matrix4.fromSource(
       Matrix4.identity,
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
@@ -83,12 +83,13 @@ const application: Application<Context2DScreen, ApplicationState> = {
   },
 
   resize(state, size) {
-    state.projection = Matrix4.fromPerspective(
+    state.projection = Matrix4.fromIdentity([
+      "setPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,
-      100
-    );
+      100,
+    ]);
   },
 
   update(state, dt) {

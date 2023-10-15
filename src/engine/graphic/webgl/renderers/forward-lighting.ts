@@ -827,14 +827,15 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
     this.directionalShadowPainter = createDirectionalShadowPainter(
       directionalShadowShader
     );
-    this.directionalShadowProjectionMatrix = Matrix4.fromOrthographic(
+    this.directionalShadowProjectionMatrix = Matrix4.fromIdentity([
+      "setOrthographic",
       -10,
       10,
       -10,
       10,
       -10,
-      20
-    );
+      20,
+    ]);
     this.directionalShadowShader = directionalShadowShader;
     this.directionalShadowTargets = directionalShadowTargets;
     this.lightPainter = createLightPainter(lightShader, fullConfiguration);
@@ -906,12 +907,16 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
           z: -light.direction.z,
         };
 
-        const viewMatrix = Matrix4.fromObject(
+        const viewMatrix = Matrix4.fromSource(
           Matrix4.identity,
           ["translate", { x: 0, y: 0, z: -10 }],
           [
             "multiply",
-            Matrix4.fromDirection(shadowDirection, { x: 0, y: 1, z: 0 }),
+            Matrix4.fromIdentity([
+              "setDirection",
+              shadowDirection,
+              { x: 0, y: 1, z: 0 },
+            ]),
           ]
         );
 

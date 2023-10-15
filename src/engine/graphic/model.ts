@@ -31,7 +31,7 @@ const changeMeshCenter = (mesh: Mesh): Mesh => {
 
   reduceMesh(mesh, Matrix4.identity, false, (_, polygon) => {
     polygon.positions = polygon.positions.map((position) =>
-      Vector3.fromObject(position, ["sub", center])
+      Vector3.fromSource(position, ["sub", center])
     );
 
     return false;
@@ -91,11 +91,11 @@ const computeCenter = (mesh: Mesh): Vector3 => {
  ** http://www.iquilezles.org/www/articles/normals/normals.htm
  */
 const computeNormals = (indices: Vector3[], points: Vector3[]): Vector3[] => {
-  const normals = range(points.length).map(Vector3.fromZero);
+  const normals = range(points.length).map(() => Vector3.fromZero());
 
   for (const { x, y, z } of indices) {
-    const u = Vector3.fromObject(points[y], ["sub", points[x]]);
-    const v = Vector3.fromObject(points[z], ["sub", points[x]]);
+    const u = Vector3.fromSource(points[y], ["sub", points[x]]);
+    const v = Vector3.fromSource(points[z], ["sub", points[x]]);
 
     u.cross(v);
 
@@ -122,13 +122,13 @@ const computeTangents = (
   coords: Vector2[],
   normals: Vector3[]
 ): Vector3[] => {
-  const tangents = range(points.length).map(Vector3.fromZero);
+  const tangents = range(points.length).map(() => Vector3.fromZero());
 
   for (const { x, y, z } of indices) {
-    const c2 = Vector2.fromObject(coords[y], ["sub", coords[x]], ["normalize"]);
-    const c3 = Vector2.fromObject(coords[z], ["sub", coords[x]], ["normalize"]);
-    const p2 = Vector3.fromObject(points[y], ["sub", points[x]], ["normalize"]);
-    const p3 = Vector3.fromObject(points[z], ["sub", points[x]], ["normalize"]);
+    const c2 = Vector2.fromSource(coords[y], ["sub", coords[x]], ["normalize"]);
+    const c3 = Vector2.fromSource(coords[z], ["sub", coords[x]], ["normalize"]);
+    const p2 = Vector3.fromSource(points[y], ["sub", points[x]], ["normalize"]);
+    const p3 = Vector3.fromSource(points[z], ["sub", points[x]], ["normalize"]);
 
     const tangent = {
       x: c3.y * p2.x - c2.y * p3.x,
@@ -142,7 +142,7 @@ const computeTangents = (
   }
 
   for (let i = 0; i < tangents.length; ++i) {
-    const n = Vector3.fromObject(normals[i]);
+    const n = Vector3.fromSource(normals[i]);
     const t = tangents[i];
 
     // Gram-Schmidt orthogonalize: t' = normalize(t - n * dot(n, t));
@@ -174,7 +174,7 @@ const createMeshLoader = <TSource, TFormat>(
     const transform = configuration.transform;
 
     if (transform !== undefined) {
-      mesh.transform = Matrix4.fromObject(transform, [
+      mesh.transform = Matrix4.fromSource(transform, [
         "multiply",
         mesh.transform,
       ]);
@@ -198,7 +198,7 @@ const finalizePolygon = (polygon: Polygon): void => {
     const normals = polygon.normals;
 
     for (let i = 0; i < normals.length; ++i) {
-      normals[i] = Vector3.fromObject(normals[i], ["normalize"]);
+      normals[i] = Vector3.fromSource(normals[i], ["normalize"]);
     }
   } else {
     polygon.normals = computeNormals(polygon.indices, polygon.positions);
@@ -209,7 +209,7 @@ const finalizePolygon = (polygon: Polygon): void => {
     const tangents = polygon.tangents;
 
     for (let i = 0; i < tangents.length; ++i) {
-      tangents[i] = Vector3.fromObject(tangents[i], ["normalize"]);
+      tangents[i] = Vector3.fromSource(tangents[i], ["normalize"]);
     }
   } else if (polygon.coordinates !== undefined) {
     polygon.tangents = computeTangents(
@@ -238,7 +238,7 @@ const flattenPolygons = (
   mesh: Mesh,
   parentTransform: Matrix4
 ): void => {
-  const transform = Matrix4.fromObject(parentTransform, [
+  const transform = Matrix4.fromSource(parentTransform, [
     "multiply",
     mesh.transform,
   ]);
@@ -340,7 +340,7 @@ const reduceMesh = <TState>(
   state: TState,
   reduce: (previous: TState, geometry: Polygon, transform: Matrix4) => TState
 ): TState => {
-  const transform = Matrix4.fromObject(parent, ["multiply", mesh.transform]);
+  const transform = Matrix4.fromSource(parent, ["multiply", mesh.transform]);
 
   for (const polygon of mesh.polygons) {
     state = reduce(state, polygon, transform);

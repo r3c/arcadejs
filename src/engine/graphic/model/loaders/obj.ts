@@ -355,7 +355,7 @@ const loadObject = async (
             faceIndices.push(index);
           }
 
-          indices.push(Vector3.fromArray(faceIndices));
+          indices.push(Vector3.fromZero(["setArray", faceIndices]));
         }
       }
 

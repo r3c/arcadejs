@@ -59,6 +59,20 @@ class MutableVector2 implements Vector2 {
     this.y = source.y;
   }
 
+  public setArray(values: ArrayLike<number>): void {
+    if (values.length < 2) {
+      throw Error("Vector2 must be created from array with 2+ elements");
+    }
+
+    this.x = values[0];
+    this.y = values[1];
+  }
+
+  public setXY(x: number, y: number): void {
+    this.x = x;
+    this.y = y;
+  }
+
   public sub(rhs: Vector2): void {
     this.x -= rhs.x;
     this.y -= rhs.y;
@@ -66,25 +80,18 @@ class MutableVector2 implements Vector2 {
 }
 
 class Vector2 {
-  public static fromArray(values: number[]): MutableVector2 {
-    return new MutableVector2(values[0], values[1]);
-  }
-
-  public static fromObject(
-    origin: Vector2,
+  public static fromSource(
+    source: Vector2,
     ...invokes: InvokeOf<MutableVector2>[]
   ): MutableVector2 {
-    const { x, y } = origin;
+    const { x, y } = source;
 
-    return invokeOnObject(Vector2.fromXY(x, y), invokes);
+    return invokeOnObject(new MutableVector2(x, y), invokes);
   }
-
-  public static fromXY(x: number, y: number): MutableVector2 {
-    return new MutableVector2(x, y);
-  }
-
-  public static fromZero(): MutableVector2 {
-    return new MutableVector2(0, 0);
+  public static fromZero(
+    ...invokes: InvokeOf<MutableVector2>[]
+  ): MutableVector2 {
+    return invokeOnObject(new MutableVector2(0, 0), invokes);
   }
 
   public static toArray(vector: Vector2): [number, number] {
@@ -176,6 +183,22 @@ class MutableVector3 implements Vector3 {
     this.z = source.z;
   }
 
+  public setArray(values: ArrayLike<number>): void {
+    if (values.length < 3) {
+      throw Error("Vector3 must be created from array with 3+ elements");
+    }
+
+    this.x = values[0];
+    this.y = values[1];
+    this.z = values[2];
+  }
+
+  public setXYZ(x: number, y: number, z: number): void {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+  }
+
   public sub(rhs: Vector3): void {
     this.x -= rhs.x;
     this.y -= rhs.y;
@@ -184,25 +207,19 @@ class MutableVector3 implements Vector3 {
 }
 
 class Vector3 {
-  public static fromArray(values: number[]): MutableVector3 {
-    return new MutableVector3(values[0], values[1], values[2]);
-  }
-
-  public static fromObject(
-    origin: Vector3,
+  public static fromSource(
+    source: Vector3,
     ...invokes: InvokeOf<MutableVector3>[]
   ): MutableVector3 {
-    const { x, y, z } = origin;
+    const { x, y, z } = source;
 
-    return invokeOnObject(Vector3.fromXYZ(x, y, z), invokes);
+    return invokeOnObject(new MutableVector3(x, y, z), invokes);
   }
 
-  public static fromXYZ(x: number, y: number, z: number): MutableVector3 {
-    return new MutableVector3(x, y, z);
-  }
-
-  public static fromZero(): MutableVector3 {
-    return new MutableVector3(0, 0, 0);
+  public static fromZero(
+    ...invokes: InvokeOf<MutableVector3>[]
+  ): MutableVector3 {
+    return invokeOnObject(new MutableVector3(0, 0, 0), invokes);
   }
 
   public static toArray(vector: Vector3): [number, number, number] {
@@ -252,33 +269,40 @@ class MutableVector4 implements Vector4 {
     this.z = source.z;
     this.w = source.w;
   }
+
+  public setArray(values: ArrayLike<number>): void {
+    if (values.length < 4) {
+      throw Error("Vector4 must be created from array with 4+ elements");
+    }
+
+    this.x = values[0];
+    this.y = values[1];
+    this.z = values[2];
+    this.w = values[3];
+  }
+
+  public setXYZW(x: number, y: number, z: number, w: number): void {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    this.w = w;
+  }
 }
 
 class Vector4 {
-  public static fromArray(values: number[]): MutableVector4 {
-    return new MutableVector4(values[0], values[1], values[2], values[3]);
-  }
-
-  public static fromObject(
-    origin: Vector4,
+  public static fromSource(
+    source: Vector4,
     ...invokes: InvokeOf<MutableVector4>[]
   ): MutableVector4 {
-    const { x, y, z, w } = origin;
+    const { x, y, z, w } = source;
 
-    return invokeOnObject(Vector4.fromXYZW(x, y, z, w), invokes);
+    return invokeOnObject(new MutableVector4(x, y, z, w), invokes);
   }
 
-  public static fromXYZW(
-    x: number,
-    y: number,
-    z: number,
-    w: number
+  public static fromZero(
+    ...invokes: InvokeOf<MutableVector4>[]
   ): MutableVector4 {
-    return new MutableVector4(x, y, z, w);
-  }
-
-  public static fromZero(): MutableVector4 {
-    return new MutableVector4(0, 0, 0, 0);
+    return invokeOnObject(new MutableVector4(0, 0, 0, 0), invokes);
   }
 
   public static toArray(vector: Vector4): [number, number, number, number] {

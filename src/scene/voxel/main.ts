@@ -66,7 +66,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     worldScaleVector.scale(0.5);
 
     const library: Library = { textures: new Map() };
-    const transform = Matrix4.fromObject(Matrix4.identity, [
+    const transform = Matrix4.fromSource(Matrix4.identity, [
       "scale",
       worldScaleVector,
     ]);
@@ -89,7 +89,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     worldScaleVector.scale(0.55);
 
     const selectModel = await loadMeshFromJson("model/select/mesh.json", {
-      transform: Matrix4.fromObject(Matrix4.identity, [
+      transform: Matrix4.fromSource(Matrix4.identity, [
         "scale",
         worldScaleVector,
       ]),
@@ -158,11 +158,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
       input: new Input(screen.canvas),
       lights: range(maxLights).map((i) => ({
         mover: createOrbitMover(i, 1, maxWorldRenderSize, 1),
-        position: Vector3.fromXYZ(
+        position: Vector3.fromZero([
+          "setXYZ",
           worldGraphic.renderSize.x * (i / (maxLights - 1) - 0.5),
           worldGraphic.renderSize.y * 0.5,
-          worldGraphic.renderSize.z * (i / (maxLights - 1) - 0.5)
-        ),
+          worldGraphic.renderSize.z * (i / (maxLights - 1) - 0.5),
+        ]),
         radius: maxWorldRenderSize,
       })),
       models: {
@@ -190,7 +191,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Move camera & define view matrix accordingly
     camera.move(input, dt);
 
-    const viewMatrix = Matrix4.fromObject(
+    const viewMatrix = Matrix4.fromSource(
       Matrix4.identity,
       ["translate", camera.position],
       ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
@@ -198,7 +199,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     );
 
     // Locate cell being looked at
-    const viewMatrixInverse = Matrix4.fromObject(
+    const viewMatrixInverse = Matrix4.fromSource(
       Matrix4.identity,
       ["set", viewMatrix],
       ["invert"]
@@ -269,10 +270,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Simulate push force
     if (input.fetchPress("space") && lookVoxel !== undefined) {
-      const direction =
+      const direction = Vector3.fromZero(
         Math.abs(cameraDirection.x) > Math.abs(cameraDirection.z)
-          ? Vector3.fromXYZ(Math.sign(cameraDirection.x), 0, 0)
-          : Vector3.fromXYZ(0, 0, Math.sign(cameraDirection.z));
+          ? ["setXYZ", Math.sign(cameraDirection.x), 0, 0]
+          : ["setXYZ", 0, 0, Math.sign(cameraDirection.z)]
+      );
 
       direction.scale(-0.5);
 
@@ -343,12 +345,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
   resize(state, size) {
     state.renderers.forwardLighting.resize(size);
-    state.projectionMatrix = Matrix4.fromPerspective(
+    state.projectionMatrix = Matrix4.fromIdentity([
+      "setPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,
-      100
-    );
+      100,
+    ]);
     state.target.resize(size);
   },
 };

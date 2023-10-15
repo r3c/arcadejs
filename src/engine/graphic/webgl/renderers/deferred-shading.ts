@@ -597,7 +597,7 @@ const loadLightBinding = <TScene extends LightScene>(
   binding.setUniform(
     "inverseProjectionMatrix",
     shaderUniform.matrix4f(({ projectionMatrix }) => {
-      const inverseProjectionMatrix = Matrix4.fromObject(projectionMatrix);
+      const inverseProjectionMatrix = Matrix4.fromSource(projectionMatrix);
 
       inverseProjectionMatrix.invert();
 
@@ -745,7 +745,15 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       runtime,
       configuration
     );
-    this.fullscreenProjection = Matrix4.fromOrthographic(-1, 1, -1, 1, -1, 1);
+    this.fullscreenProjection = Matrix4.fromIdentity([
+      "setOrthographic",
+      -1,
+      1,
+      -1,
+      1,
+      -1,
+      1,
+    ]);
     this.geometryPainter = loadGeometryPainter(runtime, configuration);
     this.geometryTarget = geometryTarget;
     this.pointLightBillboard = pointLightBillboard(gl);
@@ -783,7 +791,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
 
     // Build billboard matrix from view matrix to get camera-facing quads by
     // copying view matrix and cancelling any rotation.
-    const billboardMatrix = Matrix4.fromObject(viewMatrix);
+    const billboardMatrix = Matrix4.fromSource(viewMatrix);
 
     billboardMatrix.v00 = 1;
     billboardMatrix.v01 = 0;
@@ -833,7 +841,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       // passing 2 distinct "view" matrices to light shader:
       // - One for projecting our quad to fullscreen
       // - One for computing light directions in camera space
-      const modelMatrix = Matrix4.fromObject(viewMatrix);
+      const modelMatrix = Matrix4.fromSource(viewMatrix);
 
       modelMatrix.invert();
 

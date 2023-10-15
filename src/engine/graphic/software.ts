@@ -382,7 +382,7 @@ class SoftwareRenderer implements Renderer<SoftwareScene<SceneState>> {
     image.depths.fill(Math.pow(2, 127));
 
     const modelViewProjection = Matrix4.fromIdentity();
-    const viewProjection = Matrix4.fromObject(state.projection);
+    const viewProjection = Matrix4.fromSource(state.projection);
 
     viewProjection.multiply(state.view);
 

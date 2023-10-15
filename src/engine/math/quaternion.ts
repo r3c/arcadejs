@@ -93,6 +93,19 @@ class MutableQuaternion implements Quaternion {
     this.vector.set(source.vector);
   }
 
+  public setRotation(axis: Vector3, angle: number): void {
+    const halfAngle = angle * 0.5;
+
+    this.scalar = Math.cos(halfAngle);
+    this.vector.set(axis);
+    this.vector.scale(Math.sin(halfAngle));
+  }
+
+  public setScalarVector(scalar: number, vector: Vector3): void {
+    this.scalar = scalar;
+    this.vector.set(vector);
+  }
+
   /**
    * Compute spherical linear interpolation between this instance and given one.
    * From: https://splines.readthedocs.io/en/latest/rotation/slerp.html
@@ -120,44 +133,45 @@ class MutableQuaternion implements Quaternion {
 }
 
 class Quaternion {
-  public static fromObject(
-    origin: Quaternion,
+  public static fromIdentity(
     ...invokes: InvokeOf<MutableQuaternion>[]
   ): MutableQuaternion {
-    const { scalar, vector } = origin;
-
-    return invokeOnObject(Quaternion.fromScalarVector(scalar, vector), invokes);
+    return invokeOnObject(
+      new MutableQuaternion(
+        Quaternion.identity.scalar,
+        Vector3.fromSource(Quaternion.identity.vector)
+      ),
+      invokes
+    );
   }
 
-  public static fromRotation(axis: Vector3, angle: number): MutableQuaternion {
-    const halfAngle = angle * 0.5;
-    const scalar = Math.cos(halfAngle);
-    const vector = Vector3.fromObject(axis, ["scale", Math.sin(halfAngle)]);
-
-    return Quaternion.fromScalarVector(scalar, vector);
-  }
-
-  public static fromScalarVector(
-    scalar: number,
-    vector: Vector3
+  public static fromSource(
+    source: Quaternion,
+    ...invokes: InvokeOf<MutableQuaternion>[]
   ): MutableQuaternion {
-    return new MutableQuaternion(scalar, Vector3.fromObject(vector));
+    const { scalar, vector } = source;
+
+    return invokeOnObject(
+      new MutableQuaternion(scalar, Vector3.fromSource(vector)),
+      invokes
+    );
   }
 
-  public static fromScalarXYZ(
-    scalar: number,
-    x: number,
-    y: number,
-    z: number
-  ): MutableQuaternion {
-    return new MutableQuaternion(scalar, Vector3.fromXYZ(x, y, z));
+  public static rotate(vector: Vector3, quaternion: Quaternion): Vector3 {
+    const q = Quaternion.fromSource(quaternion);
+    const q1 = Quaternion.fromSource(quaternion);
+
+    q1.invert();
+    q.multiply({ scalar: 0, vector });
+    q.multiply(q1);
+
+    return q.vector;
   }
 
-  public static fromZero(): MutableQuaternion {
-    return new MutableQuaternion(0, Vector3.fromZero());
-  }
-
-  public static readonly zero: Quaternion = { scalar: 0, vector: Vector3.zero };
+  public static readonly identity: Quaternion = {
+    scalar: 1,
+    vector: Vector3.zero,
+  };
 }
 
 export { MutableQuaternion, Quaternion };

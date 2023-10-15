@@ -247,7 +247,13 @@ const expandMesh = (
 
     return {
       coordinates: mapOptional(coordinates, (coordinates) =>
-        expandAccessor(url, coordinates, 2, Vector2.fromArray, "coordinates")
+        expandAccessor(
+          url,
+          coordinates,
+          2,
+          (array) => Vector2.fromZero(["setArray", array]),
+          "coordinates"
+        )
       ),
       indices: range(Math.floor(indexValues.length / 3)).map((i) => ({
         x: indexValues[i * 3 + 0],
@@ -257,20 +263,38 @@ const expandMesh = (
       material:
         materialName !== undefined ? materials.get(materialName) : undefined,
       normals: mapOptional(normals, (normals) =>
-        expandAccessor(url, normals, 3, Vector3.fromArray, "normals")
+        expandAccessor(
+          url,
+          normals,
+          3,
+          (array) => Vector3.fromZero(["setArray", array]),
+          "normals"
+        )
       ),
       positions: expandAccessor(
         url,
         positions,
         3,
-        Vector3.fromArray,
+        (array) => Vector3.fromZero(["setArray", array]),
         "positions"
       ),
       tangents: mapOptional(tangents, (tangents) =>
-        expandAccessor(url, tangents, 3, Vector3.fromArray, "tangents")
+        expandAccessor(
+          url,
+          tangents,
+          3,
+          (array) => Vector3.fromZero(["setArray", array]),
+          "tangents"
+        )
       ),
       tints: mapOptional(tints, (tints) =>
-        expandAccessor(url, tints, 4, Vector4.fromArray, "tints")
+        expandAccessor(
+          url,
+          tints,
+          4,
+          (array) => Vector4.fromZero(["setArray", array]),
+          "tints"
+        )
       ),
     };
   });
@@ -560,17 +584,18 @@ const loadNode = (
     let transform: Matrix4;
 
     if (node.matrix !== undefined) {
-      transform = Matrix4.fromArray(
+      transform = Matrix4.fromIdentity([
+        "setArray",
         convertArrayOf(url, source + ".matrix", node.matrix, (value) =>
           parseFloat(value)
-        )
-      );
+        ),
+      ]);
     } else if (
       node.rotation !== undefined &&
       node.scale !== undefined &&
       node.translation !== undefined
     ) {
-      transform = Matrix4.fromObject(
+      transform = Matrix4.fromSource(
         Matrix4.identity,
         [
           "translate",

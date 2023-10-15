@@ -73,7 +73,7 @@ const extractMeshNormals = (
     gl,
     mesh,
     (polygon) => polygon.normals,
-    (n) => Vector3.fromObject(n, ["normalize"], ["scale", lineLength]),
+    (n) => Vector3.fromSource(n, ["normalize"], ["scale", lineLength]),
     () => ({ x: 0, y: 1, z: 0 })
   );
 
@@ -86,7 +86,7 @@ const extractMeshTangents = (
     gl,
     mesh,
     (polygon) => polygon.tangents,
-    (t) => Vector3.fromObject(t, ["normalize"], ["scale", lineLength]),
+    (t) => Vector3.fromSource(t, ["normalize"], ["scale", lineLength]),
     () => ({ x: 1, y: 0, z: 0 })
   );
 
@@ -117,7 +117,7 @@ const extractLines = (
 
     for (const { x, y, z } of polygon.indices) {
       for (const i of [x, y, z]) {
-        const position = Vector3.fromObject(positions[i]);
+        const position = Vector3.fromSource(positions[i]);
 
         positionArray.push(position.x);
         positionArray.push(position.y);

@@ -132,6 +132,35 @@ class MutableMatrix3 implements Matrix3 {
     this.v22 = source.v22;
   }
 
+  /**
+   * Create rotation matrix from quaternion.
+   * From: https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
+   */
+  public setQuaternion(quaternion: Quaternion): void {
+    const { scalar, vector } = quaternion;
+    const { x, y, z } = vector;
+
+    const sx = scalar * x;
+    const sy = scalar * y;
+    const sz = scalar * z;
+    const xx = x * x;
+    const xy = x * y;
+    const xz = x * z;
+    const yy = y * y;
+    const yz = y * z;
+    const zz = z * z;
+
+    this.v00 = 1 - 2 * (yy + zz);
+    this.v01 = 2 * (xy + sz);
+    this.v02 = 2 * (xz - sy);
+    this.v10 = 2 * (xy - sz);
+    this.v11 = 1 - 2 * (xx + zz);
+    this.v12 = 2 * (yz + sx);
+    this.v20 = 2 * (xz + sy);
+    this.v21 = 2 * (yz - sx);
+    this.v22 = 1 - 2 * (xx + yy);
+  }
+
   private compose(
     v00: number,
     v01: number,
@@ -166,46 +195,17 @@ class MutableMatrix3 implements Matrix3 {
 }
 
 class Matrix3 {
-  public static fromIdentity(): MutableMatrix3 {
-    return new MutableMatrix3(Matrix3.identity);
-  }
-
-  public static fromObject(
-    origin: Matrix3,
+  public static fromIdentity(
     ...invokes: InvokeOf<MutableMatrix3>[]
   ): MutableMatrix3 {
-    return invokeOnObject(new MutableMatrix3(origin), invokes);
+    return invokeOnObject(new MutableMatrix3(Matrix3.identity), invokes);
   }
 
-  /**
-   * Create rotation matrix from quaternion.
-   * From: https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
-   */
-  public static fromQuaternion(quaternion: Quaternion): MutableMatrix3 {
-    const { scalar, vector } = quaternion;
-    const { x, y, z } = vector;
-
-    const sx = scalar * x;
-    const sy = scalar * y;
-    const sz = scalar * z;
-    const xx = x * x;
-    const xy = x * y;
-    const xz = x * z;
-    const yy = y * y;
-    const yz = y * z;
-    const zz = z * z;
-
-    return new MutableMatrix3({
-      v00: 1 - 2 * (yy + zz),
-      v01: 2 * (xy + sz),
-      v02: 2 * (xz - sy),
-      v10: 2 * (xy - sz),
-      v11: 1 - 2 * (xx + zz),
-      v12: 2 * (yz + sx),
-      v20: 2 * (xz + sy),
-      v21: 2 * (yz - sx),
-      v22: 1 - 2 * (xx + yy),
-    });
+  public static fromSource(
+    source: Matrix3,
+    ...invokes: InvokeOf<MutableMatrix3>[]
+  ): MutableMatrix3 {
+    return invokeOnObject(new MutableMatrix3(source), invokes);
   }
 
   public static transform(source: Matrix3, vertex: Vector3): Vector3 {
@@ -547,6 +547,141 @@ class MutableMatrix4 implements Matrix4 {
     this.v33 = source.v33;
   }
 
+  public setArray(values: ArrayLike<number>): void {
+    if (values.length < 16) {
+      throw Error("Matrix4 must be created from array with 16+ elements");
+    }
+
+    this.v00 = values[0];
+    this.v01 = values[1];
+    this.v02 = values[2];
+    this.v03 = values[3];
+    this.v10 = values[4];
+    this.v11 = values[5];
+    this.v12 = values[6];
+    this.v13 = values[7];
+    this.v20 = values[8];
+    this.v21 = values[9];
+    this.v22 = values[10];
+    this.v23 = values[11];
+    this.v30 = values[12];
+    this.v31 = values[13];
+    this.v32 = values[14];
+    this.v33 = values[15];
+  }
+
+  /*
+   ** Create new matrix for "looking to given direction" transformation.
+   ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
+   */
+  public setDirection(direction: Vector3, up: Vector3): void {
+    const f = Vector3.fromSource(direction, ["normalize"]);
+    const upVector = Vector3.fromSource(up, ["normalize"]);
+    const s = Vector3.fromSource(f, ["cross", upVector]);
+    const u = Vector3.fromSource(s, ["normalize"], ["cross", f]);
+
+    this.v00 = s.x;
+    this.v01 = u.x;
+    this.v02 = -f.x;
+    this.v03 = 0;
+    this.v10 = s.y;
+    this.v11 = u.y;
+    this.v12 = -f.y;
+    this.v13 = 0;
+    this.v20 = s.z;
+    this.v21 = u.z;
+    this.v22 = -f.z;
+    this.v23 = 0;
+    this.v30 = 0;
+    this.v31 = 0;
+    this.v32 = 0;
+    this.v33 = 1;
+  }
+
+  /*
+   ** Create new orthographic projection matrix.
+   ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml
+   */
+  public setOrthographic(
+    xMin: number,
+    xMax: number,
+    yMin: number,
+    yMax: number,
+    zMin: number,
+    zMax: number
+  ): void {
+    const dx = xMax - xMin;
+    const dy = yMax - yMin;
+    const dz = zMax - zMin;
+
+    this.v00 = 2 / dx;
+    this.v01 = 0;
+    this.v02 = 0;
+    this.v03 = 0;
+    this.v10 = 0;
+    this.v11 = 2 / dy;
+    this.v12 = 0;
+    this.v13 = 0;
+    this.v20 = 0;
+    this.v21 = 0;
+    this.v22 = -2 / dz;
+    this.v23 = 0;
+    this.v30 = -(xMax + xMin) / dx;
+    this.v31 = -(yMax + yMin) / dy;
+    this.v32 = -(zMax + zMin) / dz;
+    this.v33 = 1;
+  }
+
+  /*
+   ** Create new perspective projection matrix.
+   ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
+   */
+  public setPerspective(
+    fieldOfView: number,
+    aspectRatio: number,
+    zMin: number,
+    zMax: number
+  ): void {
+    var f = 1.0 / Math.tan(fieldOfView * 0.5);
+    var q = 1 / (zMin - zMax);
+
+    this.v00 = f / aspectRatio;
+    this.v01 = 0;
+    this.v02 = 0;
+    this.v03 = 0;
+    this.v10 = 0;
+    this.v11 = f;
+    this.v12 = 0;
+    this.v13 = 0;
+    this.v20 = 0;
+    this.v21 = 0;
+    this.v22 = (zMax + zMin) * q;
+    this.v23 = -1;
+    this.v30 = 0;
+    this.v31 = 0;
+    this.v32 = 2 * zMax * zMin * q;
+    this.v33 = 0;
+  }
+
+  public setRotationPosition(rotation: Matrix3, position: Vector3): void {
+    this.v00 = rotation.v00;
+    this.v01 = rotation.v01;
+    this.v02 = rotation.v02;
+    this.v03 = 0;
+    this.v10 = rotation.v10;
+    this.v11 = rotation.v11;
+    this.v12 = rotation.v12;
+    this.v13 = 0;
+    this.v20 = rotation.v20;
+    this.v21 = rotation.v21;
+    this.v22 = rotation.v22;
+    this.v23 = 0;
+    this.v30 = position.x;
+    this.v31 = position.y;
+    this.v32 = position.z;
+    this.v33 = 1;
+  }
+
   public translate(vector: Vector3): void {
     this.compose(
       1,
@@ -588,49 +723,34 @@ class MutableMatrix4 implements Matrix4 {
   ): void {
     const t00 =
       this.v00 * v00 + this.v10 * v01 + this.v20 * v02 + this.v30 * v03;
-
     const t01 =
       this.v01 * v00 + this.v11 * v01 + this.v21 * v02 + this.v31 * v03;
-
     const t02 =
       this.v02 * v00 + this.v12 * v01 + this.v22 * v02 + this.v32 * v03;
-
     const t03 =
       this.v03 * v00 + this.v13 * v01 + this.v23 * v02 + this.v33 * v03;
-
     const t10 =
       this.v00 * v10 + this.v10 * v11 + this.v20 * v12 + this.v30 * v13;
-
     const t11 =
       this.v01 * v10 + this.v11 * v11 + this.v21 * v12 + this.v31 * v13;
-
     const t12 =
       this.v02 * v10 + this.v12 * v11 + this.v22 * v12 + this.v32 * v13;
-
     const t13 =
       this.v03 * v10 + this.v13 * v11 + this.v23 * v12 + this.v33 * v13;
-
     const t20 =
       this.v00 * v20 + this.v10 * v21 + this.v20 * v22 + this.v30 * v23;
-
     const t21 =
       this.v01 * v20 + this.v11 * v21 + this.v21 * v22 + this.v31 * v23;
-
     const t22 =
       this.v02 * v20 + this.v12 * v21 + this.v22 * v22 + this.v32 * v23;
-
     const t23 =
       this.v03 * v20 + this.v13 * v21 + this.v23 * v22 + this.v33 * v23;
-
     const t30 =
       this.v00 * v30 + this.v10 * v31 + this.v20 * v32 + this.v30 * v33;
-
     const t31 =
       this.v01 * v30 + this.v11 * v31 + this.v21 * v32 + this.v31 * v33;
-
     const t32 =
       this.v02 * v30 + this.v12 * v31 + this.v22 * v32 + this.v32 * v33;
-
     const t33 =
       this.v03 * v30 + this.v13 * v31 + this.v23 * v32 + this.v33 * v33;
 
@@ -654,163 +774,17 @@ class MutableMatrix4 implements Matrix4 {
 }
 
 class Matrix4 {
-  public static fromArray(values: ArrayLike<number>): MutableMatrix4 {
-    if (values.length !== 16) {
-      throw Error("4x4 matrix must contain 16 elements");
-    }
-
-    return new MutableMatrix4({
-      v00: values[0],
-      v01: values[1],
-      v02: values[2],
-      v03: values[3],
-      v10: values[4],
-      v11: values[5],
-      v12: values[6],
-      v13: values[7],
-      v20: values[8],
-      v21: values[9],
-      v22: values[10],
-      v23: values[11],
-      v30: values[12],
-      v31: values[13],
-      v32: values[14],
-      v33: values[15],
-    });
-  }
-
-  /*
-   ** Create new matrix for "looking to given direction" transformation.
-   ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
-   */
-  public static fromDirection(direction: Vector3, up: Vector3): MutableMatrix4 {
-    const f = Vector3.fromObject(direction, ["normalize"]);
-    const upVector = Vector3.fromObject(up, ["normalize"]);
-    const s = Vector3.fromObject(f, ["cross", upVector]);
-    const u = Vector3.fromObject(s, ["normalize"], ["cross", f]);
-
-    return new MutableMatrix4({
-      v00: s.x,
-      v01: u.x,
-      v02: -f.x,
-      v03: 0,
-      v10: s.y,
-      v11: u.y,
-      v12: -f.y,
-      v13: 0,
-      v20: s.z,
-      v21: u.z,
-      v22: -f.z,
-      v23: 0,
-      v30: 0,
-      v31: 0,
-      v32: 0,
-      v33: 1,
-    });
-  }
-
-  public static fromIdentity(): MutableMatrix4 {
-    return new MutableMatrix4(Matrix4.identity);
-  }
-
-  public static fromObject(
-    origin: Matrix4,
+  public static fromIdentity(
     ...invokes: InvokeOf<MutableMatrix4>[]
   ): MutableMatrix4 {
-    return invokeOnObject(new MutableMatrix4(origin), invokes);
+    return invokeOnObject(new MutableMatrix4(Matrix4.identity), invokes);
   }
 
-  /*
-   ** Create new orthographic projection matrix.
-   ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml
-   */
-  public static fromOrthographic(
-    xMin: number,
-    xMax: number,
-    yMin: number,
-    yMax: number,
-    zMin: number,
-    zMax: number
+  public static fromSource(
+    source: Matrix4,
+    ...invokes: InvokeOf<MutableMatrix4>[]
   ): MutableMatrix4 {
-    const dx = xMax - xMin;
-    const dy = yMax - yMin;
-    const dz = zMax - zMin;
-
-    return new MutableMatrix4({
-      v00: 2 / dx,
-      v01: 0,
-      v02: 0,
-      v03: 0,
-      v10: 0,
-      v11: 2 / dy,
-      v12: 0,
-      v13: 0,
-      v20: 0,
-      v21: 0,
-      v22: -2 / dz,
-      v23: 0,
-      v30: -(xMax + xMin) / dx,
-      v31: -(yMax + yMin) / dy,
-      v32: -(zMax + zMin) / dz,
-      v33: 1,
-    });
-  }
-
-  /*
-   ** Create new perspective projection matrix.
-   ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
-   */
-  public static fromPerspective(
-    fieldOfView: number,
-    aspectRatio: number,
-    zMin: number,
-    zMax: number
-  ): MutableMatrix4 {
-    var f = 1.0 / Math.tan(fieldOfView * 0.5);
-    var q = 1 / (zMin - zMax);
-
-    return new MutableMatrix4({
-      v00: f / aspectRatio,
-      v01: 0,
-      v02: 0,
-      v03: 0,
-      v10: 0,
-      v11: f,
-      v12: 0,
-      v13: 0,
-      v20: 0,
-      v21: 0,
-      v22: (zMax + zMin) * q,
-      v23: -1,
-      v30: 0,
-      v31: 0,
-      v32: 2 * zMax * zMin * q,
-      v33: 0,
-    });
-  }
-
-  public static fromRotationPosition(
-    rotation: Matrix3,
-    position: Vector3
-  ): MutableMatrix4 {
-    return new MutableMatrix4({
-      v00: rotation.v00,
-      v01: rotation.v01,
-      v02: rotation.v02,
-      v03: 0,
-      v10: rotation.v10,
-      v11: rotation.v11,
-      v12: rotation.v12,
-      v13: 0,
-      v20: rotation.v20,
-      v21: rotation.v21,
-      v22: rotation.v22,
-      v23: 0,
-      v30: position.x,
-      v31: position.y,
-      v32: position.z,
-      v33: 1,
-    });
+    return invokeOnObject(new MutableMatrix4(source), invokes);
   }
 
   public static transform(source: Matrix4, vertex: Vector4): Vector4 {

@@ -307,8 +307,8 @@ class ParticleRenderer implements Renderer<ParticleScene> {
     this.sceneBinding = sceneBinding;
     this.sceneState = {
       billboardMatrix: Matrix4.fromIdentity(),
-      projectionMatrix: Matrix4.fromIdentity(),
-      viewMatrix: Matrix4.fromIdentity(),
+      projectionMatrix: Matrix4.identity,
+      viewMatrix: Matrix4.identity,
     };
     this.shader = shader;
     this.target = target;

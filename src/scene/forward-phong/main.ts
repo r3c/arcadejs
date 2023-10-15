@@ -87,7 +87,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     const cubeModel = await loadMeshFromJson("model/cube/mesh.json");
     const groundModel = await loadMeshFromJson("model/ground/mesh.json");
     const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromObject(Matrix4.identity, [
+      transform: Matrix4.fromSource(Matrix4.identity, [
         "scale",
         { x: 0.2, y: 0.2, z: 0.2 },
       ]),
@@ -171,7 +171,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           noShadow: false,
         },
         {
-          matrix: Matrix4.fromObject(Matrix4.identity, [
+          matrix: Matrix4.fromSource(Matrix4.identity, [
             "translate",
             { x: 0, y: -1.5, z: 0 },
           ]),
@@ -181,7 +181,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ]
         .concat(
           pointLights.slice(0, tweak.nbPointLights).map(({ position }) => ({
-            matrix: Matrix4.fromObject(Matrix4.identity, [
+            matrix: Matrix4.fromSource(Matrix4.identity, [
               "translate",
               position,
             ]),
@@ -193,7 +193,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           directionalLights
             .slice(0, tweak.nbDirectionalLights)
             .map(({ direction }) => ({
-              matrix: Matrix4.fromObject(Matrix4.identity, [
+              matrix: Matrix4.fromSource(Matrix4.identity, [
                 "translate",
                 direction,
               ]),
@@ -209,7 +209,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           radius: 5,
         })),
       projectionMatrix,
-      viewMatrix: Matrix4.fromObject(
+      viewMatrix: Matrix4.fromSource(
         Matrix4.identity,
         ["translate", camera.position],
         ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
@@ -228,12 +228,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
   resize(state, size) {
     state.rendererMemo.get(getOptions(state.tweak)).resize(size);
 
-    state.projectionMatrix = Matrix4.fromPerspective(
+    state.projectionMatrix = Matrix4.fromIdentity([
+      "setPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,
-      100
-    );
+      100,
+    ]);
     state.target.resize(size);
   },
 

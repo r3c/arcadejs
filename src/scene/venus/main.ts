@@ -95,30 +95,32 @@ const movePlayer = (input: Input, player: Player, dt: number): void => {
   const rotationSpeed = 0.02;
 
   player.rotation.multiply(
-    Quaternion.fromRotation(
+    Quaternion.fromIdentity([
+      "setRotation",
       { x: 0, y: 1, z: 0 },
       ((input.isPressed("arrowleft") ? 1 : 0) +
         (input.isPressed("arrowright") ? -1 : 0)) *
-        rotationSpeed
-    )
+        rotationSpeed,
+    ])
   );
 
   player.rotation.multiply(
-    Quaternion.fromRotation(
+    Quaternion.fromIdentity([
+      "setRotation",
       { x: 1, y: 0, z: 0 },
       ((input.isPressed("arrowdown") ? 1 : 0) +
         (input.isPressed("arrowup") ? -1 : 0)) *
-        rotationSpeed
-    )
+        rotationSpeed,
+    ])
   );
 
-  const velocity = Vector3.fromObject(player.velocity, [
+  const velocity = Vector3.fromSource(player.velocity, [
     "scale",
     Math.min(dt * friction, 1),
   ]);
 
-  const acceleration = Vector3.fromObject(
-    rotate(
+  const acceleration = Vector3.fromSource(
+    Quaternion.rotate(
       { x: 0, y: 0, z: input.isPressed("space") ? 1 : 0 },
       player.rotation
     ),
@@ -138,17 +140,6 @@ const movePlayer = (input: Input, player: Player, dt: number): void => {
   player.position.z = warp(player.position.z, 0, 1000);
 };
 
-const rotate = (vector: Vector3, quaternion: Quaternion): Vector3 => {
-  const q = Quaternion.fromObject(quaternion);
-  const q1 = Quaternion.fromObject(quaternion);
-
-  q1.invert();
-  q.multiply({ scalar: 0, vector });
-  q.multiply(q1);
-
-  return q.vector;
-};
-
 const warp = (position: number, center: number, radius: number): number => {
   const range = radius * 2;
   const shift = center - radius;
@@ -166,14 +157,14 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     // Load meshes
     const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromObject(Matrix4.identity, [
+      transform: Matrix4.fromSource(Matrix4.identity, [
         "scale",
         { x: 0.25, y: 0.25, z: 0.25 },
       ]),
     });
 
     const shipModel = await loadMeshFrom3ds("model/colmftr1/COLMFTR1.3DS", {
-      transform: Matrix4.fromObject(Matrix4.identity, [
+      transform: Matrix4.fromSource(Matrix4.identity, [
         "translate",
         { x: 0, y: 4, z: 0 },
       ]),
@@ -239,8 +230,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
       },
       move: 0,
       player: {
-        cameraRotation: Quaternion.fromRotation({ x: 1, y: 0, z: 0 }, 0),
-        rotation: Quaternion.fromRotation({ x: 1, y: 0, z: 0 }, 0),
+        cameraRotation: Quaternion.fromIdentity([
+          "setRotation",
+          { x: 1, y: 0, z: 0 },
+          0,
+        ]),
+        rotation: Quaternion.fromIdentity([
+          "setRotation",
+          { x: 1, y: 0, z: 0 },
+          0,
+        ]),
         position: Vector3.fromZero(),
         smoke: 0,
         velocity: Vector3.fromZero(),
@@ -259,7 +258,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
         const z = Math.sqrt(x * x + y * y);
 
         return {
-          position: Vector3.fromObject({
+          position: Vector3.fromSource({
             x: (Math.random() * 2 - 1) * starFieldRadius,
             y: (Math.random() * 2 - 1) * starFieldRadius,
             z: (Math.random() * 2 - 1) * starFieldRadius,
@@ -295,15 +294,16 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ambientLightColor: Vector3.zero,
       objects: [
         {
-          matrix: Matrix4.fromRotationPosition(
-            Matrix3.fromQuaternion(player.rotation),
-            player.position
-          ),
+          matrix: Matrix4.fromIdentity([
+            "setRotationPosition",
+            Matrix3.fromIdentity(["setQuaternion", player.rotation]),
+            player.position,
+          ]),
           model: models.ship,
         },
         ...state.stars.map(
           ({ position, rotationAmount, rotationAxis, variant }) => ({
-            matrix: Matrix4.fromObject(
+            matrix: Matrix4.fromSource(
               Matrix4.identity,
               ["translate", position],
               ["rotate", rotationAxis, rotationAmount]
@@ -312,7 +312,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
           })
         ),
         ...state.lights.map(({ position }) => ({
-          matrix: Matrix4.fromObject(Matrix4.identity, ["translate", position]),
+          matrix: Matrix4.fromSource(Matrix4.identity, ["translate", position]),
           model: models.light,
           noShadow: true,
         })),
@@ -331,12 +331,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 
   resize(state, size) {
-    state.projectionMatrix = Matrix4.fromPerspective(
+    state.projectionMatrix = Matrix4.fromIdentity([
+      "setPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,
-      10000
-    );
+      10000,
+    ]);
 
     state.particleRenderer.resize(size);
     state.sceneRenderer.resize(size);
@@ -364,13 +365,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
 
     player.cameraRotation.slerp(player.rotation, 0.05);
 
-    const cameraRotation = Matrix4.fromRotationPosition(
-      Matrix3.fromQuaternion(
-        Quaternion.fromObject(player.cameraRotation, ["conjugate"])
-      ),
-      Vector3.zero
-    );
-    const cameraPosition = Vector3.fromObject(player.position, ["negate"]);
+    const cameraRotation = Matrix4.fromIdentity([
+      "setRotationPosition",
+      Matrix3.fromIdentity([
+        "setQuaternion",
+        Quaternion.fromSource(player.cameraRotation, ["conjugate"]),
+      ]),
+      Vector3.zero,
+    ]);
+    const cameraPosition = Vector3.fromSource(player.position, ["negate"]);
 
     viewMatrix.set(Matrix4.identity);
     viewMatrix.translate({ x: 0, y: 0, z: state.zoom });
@@ -379,7 +382,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     viewMatrix.translate(cameraPosition);
 
     // Update star positions
-    const starCenter = Matrix4.fromObject(viewMatrix);
+    const starCenter = Matrix4.fromSource(viewMatrix);
 
     starCenter.invert();
 
@@ -407,9 +410,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
       for (const smokeCenter of playerSmokeCenters) {
         particleEmitter0(
           10,
-          Vector3.fromObject(player.position, [
+          Vector3.fromSource(player.position, [
             "add",
-            rotate(smokeCenter, player.rotation),
+            Quaternion.rotate(smokeCenter, player.rotation),
           ]),
           Math.random()
         );

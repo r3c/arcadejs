@@ -26,8 +26,8 @@ const group = (
 ) => {
   const { children, primitives, transform } = mesh;
 
-  const modelMatrix = Matrix4.fromObject(parentMatrix, ["multiply", transform]);
-  const normalMatrix = Matrix3.fromObject(
+  const modelMatrix = Matrix4.fromSource(parentMatrix, ["multiply", transform]);
+  const normalMatrix = Matrix3.fromSource(
     viewMatrix,
     ["multiply", modelMatrix],
     ["invert"]

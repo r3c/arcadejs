@@ -205,7 +205,7 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
     this.painter.paint(this.target, {
       coordinate: primitive.polygon.coordinate!,
       index: primitive.index,
-      modelMatrix: Matrix4.fromObject(
+      modelMatrix: Matrix4.fromSource(
         Matrix4.identity,
         ["translate", { x: 1 - this.scale, y: this.scale - 1, z: 0 }],
         ["scale", { x: this.scale, y: this.scale, z: 0 }]
