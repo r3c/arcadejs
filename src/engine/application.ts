@@ -217,7 +217,7 @@ const run = (applications: Process[]) => {
   let current: Process | undefined;
   let elapsed = 0;
   let frames = 0;
-  let time = new Date().getTime();
+  let then = 0;
 
   const select = async (value: number) => {
     const application = applications[value];
@@ -240,27 +240,26 @@ const run = (applications: Process[]) => {
     current = application;
   };
 
-  const tick = () => {
-    const now = new Date().getTime();
-    const dt = now - time;
+  const tick = (time: number) => {
+    window.requestAnimationFrame(tick);
+
+    const dt = time - then;
 
     elapsed += dt;
-    time = now;
+    then = time;
 
     if (current !== undefined) {
       current.step(Math.min(dt, 1000));
     }
 
     if (elapsed > 1000) {
-      frameContainer.innerText = Math.round((frames * 1000) / elapsed) + " fps";
+      frameContainer.innerText = `${Math.round((frames * 1000) / elapsed)} fps`;
 
       elapsed = 0;
       frames = 0;
     }
 
     ++frames;
-
-    window.requestAnimationFrame(tick);
   };
 
   const hashTitle = decodeURIComponent(location.hash.substring(1));
@@ -282,7 +281,7 @@ const run = (applications: Process[]) => {
     )
   );
 
-  tick();
+  tick(0);
 };
 
 export { type Application, type Tweak, configure, declare, run };
