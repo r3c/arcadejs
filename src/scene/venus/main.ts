@@ -166,7 +166,7 @@ const createPlayerUpdater = (): Updater => {
   const friction = 0.001;
   const mass = 1000;
   const rotationSpeed = 0.02;
-  const thrust = 0.05;
+  const thrust = 0.02;
 
   const acceleration = Vector3.fromZero();
   const rotation = Quaternion.fromIdentity();
@@ -206,28 +206,23 @@ const createPlayerUpdater = (): Updater => {
 
     player.position.add(velocityDelta);
 
-    player.position.x = warp(player.position.x, 0, 1000);
-    player.position.y = warp(player.position.y, 0, 1000);
-    player.position.z = warp(player.position.z, 0, 1000);
+    player.position.x = warp(player.position.x, 0, 10000);
+    player.position.y = warp(player.position.y, 0, 10000);
+    player.position.z = warp(player.position.z, 0, 10000);
   };
 };
 
 // Update star positions
 const createStarUpdater = (): Updater => {
-  const starCenter = Matrix4.fromIdentity();
-
   return (state, dt) => {
-    const { stars, viewMatrix } = state;
-
-    starCenter.set(viewMatrix);
-    starCenter.invert();
+    const { player, stars } = state;
 
     for (let i = stars.length; i-- > 0; ) {
       const { position } = stars[i];
 
-      position.x = warp(position.x, starCenter.v30, 50);
-      position.y = warp(position.y, starCenter.v31, 50);
-      position.z = warp(position.z, starCenter.v32, 50);
+      position.x = warp(position.x, player.position.x, 100);
+      position.y = warp(position.y, player.position.y, 100);
+      position.z = warp(position.z, player.position.z, 100);
 
       stars[i].rotationAmount += dt * stars[i].rotationSpeed;
     }
@@ -388,7 +383,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     target.clear(0);
 
     const scene: ForwardLightingScene = {
-      ambientLightColor: Vector3.zero,
+      ambientLightColor: { x: 0, y: 0, z: 0 },
       objects: [
         {
           matrix: Matrix4.fromIdentity([
@@ -417,7 +412,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
       pointLights: state.lights.map(({ position }) => ({
         color: { x: 1, y: 1, z: 1 },
         position,
-        radius: 25,
+        radius: 100,
       })),
       projectionMatrix,
       viewMatrix,
