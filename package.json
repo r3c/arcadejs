@@ -1,5 +1,6 @@
 {
   "name": "arcade",
+  "type": "module",
   "version": "1.0.0",
   "description": "Arcade.js Library",
   "repository": "github:r3c/arcadejs",
