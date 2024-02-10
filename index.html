@@ -31,16 +31,34 @@
 				</section>
 
 				<section>
-					<h4>Render 3D triangle</h4>
-					<img height="350" src="image/projection.png" />
-					<p>Project 3D world points to 2D screen space</p>
-				</section>
+					<section>
+						<h4>Render 3D triangle</h4>
+						<img height="350" src="image/projection.svg" />
+						<p>Project 3D world points &raquo; 2D screen space</p>
+					</section>
 
-				<section>
-					<h4>3D points to screen space</h4>
-					<p>\[(x, y, z) &isin; ([-1, 1], [-1, 1], [-1, 1])\]</p>
-					<p>Math background not covered here 😇</p>
-					<img height="300" src="image/gl_projectionmatrix01.png" />
+					<section>
+						<h4>Perspective projection</h4>
+						<p>
+							\[
+							\begin{bmatrix}
+							P_x \\ P_y
+							\end{bmatrix}
+							=
+							\begin{bmatrix}
+							O_x
+							\\
+							O_y
+							\end{bmatrix}
+							* tan(fov) / O_z
+							\]
+						</p>
+						<ul>
+							<li><em>P<sub>z</sub></em> also computed and used for depth test</li>
+							<li>Display projected points such as:</li>
+						</ul>
+						<p>\[(P_x, P_y, P_z) &isin; ([-1, 1], [-1, 1], [-1, 1])\]</p>
+					</section>
 				</section>
 
 				<section>
@@ -64,7 +82,7 @@
 					<h4>Changing coordinate system</h4>
 					<ul>
 						<li>
-							Translate point by vector <em>v</em>:
+							Translate point by vector <em>t</em>:
 							\[
 							\begin{bmatrix}
 							p'_x \\ p'_y \\ p'_z
@@ -75,7 +93,7 @@
 							\end{bmatrix}
 							+
 							\begin{bmatrix}
-							v_x \\ v_y \\ v_z
+							t_x \\ t_y \\ t_z
 							\end{bmatrix}
 							\]
 						</li>
@@ -120,6 +138,10 @@
 						\end{bmatrix}
 						\]
 					</p>
+					<p>
+						Rotate by A then translate by B then rotate by C:
+						\[P' = A * B * C * P\]
+					</p>
 				</section>
 
 				<section>
@@ -131,9 +153,19 @@
 					<div class="r-stack">
 						<img height="400" src="image/scanline-1.svg" />
 						<img height="400" src="image/scanline-2.svg" class="fragment fade-in" data-fragment-index="1" />
+						<img height="400" src="image/scanline-3.svg" class="fragment fade-in" data-fragment-index="2" />
 					</div>
-					<p class="fragment fade-in" data-fragment-index="1">\[s1_x = b1_x + (a_x - b1_x) * y / (b1_y -
-						a1_y)\]</p>
+					<p class="fragment fade-in" data-fragment-index="2">
+						\[
+						s1
+						=
+						\begin{bmatrix}
+						b1_x + (a_x - b1_x) * h / (b1_y - a_y)
+						\\
+						a_y + h
+						\end{bmatrix}
+						\]
+					</p>
 				</section>
 
 				<section>
