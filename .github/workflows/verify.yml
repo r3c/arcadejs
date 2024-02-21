@@ -1,4 +1,4 @@
-name: Validate
+name: Verify
 
 on:
   pull_request:
@@ -11,8 +11,8 @@ on:
     - cron: "10 4 * * *"
 
 jobs:
-  validate:
-    name: Validate
+  test:
+    name: Test
     runs-on: ubuntu-latest
 
     steps:
