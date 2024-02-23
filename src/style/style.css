@@ -63,6 +63,7 @@ html {
 .display {
   display: flex;
   align-items: center;
+  justify-content: center;
   flex: 1;
 }
 
@@ -73,8 +74,8 @@ html {
 
 .display div {
   margin: auto;
-  width: 800px;
-  height: 600px;
+  width: 80%;
+  height: 80%;
   background: black;
   box-shadow: 0 0 10px black;
 }

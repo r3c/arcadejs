@@ -2,9 +2,9 @@
 
 "use strict";
 
-import https from 'https';
-import fs from 'fs';
-import path from 'path';
+import https from "https";
+import fs from "fs";
+import path from "path";
 
 function downloadFiles(files) {
   for (const { destination, url } of files) {
@@ -122,10 +122,6 @@ downloadFiles([
   {
     destination: "public/model/cube/mybricks1_roughness.png",
     url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/mybricks1/mybricks1_roughness.png",
-  },
-  {
-    destination: "public/model/particle/fire.png",
-    url: "https://raw.githubusercontent.com/r3c/arcadejs/resource/model/particle/fire.png",
   },
   {
     destination: "public/model/damaged-helmet/DamagedHelmet.bin",
