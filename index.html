@@ -8,7 +8,7 @@
 
 		<link rel="stylesheet" href="dist/reset.css">
 		<link rel="stylesheet" href="dist/reveal.css">
-		<link rel="stylesheet" href="dist/theme/black.css">
+		<link rel="stylesheet" href="dist/theme/dracula.css">
 		<link rel="stylesheet" href="plugin/highlight/zenburn.css">
 	</head>
 	<body>
@@ -67,8 +67,20 @@
 				</section>
 
 				<section>
-					<p>Demo 01: projection</p>
-					<p>Demo 02: rotation</p>
+					<section>
+						<p>Demo 01: projection</p>
+						<p>Demo 02: rotation</p>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#projection-to-screen" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#rotating-mesh" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
 				</section>
 
 				<section>
@@ -150,11 +162,18 @@
 				</section>
 
 				<section>
-					<p>Demo 03: composition</p>
+					<section>
+						<p>Demo 03: composition</p>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#matrix-composition" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
 				</section>
 
 				<section>
-					<p>Rasterizing triangles</p>
+					<h4>Rasterizing triangles</h4>
 					<div class="r-stack">
 						<img height="400" src="image/scanline-1.svg" />
 						<img height="400" src="image/scanline-2.svg" class="fragment fade-in" data-fragment-index="1" />
@@ -174,11 +193,18 @@
 				</section>
 
 				<section>
-					<p>Demo 04: rasterization</p>
+					<section>
+						<p>Demo 04: rasterization</p>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#software-rendering" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
 				</section>
 
 				<section>
-					<p>High CPU cost:</p>
+					<h4>High CPU cost</h4>
 					<ul>
 						<li>Matrix & vector instructions</li>
 						<li>Interpolate pixels</li>
@@ -187,7 +213,7 @@
 				</section>
 
 				<section>
-					<p>Meet <s>Open</s> WebGL:</p>
+					<h4>Meet <s>Open</s> WebGL</h4>
 					<p>Rendering-oriented &amp; GPU-designed API</p>
 					<aside class="notes">
 						<ul>
@@ -201,15 +227,63 @@
 				</section>
 
 				<section>
-					<p>The WebGL pipeline</p>
-					<div style="background: white;">
-						<img height="200" src="image/gl-pipeline.png" />
-					</div>
-					<p>Customize with <em>shader</em> programs</p>
+					<section>
+						<h4>The WebGL pipeline</h4>
+						<div style="background: white;">
+							<img height="200" src="image/gl-pipeline.png" />
+						</div>
+						<p>Customize with <em>shader</em> programs</p>
+					</section>
+
+					<section>
+						<h4>Vertex shader hello world</h4>
+						<pre>
+							<code data-line-numbers="1-13|1-5|7|9-13" data-trim>
+								in vec4 coordinate;
+								in vec4 position;
+								
+								uniform mat4 modelViewMatrix;
+								uniform mat4 projectionMatrix;
+								
+								out vec4 fragCoordinate;
+								
+								void main(void) {
+									fragCoordinate = coordinate;
+								
+									gl_Position = projectionMatrix * modelViewMatrix * position;
+								}
+							</code>
+						</pre>
+					</section>
+
+					<section>
+						<h4>Fragment shader hello world</h4>
+						<pre>
+							<code data-line-numbers="1-13|1-4|6|8-10" data-trim>
+								in vec4 fragCoordinate;
+								
+								uniform vec4 albedoFactor;
+								uniform sampler2D albedoMap;
+								
+								layout(location=0) out vec4 fragColor;
+								
+								void main(void) {
+									fragColor = albedoFactor * texture(albedoMap, fragCoordinate);
+								}
+							</code>
+						</pre>
+					</section>
 				</section>
 
 				<section>
-					<p>Demo 05: WebGL</p>
+					<section>
+						<p>Demo 05: WebGL</p>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#basic-hardware-rendering" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
 				</section>
 
 				<section>
@@ -282,8 +356,20 @@
 				</section>
 
 				<section>
-					<p>Demo 06: forward Phong rendering</p>
-					<p>Demo 07: forward PBR rendering</p>
+					<section>
+						<p>Demo 06: forward Phong rendering</p>
+						<p>Demo 07: forward PBR rendering</p>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#forward-phong-lighting" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#forward-pbr-lighting" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
 				</section>
 
 				<section>
@@ -333,8 +419,15 @@
 				</section>
 
 				<section>
-					<p>Demo 08: deferred shading</p>
-					<p>Demo 09: deferred lighting</p>
+					<section>
+						<p>Demo 09: deferred lighting</p>
+						<p>Demo 08: deferred shading</p>
+					</section>
+
+					<section>
+						<iframe src="https://r3c.github.io/arcadejs/#deferred-rendering" width="800" height="600"
+							allowfullscreen></iframe>
+					</section>
 				</section>
 
 				<section>
