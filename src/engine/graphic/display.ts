@@ -49,15 +49,15 @@ class Screen {
   }
 
   public resize() {
-    const height = Math.round(this.container.clientHeight * this.pixelRatio);
-    const width = Math.round(this.container.clientWidth * this.pixelRatio);
+    const height = Math.ceil(this.container.clientHeight * this.pixelRatio);
+    const width = Math.ceil(this.container.clientWidth * this.pixelRatio);
 
     if (width === this.size.x && height === this.size.y) {
       return;
     }
 
-    this.canvas.style.height = Math.round(this.container.clientHeight) + "px";
-    this.canvas.style.width = Math.round(this.container.clientWidth) + "px";
+    this.canvas.style.height = Math.ceil(this.container.clientHeight) + "px";
+    this.canvas.style.width = Math.ceil(this.container.clientWidth) + "px";
     this.canvas.width = width;
     this.canvas.height = height;
     this.size.x = width;
