@@ -59,20 +59,22 @@ const configure = <T>(configuration: T) => {
         break;
 
       case "object":
-        const choices = <string[]>(<any>property);
-
-        defaultValue = Math.max(
-          choices.findIndex((choice) => choice.startsWith(".")),
-          0
-        );
-        tweakElement = createSelect(
-          key,
-          choices.map((choice) =>
-            choice.startsWith(".") ? choice.slice(1) : choice
-          ),
-          defaultValue,
-          change
-        );
+        if (Array.isArray(property)) {
+          defaultValue = Math.max(
+            property.findIndex((choice) => choice.startsWith(".")),
+            0
+          );
+          tweakElement = createSelect(
+            key,
+            property.map((choice) =>
+              choice.startsWith(".") ? choice.slice(1) : choice
+            ),
+            defaultValue,
+            change
+          );
+        } else {
+          throw Error(`invalid configuration for key "${key}"`);
+        }
 
         break;
 
