@@ -121,11 +121,13 @@
 					</section>
 
 					<section>
+						<h4>Projection to screen</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#projection-to-screen" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
 
 					<section>
+						<h4>Rotating mesh</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#rotating-mesh" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
@@ -233,6 +235,7 @@
 					</section>
 
 					<section>
+						<h4>Matrix composition</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#matrix-composition" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
@@ -262,6 +265,7 @@
 					</section>
 
 					<section>
+						<h4>Software rendering</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#software-rendering" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
@@ -337,21 +341,16 @@
 							</code>
 						</pre>
 					</section>
-				</section>
-
-				<section>
-					<section>
-						<p>Demo: WebGL</p>
-					</section>
 
 					<section>
+						<h4>Hardware rendering</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#basic-hardware-rendering" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
 				</section>
 
 				<section>
-					<p>Lack realism 😢</p>
+					<h4>Lack realism 😢</h4>
 					<div>
 						<img height="300" src="image/lighting-off.jpg" />
 						<img height="300" src="image/lighting-on.jpg" />
@@ -364,7 +363,7 @@
 
 				<section>
 					<section>
-						<p>Phong model</p>
+						<h4>Phong model</h4>
 						<div>
 							<img height="400" src="image/shad2-roughsurface.png" />
 						</div>
@@ -383,7 +382,7 @@
 					</section>
 
 					<section>
-						<p>Physically-based rendering models</p>
+						<h4>Physically-based rendering models</h4>
 						<div>
 							<img height="150" src="image/ndf.png" />
 						</div>
@@ -403,40 +402,38 @@
 				</section>
 
 				<section>
-					<p>Tricks to improve final result:</p>
-					<ul>
-						<li>Normal mapping</li>
-						<li>Height mapping</li>
-					</ul>
-					<div>
-						<img height="350" src="image/maps.jpg" />
-					</div>
-					<aside class="notes">
-						<ul>
-							<li>Normal mapping: perturb normals using 2D texture</li>
-							<li>Height mapping: simulate height on flat surfaces</li>
-						</ul>
-					</aside>
-				</section>
-
-				<section>
 					<section>
-						<p>Demo: forward Phong rendering</p>
-						<p>Demo: forward PBR rendering</p>
+						<h4>Tricks to improve final result</h4>
+						<ul>
+							<li>Normal mapping</li>
+							<li>Height mapping</li>
+						</ul>
+						<div>
+							<img height="350" src="image/maps.jpg" />
+						</div>
+						<aside class="notes">
+							<ul>
+								<li>Normal mapping: perturb normals using 2D texture</li>
+								<li>Height mapping: simulate height on flat surfaces</li>
+							</ul>
+						</aside>
 					</section>
 
 					<section>
+						<h4>Forward Phong rendering</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#forward-phong-lighting" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
 
 					<section>
+						<h4>Forward PBR rendering</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#forward-pbr-lighting" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
 				</section>
 
 				<section>
+					<h4>Scaling issues</h4>
 					<p>\[O(nbLights * nbModels) 😥\]</p>
 					<img height="350" src="image/deferred_example.png" />
 					<p>Want hundreds of lights?</p>
@@ -444,7 +441,7 @@
 
 				<section>
 					<section>
-						<p>Deferred shading</p>
+						<h4>Deferred shading</h4>
 						<ul>
 							<li>StarCraft II, GTA IV, CryENGINE3...</li>
 							<li>Multi-step rendering pipeline:
@@ -463,7 +460,7 @@
 					</section>
 
 					<section>
-						<p>Deferred lighting</p>
+						<h4>Deferred lighting</h4>
 						<ul>
 							<li>BioShock Infinite, Assassin's Creed 3, MGS V...</li>
 							<li>Multi-step rendering pipeline:
@@ -480,15 +477,9 @@
 							<ul>2 passes per model instead of 1</ul>
 						</aside>
 					</section>
-				</section>
-
-				<section>
-					<section>
-						<p>Demo: deferred lighting</p>
-						<p>Demo: deferred shading</p>
-					</section>
 
 					<section>
+						<h4>Deferred rendering</h4>
 						<iframe src="https://r3c.github.io/arcadejs/#deferred-rendering" width="800" height="600"
 							allowfullscreen></iframe>
 					</section>
@@ -499,7 +490,7 @@
 				</section>
 
 				<section>
-					<p>Resources:</p>
+					<h4>Resources</h4>
 					<ul>
 						<li><a href="https://glumpy.github.io/modern-gl.html">Model OpenGL</a></li>
 						<li><a
