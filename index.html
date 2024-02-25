@@ -58,11 +58,13 @@
 							/ tan(fov) / O_z
 							\]
 						</p>
-						<ul>
+						<ul class="fragment fade-in">
 							<li><em>P<sub>z</sub></em> also computed and used for depth test</li>
-							<li>Display projected points such as:</li>
+							<li>
+								Display projected points such as:
+								\[(P_x, P_y, P_z) &isin; ([-1, 1], [-1, 1], [-1, 1])\]
+							</li>
 						</ul>
-						<p>\[(P_x, P_y, P_z) &isin; ([-1, 1], [-1, 1], [-1, 1])\]</p>
 					</section>
 
 					<section>
@@ -162,7 +164,7 @@
 					<div>
 						<img height="300" src="image/world-to-view.png" />
 					</div>
-					<p>Transformation matrices 🙌</p>
+					<p class="fragment fade-in">Transformation matrices 🙌</p>
 				</section>
 
 				<section>
@@ -184,7 +186,7 @@
 							\end{bmatrix}
 							\]
 						</li>
-						<li>
+						<li class="fragment fade-in">
 							Rotate point of angle <em>θ</em> around <em>x</em> axis:
 							\[
 							\begin{bmatrix}
@@ -226,7 +228,7 @@
 							\end{bmatrix}
 							\]
 						</p>
-						<p>
+						<p class="fragment fade-in">
 							Rotate by A then translate by B then rotate by C:
 							\[P' = A * B * C * P\]
 						</p>
