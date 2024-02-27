@@ -1,7 +1,8 @@
 import {
   type Application,
   type Tweak,
-  configure,
+  createCheckbox,
+  createSelect,
   declare,
 } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
@@ -39,15 +40,15 @@ import { GlTexture } from "../../engine/graphic/webgl/texture";
  */
 
 const configuration = {
-  nbDirectionalLights: [".0", "1", "2", "3"],
-  nbPointLights: ["0", ".1", "2", "3"],
-  animate: true,
-  useAmbient: true,
-  useDiffuse: true,
-  useSpecular: true,
-  useNormalMap: true,
-  useHeightMap: true,
-  debugMode: [".None", "Shadow"],
+  nbDirectionalLights: createSelect("dLights", ["0", "1", "2", "3"], 0),
+  nbPointLights: createSelect("pLights", ["0", "1", "2", "3"], 1),
+  move: createCheckbox("move", true),
+  lightAmbient: createCheckbox("ambient", true),
+  lightDiffuse: createCheckbox("diffuse", true),
+  lightSpecular: createCheckbox("specular", true),
+  useNormalMap: createCheckbox("nMap", true),
+  useHeightMap: createCheckbox("hMap", true),
+  debugMode: createSelect("debug", ["None", "Shadow"], 0),
 };
 
 type ApplicationState = {
@@ -65,23 +66,25 @@ type ApplicationState = {
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   target: GlTarget;
-  tweak: Tweak<typeof configuration>;
 };
 
 const getOptions = (tweak: Tweak<typeof configuration>) => [
-  tweak.useAmbient !== 0,
-  tweak.useDiffuse !== 0,
-  tweak.useSpecular !== 0,
-  tweak.useHeightMap !== 0,
-  tweak.useNormalMap !== 0,
+  tweak.lightAmbient,
+  tweak.lightDiffuse,
+  tweak.lightSpecular,
+  tweak.useHeightMap,
+  tweak.useNormalMap,
 ];
 
-const application: Application<WebGLScreen, ApplicationState> = {
+const application: Application<
+  WebGLScreen,
+  ApplicationState,
+  typeof configuration
+> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(screen.context);
     const target = new GlTarget(gl, screen.getSize());
-    const tweak = configure(configuration);
 
     // Load models
     const cubeModel = await loadMeshFromJson("model/cube/mesh.json");
@@ -133,11 +136,10 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
       target,
       time: 0,
-      tweak,
     };
   },
 
-  render(state) {
+  render(state, tweak) {
     const {
       camera,
       debugRenderer,
@@ -147,7 +149,6 @@ const application: Application<WebGLScreen, ApplicationState> = {
       projectionMatrix,
       rendererMemo,
       target,
-      tweak,
     } = state;
 
     // Clear screen
@@ -220,13 +221,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
     sceneRenderer.render(scene);
 
     // Draw texture debug
-    if (state.tweak.debugMode === 1) {
+    if (tweak.debugMode === 1) {
       debugRenderer.render(sceneRenderer.directionalShadowBuffers[0]);
     }
   },
 
-  resize(state, size) {
-    state.rendererMemo.get(getOptions(state.tweak)).resize(size);
+  resize(state, tweak, size) {
+    state.rendererMemo.get(getOptions(tweak)).resize(size);
 
     state.projectionMatrix = Matrix4.fromIdentity([
       "setPerspective",
@@ -238,9 +239,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     state.target.resize(size);
   },
 
-  update(state, dt) {
-    const { camera, directionalLights, input, pointLights, time, tweak } =
-      state;
+  update(state, tweak, dt) {
+    const { camera, directionalLights, input, pointLights, time } = state;
 
     // Update light positions
     for (let i = 0; i < directionalLights.length; ++i) {
@@ -260,10 +260,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Move camera
     camera.move(input, dt);
 
-    state.time += tweak.animate ? dt : 0;
+    state.time += tweak.move ? dt : 0;
   },
 };
 
-const process = declare("Forward Phong lighting", WebGLScreen, application);
+const process = declare(
+  "Forward Phong lighting",
+  WebGLScreen,
+  configuration,
+  application
+);
 
 export { process };

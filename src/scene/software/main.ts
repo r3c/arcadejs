@@ -1,7 +1,6 @@
 import {
   type Application,
-  type Tweak,
-  configure,
+  createSelect,
   declare,
 } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
@@ -25,7 +24,7 @@ import { Camera } from "../view";
  */
 
 const configuration = {
-  renderMode: ["Wire", ".Color", "Texture"],
+  renderMode: createSelect("render", ["Wire", "Color", "Texture"], 1),
 };
 
 type ApplicationState = {
@@ -36,13 +35,14 @@ type ApplicationState = {
   projection: Matrix4;
   rendererDefault: SoftwareRenderer;
   rendererWire: SoftwareRenderer;
-  tweak: Tweak<typeof configuration>;
 };
 
-const application: Application<Context2DScreen, ApplicationState> = {
+const application: Application<
+  Context2DScreen,
+  ApplicationState,
+  typeof configuration
+> = {
   async prepare(screen) {
-    const tweak = configure(configuration);
-
     return {
       camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
       cubeWithColor: await loadMeshFromJson("model/cube-color/mesh.json"),
@@ -51,11 +51,10 @@ const application: Application<Context2DScreen, ApplicationState> = {
       projection: Matrix4.identity,
       rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
       rendererWire: new SoftwareRenderer(screen, SoftwareDrawMode.Wire),
-      tweak,
     };
   },
 
-  render(state) {
+  render(state, tweak) {
     const {
       camera,
       cubeWithColor,
@@ -63,7 +62,6 @@ const application: Application<Context2DScreen, ApplicationState> = {
       projection,
       rendererDefault,
       rendererWire,
-      tweak,
     } = state;
 
     const view = Matrix4.fromSource(
@@ -82,7 +80,7 @@ const application: Application<Context2DScreen, ApplicationState> = {
     });
   },
 
-  resize(state, size) {
+  resize(state, _, size) {
     state.projection = Matrix4.fromIdentity([
       "setPerspective",
       Math.PI / 4,
@@ -92,11 +90,16 @@ const application: Application<Context2DScreen, ApplicationState> = {
     ]);
   },
 
-  update(state, dt) {
+  update(state, _, dt) {
     state.camera.move(state.input, dt);
   },
 };
 
-const process = declare("Software rendering", Context2DScreen, application);
+const process = declare(
+  "Software rendering",
+  Context2DScreen,
+  configuration,
+  application
+);
 
 export { process };

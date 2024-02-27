@@ -1,4 +1,4 @@
-import { type Application, declare, configure } from "../../engine/application";
+import { type Application, declare } from "../../engine/application";
 import { Context2DScreen } from "../../engine/graphic/display";
 import {
   SoftwareDrawMode,
@@ -10,10 +10,8 @@ type ApplicationState = {
   renderer: SoftwareRenderer;
 };
 
-const application: Application<Context2DScreen, ApplicationState> = {
+const application: Application<Context2DScreen, ApplicationState, undefined> = {
   async prepare(screen) {
-    configure(undefined); // FIXME: required to clear tweaks, should be called automatically
-
     return {
       renderer: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
     };
@@ -30,6 +28,11 @@ const application: Application<Context2DScreen, ApplicationState> = {
   update() {},
 };
 
-const process = declare("Blank screen", Context2DScreen, application);
+const process = declare(
+  "Blank screen",
+  Context2DScreen,
+  undefined,
+  application
+);
 
 export { process };

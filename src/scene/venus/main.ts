@@ -1,4 +1,4 @@
-import { type Application, configure, declare } from "../../engine/application";
+import { type Application, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
@@ -236,13 +236,11 @@ const warp = (position: number, center: number, radius: number): number => {
   return ((position - shift + range) % range) + shift;
 };
 
-const application: Application<WebGLScreen, ApplicationState> = {
+const application: Application<WebGLScreen, ApplicationState, undefined> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
     const target = new GlTarget(gl, screen.getSize());
-
-    configure(undefined);
 
     // Load meshes
     const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
@@ -422,7 +420,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     particleRenderer.render(scene);
   },
 
-  resize(state, size) {
+  resize(state, _, size) {
     state.projectionMatrix = Matrix4.fromIdentity([
       "setPerspective",
       Math.PI / 4,
@@ -436,13 +434,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
     state.target.resize(size);
   },
 
-  update(state, dt) {
+  update(state, _, dt) {
     for (const updater of state.updaters) {
       updater(state, dt);
     }
   },
 };
 
-const process = declare("Venus³", WebGLScreen, application);
+const process = declare("Venus³", WebGLScreen, undefined, application);
 
 export { process };
