@@ -1,7 +1,8 @@
 import {
   type Application,
   type Tweak,
-  configure,
+  createCheckbox,
+  createSelect,
   declare,
 } from "../../engine/application";
 import {
@@ -40,14 +41,14 @@ import { GlTexture } from "../../engine/graphic/webgl/texture";
  */
 
 const configuration = {
-  nbLights: ["0", ".1", "2", "3"],
-  animate: true,
-  useAmbient: true,
-  useEmissive: true,
-  useOcclusion: true,
-  useIBL: true,
-  useHeightMap: true,
-  useNormalMap: true,
+  nbLights: createSelect("nbLights", ["0", "1", "2", "3"], 1),
+  move: createCheckbox("move", true),
+  lightAmbient: createCheckbox("ambient", true),
+  lightEmissive: createCheckbox("emissive", true),
+  useOcclusion: createCheckbox("occlusion", true),
+  useIBL: createCheckbox("IBL", true),
+  useHeightMap: createCheckbox("hMap", true),
+  useNormalMap: createCheckbox("nMap", true),
 };
 
 type Light = {
@@ -73,24 +74,26 @@ type ApplicationState = {
     diffuse: GlTexture;
     specular: GlTexture;
   };
-  tweak: Tweak<typeof configuration>;
 };
 
 const getOptions = (tweak: Tweak<typeof configuration>) => [
-  tweak.useAmbient !== 0,
-  tweak.useEmissive !== 0,
-  tweak.useOcclusion !== 0,
-  tweak.useIBL !== 0,
-  tweak.useHeightMap !== 0,
-  tweak.useNormalMap !== 0,
+  tweak.lightAmbient,
+  tweak.lightEmissive,
+  tweak.useOcclusion,
+  tweak.useIBL,
+  tweak.useHeightMap,
+  tweak.useNormalMap,
 ];
 
-const application: Application<WebGLScreen, ApplicationState> = {
+const application: Application<
+  WebGLScreen,
+  ApplicationState,
+  typeof configuration
+> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
     const target = new GlTarget(gl, screen.getSize());
-    const tweak = configure(configuration);
 
     // Load meshes
     const groundModel = await loadMeshFromJson("model/ground/mesh.json");
@@ -173,20 +176,12 @@ const application: Application<WebGLScreen, ApplicationState> = {
         specular,
       },
       time: 0,
-      tweak,
     };
   },
 
-  render(state) {
-    const {
-      camera,
-      models,
-      projectionMatrix,
-      rendererMemo,
-      target,
-      textures,
-      tweak,
-    } = state;
+  render(state, tweak) {
+    const { camera, models, projectionMatrix, rendererMemo, target, textures } =
+      state;
 
     const lightPositions = state.lights
       .slice(0, tweak.nbLights)
@@ -219,10 +214,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     };
 
     const lights = lightPositions.map((position) => ({
-      matrix: Matrix4.fromSource(Matrix4.identity, [
-        "translate",
-        position,
-      ]),
+      matrix: Matrix4.fromSource(Matrix4.identity, ["translate", position]),
       model: models.light,
       noShadow: true,
     }));
@@ -247,8 +239,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     rendererMemo.get(getOptions(tweak)).render(scene);
   },
 
-  resize(state, size) {
-    state.rendererMemo.get(getOptions(state.tweak)).resize(size);
+  resize(state, tweak, size) {
+    state.rendererMemo.get(getOptions(tweak)).resize(size);
     state.projectionMatrix = Matrix4.fromIdentity([
       "setPerspective",
       Math.PI / 4,
@@ -259,8 +251,8 @@ const application: Application<WebGLScreen, ApplicationState> = {
     state.target.resize(size);
   },
 
-  update(state, dt) {
-    const { camera, input, lights, time, tweak } = state;
+  update(state, tweak, dt) {
+    const { camera, input, lights, time } = state;
 
     // Update light positions
     for (let i = 0; i < lights.length; ++i) {
@@ -272,10 +264,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Move camera
     camera.move(input, dt);
 
-    state.time += tweak.animate ? dt : 0;
+    state.time += tweak.move ? dt : 0;
   },
 };
 
-const process = declare("Forward PBR lighting", WebGLScreen, application);
+const process = declare(
+  "Forward PBR lighting",
+  WebGLScreen,
+  configuration,
+  application
+);
 
 export { process };

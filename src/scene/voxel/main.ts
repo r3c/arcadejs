@@ -1,4 +1,4 @@
-import { Application, configure, declare } from "../../engine/application";
+import { Application, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
@@ -51,13 +51,11 @@ const worldChunkSize = { x: 16, y: 16, z: 16 };
 const worldScale = { x: 0.1, y: 0.1, z: 0.1 };
 const timeFactor = 20;
 
-const application: Application<WebGLScreen, ApplicationState> = {
+const application: Application<WebGLScreen, ApplicationState, undefined> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
     const target = new GlTarget(gl, screen.getSize());
-
-    configure(undefined);
 
     // Load models
     const worldScaleVector = Vector3.fromZero();
@@ -185,7 +183,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     };
   },
 
-  update(state, dt) {
+  update(state, _, dt) {
     const { camera, input, lights, worldPhysic, worldGraphic } = state;
 
     // Move camera & define view matrix accordingly
@@ -343,7 +341,7 @@ const application: Application<WebGLScreen, ApplicationState> = {
     lightRenderer.render(lightScene);
   },
 
-  resize(state, size) {
+  resize(state, _, size) {
     state.renderers.forwardLighting.resize(size);
     state.projectionMatrix = Matrix4.fromIdentity([
       "setPerspective",
@@ -356,6 +354,11 @@ const application: Application<WebGLScreen, ApplicationState> = {
   },
 };
 
-const process = declare("Voxel Simulation", WebGLScreen, application);
+const process = declare(
+  "Voxel Simulation",
+  WebGLScreen,
+  undefined,
+  application
+);
 
 export { process };

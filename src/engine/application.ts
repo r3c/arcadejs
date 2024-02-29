@@ -1,27 +1,35 @@
 import { Screen } from "./graphic/display";
 import { Vector2 } from "./math/vector";
 
-interface Application<TScreen extends Screen, TState> {
+type Application<TScreen extends Screen, TState, TTweak> = {
   prepare: (screen: TScreen) => Promise<TState>;
-  render: (state: TState) => void;
-  resize: (state: TState, size: Vector2) => void;
-  update: (state: TState, dt: number) => void;
-}
+  render: (state: TState, tweak: Tweak<TTweak>) => void;
+  resize: (state: TState, tweak: Tweak<TTweak>, size: Vector2) => void;
+  update: (state: TState, tweak: Tweak<TTweak>, dt: number) => void;
+};
 
-interface Process {
+type Process = {
   requestFullscreen: () => void;
   start: () => Promise<void>;
   step: (dt: number) => void;
   stop: () => void;
   title: string;
-}
+};
 
 interface ScreenConstructor<TScreen extends Screen> {
   new (container: HTMLElement): TScreen;
 }
 
+type TweakConfiguration<T> = {
+  [key in keyof T]: TweakConstructor<unknown>;
+};
+
+type TweakConstructor<T> = (onChange: (value: T) => void) => HTMLElement;
+
 type Tweak<T> = {
-  [P in keyof T]: number;
+  [key in keyof T]: T[key] extends TweakConstructor<infer TValue>
+    ? TValue
+    : never;
 };
 
 const canonicalize = (name: string): string => {
@@ -31,59 +39,26 @@ const canonicalize = (name: string): string => {
     .replaceAll(/^-+|-+$/g, "");
 };
 
-const configure = <T>(configuration: T) => {
-  const tweakContainer = document.getElementById("tweaks");
+const configure = <T>(configuration: TweakConfiguration<T>): Tweak<T> => {
+  const container = document.getElementById("tweaks");
 
-  if (tweakContainer === null) {
+  if (container === null) {
     throw Error("missing tweak container");
   }
 
-  while (tweakContainer.childNodes.length > 0) {
-    tweakContainer.removeChild(tweakContainer.childNodes[0]);
+  while (container.childNodes.length > 0) {
+    container.removeChild(container.childNodes[0]);
   }
 
-  const tweak = {} as Tweak<T>;
+  const tweak: any = {};
 
   for (const key in configuration) {
-    const property = configuration[key];
-    const change = (value: number) => (tweak[key] = value);
+    tweak[key] = 0;
 
-    let defaultValue: number;
-    let tweakElement: HTMLElement;
+    const onChange = (value: any) => (tweak[key] = value);
+    const element = configuration[key](onChange);
 
-    switch (typeof property) {
-      case "boolean":
-        defaultValue = property ? 1 : 0;
-        tweakElement = createCheckbox(key, defaultValue, change);
-
-        break;
-
-      case "object":
-        if (Array.isArray(property)) {
-          defaultValue = Math.max(
-            property.findIndex((choice) => choice.startsWith(".")),
-            0
-          );
-          tweakElement = createSelect(
-            key,
-            property.map((choice) =>
-              choice.startsWith(".") ? choice.slice(1) : choice
-            ),
-            defaultValue,
-            change
-          );
-        } else {
-          throw Error(`invalid configuration for key "${key}"`);
-        }
-
-        break;
-
-      default:
-        throw Error(`invalid configuration for key "${key}"`);
-    }
-
-    tweakContainer.appendChild(tweakElement);
-    tweak[key] = defaultValue;
+    container.appendChild(element);
   }
 
   return tweak;
@@ -99,68 +74,69 @@ const createButton = (caption: string, click: () => void) => {
   return button;
 };
 
-const createCheckbox = (
-  caption: string,
-  value: number,
-  change: (value: number) => void
-) => {
-  const container = document.createElement("span");
-  const checkbox = document.createElement("input");
-  const update = () => change(checkbox.checked ? 1 : 0);
+const createCheckbox =
+  (caption: string, initial: boolean): TweakConstructor<boolean> =>
+  (onChange) => {
+    const checkbox = document.createElement("input");
+    const element = document.createElement("span");
+    const update = () => onChange(checkbox.checked);
 
-  container.appendChild(checkbox);
-  container.appendChild(document.createTextNode(caption));
-  container.className = "container";
+    element.appendChild(checkbox);
+    element.appendChild(document.createTextNode(caption));
+    element.className = "container";
 
-  checkbox.checked = value !== 0;
-  checkbox.onchange = update;
-  checkbox.type = "checkbox";
+    checkbox.checked = initial;
+    checkbox.onchange = update;
+    checkbox.type = "checkbox";
 
-  update();
+    update();
 
-  return container;
-};
+    return element;
+  };
 
-const createSelect = (
-  caption: string,
-  choices: string[],
-  value: number,
-  change: (value: number) => void
-) => {
-  const container = document.createElement("span");
-  const select = document.createElement("select");
-  const update = () => change(select.selectedIndex);
+const createSelect =
+  (
+    caption: string,
+    options: string[],
+    initial: number
+  ): TweakConstructor<number> =>
+  (onChange) => {
+    const element = document.createElement("span");
+    const select = document.createElement("select");
+    const update = () => onChange(select.selectedIndex);
 
-  container.appendChild(select);
+    element.appendChild(select);
 
-  if (caption !== "") {
-    container.appendChild(document.createTextNode(caption));
-  }
+    if (caption !== "") {
+      element.appendChild(document.createTextNode(caption));
+    }
 
-  container.className = "container";
+    element.className = "container";
+    select.onchange = update;
 
-  select.onchange = update;
+    for (let i = 0; i < options.length; ++i) {
+      const option = document.createElement("option");
 
-  for (let i = 0; i < choices.length; ++i) {
-    const option = document.createElement("option");
+      option.selected = i === initial;
+      option.text = options[i];
 
-    option.selected = i === value;
-    option.text = choices[i];
+      select.options.add(option);
+    }
 
-    select.options.add(option);
-  }
+    update();
 
-  update();
+    return element;
+  };
 
-  return container;
-};
-
-const declare = <TScreen extends Screen, TState>(
+const declare = <TScreen extends Screen, TState, TTweak>(
   title: string,
   screenConstructor: ScreenConstructor<TScreen>,
-  application: Application<TScreen, TState>
+  configuration: TweakConfiguration<TTweak>,
+  application: Application<TScreen, TState, TTweak>
 ): Process => {
-  let runtime: { screen: TScreen; state: TState } | undefined = undefined;
+  let runtime:
+    | { screen: TScreen; state: TState; tweak: Tweak<TTweak> }
+    | undefined = undefined;
 
   const { prepare, render, resize, update } = application;
 
@@ -179,22 +155,23 @@ const declare = <TScreen extends Screen, TState>(
 
       const screen = new screenConstructor(container);
       const state = await prepare(screen);
+      const tweak = configure(configuration);
 
-      screen.addResizeHandler((size) => resize(state, size));
+      screen.addResizeHandler((size) => resize(state, tweak, size));
 
-      runtime = { screen, state };
+      runtime = { screen, state, tweak };
     },
     step: (dt: number) => {
       if (runtime === undefined) {
         return;
       }
 
-      const { screen, state } = runtime;
+      const { screen, state, tweak } = runtime;
 
       screen.resize();
 
-      update(state, dt);
-      requestAnimationFrame(() => render(state));
+      update(state, tweak, dt);
+      requestAnimationFrame(() => render(state, tweak));
     },
     stop: () => {
       runtime = undefined;
@@ -270,20 +247,28 @@ const run = (applications: Process[]) => {
     0
   );
 
+  const sceneSelector = createSelect(
+    "",
+    applications.map(({ title }) => title),
+    hashValue
+  );
+
   sceneContainer.appendChild(
     createButton("Fullscreen", () => current?.requestFullscreen())
   );
 
-  sceneContainer.appendChild(
-    createSelect(
-      "",
-      applications.map(({ title }) => title),
-      hashValue,
-      select
-    )
-  );
+  sceneContainer.appendChild(sceneSelector(select));
 
   tick(0);
 };
 
-export { type Application, type Tweak, configure, declare, run };
+export {
+  type Application,
+  type Tweak,
+  type TweakConfiguration,
+  type TweakConstructor as TweakWidget,
+  createCheckbox,
+  createSelect,
+  declare,
+  run,
+};

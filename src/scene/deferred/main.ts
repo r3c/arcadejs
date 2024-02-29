@@ -1,7 +1,8 @@
 import {
   type Application,
   type Tweak,
-  configure,
+  createCheckbox,
+  createSelect,
   declare,
 } from "../../engine/application";
 import {
@@ -48,23 +49,31 @@ import {
  */
 
 const configuration = {
-  technique: ["Deferred shading", "Deferred lighting"],
-  nbDirectionals: [".0", "1", "2", "5"],
-  nbPoints: ["0", ".20", "100", "500", "2000"],
-  animate: true,
-  ambient: true,
-  diffuse: true,
-  specular: true,
-  debugMode: [
-    ".None",
-    "Depth",
-    "Diffuse (DS only)",
-    "Normal",
-    "Shininess",
-    "Glossiness",
-    "Diffuse light (DL only)",
-    "Specular light (DL only)",
-  ],
+  technique: createSelect(
+    "technique",
+    ["Deferred shading", "Deferred lighting"],
+    0
+  ),
+  nbDirectionalLights: createSelect("dLights", ["0", "1", "2", "5"], 0),
+  nbPointLights: createSelect("pLights", ["0", "20", "100", "500", "2000"], 1),
+  move: createCheckbox("move", true),
+  lightAmbient: createCheckbox("ambient", true),
+  lightDiffuse: createCheckbox("diffuse", true),
+  lightSpecular: createCheckbox("specular", true),
+  debugMode: createSelect(
+    "debug",
+    [
+      "None",
+      "Depth",
+      "Diffuse (DS)",
+      "Normal",
+      "Shininess",
+      "Glossiness",
+      "Diffuse light (DL)",
+      "Specular light (DL)",
+    ],
+    0
+  ),
 };
 
 const debugConfigurations = [
@@ -146,20 +155,22 @@ type ApplicationState = {
   projectionMatrix: Matrix4;
   sceneRendererMemo: Memo<[number, boolean[]], SceneRenderer>;
   target: GlTarget;
-  tweak: Tweak<typeof configuration>;
 };
 
 const getOptions = (tweak: Tweak<typeof configuration>) => [
-  tweak.ambient !== 0,
-  tweak.diffuse !== 0,
-  tweak.specular !== 0,
+  tweak.lightAmbient,
+  tweak.lightDiffuse,
+  tweak.lightSpecular,
 ];
 
-const application: Application<WebGLScreen, ApplicationState> = {
+const application: Application<
+  WebGLScreen,
+  ApplicationState,
+  typeof configuration
+> = {
   async prepare(screen) {
     const gl = screen.context;
     const runtime = createRuntime(gl);
-    const tweak = configure(configuration);
 
     // Load meshes
     const cubeModel = await loadMeshFromJson("model/cube/mesh.json", {
@@ -277,28 +288,21 @@ const application: Application<WebGLScreen, ApplicationState> = {
       ),
       target,
       time: 0,
-      tweak,
     };
   },
 
-  render(state) {
-    const {
-      camera,
-      debugRendererMemo,
-      models,
-      sceneRendererMemo,
-      target,
-      tweak,
-    } = state;
+  render(state, tweak) {
+    const { camera, debugRendererMemo, models, sceneRendererMemo, target } =
+      state;
 
     // Pick active lights
     const directionalLights = state.directionalLights.slice(
       0,
-      directionalLightParameters[tweak.nbDirectionals].count
+      directionalLightParameters[tweak.nbDirectionalLights].count
     );
     const pointLights = state.pointLights.slice(
       0,
-      pointLightParameters[tweak.nbPoints].count
+      pointLightParameters[tweak.nbPointLights].count
     );
 
     // Draw scene
@@ -390,13 +394,13 @@ const application: Application<WebGLScreen, ApplicationState> = {
     }
   },
 
-  resize(state, size) {
-    if (state.tweak.debugMode !== 0) {
-      state.debugRendererMemo.get(state.tweak.debugMode - 1).resize(size);
+  resize(state, tweak, size) {
+    if (tweak.debugMode !== 0) {
+      state.debugRendererMemo.get(tweak.debugMode - 1).resize(size);
     }
 
     state.sceneRendererMemo
-      .get([state.tweak.technique, getOptions(state.tweak)])
+      .get([tweak.technique, getOptions(tweak)])
       .renderer.resize(size);
 
     state.projectionMatrix = Matrix4.fromIdentity([
@@ -410,10 +414,9 @@ const application: Application<WebGLScreen, ApplicationState> = {
     state.target.resize(size);
   },
 
-  update(state, dt) {
-    const { camera, directionalLights, input, pointLights, time, tweak } =
-      state;
-    const pointLightRadius = pointLightParameters[tweak.nbPoints].radius;
+  update(state, tweak, dt) {
+    const { camera, directionalLights, input, pointLights, time } = state;
+    const pointLightRadius = pointLightParameters[tweak.nbPointLights].radius;
 
     for (let i = 0; i < directionalLights.length; ++i) {
       const { direction, mover } = directionalLights[i];
@@ -432,10 +435,15 @@ const application: Application<WebGLScreen, ApplicationState> = {
     // Move camera
     camera.move(input, dt);
 
-    state.time += tweak.animate ? dt : 0;
+    state.time += tweak.move ? dt : 0;
   },
 };
 
-const process = declare("Deferred rendering", WebGLScreen, application);
+const process = declare(
+  "Deferred rendering",
+  WebGLScreen,
+  configuration,
+  application
+);
 
 export { process };
