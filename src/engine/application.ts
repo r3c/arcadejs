@@ -143,7 +143,7 @@ const declare = <TScreen extends Screen, TState, TTweak>(
   return {
     requestFullscreen: () => runtime?.screen.requestFullscreen(),
     start: async () => {
-      const container = document.getElementById("screens");
+      const container = document.getElementById("screen");
 
       if (container === null) {
         throw Error("missing screen container");
@@ -181,13 +181,13 @@ const declare = <TScreen extends Screen, TState, TTweak>(
 };
 
 const run = (applications: Process[]) => {
-  const frameContainer = document.getElementById("frames");
+  const frameContainer = document.getElementById("frame");
 
   if (frameContainer === null) {
     throw Error("missing frame container");
   }
 
-  const sceneContainer = document.getElementById("scenes");
+  const sceneContainer = document.getElementById("scene");
 
   if (sceneContainer === null) {
     throw Error("missing scene container");
