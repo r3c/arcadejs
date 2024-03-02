@@ -327,16 +327,15 @@
 					<section>
 						<h4>Fragment shader hello world</h4>
 						<pre>
-							<code data-line-numbers="1-13|1-4|6|8-10" data-trim>
+							<code data-line-numbers="1-9|1-3|5|7-9" data-trim>
 								in vec4 fragCoordinate;
 								
-								uniform vec4 albedoFactor;
 								uniform sampler2D albedoMap;
 								
 								layout(location=0) out vec4 fragColor;
 								
 								void main(void) {
-									fragColor = albedoFactor * texture(albedoMap, fragCoordinate);
+									fragColor = texture(albedoMap, fragCoordinate);
 								}
 							</code>
 						</pre>
@@ -404,12 +403,21 @@
 				<section>
 					<section>
 						<h4>Tricks to improve final result</h4>
-						<ul>
-							<li>Normal mapping</li>
-							<li>Height mapping</li>
-						</ul>
 						<div>
-							<img height="350" src="image/maps.jpg" />
+							<img height="500" src="image/mapping-1.png" />
+						</div>
+						<aside class="notes">
+							<ul>
+								<li>Normal mapping: perturb normals using 2D texture</li>
+								<li>Height mapping: simulate height on flat surfaces</li>
+							</ul>
+						</aside>
+					</section>
+
+					<section>
+						<h4>Normal maps & height maps</h4>
+						<div>
+							<img height="350" src="image/mapping-2.jpg" />
 						</div>
 						<aside class="notes">
 							<ul>
