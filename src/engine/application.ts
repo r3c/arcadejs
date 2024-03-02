@@ -64,15 +64,17 @@ const configure = <T>(configuration: TweakConfiguration<T>): Tweak<T> => {
   return tweak;
 };
 
-const createButton = (caption: string, click: () => void) => {
-  const button = document.createElement("input");
+const createButton =
+  (caption: string): TweakConstructor<void> =>
+  (onChange) => {
+    const element = document.createElement("input");
 
-  button.onclick = click;
-  button.type = "button";
-  button.value = caption;
+    element.onclick = () => onChange();
+    element.type = "button";
+    element.value = caption;
 
-  return button;
-};
+    return element;
+  };
 
 const createCheckbox =
   (caption: string, initial: boolean): TweakConstructor<boolean> =>
@@ -96,7 +98,7 @@ const createCheckbox =
 
 const createSelect =
   (
-    caption: string,
+    caption: string | undefined,
     options: string[],
     initial: number
   ): TweakConstructor<number> =>
@@ -107,7 +109,7 @@ const createSelect =
 
     element.appendChild(select);
 
-    if (caption !== "") {
+    if (caption !== undefined) {
       element.appendChild(document.createTextNode(caption));
     }
 
@@ -193,12 +195,23 @@ const run = (applications: Process[]) => {
     throw Error("missing scene container");
   }
 
+  const hashTitle = decodeURIComponent(location.hash.substring(1));
+  const hashValue = Math.max(
+    applications.findIndex(({ title }) => canonicalize(title) === hashTitle),
+    0
+  );
+
   let current: Process | undefined;
   let elapsed = 0;
   let frames = 0;
   let then = 0;
 
-  const select = async (value: number) => {
+  const expanderBuilder = createButton("Fullscreen");
+  const expander = expanderBuilder(() => current?.requestFullscreen());
+
+  const selectorOptions = applications.map(({ title }) => title);
+  const selectorBuilder = createSelect(undefined, selectorOptions, hashValue);
+  const selector = selectorBuilder(async (value: number) => {
     const application = applications[value];
 
     if (current !== undefined) {
@@ -217,7 +230,7 @@ const run = (applications: Process[]) => {
     await application.start();
 
     current = application;
-  };
+  });
 
   const tick = (time: number) => {
     window.requestAnimationFrame(tick);
@@ -241,23 +254,8 @@ const run = (applications: Process[]) => {
     ++frames;
   };
 
-  const hashTitle = decodeURIComponent(location.hash.substring(1));
-  const hashValue = Math.max(
-    applications.findIndex(({ title }) => canonicalize(title) === hashTitle),
-    0
-  );
-
-  const sceneSelector = createSelect(
-    "",
-    applications.map(({ title }) => title),
-    hashValue
-  );
-
-  sceneContainer.appendChild(
-    createButton("Fullscreen", () => current?.requestFullscreen())
-  );
-
-  sceneContainer.appendChild(sceneSelector(select));
+  sceneContainer.appendChild(expander);
+  sceneContainer.appendChild(selector);
 
   tick(0);
 };
