@@ -17,6 +17,44 @@ import { normalDecode } from "../shaders/normal";
 import { linearDepth } from "../shaders/depth";
 import { Vector2 } from "../../../math/vector";
 
+const enum DebugTextureEncoding {
+  Identity,
+  LinearRGB,
+  Monochrome,
+  Depth,
+  Spheremap,
+  Log2RGB,
+}
+
+const enum DebugTextureChannel {
+  Identity,
+  RedGreenBlue,
+  GreenBlueAlpha,
+  RedGreen,
+  GreenBlue,
+  BlueAlpha,
+  Red,
+  Green,
+  Blue,
+  Alpha,
+}
+
+type DebugTextureConfiguration = {
+  channel: DebugTextureChannel;
+  encoding: DebugTextureEncoding;
+  scale?: number;
+  zFar: number;
+  zNear: number;
+};
+
+type DebugTextureScene = {
+  coordinate: GlShaderAttribute;
+  index: GlBuffer;
+  modelMatrix: Matrix4;
+  position: GlShaderAttribute;
+  source: GlTexture;
+};
+
 const vertexSource = `
 uniform mat4 modelMatrix;
 
@@ -94,44 +132,6 @@ void main(void) {
     fragColor = vec4(-log2(encoded.rgb), 1.0);
   #endif
 }`;
-
-type DebugTextureConfiguration = {
-  channel: DebugTextureChannel;
-  encoding: DebugTextureEncoding;
-  scale?: number;
-  zFar: number;
-  zNear: number;
-};
-
-const enum DebugTextureEncoding {
-  Identity,
-  LinearRGB,
-  Monochrome,
-  Depth,
-  Spheremap,
-  Log2RGB,
-}
-
-const enum DebugTextureChannel {
-  Identity,
-  RedGreenBlue,
-  GreenBlueAlpha,
-  RedGreen,
-  GreenBlue,
-  BlueAlpha,
-  Red,
-  Green,
-  Blue,
-  Alpha,
-}
-
-type DebugTextureScene = {
-  coordinate: GlShaderAttribute;
-  index: GlBuffer;
-  modelMatrix: Matrix4;
-  position: GlShaderAttribute;
-  source: GlTexture;
-};
 
 const createPainter = (shader: GlShader) => {
   const binding = shader.declare<DebugTextureScene>();

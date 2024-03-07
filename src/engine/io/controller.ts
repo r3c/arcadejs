@@ -19,12 +19,6 @@ type Position = {
   y: number;
 };
 
-const emptyPointers: Pointer[] = [];
-const pointersByNbTouch = new Map<number, Pointer[]>([
-  [1, [Pointer.Grab, Pointer.Hover]],
-  [2, [Pointer.Drag]],
-]);
-
 /**
  * Mouse and keyboard key codes.
  */
@@ -67,6 +61,11 @@ const enum Pointer {
 
 const buttonGrabName = "mouseleft";
 const buttonDragName = "mouseright";
+const emptyPointers: Pointer[] = [];
+const pointersByNbTouch = new Map<number, Pointer[]>([
+  [1, [Pointer.Grab, Pointer.Hover]],
+  [2, [Pointer.Drag]],
+]);
 const wheelSpeed = -1 / 32;
 
 const keys: { key: Key; code: string; button: string }[] = [
