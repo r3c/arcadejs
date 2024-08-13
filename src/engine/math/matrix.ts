@@ -136,7 +136,7 @@ class MutableMatrix3 implements Matrix3 {
    * Create rotation matrix from quaternion.
    * From: https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
    */
-  public setQuaternion(quaternion: Quaternion): void {
+  public setFromQuaternion(quaternion: Quaternion): void {
     const { scalar, vector } = quaternion;
     const { x, y, z } = vector;
 
@@ -539,7 +539,7 @@ class MutableMatrix4 implements Matrix4 {
     this.v33 = source.v33;
   }
 
-  public setArray(values: ArrayLike<number>): void {
+  public setFromArray(values: ArrayLike<number>): void {
     if (values.length < 16) {
       throw Error("Matrix4 must be created from array with 16+ elements");
     }
@@ -566,7 +566,7 @@ class MutableMatrix4 implements Matrix4 {
    ** Create new matrix for "looking to given direction" transformation.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluLookAt.xml
    */
-  public setDirection(direction: Vector3, up: Vector3): void {
+  public setFromDirection(direction: Vector3, up: Vector3): void {
     const f = Vector3.fromSource(direction, ["normalize"]);
     const upVector = Vector3.fromSource(up, ["normalize"]);
     const s = Vector3.fromSource(f, ["cross", upVector]);
@@ -594,7 +594,7 @@ class MutableMatrix4 implements Matrix4 {
    ** Create new orthographic projection matrix.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glOrtho.xml
    */
-  public setOrthographic(
+  public setFromOrthographic(
     xMin: number,
     xMax: number,
     yMin: number,
@@ -628,7 +628,7 @@ class MutableMatrix4 implements Matrix4 {
    ** Create new perspective projection matrix.
    ** From: https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/gluPerspective.xml
    */
-  public setPerspective(
+  public setFromPerspective(
     fieldOfView: number,
     aspectRatio: number,
     zMin: number,
@@ -655,7 +655,7 @@ class MutableMatrix4 implements Matrix4 {
     this.v33 = 0;
   }
 
-  public setRotationPosition(rotation: Matrix3, position: Vector3): void {
+  public setFromRotationPosition(rotation: Matrix3, position: Vector3): void {
     this.v00 = rotation.v00;
     this.v01 = rotation.v01;
     this.v02 = rotation.v02;

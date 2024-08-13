@@ -251,7 +251,7 @@ const expandMesh = (
           url,
           coordinates,
           2,
-          (array) => Vector2.fromZero(["setArray", array]),
+          (array) => Vector2.fromZero(["setFromArray", array]),
           "coordinates"
         )
       ),
@@ -267,7 +267,7 @@ const expandMesh = (
           url,
           normals,
           3,
-          (array) => Vector3.fromZero(["setArray", array]),
+          (array) => Vector3.fromZero(["setFromArray", array]),
           "normals"
         )
       ),
@@ -275,7 +275,7 @@ const expandMesh = (
         url,
         positions,
         3,
-        (array) => Vector3.fromZero(["setArray", array]),
+        (array) => Vector3.fromZero(["setFromArray", array]),
         "positions"
       ),
       tangents: mapOptional(tangents, (tangents) =>
@@ -283,7 +283,7 @@ const expandMesh = (
           url,
           tangents,
           3,
-          (array) => Vector3.fromZero(["setArray", array]),
+          (array) => Vector3.fromZero(["setFromArray", array]),
           "tangents"
         )
       ),
@@ -292,7 +292,7 @@ const expandMesh = (
           url,
           tints,
           4,
-          (array) => Vector4.fromZero(["setArray", array]),
+          (array) => Vector4.fromZero(["setFromArray", array]),
           "tints"
         )
       ),
@@ -585,7 +585,7 @@ const loadNode = (
 
     if (node.matrix !== undefined) {
       transform = Matrix4.fromIdentity([
-        "setArray",
+        "setFromArray",
         convertArrayOf(url, source + ".matrix", node.matrix, (value) =>
           parseFloat(value)
         ),

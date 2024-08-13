@@ -728,7 +728,7 @@ class DeferredLightingRenderer implements Renderer<DeferredLightingScene> {
       configuration
     );
     this.fullscreenProjection = Matrix4.fromIdentity([
-      "setOrthographic",
+      "setFromOrthographic",
       -1,
       1,
       -1,

@@ -106,8 +106,8 @@ const createCameraUpdater = (
     rotation.slerp(player.rotation, 0.05);
     rotationInverse.set(rotation);
     rotationInverse.conjugate();
-    rotationMatrix3.setQuaternion(rotationInverse);
-    rotationMatrix4.setRotationPosition(rotationMatrix3, Vector3.zero);
+    rotationMatrix3.setFromQuaternion(rotationInverse);
+    rotationMatrix4.setFromRotationPosition(rotationMatrix3, Vector3.zero);
 
     viewMatrix.set(Matrix4.identity);
     viewMatrix.translate({ x: 0, y: 0, z: state.zoom });
@@ -183,9 +183,9 @@ const createPlayerUpdater = (): Updater => {
       (input.isPressed("arrowdown") ? rotationSpeed : 0) +
       (input.isPressed("arrowup") ? -rotationSpeed : 0);
 
-    rotation.setRotation({ x: 0, y: 1, z: 0 }, horizontalRotationSpeed);
+    rotation.setFromRotation({ x: 0, y: 1, z: 0 }, horizontalRotationSpeed);
     player.rotation.multiply(rotation);
-    rotation.setRotation({ x: 1, y: 0, z: 0 }, verticalRotationSpeed);
+    rotation.setFromRotation({ x: 1, y: 0, z: 0 }, verticalRotationSpeed);
     player.rotation.multiply(rotation);
 
     // See: https://gafferongames.com/post/integration_basics/
@@ -194,7 +194,7 @@ const createPlayerUpdater = (): Updater => {
     velocityDelta.set(velocity);
     velocityDelta.scale(Math.min(dt * friction, 1));
 
-    acceleration.setXYZ(0, 0, accelerationFactor);
+    acceleration.setFromXYZ(0, 0, accelerationFactor);
     acceleration.rotate(player.rotation);
     acceleration.scale((dt * thrust) / mass);
     acceleration.sub(velocityDelta);
@@ -318,7 +318,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       move: 0,
       player: {
         rotation: Quaternion.fromIdentity([
-          "setRotation",
+          "setFromRotation",
           { x: 1, y: 0, z: 0 },
           0,
         ]),
@@ -385,8 +385,8 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       objects: [
         {
           matrix: Matrix4.fromIdentity([
-            "setRotationPosition",
-            Matrix3.fromIdentity(["setQuaternion", player.rotation]),
+            "setFromRotationPosition",
+            Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
             player.position,
           ]),
           model: models.ship,
@@ -422,7 +422,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
 
   resize(state, _, size) {
     state.projectionMatrix = Matrix4.fromIdentity([
-      "setPerspective",
+      "setFromPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,
