@@ -828,7 +828,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
       directionalShadowShader
     );
     this.directionalShadowProjectionMatrix = Matrix4.fromIdentity([
-      "setOrthographic",
+      "setFromOrthographic",
       -10,
       10,
       -10,
@@ -913,7 +913,7 @@ class ForwardLightingRenderer implements Renderer<ForwardLightingScene> {
           [
             "multiply",
             Matrix4.fromIdentity([
-              "setDirection",
+              "setFromDirection",
               shadowDirection,
               { x: 0, y: 1, z: 0 },
             ]),

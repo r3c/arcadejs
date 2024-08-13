@@ -404,7 +404,7 @@ const application: Application<
       .renderer.resize(size);
 
     state.projectionMatrix = Matrix4.fromIdentity([
-      "setPerspective",
+      "setFromPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,

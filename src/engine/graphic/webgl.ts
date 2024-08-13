@@ -80,6 +80,7 @@ const createRuntime = (context: GlContext): GlRuntime => {
   const textureBlack = createConstantTexture({ x: 0, y: 0, z: 0, w: 0 });
   const textureNormal = createConstantTexture({ x: 0.5, y: 0.5, z: 1, w: 1 });
   const textureWhite = createConstantTexture({ x: 1, y: 1, z: 1, w: 1 });
+  const shaderDefault = { textureBlack, textureNormal, textureWhite };
 
   let currentProgram: WebGLProgram | undefined = undefined;
 
@@ -101,7 +102,7 @@ const createRuntime = (context: GlContext): GlRuntime => {
       return createShader(
         context,
         useProgram,
-        { textureBlack, textureNormal, textureWhite },
+        shaderDefault,
         vertexShaderSource,
         fragmentShaderSource,
         directives

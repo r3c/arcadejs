@@ -82,7 +82,7 @@ const application: Application<
 
   resize(state, _, size) {
     state.projection = Matrix4.fromIdentity([
-      "setPerspective",
+      "setFromPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,

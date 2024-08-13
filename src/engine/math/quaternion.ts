@@ -93,7 +93,7 @@ class MutableQuaternion implements Quaternion {
     this.vector.set(source.vector);
   }
 
-  public setRotation(axis: Vector3, angle: number): void {
+  public setFromRotation(axis: Vector3, angle: number): void {
     const halfAngle = angle * 0.5;
 
     this.scalar = Math.cos(halfAngle);
@@ -101,7 +101,7 @@ class MutableQuaternion implements Quaternion {
     this.vector.scale(Math.sin(halfAngle));
   }
 
-  public setScalarVector(scalar: number, vector: Vector3): void {
+  public setFromScalarVector(scalar: number, vector: Vector3): void {
     this.scalar = scalar;
     this.vector.set(vector);
   }

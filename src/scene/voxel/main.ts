@@ -157,7 +157,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       lights: range(maxLights).map((i) => ({
         mover: createOrbitMover(i, 1, maxWorldRenderSize, 1),
         position: Vector3.fromZero([
-          "setXYZ",
+          "setFromXYZ",
           worldGraphic.renderSize.x * (i / (maxLights - 1) - 0.5),
           worldGraphic.renderSize.y * 0.5,
           worldGraphic.renderSize.z * (i / (maxLights - 1) - 0.5),
@@ -270,8 +270,8 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
     if (input.fetchPress("space") && lookVoxel !== undefined) {
       const direction = Vector3.fromZero(
         Math.abs(cameraDirection.x) > Math.abs(cameraDirection.z)
-          ? ["setXYZ", Math.sign(cameraDirection.x), 0, 0]
-          : ["setXYZ", 0, 0, Math.sign(cameraDirection.z)]
+          ? ["setFromXYZ", Math.sign(cameraDirection.x), 0, 0]
+          : ["setFromXYZ", 0, 0, Math.sign(cameraDirection.z)]
       );
 
       direction.scale(-0.5);
@@ -344,7 +344,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
   resize(state, _, size) {
     state.renderers.forwardLighting.resize(size);
     state.projectionMatrix = Matrix4.fromIdentity([
-      "setPerspective",
+      "setFromPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,

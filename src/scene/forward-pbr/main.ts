@@ -242,7 +242,7 @@ const application: Application<
   resize(state, tweak, size) {
     state.rendererMemo.get(getOptions(tweak)).resize(size);
     state.projectionMatrix = Matrix4.fromIdentity([
-      "setPerspective",
+      "setFromPerspective",
       Math.PI / 4,
       size.x / size.y,
       0.1,

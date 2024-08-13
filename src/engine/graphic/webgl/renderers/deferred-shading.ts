@@ -746,7 +746,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       configuration
     );
     this.fullscreenProjection = Matrix4.fromIdentity([
-      "setOrthographic",
+      "setFromOrthographic",
       -1,
       1,
       -1,

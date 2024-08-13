@@ -61,7 +61,7 @@ class MutableVector2 implements Vector2 {
     this.y = source.y;
   }
 
-  public setArray(values: ArrayLike<number>): void {
+  public setFromArray(values: ArrayLike<number>): void {
     if (values.length < 2) {
       throw Error("Vector2 must be created from array with 2+ elements");
     }
@@ -70,7 +70,7 @@ class MutableVector2 implements Vector2 {
     this.y = values[1];
   }
 
-  public setXY(x: number, y: number): void {
+  public setFromXY(x: number, y: number): void {
     this.x = x;
     this.y = y;
   }
@@ -196,7 +196,7 @@ class MutableVector3 implements Vector3 {
     this.z = source.z;
   }
 
-  public setArray(values: ArrayLike<number>): void {
+  public setFromArray(values: ArrayLike<number>): void {
     if (values.length < 3) {
       throw Error("Vector3 must be created from array with 3+ elements");
     }
@@ -206,7 +206,7 @@ class MutableVector3 implements Vector3 {
     this.z = values[2];
   }
 
-  public setXYZ(x: number, y: number, z: number): void {
+  public setFromXYZ(x: number, y: number, z: number): void {
     this.x = x;
     this.y = y;
     this.z = z;
@@ -293,7 +293,7 @@ class MutableVector4 implements Vector4 {
     this.w = source.w;
   }
 
-  public setArray(values: ArrayLike<number>): void {
+  public setFromArray(values: ArrayLike<number>): void {
     if (values.length < 4) {
       throw Error("Vector4 must be created from array with 4+ elements");
     }
@@ -304,7 +304,7 @@ class MutableVector4 implements Vector4 {
     this.w = values[3];
   }
 
-  public setXYZW(x: number, y: number, z: number, w: number): void {
+  public setFromXYZW(x: number, y: number, z: number, w: number): void {
     this.x = x;
     this.y = y;
     this.z = z;
