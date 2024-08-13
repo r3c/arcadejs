@@ -14,7 +14,7 @@ const createCircleMover = (index: number): Mover => {
   };
 };
 
-const createRoundMover = (
+const createOrbitMover = (
   index: number,
   minRadius: number,
   maxRadius: number,
@@ -70,4 +70,4 @@ const generateWeight = (index: number): number => {
   return Math.sin(index * 46337) * 0.5 + 0.5;
 };
 
-export { type Mover, createCircleMover, createRoundMover as createOrbitMover };
+export { type Mover, createCircleMover, createOrbitMover };

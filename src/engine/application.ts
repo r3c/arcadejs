@@ -21,15 +21,13 @@ interface ScreenConstructor<TScreen extends Screen> {
 }
 
 type TweakConfiguration<T> = {
-  [key in keyof T]: TweakConstructor<unknown>;
+  [key in keyof T]: TweakWidget<unknown>;
 };
 
-type TweakConstructor<T> = (onChange: (value: T) => void) => HTMLElement;
+type TweakWidget<T> = (onChange: (value: T) => void) => HTMLElement;
 
 type Tweak<T> = {
-  [key in keyof T]: T[key] extends TweakConstructor<infer TValue>
-    ? TValue
-    : never;
+  [key in keyof T]: T[key] extends TweakWidget<infer TValue> ? TValue : never;
 };
 
 const canonicalize = (name: string): string => {
@@ -65,7 +63,7 @@ const configure = <T>(configuration: TweakConfiguration<T>): Tweak<T> => {
 };
 
 const createButton =
-  (caption: string): TweakConstructor<void> =>
+  (caption: string): TweakWidget<void> =>
   (onChange) => {
     const element = document.createElement("input");
 
@@ -77,7 +75,7 @@ const createButton =
   };
 
 const createCheckbox =
-  (caption: string, initial: boolean): TweakConstructor<boolean> =>
+  (caption: string, initial: boolean): TweakWidget<boolean> =>
   (onChange) => {
     const checkbox = document.createElement("input");
     const element = document.createElement("span");
@@ -101,7 +99,7 @@ const createSelect =
     caption: string | undefined,
     options: string[],
     initial: number
-  ): TweakConstructor<number> =>
+  ): TweakWidget<number> =>
   (onChange) => {
     const element = document.createElement("span");
     const select = document.createElement("select");
@@ -264,7 +262,7 @@ export {
   type Application,
   type Tweak,
   type TweakConfiguration,
-  type TweakConstructor as TweakWidget,
+  type TweakWidget,
   createCheckbox,
   createSelect,
   declare,
