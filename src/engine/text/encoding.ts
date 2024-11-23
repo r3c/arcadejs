@@ -1,10 +1,10 @@
 interface Codec {
-  decode(buffer: ArrayBuffer): string;
+  decode(buffer: ArrayBuffer | SharedArrayBuffer): string;
   encode(plain: string): ArrayBuffer;
 }
 
 const asciiCodec: Codec = {
-  decode(buffer: ArrayBuffer): string {
+  decode(buffer: ArrayBuffer | SharedArrayBuffer): string {
     return Array.from(new Uint8Array(buffer))
       .map((value) => String.fromCharCode(value))
       .join("");
