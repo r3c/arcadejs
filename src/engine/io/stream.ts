@@ -58,21 +58,21 @@ class BinaryReader {
     this.view = new DataView(buffer, offset, length);
   }
 
-  public getLength() {
+  public getLength(): number {
     return this.view.byteLength;
   }
 
-  public getOffset() {
+  public getOffset(): number {
     return this.offset;
   }
 
-  public readBuffer(length: number) {
+  public readBuffer(length: number): ArrayBuffer | SharedArrayBuffer {
     const begin = this.skip(length);
 
     return this.view.buffer.slice(begin, begin + length);
   }
 
-  public readBufferZero() {
+  public readBufferZero(): ArrayBuffer | SharedArrayBuffer {
     const begin = this.offset;
 
     while (true) {
@@ -84,22 +84,23 @@ class BinaryReader {
     }
   }
 
-  public readFloat32() {
+  public readFloat32(): number {
     return this.view.getFloat32(this.skip(4), this.little);
   }
 
-  public readInt8u() {
+  public readInt8u(): number {
     return this.view.getUint8(this.skip(1));
   }
 
-  public readInt16u() {
+  public readInt16u(): number {
     return this.view.getUint16(this.skip(2), this.little);
   }
 
-  public readInt32u() {
+  public readInt32u(): number {
     return this.view.getUint32(this.skip(4), this.little);
   }
-  public skip(count: number) {
+
+  public skip(count: number): number {
     const current = this.offset;
 
     this.offset += Math.max(count, 0);
@@ -111,7 +112,7 @@ class BinaryReader {
 const readURL = async <T>(
   format: FormatConstructor<Format<T>>,
   url: string
-) => {
+): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
     const request = new XMLHttpRequest();
 
