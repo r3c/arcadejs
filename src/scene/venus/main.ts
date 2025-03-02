@@ -86,11 +86,9 @@ const starFieldCount = 1000;
 const starFieldRadius = 1000;
 
 // Move camera
-const createCameraUpdater = (
-  state: Omit<ApplicationState, "updaters">
-): Updater => {
+const createCameraUpdater = (initialRotation: Quaternion): Updater => {
   const position = Vector3.fromZero();
-  const rotation = Quaternion.fromSource(state.player.rotation);
+  const rotation = Quaternion.fromSource(initialRotation);
   const rotationInverse = Quaternion.fromIdentity();
   const rotationMatrix3 = Matrix3.fromIdentity();
   const rotationMatrix4 = Matrix4.fromIdentity();
@@ -303,8 +301,17 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       }
     );
 
+    const player: Player = {
+      rotation: Quaternion.fromIdentity([
+        "setFromRotation",
+        { x: 1, y: 0, z: 0 },
+        0,
+      ]),
+      position: Vector3.fromZero(),
+    };
+
     // Create state
-    const state: Omit<ApplicationState, "updaters"> = {
+    const state: ApplicationState = {
       input: new Input(screen.canvas),
       lights: range(2).map((i) => ({
         mover: createOrbitMover(i, 5, 5, 2),
@@ -316,14 +323,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
         stars: starMeshes.map((mesh) => createModel(gl, mesh)),
       },
       move: 0,
-      player: {
-        rotation: Quaternion.fromIdentity([
-          "setFromRotation",
-          { x: 1, y: 0, z: 0 },
-          0,
-        ]),
-        position: Vector3.fromZero(),
-      },
+      player,
       particleEmitter0,
       particleRenderer,
       projectionMatrix: Matrix4.identity,
@@ -350,20 +350,18 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
         };
       }),
       target,
-      viewMatrix: Matrix4.fromIdentity(),
-      zoom: -25,
-    };
-
-    return {
-      ...state,
       updaters: [
-        createCameraUpdater(state),
+        createCameraUpdater(player.rotation),
         createPlayerUpdater(),
         createParticleUpdater(),
         createStarUpdater(),
         createLightUpdater(),
       ],
+      viewMatrix: Matrix4.fromIdentity(),
+      zoom: -25,
     };
+
+    return state;
   },
 
   render(state) {
