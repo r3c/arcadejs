@@ -24,7 +24,6 @@ import {
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import { Mover, createOrbitMover } from "../move";
-import { Camera } from "../view";
 import {
   ForwardLightingLightModel,
   ForwardLightingRenderer,
@@ -32,6 +31,7 @@ import {
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
+import { Camera, createOrbitCamera } from "../../engine/camera";
 
 /*
  ** What changed?
@@ -58,7 +58,6 @@ type Light = {
 
 type ApplicationState = {
   camera: Camera;
-  input: Input;
   lights: Light[];
   models: {
     ground: GlModel;
@@ -92,6 +91,7 @@ const application: Application<
 > = {
   async prepare(screen) {
     const gl = screen.context;
+    const input = new Input(screen.canvas);
     const runtime = createRuntime(gl);
     const target = new GlTarget(gl, screen.getSize());
 
@@ -142,8 +142,7 @@ const application: Application<
 
     // Create state
     return {
-      camera: new Camera({ x: 0, y: 0, z: -5 }, { x: 0, y: 0, z: 0 }),
-      input: new Input(screen.canvas),
+      camera: createOrbitCamera(input, { x: 0, y: 0, z: -5 }, Vector3.zero),
       lights: range(3).map((i) => ({
         mover: createOrbitMover(i, 1, 3, 1),
         position: Vector3.fromZero(),
@@ -187,13 +186,6 @@ const application: Application<
       .slice(0, tweak.nbLights)
       .map((light) => light.position);
 
-    const viewMatrix = Matrix4.fromSource(
-      Matrix4.identity,
-      ["translate", camera.position],
-      ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-      ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-    );
-
     // Draw scene
     target.clear(0);
 
@@ -233,7 +225,7 @@ const application: Application<
         radius: 5,
       })),
       projectionMatrix,
-      viewMatrix,
+      viewMatrix: camera.viewMatrix,
     };
 
     rendererMemo.get(getOptions(tweak)).render(scene);
@@ -252,7 +244,7 @@ const application: Application<
   },
 
   update(state, tweak, dt) {
-    const { camera, input, lights, time } = state;
+    const { camera, lights, time } = state;
 
     // Update light positions
     for (let i = 0; i < lights.length; ++i) {
@@ -262,7 +254,7 @@ const application: Application<
     }
 
     // Move camera
-    camera.move(input, dt);
+    camera.update(dt);
 
     state.time += tweak.move ? dt : 0;
   },
