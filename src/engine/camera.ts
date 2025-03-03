@@ -1,5 +1,5 @@
 import { Input, Pointer } from "./io/controller";
-import { EasingType, getEasing } from "./math/easing";
+import { EasingFunction, EasingType, getEasing } from "./math/easing";
 import { Matrix3, Matrix4 } from "./math/matrix";
 import { Quaternion } from "./math/quaternion";
 import { Vector3 } from "./math/vector";
@@ -9,26 +9,13 @@ type Camera = {
   viewMatrix: Matrix4;
 };
 
-type OrbitCameraConfiguration = {
-  positionDuration: number;
-  positionEasing: EasingType;
-  positionInitial: Vector3;
-  rotationDuration: number;
-  rotationEasing: EasingType;
-  rotationInitial: Vector3;
-  moveSpeed: number;
-  rotationSpeed: number;
-  zoomSpeed: number;
-};
-
 const interpolate = (
   from: Vector3,
   to: Vector3,
   elapsed: number,
   duration: number,
-  type: EasingType
+  easing: EasingFunction
 ) => {
-  const easing = getEasing(type);
   const ratio = easing(Math.min(elapsed / duration, 1));
 
   return {
@@ -75,6 +62,18 @@ const createBehindCamera = (
   };
 };
 
+type OrbitCameraConfiguration = {
+  positionDuration: number;
+  positionEasingType: EasingType;
+  positionInitial: Vector3;
+  rotationDuration: number;
+  rotationEasingType: EasingType;
+  rotationInitial: Vector3;
+  moveSpeed: number;
+  rotationSpeed: number;
+  zoomSpeed: number;
+};
+
 const createOrbitCamera = (
   input: Input,
   initialPosition: Vector3,
@@ -83,9 +82,13 @@ const createOrbitCamera = (
 ): Camera => {
   const moveSpeed = configuration?.moveSpeed ?? 1 / 64;
   const positionDuration = configuration?.positionDuration ?? 100;
-  const positionEasing = configuration?.positionEasing ?? EasingType.Linear;
+  const positionEasing = getEasing(
+    configuration?.positionEasingType ?? EasingType.Linear
+  );
   const rotationDuration = configuration?.rotationDuration ?? 100;
-  const rotationEasing = configuration?.rotationEasing ?? EasingType.Linear;
+  const rotationEasing = getEasing(
+    configuration?.rotationEasingType ?? EasingType.Linear
+  );
   const rotationSpeed = configuration?.rotationSpeed ?? 1 / 32;
   const viewMatrix = Matrix4.fromIdentity();
   const zoomSpeed = configuration?.zoomSpeed ?? 1 / 8;
