@@ -9,7 +9,6 @@ import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
-import { Camera } from "../view";
 import {
   WorldGraphic,
   WorldPhysic,
@@ -21,6 +20,7 @@ import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createOrbitMover } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
+import { Camera, createOrbitCamera } from "../../engine/camera";
 
 type ApplicationState = {
   camera: Camera;
@@ -41,7 +41,6 @@ type ApplicationState = {
   };
   target: GlTarget;
   time: number;
-  viewMatrix: Matrix4;
   worldGraphic: WorldGraphic;
   worldPhysic: WorldPhysic;
 };
@@ -54,6 +53,7 @@ const timeFactor = 20;
 const application: Application<WebGLScreen, ApplicationState, undefined> = {
   async prepare(screen) {
     const gl = screen.context;
+    const input = new Input(screen.canvas);
     const runtime = createRuntime(gl);
     const target = new GlTarget(gl, screen.getSize());
 
@@ -148,12 +148,13 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
     const maxLights = 3;
 
     return {
-      camera: new Camera(
+      camera: createOrbitCamera(
+        input,
         { x: 0, y: 0, z: -maxWorldRenderSize * 2 },
         { x: -Math.PI / 8, y: (5 * Math.PI) / 4, z: 0 }
       ),
       currentOffset: Vector3.zero,
-      input: new Input(screen.canvas),
+      input,
       lights: range(maxLights).map((i) => ({
         mover: createOrbitMover(i, 1, maxWorldRenderSize, 1),
         position: Vector3.fromZero([
@@ -177,7 +178,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       },
       target,
       time: 0,
-      viewMatrix: Matrix4.identity,
+      viewMatrix: Matrix4.fromIdentity(),
       worldGraphic,
       worldPhysic,
     };
@@ -187,19 +188,12 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
     const { camera, input, lights, worldPhysic, worldGraphic } = state;
 
     // Move camera & define view matrix accordingly
-    camera.move(input, dt);
-
-    const viewMatrix = Matrix4.fromSource(
-      Matrix4.identity,
-      ["translate", camera.position],
-      ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-      ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-    );
+    camera.update(dt);
 
     // Locate cell being looked at
     const viewMatrixInverse = Matrix4.fromSource(
       Matrix4.identity,
-      ["set", viewMatrix],
+      ["set", camera.viewMatrix],
       ["invert"]
     );
 
@@ -288,7 +282,6 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
 
     // Update state
     state.currentOffset = lookOffset;
-    state.viewMatrix = viewMatrix;
 
     for (state.time += dt; state.time >= timeFactor; state.time -= timeFactor) {
       worldPhysic.tick();
@@ -299,12 +292,12 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
 
   render(state) {
     const {
+      camera,
       currentOffset,
       models,
       projectionMatrix,
       renderers,
       target,
-      viewMatrix,
       worldGraphic,
     } = state;
 
@@ -335,7 +328,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
         radius,
       })),
       projectionMatrix,
-      viewMatrix,
+      viewMatrix: camera.viewMatrix,
     };
 
     lightRenderer.render(lightScene);

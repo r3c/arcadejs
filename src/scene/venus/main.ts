@@ -13,7 +13,7 @@ import {
   loadMeshFromJson,
   loadMeshFromObj,
 } from "../../engine/graphic/model";
-import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
+import { Matrix3, Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
   GlTarget,
@@ -31,6 +31,7 @@ import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
+import { Camera, createBehindCamera } from "../../engine/camera";
 
 type Player = {
   rotation: MutableQuaternion;
@@ -70,8 +71,7 @@ type ApplicationState = {
   stars: Star[];
   target: GlTarget;
   updaters: Updater[];
-  viewMatrix: MutableMatrix4;
-  zoom: number;
+  viewMatrix: Matrix4;
 };
 
 const pi2 = Math.PI * 2;
@@ -86,32 +86,9 @@ const starFieldCount = 1000;
 const starFieldRadius = 1000;
 
 // Move camera
-const createCameraUpdater = (initialRotation: Quaternion): Updater => {
-  const position = Vector3.fromZero();
-  const rotation = Quaternion.fromSource(initialRotation);
-  const rotationInverse = Quaternion.fromIdentity();
-  const rotationMatrix3 = Matrix3.fromIdentity();
-  const rotationMatrix4 = Matrix4.fromIdentity();
-
-  return (state) => {
-    const { input, player, viewMatrix } = state;
-
-    state.zoom += input.fetchZoom() * 0.2;
-
-    position.set(player.position);
-    position.negate();
-
-    rotation.slerp(player.rotation, 0.05);
-    rotationInverse.set(rotation);
-    rotationInverse.conjugate();
-    rotationMatrix3.setFromQuaternion(rotationInverse);
-    rotationMatrix4.setFromRotationPosition(rotationMatrix3, Vector3.zero);
-
-    viewMatrix.set(Matrix4.identity);
-    viewMatrix.translate({ x: 0, y: 0, z: state.zoom });
-    viewMatrix.rotate({ x: 0, y: 1, z: 0 }, Math.PI);
-    viewMatrix.multiply(rotationMatrix4);
-    viewMatrix.translate(position);
+const createCameraUpdater = (camera: Camera): Updater => {
+  return (_, dt) => {
+    camera.update(dt);
   };
 };
 
@@ -237,6 +214,7 @@ const warp = (position: number, center: number, radius: number): number => {
 const application: Application<WebGLScreen, ApplicationState, undefined> = {
   async prepare(screen) {
     const gl = screen.context;
+    const input = new Input(screen.canvas);
     const runtime = createRuntime(gl);
     const target = new GlTarget(gl, screen.getSize());
 
@@ -310,9 +288,11 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       position: Vector3.fromZero(),
     };
 
+    const camera = createBehindCamera(input, player.position, player.rotation);
+
     // Create state
     const state: ApplicationState = {
-      input: new Input(screen.canvas),
+      input,
       lights: range(2).map((i) => ({
         mover: createOrbitMover(i, 5, 5, 2),
         position: Vector3.fromZero(),
@@ -351,14 +331,13 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       }),
       target,
       updaters: [
-        createCameraUpdater(player.rotation),
+        createCameraUpdater(camera),
         createPlayerUpdater(),
         createParticleUpdater(),
         createStarUpdater(),
         createLightUpdater(),
       ],
-      viewMatrix: Matrix4.fromIdentity(),
-      zoom: -25,
+      viewMatrix: camera.viewMatrix,
     };
 
     return state;

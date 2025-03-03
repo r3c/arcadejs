@@ -18,7 +18,6 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createCircleMover, createOrbitMover } from "../move";
-import { Camera } from "../view";
 import {
   Memo,
   createBooleansIndexer,
@@ -31,6 +30,7 @@ import {
   DebugTextureChannel,
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
+import { Camera, createOrbitCamera } from "../../engine/camera";
 
 /*
  ** What changed?
@@ -55,7 +55,6 @@ type ApplicationState = {
   camera: Camera;
   debugRenderer: Renderer<GlTexture>;
   directionalLights: { mover: Mover; direction: MutableVector3 }[];
-  input: Input;
   models: {
     cube: GlModel;
     ground: GlModel;
@@ -83,6 +82,7 @@ const application: Application<
 > = {
   async prepare(screen) {
     const gl = screen.context;
+    const input = new Input(screen.canvas);
     const runtime = createRuntime(screen.context);
     const target = new GlTarget(gl, screen.getSize());
 
@@ -98,7 +98,7 @@ const application: Application<
 
     // Create state
     return {
-      camera: new Camera({ x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: createOrbitCamera(input, { x: 0, y: 0, z: -5 }, Vector3.zero),
       debugRenderer: new DebugTextureRenderer(runtime, target, {
         encoding: DebugTextureEncoding.Monochrome,
         channel: DebugTextureChannel.Red,
@@ -109,7 +109,6 @@ const application: Application<
         direction: Vector3.fromZero(),
         mover: createCircleMover(i),
       })),
-      input: new Input(screen.canvas),
       models: {
         cube: createModel(gl, cubeModel),
         ground: createModel(gl, groundModel),
@@ -210,12 +209,7 @@ const application: Application<
           radius: 5,
         })),
       projectionMatrix,
-      viewMatrix: Matrix4.fromSource(
-        Matrix4.identity,
-        ["translate", camera.position],
-        ["rotate", { x: 1, y: 0, z: 0 }, camera.rotation.x],
-        ["rotate", { x: 0, y: 1, z: 0 }, camera.rotation.y]
-      ),
+      viewMatrix: camera.viewMatrix,
     };
 
     sceneRenderer.render(scene);
@@ -240,7 +234,7 @@ const application: Application<
   },
 
   update(state, tweak, dt) {
-    const { camera, directionalLights, input, pointLights, time } = state;
+    const { camera, directionalLights, pointLights, time } = state;
 
     // Update light positions
     for (let i = 0; i < directionalLights.length; ++i) {
@@ -258,7 +252,7 @@ const application: Application<
     }
 
     // Move camera
-    camera.move(input, dt);
+    camera.update(dt);
 
     state.time += tweak.move ? dt : 0;
   },
