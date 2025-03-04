@@ -20,7 +20,7 @@ class Screen {
 
     container.appendChild(canvas);
 
-    canvas.tabIndex = 1;
+    canvas.tabIndex = 0;
     canvas.focus();
 
     this.canvas = canvas;
