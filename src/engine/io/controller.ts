@@ -112,7 +112,7 @@ class Input {
   constructor(eventSource: HTMLElement, mouseOrigin?: HTMLElement) {
     if (eventSource.tabIndex < 0) {
       throw Error(
-        "eventSource element requires a 'tabindex=\"1\"' attribute to capture key events"
+        "eventSource element requires a 'tabindex' attribute to capture key events"
       );
     }
 
