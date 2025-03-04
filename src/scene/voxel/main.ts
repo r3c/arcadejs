@@ -1,5 +1,5 @@
 import { Application, declare } from "../../engine/application";
-import { Input } from "../../engine/io/controller";
+import { Input, Pointer } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingRenderer,
@@ -20,7 +20,7 @@ import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createOrbitMover } from "../move";
 import { Library } from "../../engine/graphic/model/definition";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
-import { Camera, createOrbitCamera } from "../../engine/camera";
+import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 
 type ApplicationState = {
   camera: Camera;
@@ -149,9 +149,13 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
 
     return {
       camera: createOrbitCamera(
-        input,
+        {
+          getRotate: () => input.fetchMove(Pointer.Grab),
+          getMove: () => input.fetchMove(Pointer.Drag),
+          getZoom: () => input.fetchZoom(),
+        },
         { x: 0, y: 0, z: -maxWorldRenderSize * 2 },
-        { x: -Math.PI / 8, y: (5 * Math.PI) / 4, z: 0 }
+        { x: -Math.PI / 8, y: (5 * Math.PI) / 4 }
       ),
       currentOffset: Vector3.zero,
       input,

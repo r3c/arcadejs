@@ -12,7 +12,7 @@ import {
   createNumberIndexer,
   memoize,
 } from "../../engine/language/memo";
-import { Input } from "../../engine/io/controller";
+import { Input, Pointer } from "../../engine/io/controller";
 import {
   DebugTextureEncoding,
   DebugTextureRenderer,
@@ -26,7 +26,7 @@ import { Renderer, WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import { MutableVector3, Vector3 } from "../../engine/math/vector";
+import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createCircleMover, createOrbitMover } from "../move";
 import { DeferredLightingScene } from "../../engine/graphic/webgl/renderers/deferred-lighting";
@@ -42,7 +42,7 @@ import {
   DeferredShadingRenderer,
   DeferredShadingScene,
 } from "../../engine/graphic/webgl/renderers/deferred-shading";
-import { Camera, createOrbitCamera } from "../../engine/camera";
+import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 
 /*
  ** What changed?
@@ -199,7 +199,15 @@ const application: Application<
 
     // Create state
     return {
-      camera: createOrbitCamera(input, { x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: createOrbitCamera(
+        {
+          getRotate: () => input.fetchMove(Pointer.Grab),
+          getMove: () => input.fetchMove(Pointer.Drag),
+          getZoom: () => input.fetchZoom(),
+        },
+        { x: 0, y: 0, z: -5 },
+        Vector2.zero
+      ),
       debugRendererMemo: memoize(
         createNumberIndexer(0, 6),
         (index) =>
