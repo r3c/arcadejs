@@ -3,7 +3,7 @@ import {
   createSelect,
   declare,
 } from "../../engine/application";
-import { Input } from "../../engine/io/controller";
+import { Input, Pointer } from "../../engine/io/controller";
 import { Context2DScreen } from "../../engine/graphic/display";
 import { Mesh, loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -12,8 +12,8 @@ import {
   SoftwareDrawMode,
   SoftwareRenderer,
 } from "../../engine/graphic/software";
-import { Vector3 } from "../../engine/math/vector";
-import { Camera, createOrbitCamera } from "../../engine/camera";
+import { Vector2 } from "../../engine/math/vector";
+import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 
 /*
  ** What changed?
@@ -45,7 +45,15 @@ const application: Application<
     const input = new Input(screen.canvas);
 
     return {
-      camera: createOrbitCamera(input, { x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: createOrbitCamera(
+        {
+          getRotate: () => input.fetchMove(Pointer.Grab),
+          getMove: () => input.fetchMove(Pointer.Drag),
+          getZoom: () => input.fetchZoom(),
+        },
+        { x: 0, y: 0, z: -5 },
+        Vector2.zero
+      ),
       cubeWithColor: await loadMeshFromJson("model/cube-color/mesh.json"),
       cubeWithTexture: await loadMeshFromJson("model/cube/mesh.json"),
       projection: Matrix4.identity,

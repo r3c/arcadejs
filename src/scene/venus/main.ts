@@ -31,7 +31,7 @@ import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
-import { Camera, createBehindCamera } from "../../engine/camera";
+import { Camera, createBehindCamera } from "../../engine/stage/camera";
 
 type Player = {
   rotation: MutableQuaternion;
@@ -288,7 +288,11 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
       position: Vector3.fromZero(),
     };
 
-    const camera = createBehindCamera(input, player.position, player.rotation);
+    const camera = createBehindCamera({
+      getPosition: () => player.position,
+      getRotation: () => player.rotation,
+      getZoom: () => input.fetchZoom(),
+    });
 
     // Create state
     const state: ApplicationState = {

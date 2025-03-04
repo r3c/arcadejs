@@ -5,7 +5,7 @@ import {
   createSelect,
   declare,
 } from "../../engine/application";
-import { Input } from "../../engine/io/controller";
+import { Input, Pointer } from "../../engine/io/controller";
 import { Renderer, WebGLScreen } from "../../engine/graphic/display";
 import {
   ForwardLightingLightModel,
@@ -15,7 +15,7 @@ import {
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
-import { MutableVector3, Vector3 } from "../../engine/math/vector";
+import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createCircleMover, createOrbitMover } from "../move";
 import {
@@ -30,7 +30,7 @@ import {
   DebugTextureChannel,
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
-import { Camera, createOrbitCamera } from "../../engine/camera";
+import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 
 /*
  ** What changed?
@@ -98,7 +98,15 @@ const application: Application<
 
     // Create state
     return {
-      camera: createOrbitCamera(input, { x: 0, y: 0, z: -5 }, Vector3.zero),
+      camera: createOrbitCamera(
+        {
+          getRotate: () => input.fetchMove(Pointer.Grab),
+          getMove: () => input.fetchMove(Pointer.Drag),
+          getZoom: () => input.fetchZoom(),
+        },
+        { x: 0, y: 0, z: -5 },
+        Vector2.zero
+      ),
       debugRenderer: new DebugTextureRenderer(runtime, target, {
         encoding: DebugTextureEncoding.Monochrome,
         channel: DebugTextureChannel.Red,
