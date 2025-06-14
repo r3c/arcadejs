@@ -1,4 +1,5 @@
 import { Quaternion } from "./quaternion";
+import { describe, expect, it } from "vitest";
 
 describe("Quaternion", () => {
   it.each`
