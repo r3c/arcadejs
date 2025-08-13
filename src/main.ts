@@ -7,5 +7,15 @@ import { process as forwardPbr } from "./scene/forward-pbr/main";
 import { process as deferred } from "./scene/deferred/main";
 import { process as venus } from "./scene/venus/main";
 import { process as voxel } from "./scene/voxel/main";
+import { process as collision } from "./scene/collision/main";
 
-run([blank, software, forwardPhong, forwardPbr, deferred, venus, voxel]);
+run([
+  blank,
+  software,
+  forwardPhong,
+  forwardPbr,
+  deferred,
+  venus,
+  voxel,
+  collision,
+]);

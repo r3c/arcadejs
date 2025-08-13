@@ -156,16 +156,14 @@ const createPlayerUpdater = (): Updater => {
   return (state, dt) => {
     const { input, player } = state;
 
-    const horizontalFactor =
-      (input.isPressed("arrowleft") ? 1 : 0) +
-      (input.isPressed("arrowright") ? -1 : 0);
-    const verticalFactor =
-      (input.isPressed("arrowdown") ? 1 : 0) +
-      (input.isPressed("arrowup") ? -1 : 0);
+    const horizontalDelta =
+      (input.isPressed("arrowleft") ? rThrust : 0) +
+      (input.isPressed("arrowright") ? -rThrust : 0);
+    const verticalDelta =
+      (input.isPressed("arrowdown") ? rThrust : 0) +
+      (input.isPressed("arrowup") ? -rThrust : 0);
 
-    const horizontalDelta = horizontalFactor * rThrust;
     const horizontalSpeed = h.impulse(horizontalDelta, rFriction, mass, dt);
-    const verticalDelta = verticalFactor * rThrust;
     const verticalSpeed = v.impulse(verticalDelta, rFriction, mass, dt);
 
     rotation.setFromRotation({ x: 0, y: 1, z: 0 }, horizontalSpeed);
