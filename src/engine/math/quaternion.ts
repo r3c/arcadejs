@@ -25,7 +25,7 @@ class MutableQuaternion implements Quaternion {
   }
 
   public getDot(rhs: Quaternion): number {
-    return this.scalar * rhs.scalar + this.vector.getDot(rhs.vector);
+    return this.scalar * rhs.scalar + Vector3.getDot(this.vector, rhs.vector);
   }
 
   public getNorm(): number {

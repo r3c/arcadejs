@@ -21,32 +21,22 @@ class MutableVector2 implements Vector2 {
     this.y += rhs.y;
   }
 
-  public getDot(rhs: Vector2): number {
-    return this.x * rhs.x + this.y * rhs.y;
-  }
-
-  public getNorm(): number {
-    const { x, y } = this;
-
-    return Math.sqrt(x * x + y * y);
-  }
-
   public negate(): void {
     this.x = -this.x;
     this.y = -this.y;
   }
 
   public normalize(): boolean {
-    const norm = this.getNorm();
+    const length = Vector2.getLength(this);
 
-    if (norm === 0) {
+    if (length === 0) {
       return false;
     }
 
-    const normInverse = 1 / norm;
+    const lengthInverse = 1 / length;
 
-    this.x *= normInverse;
-    this.y *= normInverse;
+    this.x *= lengthInverse;
+    this.y *= lengthInverse;
 
     return true;
   }
@@ -82,6 +72,16 @@ class MutableVector2 implements Vector2 {
 }
 
 class Vector2 {
+  public static getDot(a: Vector2, b: Vector2): number {
+    return a.x * b.x + a.y * b.y;
+  }
+
+  public static getLength(vector: Vector2): number {
+    const { x, y } = vector;
+
+    return Math.sqrt(x * x + y * y);
+  }
+
   public static fromSource(
     source: Vector2,
     ...invokes: InvokeOf<MutableVector2>[]
@@ -135,16 +135,6 @@ class MutableVector3 implements Vector3 {
     this.z = lx * ry - ly * rx;
   }
 
-  public getDot(rhs: Vector3): number {
-    return this.x * rhs.x + this.y * rhs.y + this.z * rhs.z;
-  }
-
-  public getNorm(): number {
-    const { x, y, z } = this;
-
-    return Math.sqrt(x * x + y * y + z * z);
-  }
-
   public map(callback: (v: number) => number): void {
     this.x = callback(this.x);
     this.y = callback(this.y);
@@ -158,13 +148,13 @@ class MutableVector3 implements Vector3 {
   }
 
   public normalize(): boolean {
-    const norm = this.getNorm();
+    const length = Vector3.getLength(this);
 
-    if (norm === 0) {
+    if (length === 0) {
       return false;
     }
 
-    const normInverse = 1 / norm;
+    const normInverse = 1 / length;
 
     this.x *= normInverse;
     this.y *= normInverse;
@@ -243,6 +233,16 @@ class Vector3 {
     ...invokes: InvokeOf<MutableVector3>[]
   ): MutableVector3 {
     return invokeOnObject(new MutableVector3(0, 0, 0), invokes);
+  }
+
+  public static getDot(a: Vector3, b: Vector3): number {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+  }
+
+  public static getLength(vector: Vector3): number {
+    const { x, y, z } = vector;
+
+    return Math.sqrt(x * x + y * y + z * z);
   }
 
   public static toArray(vector: Vector3): [number, number, number] {
