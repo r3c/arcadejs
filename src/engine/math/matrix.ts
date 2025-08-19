@@ -161,6 +161,18 @@ class MutableMatrix3 implements Matrix3 {
     this.v22 = 1 - 2 * (xx + yy);
   }
 
+  public setFromVectors(v0: Vector3, v1: Vector3, v2: Vector3): void {
+    this.v00 = v0.x;
+    this.v01 = v0.y;
+    this.v02 = v0.z;
+    this.v10 = v1.x;
+    this.v11 = v1.y;
+    this.v12 = v1.z;
+    this.v20 = v2.x;
+    this.v21 = v2.y;
+    this.v22 = v2.z;
+  }
+
   private compose(
     v00: number,
     v01: number,
