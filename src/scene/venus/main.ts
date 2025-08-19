@@ -32,6 +32,7 @@ import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 import { Camera, createBehindCamera } from "../../engine/stage/camera";
+import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 
 type Player = {
   rotation: MutableQuaternion;
@@ -143,10 +144,9 @@ const createPlayerUpdater = (): Updater => {
   const rotationSpeed = 0.02;
   const thrust = 0.02;
 
-  const acceleration = Vector3.fromZero();
+  const impulse = Vector3.fromZero();
+  const movement = createSemiImplicitEulerMovement();
   const rotation = Quaternion.fromIdentity();
-  const velocity = Vector3.fromZero();
-  const velocityDelta = Vector3.fromZero();
 
   return (state, dt) => {
     const { input, player } = state;
@@ -163,24 +163,13 @@ const createPlayerUpdater = (): Updater => {
     rotation.setFromRotation({ x: 1, y: 0, z: 0 }, verticalRotationSpeed);
     player.rotation.multiply(rotation);
 
-    // See: https://gafferongames.com/post/integration_basics/
     const accelerationFactor = input.isPressed("space") ? 1 : 0;
 
-    velocityDelta.set(velocity);
-    velocityDelta.scale(Math.min(dt * friction, 1));
+    impulse.setFromXYZ(0, 0, accelerationFactor * thrust);
+    impulse.rotate(player.rotation);
+    movement.nextFrame(impulse, friction, mass, dt);
 
-    acceleration.setFromXYZ(0, 0, accelerationFactor);
-    acceleration.rotate(player.rotation);
-    acceleration.scale((dt * thrust) / mass);
-    acceleration.sub(velocityDelta);
-
-    velocity.add(acceleration);
-
-    velocityDelta.set(velocity);
-    velocityDelta.scale(dt);
-
-    player.position.add(velocityDelta);
-
+    player.position.add(movement.currentVelocity);
     player.position.x = warp(player.position.x, 0, 10000);
     player.position.y = warp(player.position.y, 0, 10000);
     player.position.z = warp(player.position.z, 0, 10000);
