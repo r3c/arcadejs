@@ -139,37 +139,48 @@ const createParticleUpdater = (): Updater => {
 
 // Move player
 const createPlayerUpdater = (): Updater => {
-  const friction = 0.001;
   const mass = 1000;
-  const rotationSpeed = 0.02;
-  const thrust = 0.02;
+  const pFriction = 0.001;
+  const pThrust = 0.02;
+  const rFriction = 0.005;
+  const rThrust = 0.005;
 
-  const impulse = Vector3.fromZero();
-  const movement = createSemiImplicitEulerMovement();
+  const positionDelta = Vector3.fromZero();
   const rotation = Quaternion.fromIdentity();
+  const x = createSemiImplicitEulerMovement();
+  const y = createSemiImplicitEulerMovement();
+  const z = createSemiImplicitEulerMovement();
+  const h = createSemiImplicitEulerMovement();
+  const v = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
     const { input, player } = state;
 
-    const horizontalRotationSpeed =
-      (input.isPressed("arrowleft") ? rotationSpeed : 0) +
-      (input.isPressed("arrowright") ? -rotationSpeed : 0);
-    const verticalRotationSpeed =
-      (input.isPressed("arrowdown") ? rotationSpeed : 0) +
-      (input.isPressed("arrowup") ? -rotationSpeed : 0);
+    const horizontalFactor =
+      (input.isPressed("arrowleft") ? 1 : 0) +
+      (input.isPressed("arrowright") ? -1 : 0);
+    const verticalFactor =
+      (input.isPressed("arrowdown") ? 1 : 0) +
+      (input.isPressed("arrowup") ? -1 : 0);
 
-    rotation.setFromRotation({ x: 0, y: 1, z: 0 }, horizontalRotationSpeed);
+    const horizontalDelta = horizontalFactor * rThrust;
+    const horizontalSpeed = h.impulse(horizontalDelta, rFriction, mass, dt);
+    const verticalDelta = verticalFactor * rThrust;
+    const verticalSpeed = v.impulse(verticalDelta, rFriction, mass, dt);
+
+    rotation.setFromRotation({ x: 0, y: 1, z: 0 }, horizontalSpeed);
     player.rotation.multiply(rotation);
-    rotation.setFromRotation({ x: 1, y: 0, z: 0 }, verticalRotationSpeed);
+    rotation.setFromRotation({ x: 1, y: 0, z: 0 }, verticalSpeed);
     player.rotation.multiply(rotation);
 
-    const accelerationFactor = input.isPressed("space") ? 1 : 0;
+    const positionFactor = input.isPressed("space") ? 1 : 0;
 
-    impulse.setFromXYZ(0, 0, accelerationFactor * thrust);
-    impulse.rotate(player.rotation);
-    movement.nextFrame(impulse, friction, mass, dt);
+    positionDelta.setFromXYZ(0, 0, positionFactor * pThrust);
+    positionDelta.rotate(player.rotation);
 
-    player.position.add(movement.currentVelocity);
+    player.position.x += x.impulse(positionDelta.x, pFriction, mass, dt);
+    player.position.y += y.impulse(positionDelta.y, pFriction, mass, dt);
+    player.position.z += z.impulse(positionDelta.z, pFriction, mass, dt);
     player.position.x = warp(player.position.x, 0, 10000);
     player.position.y = warp(player.position.y, 0, 10000);
     player.position.z = warp(player.position.z, 0, 10000);
