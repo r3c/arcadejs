@@ -88,6 +88,10 @@ html {
   height: 100%;
 }
 
+.display canvas:focus {
+  outline: none;
+}
+
 .display div {
   margin: auto;
   width: 80%;

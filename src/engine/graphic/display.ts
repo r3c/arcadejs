@@ -22,6 +22,7 @@ class Screen {
 
     canvas.tabIndex = 0;
     canvas.focus();
+    canvas.onclick = () => canvas.focus();
 
     this.canvas = canvas;
     this.container = container;
