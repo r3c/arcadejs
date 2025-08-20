@@ -1,32 +1,19 @@
-import { Vector3 } from "../math/vector";
-
 type Movement = {
-  readonly currentVelocity: Vector3;
-
-  nextFrame(impulse: Vector3, friction: number, mass: number, dt: number): void;
+  impulse(delta: number, friction: number, mass: number, dt: number): number;
 };
 
 // See: https://gafferongames.com/post/integration_basics/
 const createSemiImplicitEulerMovement = (): Movement => {
-  const acceleration = Vector3.fromZero();
-  const output = Vector3.fromZero();
-  const resistance = Vector3.fromZero();
-  const velocity = Vector3.fromZero();
+  let velocity = 0;
 
   return {
-    currentVelocity: output,
-    nextFrame: (impulse, friction, mass, dt) => {
-      resistance.set(velocity);
-      resistance.scale(Math.min(dt * friction, 1));
+    impulse: (delta, friction, mass, dt) => {
+      const resistance = velocity * Math.min(dt * friction, 1);
+      const acceleration = (delta * dt) / mass - resistance;
 
-      acceleration.set(impulse);
-      acceleration.scale(dt / mass);
-      acceleration.sub(resistance);
+      velocity += acceleration;
 
-      velocity.add(acceleration);
-
-      output.set(velocity);
-      output.scale(dt);
+      return velocity * dt;
     },
   };
 };
