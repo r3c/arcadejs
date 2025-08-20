@@ -83,19 +83,19 @@ html {
   flex: 1;
 }
 
-.display canvas {
-  width: 100%;
-  height: 100%;
-}
-
-.display canvas:focus {
-  outline: none;
-}
-
-.display div {
+.screen {
   margin: auto;
   width: 80%;
   height: 80%;
   background: black;
   box-shadow: 0 0 10px black;
+}
+
+.screen canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.screen canvas:focus {
+  outline: none;
 }
