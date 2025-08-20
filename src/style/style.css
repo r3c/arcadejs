@@ -76,16 +76,26 @@ html {
   background: #BDF;
 }
 
+.debug {
+  display: none;
+  flex: 0 1 80%;
+  height: 80%;
+  background: grey;
+  box-shadow: 0 0 10px grey;
+  box-sizing: border-box;
+  padding: 8px;
+}
+
 .display {
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 1;
+  gap: 8px;
 }
 
 .screen {
-  margin: auto;
-  width: 80%;
+  flex: 0 1 80%;
   height: 80%;
   background: black;
   box-shadow: 0 0 10px black;

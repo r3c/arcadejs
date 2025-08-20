@@ -181,6 +181,12 @@ const declare = <TScreen extends Screen, TState, TTweak>(
 };
 
 const run = (applications: Process[]) => {
+  const debugContainer = document.getElementById("debug");
+
+  if (debugContainer === null) {
+    throw Error("missing debug container");
+  }
+
   const frameContainer = document.getElementById("frame");
 
   if (frameContainer === null) {
@@ -206,6 +212,13 @@ const run = (applications: Process[]) => {
 
   const expanderBuilder = createButton("Fullscreen");
   const expander = expanderBuilder(() => current?.requestFullscreen());
+
+  const inspectorBuilder = createButton("Debug");
+  const inspector = inspectorBuilder(
+    () =>
+      (debugContainer.style.display =
+        debugContainer.style.display === "block" ? "none" : "block")
+  );
 
   const selectorOptions = applications.map(({ title }) => title);
   const selectorBuilder = createSelect(undefined, selectorOptions, hashValue);
@@ -253,6 +266,7 @@ const run = (applications: Process[]) => {
   };
 
   sceneContainer.appendChild(expander);
+  sceneContainer.appendChild(inspector);
   sceneContainer.appendChild(selector);
 
   tick(0);
