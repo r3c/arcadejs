@@ -81,86 +81,6 @@ const directiveFormat = (value: GlShaderDirectiveValue): string => {
   }
 };
 
-const bindShader = <TState>(
-  gl: GlContext,
-  program: WebGLProgram,
-  useProgram: (program: WebGLProgram) => void,
-  allocateTextureIndex: () => number,
-  defaultValue: GlShaderDefault
-): GlShaderBinding<TState> => {
-  const attributes: GlBinderMap<TState> = new Map();
-  const uniforms: GlBinderMap<TState> = new Map();
-
-  return {
-    bind: (state) => {
-      useProgram(program);
-
-      for (const binding of attributes.values()) {
-        binding(state);
-      }
-
-      for (const binding of uniforms.values()) {
-        binding(state);
-      }
-    },
-
-    setAttribute: (name, getter) => {
-      if (attributes.has(name)) {
-        throw new Error(`cannot set attribute "${name}" twice`);
-      }
-
-      const location = gl.getAttribLocation(program, name);
-
-      if (location === -1) {
-        throw Error(`cound not find location of attribute "${name}"`);
-      }
-
-      attributes.set(name, (state: TState) => {
-        const attribute = getter(state);
-
-        if (attribute === undefined) {
-          throw Error(`undefined geometry attribute "${name}"`);
-        }
-
-        const { buffer, stride } = attribute;
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
-        gl.vertexAttribPointer(
-          location,
-          stride,
-          buffer.type,
-          false,
-          buffer.bytesPerElement * stride,
-          0
-        );
-        gl.enableVertexAttribArray(location);
-      });
-    },
-
-    setUniform: (name, accessor) => {
-      if (uniforms.has(name)) {
-        throw new Error(`cannot set uniform "${name}" twice`);
-      }
-
-      const { allocateTexture, createValue, readValue, setUniform } = accessor;
-      const currentValue = createValue(gl);
-      const textureIndex = allocateTexture ? allocateTextureIndex() : 0;
-
-      const location = gl.getUniformLocation(program, name);
-
-      if (location === null) {
-        throw Error(`cound not find location of uniform "${name}"`);
-      }
-
-      uniforms.set(name, (state: TState) => {
-        const uniform = readValue(state, currentValue, defaultValue);
-
-        setUniform(gl, location, uniform, textureIndex);
-      });
-    },
-  };
-};
-
 const compileShader = (
   gl: GlContext,
   shaderType: number,
@@ -275,14 +195,78 @@ const createShader = (
   return {
     declare: <TState>(): GlShaderBinding<TState> => {
       const allocateTextureIndex = () => textureIndex++;
+      const attributes: GlBinderMap<TState> = new Map();
+      const uniforms: GlBinderMap<TState> = new Map();
 
-      return bindShader(
-        gl,
-        program,
-        useProgram,
-        allocateTextureIndex,
-        shaderDefault
-      );
+      return {
+        bind: (state) => {
+          useProgram(program);
+
+          for (const binding of attributes.values()) {
+            binding(state);
+          }
+
+          for (const binding of uniforms.values()) {
+            binding(state);
+          }
+        },
+
+        setAttribute: (name, getter) => {
+          if (attributes.has(name)) {
+            throw new Error(`cannot set attribute "${name}" twice`);
+          }
+
+          const location = gl.getAttribLocation(program, name);
+
+          if (location === -1) {
+            throw Error(`cound not find location of attribute "${name}"`);
+          }
+
+          attributes.set(name, (state: TState) => {
+            const attribute = getter(state);
+
+            if (attribute === undefined) {
+              throw Error(`undefined geometry attribute "${name}"`);
+            }
+
+            const { buffer, stride } = attribute;
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer.buffer);
+            gl.vertexAttribPointer(
+              location,
+              stride,
+              buffer.type,
+              false,
+              buffer.bytesPerElement * stride,
+              0
+            );
+            gl.enableVertexAttribArray(location);
+          });
+        },
+
+        setUniform: (name, accessor) => {
+          if (uniforms.has(name)) {
+            throw new Error(`cannot set uniform "${name}" twice`);
+          }
+
+          const { allocateTexture, createValue, readValue, setUniform } =
+            accessor;
+          const currentValue = createValue(gl);
+          const textureIndex = allocateTexture ? allocateTextureIndex() : 0;
+
+          const location = gl.getUniformLocation(program, name);
+
+          if (location === null) {
+            throw Error(`cound not find location of uniform "${name}"`);
+          }
+
+          uniforms.set(name, (state: TState) => {
+            const uniform = readValue(state, currentValue, shaderDefault);
+
+            setUniform(gl, location, uniform, textureIndex);
+          });
+        },
+      };
     },
     dispose: () => {
       gl.deleteProgram(program);
