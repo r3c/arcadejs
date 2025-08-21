@@ -64,21 +64,21 @@ uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coordinate;
-in vec3 normals; // FIXME: remove plural
-in vec3 position;
+in vec2 coordinates;
+in vec3 normals;
+in vec3 positions;
 in vec3 tangents;
 
 out vec3 bitangent; // Bitangent at point in camera space
-out vec2 coord; // Texture coordinate
+out vec2 coordinate; // Texture coordinate
 out vec3 normal; // Normal at point in camera space
 out vec3 point; // Point position in camera space
 out vec3 tangent; // Tangent at point in camera space
 
 void main(void) {
-  vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
+  vec4 pointCamera = viewMatrix * modelMatrix * vec4(positions, 1.0);
 
-  coord = coordinate;
+  coordinate = coordinates;
   normal = normalize(normalMatrix * normals);
   point = pointCamera.xyz;
   tangent = normalize(normalMatrix * tangents);
@@ -107,7 +107,7 @@ ${shininessEncode.declare()}
 ${standardToLinear.declare()}
 
 in vec3 bitangent;
-in vec2 coord;
+in vec2 coordinate;
 in vec3 normal;
 in vec3 point;
 in vec3 tangent;
@@ -119,9 +119,9 @@ void main(void) {
   mat3 tbn = mat3(tangent, bitangent, normal);
 
   vec3 eye = normalize(-point);
-  vec2 coordParallax = ${parallaxPerturb.invoke(
+  vec2 coordinateParallax = ${parallaxPerturb.invoke(
     "heightMap",
-    "coord",
+    "coordinate",
     "eye",
     "heightParallaxScale",
     "heightParallaxBias",
@@ -129,7 +129,7 @@ void main(void) {
   )};
 
   // Color target 1: [diffuse.rgb, shininess]
-  vec4 diffuseSample = texture(diffuseMap, coordParallax);
+  vec4 diffuseSample = texture(diffuseMap, coordinateParallax);
   vec3 diffuseLinear = ${standardToLinear.invoke("diffuseSample.rgb")};
   vec3 diffuse = diffuseColor.rgb * diffuseLinear;
   float shininessPack = ${shininessEncode.invoke("shininess")};
@@ -139,12 +139,12 @@ void main(void) {
   // Color target 2: [normal.xy, zero, specular]
   vec3 normalModified = ${normalPerturb.invoke(
     "normalMap",
-    "coordParallax",
+    "coordinateParallax",
     "tbn"
   )};
   vec2 normalPack = ${normalEncode.invoke("normalModified")};
 
-  vec4 specularSample = texture(specularMap, coordParallax);
+  vec4 specularSample = texture(specularMap, coordinateParallax);
   vec3 specularLinear = ${standardToLinear.invoke("specularSample.rgb")};
   float specular = ${luminance.invoke("specularColor.rgb * specularLinear")};
 
@@ -161,10 +161,10 @@ uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec4 position;
+in vec4 positions;
 
 void main(void) {
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * positions;
 }`;
 
 const ambientFragmentShader = `
@@ -175,10 +175,10 @@ uniform sampler2D diffuseAndShininess;
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-  ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
+  ivec2 bufferCoordinate = ivec2(gl_FragCoord.xy);
 
   // Read samples from texture buffers
-  vec4 diffuseAndShininessSample = texelFetch(diffuseAndShininess, bufferCoord, 0);
+  vec4 diffuseAndShininessSample = texelFetch(diffuseAndShininess, bufferCoordinate, 0);
 
   // Decode geometry and material properties from samples
   vec3 materialDiffuse = diffuseAndShininessSample.rgb;
@@ -275,12 +275,12 @@ vec3 getPoint(in float depthClip) {
 }
 
 void main(void) {
-  ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
+  ivec2 bufferCoordinate = ivec2(gl_FragCoord.xy);
 
   // Read samples from texture buffers
-  vec4 diffuseAndShininessSample = texelFetch(diffuseAndShininess, bufferCoord, 0);
-  vec4 depthSample = texelFetch(depth, bufferCoord, 0);
-  vec4 normalAndSpecularSample = texelFetch(normalAndSpecular, bufferCoord, 0);
+  vec4 diffuseAndShininessSample = texelFetch(diffuseAndShininess, bufferCoordinate, 0);
+  vec4 depthSample = texelFetch(depth, bufferCoordinate, 0);
+  vec4 normalAndSpecularSample = texelFetch(normalAndSpecular, bufferCoordinate, 0);
 
   // Decode geometry and material properties from samples
   vec3 diffuseColor = diffuseAndShininessSample.rgb;
@@ -288,7 +288,7 @@ void main(void) {
   vec3 specularColor = normalAndSpecularSample.bbb;
   float shininess = ${shininessDecode.invoke("diffuseAndShininessSample.a")};
 
-  // Compute point in camera space from fragment coord and depth buffer
+  // Compute point in camera space from fragment coordinate and depth buffer
   vec3 point = getPoint(depthSample.r);
   vec3 eye = normalize(-point);
 
@@ -323,10 +323,10 @@ void main(void) {
 }`;
 
 const postVertexShader = `
-in vec3 position;
+in vec3 positions;
 
 void main(void) {
-  gl_Position = vec4(position, 1.0);
+  gl_Position = vec4(positions, 1.0);
 }`;
 
 const postFragmentShader = `
@@ -337,8 +337,8 @@ uniform sampler2D source;
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-  ivec2 bufferCoord = ivec2(gl_FragCoord.xy);
-  vec3 scene = texelFetch(source, bufferCoord, 0).rgb;
+  ivec2 bufferCoordinate = ivec2(gl_FragCoord.xy);
+  vec3 scene = texelFetch(source, bufferCoordinate, 0).rgb;
 
   fragColor = vec4(${linearToStandard.invoke("scene")}, 1.0);
 }`;
@@ -426,7 +426,7 @@ const loadAmbientPainter = (
 
   const polygonBinding = shader.declare<GlPolygon>();
 
-  polygonBinding.setAttribute("position", ({ position }) => position);
+  polygonBinding.setAttribute("positions", ({ position }) => position);
 
   const geometryBinding = shader.declare<GlGeometry>();
 
@@ -476,9 +476,9 @@ const loadGeometryPainter = (
 
   const polygonBinding = shader.declare<GlPolygon>();
 
-  polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
-  polygonBinding.setAttribute("normals", ({ normal }) => normal); // FIXME: remove plural
-  polygonBinding.setAttribute("position", ({ position }) => position);
+  polygonBinding.setAttribute("coordinates", ({ coordinate }) => coordinate);
+  polygonBinding.setAttribute("normals", ({ normal }) => normal);
+  polygonBinding.setAttribute("positions", ({ position }) => position);
   polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
 
   const geometryBinding = shader.declare<GlGeometry>();
@@ -685,7 +685,7 @@ const loadPostPainter = (runtime: GlRuntime) => {
   const shader = runtime.createShader(postVertexShader, postFragmentShader, {});
   const binding = shader.declare<PostScene>();
 
-  binding.setAttribute("position", ({ position }) => position);
+  binding.setAttribute("positions", ({ position }) => position);
   binding.setUniform(
     "source",
     shaderUniform.tex2dBlack(({ source }) => source)
