@@ -153,13 +153,13 @@ uniform mat4 projectionMatrix;
 uniform mat4 shadowProjectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coordinate;
+in vec2 coordinates;
 in vec3 normals;
-in vec3 position;
+in vec3 positions;
 in vec3 tangents;
 
 out vec3 bitangent; // Bitangent at point in camera space
-out vec2 coord; // Texture coordinate
+out vec2 coordinate; // Texture coordinate
 out vec3 eye; // Direction from point to eye in camera space
 out vec3 normal; // Normal at point in camera space
 out vec3 tangent; // Tangent at point in camera space
@@ -179,7 +179,7 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 }
 
 void main(void) {
-  vec4 pointWorld = modelMatrix * vec4(position, 1.0);
+  vec4 pointWorld = modelMatrix * vec4(positions, 1.0);
   vec4 pointCamera = viewMatrix * pointWorld;
 
   // Process directional lights
@@ -204,7 +204,7 @@ void main(void) {
     pointLightDistances[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
   }
 
-  coord = coordinate;
+  coordinate = coordinates;
   eye = -pointCamera.xyz;
   normal = normalize(normalMatrix * normals);
   tangent = normalize(normalMatrix * tangents);
@@ -259,7 +259,7 @@ ${pbrLight.declare()}
 #endif
 
 in vec3 bitangent;
-in vec2 coord;
+in vec2 coordinate;
 in vec3 eye;
 in vec3 normal;
 in vec3 tangent;
@@ -295,9 +295,9 @@ void main(void) {
   mat3 tbn = mat3(tangent, bitangent, normal);
 
   vec3 eyeDirection = normalize(eye);
-  vec2 coordParallax = ${parallaxPerturb.invoke(
+  vec2 coordinateParallax = ${parallaxPerturb.invoke(
     "heightMap",
-    "coord",
+    "coordinate",
     "eyeDirection",
     "heightParallaxScale",
     "heightParallaxBias",
@@ -305,7 +305,7 @@ void main(void) {
   )};
   vec3 modifiedNormal = ${normalPerturb.invoke(
     "normalMap",
-    "coordParallax",
+    "coordinateParallax",
     "tbn"
   )};
 
@@ -319,7 +319,7 @@ void main(void) {
   "roughnessMap",
   "roughnessStrength",
   "shininess",
-  "coordParallax"
+  "coordinateParallax"
 )};
 
   // Apply environment (ambient or influence-based) lighting
@@ -381,11 +381,11 @@ void main(void) {
     .join("\n")}
 
   // Apply occlusion component
-  color = mix(color, color * texture(occlusionMap, coordParallax).r, occlusionStrength);
+  color = mix(color, color * texture(occlusionMap, coordinateParallax).r, occlusionStrength);
 
   // Apply emissive component
   color += emissiveColor.rgb * ${standardToLinear.invoke(
-    "texture(emissiveMap, coordParallax).rgb"
+    "texture(emissiveMap, coordinateParallax).rgb"
   )};
 
   fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
@@ -396,10 +396,10 @@ uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec4 position;
+in vec4 positions;
 
 void main(void) {
-  gl_Position = projectionMatrix * viewMatrix * modelMatrix * position;
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * positions;
 }`;
 
 const shadowDirectionalFragmentShader = `
@@ -467,9 +467,9 @@ const createLightPainter = (
   // Bind geometry attributes
   const polygonBinding = shader.declare<GlPolygon>();
 
-  polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
-  polygonBinding.setAttribute("normals", ({ normal }) => normal); // FIXME: remove plural
-  polygonBinding.setAttribute("position", ({ position }) => position);
+  polygonBinding.setAttribute("coordinates", ({ coordinate }) => coordinate);
+  polygonBinding.setAttribute("normals", ({ normal }) => normal);
+  polygonBinding.setAttribute("positions", ({ position }) => position);
   polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
 
   // Bind matrix uniforms
@@ -725,7 +725,7 @@ const createDirectionalShadowPainter = (
 ): GlPainter<ShadowScene> => {
   const polygonBinding = shader.declare<GlPolygon>();
 
-  polygonBinding.setAttribute("position", ({ position }) => position);
+  polygonBinding.setAttribute("positions", ({ position }) => position);
 
   const geometryBinding = shader.declare<GlGeometry>();
 
