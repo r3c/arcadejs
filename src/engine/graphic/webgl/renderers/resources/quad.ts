@@ -1,5 +1,5 @@
 import { Matrix4 } from "../../../../math/matrix";
-import { Mesh } from "../../../model";
+import { Mesh } from "../../../mesh";
 
 const mesh: Mesh = {
   children: [],

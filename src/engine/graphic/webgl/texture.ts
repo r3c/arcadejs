@@ -1,5 +1,5 @@
 import { Disposable } from "../../language/lifecycle";
-import { Filter, Interpolation, Wrap } from "../model";
+import { Filter, Interpolation, Wrap } from "../mesh";
 import { GlContext } from "./resource";
 
 /**

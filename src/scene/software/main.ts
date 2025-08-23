@@ -5,9 +5,9 @@ import {
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
 import { Context2DScreen } from "../../engine/graphic/display";
-import { Mesh, loadMeshFromJson } from "../../engine/graphic/model";
+import { Mesh, loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
-import {} from "../../engine/graphic/model";
+import {} from "../../engine/graphic/mesh";
 import {
   SoftwareDrawMode,
   SoftwareRenderer,

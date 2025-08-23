@@ -14,7 +14,7 @@ import { Input, Pointer } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
-import { loadMeshFromGltf, loadMeshFromJson } from "../../engine/graphic/model";
+import { loadMeshFromGltf, loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
 import {

@@ -1,6 +1,6 @@
 import { Context2DScreen } from "./display";
 import { Matrix4 } from "../math/matrix";
-import { Material, Mesh, defaultColor } from "../graphic/model";
+import { Material, Mesh, defaultColor } from "./mesh";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 import { Renderer } from "./display";
 
