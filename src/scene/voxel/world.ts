@@ -1,5 +1,9 @@
-import { flattenMesh, mergeMeshes } from "../../engine/graphic/model";
-import { Instance, Mesh } from "../../engine/graphic/model/definition";
+import {
+  Mesh,
+  MeshInstance,
+  createFlattenedMesh,
+  createMergedMesh,
+} from "../../engine/graphic/model";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
@@ -186,7 +190,7 @@ const createWorldGraphic = (
 
   const library = createLibrary(
     runtime.context,
-    mergeMeshes(
+    createMergedMesh(
       meshes.flatMap((faces) =>
         faces.map((face) => ({
           mesh: face,
@@ -222,7 +226,7 @@ const createWorldGraphic = (
 
           chunkObjects[chunkIndex].model.dispose();
 
-          const instances: Instance[] = [];
+          const instances: MeshInstance[] = [];
           const nextOffset = Vector3.fromZero();
 
           for (const [key, cube] of chunk.cubes.entries()) {
@@ -245,8 +249,8 @@ const createWorldGraphic = (
             }
           }
 
-          const mergedModel = mergeMeshes(instances);
-          const flattenedModel = flattenMesh(mergedModel);
+          const mergedModel = createMergedMesh(instances);
+          const flattenedModel = createFlattenedMesh(mergedModel);
           const model = createModel(runtime.context, flattenedModel, {
             library,
           });

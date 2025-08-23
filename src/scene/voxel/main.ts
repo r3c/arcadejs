@@ -6,7 +6,7 @@ import {
   ForwardLightingScene,
 } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
-import { loadMeshFromJson } from "../../engine/graphic/model";
+import { Library, loadMeshFromJson } from "../../engine/graphic/model";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
@@ -18,7 +18,6 @@ import {
 import { noise } from "./perlin";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createOrbitMover } from "../move";
-import { Library } from "../../engine/graphic/model/definition";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 

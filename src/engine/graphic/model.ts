@@ -3,7 +3,6 @@ import { Vector2, Vector3, Vector4 } from "../math/vector";
 import {
   BoundingBox,
   Filter,
-  Instance,
   Interpolation,
   Library,
   Material,
@@ -23,6 +22,11 @@ import { load as loadFromObj } from "./model/loaders/obj";
 type Configuration<TFormat> = {
   format: TFormat;
   library: Library;
+  transform: Matrix4;
+};
+
+type MeshInstance = {
+  mesh: Mesh;
   transform: Matrix4;
 };
 
@@ -154,77 +158,10 @@ const computeTangents = (
   return tangents;
 };
 
-const createMeshLoader = <TSource, TFormat>(
-  loadCallback: (
-    source: TSource,
-    library: Library,
-    formatConfiguration: TFormat | undefined
-  ) => Promise<Mesh>
-): ((
-  source: TSource,
-  configurationOrUndefined?: Partial<Configuration<TFormat>>
-) => Promise<Mesh>) => {
-  return async (source, configurationOrUndefined) => {
-    // Load model using underlying loading callback
-    const configuration = configurationOrUndefined ?? {};
-    const library = configuration.library ?? { textures: new Map() };
-    const mesh = await loadCallback(source, library, configuration.format);
-
-    // Transform top-level meshes using provided transform matrix if any
-    const transform = configuration.transform;
-
-    if (transform !== undefined) {
-      mesh.transform = Matrix4.fromSource(transform, [
-        "multiply",
-        mesh.transform,
-      ]);
-    }
-
-    // Finalize meshes recursively
-    finalizeMesh(mesh);
-
-    return mesh;
-  };
-};
-
-const finalizeMesh = (mesh: Mesh): void => {
-  mesh.children.forEach((child) => finalizeMesh(child));
-  mesh.polygons.forEach((mesh) => finalizePolygon(mesh));
-};
-
-const finalizePolygon = (polygon: Polygon): void => {
-  // Transform normals or compute them from vertices
-  if (polygon.normals !== undefined) {
-    const normals = polygon.normals;
-
-    for (let i = 0; i < normals.length; ++i) {
-      normals[i] = Vector3.fromSource(normals[i], ["normalize"]);
-    }
-  } else {
-    polygon.normals = computeNormals(polygon.indices, polygon.positions);
-  }
-
-  // Transform tangents or compute them from vertices, normals and texture coordinates
-  if (polygon.tangents !== undefined) {
-    const tangents = polygon.tangents;
-
-    for (let i = 0; i < tangents.length; ++i) {
-      tangents[i] = Vector3.fromSource(tangents[i], ["normalize"]);
-    }
-  } else if (polygon.coordinates !== undefined) {
-    polygon.tangents = computeTangents(
-      polygon.indices,
-      polygon.positions,
-      polygon.coordinates,
-      polygon.normals
-    );
-  }
-};
-
-const flattenMesh = (mesh: Mesh): Mesh => {
+const createFlattenedMesh = (mesh: Mesh): Mesh => {
   const flatPolygons = new Map<Material | undefined, Polygon>();
 
-  flattenPolygons(flatPolygons, mesh, Matrix4.identity);
+  createFlattenedPolygons(flatPolygons, mesh, Matrix4.identity);
 
   return {
     children: [],
@@ -233,7 +170,7 @@ const flattenMesh = (mesh: Mesh): Mesh => {
   };
 };
 
-const flattenPolygons = (
+const createFlattenedPolygons = (
   flatPolygons: Map<Material | undefined, Polygon>,
   mesh: Mesh,
   parentTransform: Matrix4
@@ -309,16 +246,11 @@ const flattenPolygons = (
   }
 
   for (const child of mesh.children) {
-    flattenPolygons(flatPolygons, child, transform);
+    createFlattenedPolygons(flatPolygons, child, transform);
   }
 };
 
-const loadMeshFrom3ds = createMeshLoader(loadFrom3ds);
-const loadMeshFromGltf = createMeshLoader(loadFromGltf);
-const loadMeshFromJson = createMeshLoader(loadFromJson);
-const loadMeshFromObj = createMeshLoader(loadFromObj);
-
-const mergeMeshes = (instances: Iterable<Instance>): Mesh => {
+const createMergedMesh = (instances: Iterable<MeshInstance>): Mesh => {
   const children: Mesh[] = [];
 
   for (const { mesh, transform } of instances) {
@@ -331,6 +263,78 @@ const mergeMeshes = (instances: Iterable<Instance>): Mesh => {
 
   return { children, polygons: [], transform: Matrix4.identity };
 };
+
+const createMeshLoader = <TSource, TFormat>(
+  loadCallback: (
+    source: TSource,
+    library: Library,
+    formatConfiguration: TFormat | undefined
+  ) => Promise<Mesh>
+): ((
+  source: TSource,
+  configurationOrUndefined?: Partial<Configuration<TFormat>>
+) => Promise<Mesh>) => {
+  return async (source, configurationOrUndefined) => {
+    // Load model using underlying loading callback
+    const configuration = configurationOrUndefined ?? {};
+    const library = configuration.library ?? { textures: new Map() };
+    const mesh = await loadCallback(source, library, configuration.format);
+
+    // Transform top-level meshes using provided transform matrix if any
+    const transform = configuration.transform;
+
+    if (transform !== undefined) {
+      mesh.transform = Matrix4.fromSource(transform, [
+        "multiply",
+        mesh.transform,
+      ]);
+    }
+
+    // Finalize meshes recursively
+    finalizeMesh(mesh);
+
+    return mesh;
+  };
+};
+
+const finalizeMesh = (mesh: Mesh): void => {
+  mesh.children.forEach((child) => finalizeMesh(child));
+  mesh.polygons.forEach((mesh) => finalizePolygon(mesh));
+};
+
+const finalizePolygon = (polygon: Polygon): void => {
+  // Transform normals or compute them from vertices
+  if (polygon.normals !== undefined) {
+    const normals = polygon.normals;
+
+    for (let i = 0; i < normals.length; ++i) {
+      normals[i] = Vector3.fromSource(normals[i], ["normalize"]);
+    }
+  } else {
+    polygon.normals = computeNormals(polygon.indices, polygon.positions);
+  }
+
+  // Transform tangents or compute them from vertices, normals and texture coordinates
+  if (polygon.tangents !== undefined) {
+    const tangents = polygon.tangents;
+
+    for (let i = 0; i < tangents.length; ++i) {
+      tangents[i] = Vector3.fromSource(tangents[i], ["normalize"]);
+    }
+  } else if (polygon.coordinates !== undefined) {
+    polygon.tangents = computeTangents(
+      polygon.indices,
+      polygon.positions,
+      polygon.coordinates,
+      polygon.normals
+    );
+  }
+};
+
+const loadMeshFrom3ds = createMeshLoader(loadFrom3ds);
+const loadMeshFromGltf = createMeshLoader(loadFromGltf);
+const loadMeshFromJson = createMeshLoader(loadFromJson);
+const loadMeshFromObj = createMeshLoader(loadFromObj);
 
 const reduceMesh = <TState>(
   mesh: Mesh,
@@ -381,8 +385,10 @@ const reduceMeshPositions = <TState>(
 
 export {
   type Filter,
+  type Library,
   type Material,
   type Mesh,
+  type MeshInstance,
   type Polygon,
   type Texture,
   Interpolation,
@@ -392,10 +398,10 @@ export {
   changeMeshCenter,
   computeBoundingBox,
   computeCenter,
-  flattenMesh,
+  createFlattenedMesh,
+  createMergedMesh,
   loadMeshFrom3ds,
   loadMeshFromGltf,
   loadMeshFromJson,
   loadMeshFromObj,
-  mergeMeshes,
 };
