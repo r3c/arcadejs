@@ -36,11 +36,6 @@ interface Polygon {
   tints?: Vector4[];
 }
 
-interface Instance {
-  mesh: Mesh;
-  transform: Matrix4;
-}
-
 interface Material {
   diffuseColor?: Vector4;
   diffuseMap?: Texture;
@@ -95,7 +90,6 @@ const defaultFilter: Filter = {
 export {
   type BoundingBox,
   type Filter,
-  type Instance,
   type Library,
   type Material,
   type Mesh,

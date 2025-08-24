@@ -2,7 +2,7 @@ import { range } from "../../../language/iterable";
 import { Matrix4 } from "../../../math/matrix";
 import { Vector3 } from "../../../math/vector";
 import { Renderer } from "../../display";
-import { Mesh, Polygon, flattenMesh } from "../../model";
+import { Mesh, Polygon, createFlattenedMesh } from "../../model";
 import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
 import { WirePainter } from "../painters/wire";
 import {
@@ -103,7 +103,7 @@ const extractLines = (
   const tintBuffer = createStaticArrayBuffer(gl, Float32Array);
   const tint = createAttribute(tintBuffer, 3);
 
-  const flat = flattenMesh(mesh);
+  const flat = createFlattenedMesh(mesh);
   const positionArray = [];
   const tintArray = [];
 
