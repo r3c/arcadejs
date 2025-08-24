@@ -2,7 +2,7 @@ import { range } from "../../../language/iterable";
 import { Matrix4 } from "../../../math/matrix";
 import { Vector3 } from "../../../math/vector";
 import { Renderer } from "../../display";
-import { Mesh, Polygon, createFlattenedMesh } from "../../model";
+import { Mesh, Polygon, createFlattenedMesh } from "../../mesh";
 import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
 import { WirePainter } from "../painters/wire";
 import {

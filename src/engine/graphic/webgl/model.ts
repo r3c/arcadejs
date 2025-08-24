@@ -2,7 +2,7 @@ import { mapOptional } from "../../language/optional";
 import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
-import { Material, Mesh, Polygon, Texture } from "../model";
+import { Material, Mesh, Polygon, Texture } from "../mesh";
 import {
   GlBuffer,
   GlContext,

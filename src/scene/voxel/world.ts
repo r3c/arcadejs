@@ -3,7 +3,7 @@ import {
   MeshInstance,
   createFlattenedMesh,
   createMergedMesh,
-} from "../../engine/graphic/model";
+} from "../../engine/graphic/mesh";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";

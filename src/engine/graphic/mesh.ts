@@ -12,12 +12,12 @@ import {
   Wrap,
   defaultColor,
   defaultFilter,
-} from "./model/definition";
+} from "./mesh/definition";
 import { range } from "../language/iterable";
-import { load as loadFrom3ds } from "./model/loaders/3ds";
-import { load as loadFromGltf } from "./model/loaders/gltf";
-import { load as loadFromJson } from "./model/loaders/json";
-import { load as loadFromObj } from "./model/loaders/obj";
+import { load as loadFrom3ds } from "./mesh/loaders/3ds";
+import { load as loadFromGltf } from "./mesh/loaders/gltf";
+import { load as loadFromJson } from "./mesh/loaders/json";
+import { load as loadFromObj } from "./mesh/loaders/obj";
 
 type Configuration<TFormat> = {
   format: TFormat;
@@ -45,7 +45,7 @@ const changeMeshCenter = (mesh: Mesh): Mesh => {
 };
 
 /**
- * Compute bouding box around given model.
+ * Compute bouding box around given mesh.
  */
 const computeBoundingBox = (mesh: Mesh): BoundingBox => {
   return reduceMeshPositions<BoundingBox>(
@@ -275,7 +275,7 @@ const createMeshLoader = <TSource, TFormat>(
   configurationOrUndefined?: Partial<Configuration<TFormat>>
 ) => Promise<Mesh>) => {
   return async (source, configurationOrUndefined) => {
-    // Load model using underlying loading callback
+    // Load mesh using underlying loading callback
     const configuration = configurationOrUndefined ?? {};
     const library = configuration.library ?? { textures: new Map() };
     const mesh = await loadCallback(source, library, configuration.format);

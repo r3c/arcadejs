@@ -1,6 +1,6 @@
 import { range } from "../language/iterable";
 import { Matrix3, Matrix4 } from "../math/matrix";
-import { Filter, Interpolation, Wrap, defaultFilter } from "./model";
+import { Filter, Interpolation, Wrap, defaultFilter } from "./mesh";
 import { MutableVector2, Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
 import { Disposable } from "../language/lifecycle";

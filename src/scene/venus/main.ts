@@ -12,7 +12,7 @@ import {
   loadMeshFrom3ds,
   loadMeshFromJson,
   loadMeshFromObj,
-} from "../../engine/graphic/model";
+} from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
