@@ -71,6 +71,7 @@ type GlPolygon = Disposable & {
 };
 
 type GlPrimitive = Disposable & {
+  // FIXME: rename to `indexBuffer`
   index: GlBuffer;
   material: GlMaterial;
   polygon: GlPolygon;

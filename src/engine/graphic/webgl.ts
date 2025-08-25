@@ -38,6 +38,7 @@ type GlDrawMode =
   | WebGL2RenderingContext["TRIANGLES"]
   | WebGL2RenderingContext["LINES"];
 
+// FIXME: delete class once not used anymore
 type GlGeometry = {
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
