@@ -1,10 +1,6 @@
 import { Application, declare } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import {
-  ForwardLightingRenderer,
-  ForwardLightingScene,
-} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { Library, loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -20,10 +16,15 @@ import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createOrbitMover } from "../move";
 import { GlModel, createModel } from "../../engine/graphic/webgl/model";
 import { Camera, createOrbitCamera } from "../../engine/stage/camera";
+import {
+  createForwardLightingRenderer,
+  ForwardLightingRenderer,
+  ForwardLightingScene,
+  RendererSubject,
+} from "../../engine/graphic/renderer";
 
 type ApplicationState = {
   camera: Camera;
-  currentOffset: Vector3;
   input: Input;
   lights: {
     mover: Mover;
@@ -35,9 +36,8 @@ type ApplicationState = {
   };
   move: number;
   projectionMatrix: Matrix4;
-  renderers: {
-    forwardLighting: ForwardLightingRenderer;
-  };
+  renderer: ForwardLightingRenderer;
+  selectSubject: RendererSubject;
   target: GlTarget;
   time: number;
   worldGraphic: WorldGraphic;
@@ -101,8 +101,15 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
     };
 
     // Create world
+    const maxLights = 3;
+    const renderer = createForwardLightingRenderer(runtime, target, {
+      maxPointLights: maxLights,
+      noShadow: true,
+    });
+
     const worldGraphic = createWorldGraphic(
       runtime,
+      renderer,
       worldChunkCount,
       worldChunkSize,
       worldScale,
@@ -138,13 +145,15 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       },
     });
 
+    // Create select box
+    const selectSubject = renderer.register({ model: select, noShadow: false });
+
     // Create state
     const maxWorldRenderSize = Math.max(
       worldGraphic.renderSize.x,
       worldGraphic.renderSize.y,
       worldGraphic.renderSize.z
     );
-    const maxLights = 3;
 
     return {
       camera: createOrbitCamera(
@@ -156,7 +165,6 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
         { x: 0, y: 0, z: -maxWorldRenderSize * 2 },
         { x: -Math.PI / 8, y: (5 * Math.PI) / 4 }
       ),
-      currentOffset: Vector3.zero,
       input,
       lights: range(maxLights).map((i) => ({
         mover: createOrbitMover(i, 1, maxWorldRenderSize, 1),
@@ -173,12 +181,8 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       },
       move: 0,
       projectionMatrix: Matrix4.identity,
-      renderers: {
-        forwardLighting: new ForwardLightingRenderer(runtime, target, {
-          maxPointLights: maxLights,
-          noShadow: true,
-        }),
-      },
+      renderer,
+      selectSubject,
       target,
       time: 0,
       viewMatrix: Matrix4.fromIdentity(),
@@ -190,7 +194,8 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
   async change() {},
 
   update(state, dt) {
-    const { camera, input, lights, worldPhysic, worldGraphic } = state;
+    const { camera, input, lights, selectSubject, worldGraphic, worldPhysic } =
+      state;
 
     // Move camera & define view matrix accordingly
     camera.update(dt);
@@ -286,47 +291,29 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
     }
 
     // Update state
-    state.currentOffset = lookOffset;
+    selectSubject.transform.set(Matrix4.fromIdentity());
+    selectSubject.transform.translate(
+      worldGraphic.findRenderPosition(lookOffset)
+    );
 
     for (state.time += dt; state.time >= timeFactor; state.time -= timeFactor) {
       worldPhysic.tick();
     }
 
+    worldGraphic.update();
+
     state.move += dt;
   },
 
   render(state) {
-    const {
-      camera,
-      currentOffset,
-      models,
-      projectionMatrix,
-      renderers,
-      target,
-      worldGraphic,
-    } = state;
+    const { camera, projectionMatrix, renderer, target } = state;
 
     // Clear screen
     target.clear(0);
 
-    // Create objects
-    const objects = Array.from(worldGraphic.getObjects());
-
-    const worldObjectMatrix = Matrix4.fromIdentity();
-
-    worldObjectMatrix.translate(worldGraphic.findRenderPosition(currentOffset));
-
-    objects.push({
-      matrix: worldObjectMatrix,
-      model: models.select,
-      noShadow: false,
-    });
-
     // Forward pass
-    const lightRenderer = renderers.forwardLighting;
     const lightScene: ForwardLightingScene = {
       ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-      objects,
       pointLights: state.lights.map(({ position, radius }) => ({
         color: { x: 0.8, y: 0.8, z: 0.8 },
         position,
@@ -336,11 +323,10 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       viewMatrix: camera.viewMatrix,
     };
 
-    lightRenderer.render(lightScene);
+    renderer.render(lightScene);
   },
 
   resize(state, size) {
-    state.renderers.forwardLighting.resize(size);
     state.projectionMatrix = Matrix4.fromIdentity([
       "setFromPerspective",
       Math.PI / 4,
@@ -348,6 +334,8 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       0.1,
       100,
     ]);
+
+    state.renderer.resize(size);
     state.target.resize(size);
   },
 };

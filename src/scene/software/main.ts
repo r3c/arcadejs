@@ -1,6 +1,5 @@
 import {
   type Application,
-  ApplicationSetup,
   createSelect,
   declare,
 } from "../../engine/application";
@@ -33,7 +32,7 @@ type ApplicationState = {
   cubeWithColor: Mesh;
   cubeWithTexture: Mesh;
   projection: Matrix4;
-  setup: ApplicationSetup<typeof configuration>;
+  renderMode: number;
   rendererDefault: SoftwareRenderer;
   rendererWire: SoftwareRenderer;
 };
@@ -59,14 +58,14 @@ const application: Application<
       cubeWithColor: await loadMeshFromJson("model/cube-color/mesh.json"),
       cubeWithTexture: await loadMeshFromJson("model/cube/mesh.json"),
       projection: Matrix4.identity,
+      renderMode: 0,
       rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
       rendererWire: new SoftwareRenderer(screen, SoftwareDrawMode.Wire),
-      setup: {} as any,
     };
   },
 
   async change(state, setup) {
-    state.setup = setup;
+    state.renderMode = setup.renderMode;
   },
 
   render(state) {
@@ -75,13 +74,13 @@ const application: Application<
       cubeWithColor,
       cubeWithTexture,
       projection,
+      renderMode,
       rendererDefault,
       rendererWire,
-      setup,
     } = state;
 
-    const mesh = setup.renderMode === 2 ? cubeWithTexture : cubeWithColor;
-    const renderer = setup.renderMode === 0 ? rendererWire : rendererDefault;
+    const mesh = renderMode === 2 ? cubeWithTexture : cubeWithColor;
+    const renderer = renderMode === 0 ? rendererWire : rendererDefault;
 
     renderer.render({
       objects: [{ matrix: Matrix4.identity, mesh }],

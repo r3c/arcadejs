@@ -4,9 +4,12 @@ import {
   createFlattenedMesh,
   createMergedMesh,
 } from "../../engine/graphic/mesh";
+import {
+  ForwardLightingSubject,
+  Renderer,
+} from "../../engine/graphic/renderer";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
-import { ForwardLightingObject } from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
@@ -46,8 +49,8 @@ interface WorldEvent {
 interface WorldGraphic {
   findOffsetPosition: (renderPosition: Vector3) => Vector3 | undefined;
   findRenderPosition: (offsetPosition: Vector3) => Vector3;
-  getObjects: () => Iterable<ForwardLightingObject>;
   setVoxel: (offset: Vector3, modelIndex: number | undefined) => void;
+  update: () => void;
   offsetSize: Vector3;
   renderSize: Vector3;
 }
@@ -101,6 +104,7 @@ const cubeFaces: WorldCubeFace[] = [
 
 const createWorldGraphic = (
   runtime: GlRuntime,
+  renderer: Pick<Renderer<unknown, ForwardLightingSubject>, "register">,
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,
@@ -126,21 +130,21 @@ const createWorldGraphic = (
     cubes: new Map<number, WorldCube>(),
   }));
 
-  const chunkObjects = range(chunks.length).map<ForwardLightingObject>(() => ({
-    dispose: () => {},
-    matrix: Matrix4.identity,
-    model: {
-      dispose: () => {},
-      library: undefined,
-      mesh: {
-        children: [],
+  const chunkSubjects = range(chunks.length).map(() =>
+    renderer.register({
+      model: {
         dispose: () => {},
-        primitives: [],
-        transform: Matrix4.identity,
+        library: undefined,
+        mesh: {
+          children: [],
+          dispose: () => {},
+          primitives: [],
+          transform: Matrix4.identity,
+        },
       },
-    },
-    noShadow: false,
-  }));
+      noShadow: false,
+    })
+  );
 
   const chunkUpdates = new Set<number>();
 
@@ -219,51 +223,6 @@ const createWorldGraphic = (
       };
     },
 
-    getObjects: () => {
-      if (chunkUpdates.size > 0) {
-        for (const chunkIndex of chunkUpdates) {
-          const chunk = chunks[chunkIndex];
-
-          chunkObjects[chunkIndex].model.dispose();
-
-          const instances: MeshInstance[] = [];
-          const nextOffset = Vector3.fromZero();
-
-          for (const [key, cube] of chunk.cubes.entries()) {
-            const { modelIndex, transform } = cube;
-            const offset = keyToOffset(key);
-
-            // Push only visible faces depending on neighbor of current cube
-            for (const { faceIndex, shift } of cubeFaces) {
-              nextOffset.set(offset);
-              nextOffset.add(shift);
-
-              const nextValid = offsetToChunkIndex(nextOffset) === chunkIndex;
-
-              if (!nextValid || !chunk.cubes.has(offsetToKey(nextOffset))) {
-                instances.push({
-                  mesh: meshes[modelIndex][faceIndex],
-                  transform,
-                });
-              }
-            }
-          }
-
-          const mergedModel = createMergedMesh(instances);
-          const flattenedModel = createFlattenedMesh(mergedModel);
-          const model = createModel(runtime.context, flattenedModel, {
-            library,
-          });
-
-          chunkObjects[chunkIndex].model = model;
-        }
-
-        chunkUpdates.clear();
-      }
-
-      return chunkObjects;
-    },
-
     setVoxel: (offset, modelIndex) => {
       const chunkIndex = offsetToChunkIndex(offset);
 
@@ -287,6 +246,52 @@ const createWorldGraphic = (
       }
 
       chunkUpdates.add(chunkIndex);
+    },
+
+    update: () => {
+      if (chunkUpdates.size <= 0) {
+        return;
+      }
+
+      for (const chunkIndex of chunkUpdates) {
+        const chunk = chunks[chunkIndex];
+        const instances: MeshInstance[] = [];
+        const nextOffset = Vector3.fromZero();
+
+        for (const [key, cube] of chunk.cubes.entries()) {
+          const { modelIndex, transform } = cube;
+          const offset = keyToOffset(key);
+
+          // Push only visible faces depending on neighbor of current cube
+          for (const { faceIndex, shift } of cubeFaces) {
+            nextOffset.set(offset);
+            nextOffset.add(shift);
+
+            const nextValid = offsetToChunkIndex(nextOffset) === chunkIndex;
+
+            if (!nextValid || !chunk.cubes.has(offsetToKey(nextOffset))) {
+              instances.push({
+                mesh: meshes[modelIndex][faceIndex],
+                transform,
+              });
+            }
+          }
+        }
+
+        const mergedModel = createMergedMesh(instances);
+        const flattenedModel = createFlattenedMesh(mergedModel);
+        const model = createModel(runtime.context, flattenedModel, {
+          library,
+        });
+
+        chunkSubjects[chunkIndex].remove();
+        chunkSubjects[chunkIndex] = renderer.register({
+          model,
+          noShadow: true,
+        });
+      }
+
+      chunkUpdates.clear();
     },
 
     offsetSize,

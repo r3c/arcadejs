@@ -1,17 +1,9 @@
 import {
   type Application,
-  type ApplicationSetup,
   createCheckbox,
   createSelect,
   declare,
 } from "../../engine/application";
-import {
-  Memo,
-  createBooleansIndexer,
-  createCompositeIndexer,
-  createNumberIndexer,
-  memoize,
-} from "../../engine/language/memo";
 import { Input, Pointer } from "../../engine/io/controller";
 import {
   DebugTextureEncoding,
@@ -27,7 +19,7 @@ import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
-import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { GlRuntime, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createCircleMover, createOrbitMover } from "../move";
 import { DeferredLightingScene } from "../../engine/graphic/webgl/renderers/deferred-lighting";
 import {
@@ -134,14 +126,10 @@ type ScenePointLight = PointLight & {
   position: MutableVector3;
 };
 
-type SceneRenderer = {
-  renderer: Renderer<Scene>;
-  textures: (GlTexture | undefined)[];
-};
-
 type ApplicationState = {
   camera: Camera;
-  debugRendererMemo: Memo<number, DebugTextureRenderer>;
+  debugRenderer: DebugTextureRenderer | undefined;
+  debugTexture: GlTexture | undefined;
   directionalLights: SceneDirectionalLight[];
   models: {
     cube: GlModel;
@@ -149,19 +137,16 @@ type ApplicationState = {
     ground: GlModel;
     pointLight: GlModel;
   };
-  time: number;
+  move: boolean;
+  nbDirectionalLights: number;
+  nbPointLights: number;
   pointLights: ScenePointLight[];
   projectionMatrix: Matrix4;
-  sceneRendererMemo: Memo<[number, boolean[]], SceneRenderer>;
-  setup: ApplicationSetup<typeof configuration>;
+  runtime: GlRuntime;
+  sceneRenderer: Renderer<Scene> | undefined;
   target: GlTarget;
+  time: number;
 };
-
-const getOptions = (tweak: ApplicationSetup<typeof configuration>) => [
-  tweak.lightAmbient,
-  tweak.lightDiffuse,
-  tweak.lightSpecular,
-];
 
 const application: Application<
   WebGLScreen,
@@ -209,16 +194,8 @@ const application: Application<
         { x: 0, y: 0, z: -5 },
         Vector2.zero
       ),
-      debugRendererMemo: memoize(
-        createNumberIndexer(0, 6),
-        (index) =>
-          new DebugTextureRenderer(runtime, target, {
-            channel: debugConfigurations[index].channel,
-            encoding: debugConfigurations[index].encoding,
-            zNear: 0.1,
-            zFar: 100,
-          })
-      ),
+      debugRenderer: undefined,
+      debugTexture: undefined,
       directionalLights: range(10).map((i) => ({
         color: brightColor(i),
         direction: Vector3.fromZero(),
@@ -231,6 +208,9 @@ const application: Application<
         ground: createModel(gl, groundModel),
         pointLight: createModel(gl, pointLightModel),
       },
+      move: false,
+      nbDirectionalLights: 0,
+      nbPointLights: 0,
       pointLights: range(2000).map((i) => ({
         color: brightColor(i),
         mover: createOrbitMover(i, 1, 5, 1),
@@ -238,63 +218,8 @@ const application: Application<
         radius: 0,
       })),
       projectionMatrix: Matrix4.identity,
-      sceneRendererMemo: memoize(
-        createCompositeIndexer(
-          createNumberIndexer(0, 2),
-          createBooleansIndexer(3)
-        ),
-        ([technique, flags]) => {
-          switch (technique) {
-            case 0:
-            default: {
-              const renderer = new DeferredShadingRenderer(runtime, target, {
-                lightModel: DeferredShadingLightModel.Phong,
-                lightModelPhongNoAmbient: !flags[0],
-                lightModelPhongNoDiffuse: !flags[1],
-                lightModelPhongNoSpecular: !flags[2],
-              });
-
-              return {
-                dispose: () => renderer.dispose(),
-                renderer,
-                textures: [
-                  renderer.depthBuffer,
-                  renderer.diffuseAndShininessBuffer,
-                  renderer.normalAndSpecularBuffer,
-                  renderer.diffuseAndShininessBuffer,
-                  renderer.normalAndSpecularBuffer,
-                  undefined,
-                  undefined,
-                ],
-              };
-            }
-
-            case 1: {
-              const renderer = new DeferredLightingRenderer(runtime, target, {
-                lightModel: DeferredLightingLightModel.Phong,
-                lightModelPhongNoAmbient: !flags[0],
-                lightModelPhongNoDiffuse: !flags[1],
-                lightModelPhongNoSpecular: !flags[2],
-              });
-
-              return {
-                dispose: () => renderer.dispose(),
-                renderer,
-                textures: [
-                  renderer.depthBuffer,
-                  undefined,
-                  renderer.normalAndGlossBuffer,
-                  renderer.normalAndGlossBuffer,
-                  renderer.normalAndGlossBuffer,
-                  renderer.lightBuffer,
-                  renderer.lightBuffer,
-                ],
-              };
-            }
-          }
-        }
-      ),
-      setup: {} as any,
+      runtime,
+      sceneRenderer: undefined,
       target,
       time: 0,
       viewMatrix: Matrix4.fromIdentity(),
@@ -302,36 +227,99 @@ const application: Application<
   },
 
   async change(state, setup) {
-    state.setup = setup;
+    const { runtime, target } = state;
+
+    state.debugRenderer?.dispose();
+    state.sceneRenderer?.dispose();
+
+    state.debugRenderer =
+      setup.debugMode !== 0
+        ? new DebugTextureRenderer(runtime, target, {
+            channel: debugConfigurations[setup.debugMode - 1].channel,
+            encoding: debugConfigurations[setup.debugMode - 1].encoding,
+            zNear: 0.1,
+            zFar: 100,
+          })
+        : undefined;
+
+    switch (setup.technique) {
+      case 0:
+      default:
+        {
+          const renderer = new DeferredShadingRenderer(runtime, target, {
+            lightModel: DeferredShadingLightModel.Phong,
+            lightModelPhongNoAmbient: !setup.lightAmbient,
+            lightModelPhongNoDiffuse: !setup.lightDiffuse,
+            lightModelPhongNoSpecular: !setup.lightSpecular,
+          });
+
+          state.debugTexture =
+            setup.debugMode !== 0
+              ? [
+                  renderer.depthBuffer,
+                  renderer.diffuseAndShininessBuffer,
+                  renderer.normalAndSpecularBuffer,
+                  renderer.diffuseAndShininessBuffer,
+                  renderer.normalAndSpecularBuffer,
+                ][setup.debugMode - 1]
+              : undefined;
+          state.sceneRenderer = renderer;
+        }
+        break;
+
+      case 1:
+        {
+          const renderer = new DeferredLightingRenderer(runtime, target, {
+            lightModel: DeferredLightingLightModel.Phong,
+            lightModelPhongNoAmbient: !setup.lightAmbient,
+            lightModelPhongNoDiffuse: !setup.lightDiffuse,
+            lightModelPhongNoSpecular: !setup.lightSpecular,
+          });
+
+          state.debugTexture =
+            setup.debugMode !== 0
+              ? [
+                  renderer.depthBuffer,
+                  undefined,
+                  renderer.normalAndGlossBuffer,
+                  renderer.normalAndGlossBuffer,
+                  renderer.normalAndGlossBuffer,
+                  renderer.lightBuffer,
+                  renderer.lightBuffer,
+                ][setup.debugMode - 1]
+              : undefined;
+          state.sceneRenderer = renderer;
+        }
+        break;
+    }
+
+    state.move = setup.move;
+    state.nbDirectionalLights = setup.nbDirectionalLights;
+    state.nbPointLights = setup.nbPointLights;
   },
 
   render(state) {
     const {
       camera,
-      debugRendererMemo,
+      debugRenderer,
+      debugTexture,
       models,
       projectionMatrix,
-      sceneRendererMemo,
-      setup,
+      sceneRenderer,
       target,
     } = state;
 
     // Pick active lights
     const directionalLights = state.directionalLights.slice(
       0,
-      directionalLightParameters[setup.nbDirectionalLights].count
+      directionalLightParameters[state.nbDirectionalLights].count
     );
     const pointLights = state.pointLights.slice(
       0,
-      pointLightParameters[setup.nbPointLights].count
+      pointLightParameters[state.nbPointLights].count
     );
 
     // Draw scene
-    const { renderer, textures } = sceneRendererMemo.get([
-      setup.technique,
-      getOptions(setup),
-    ]);
-
     const scene: DeferredLightingScene = {
       ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
       directionalLights,
@@ -397,21 +385,16 @@ const application: Application<
 
     target.clear(0);
 
-    renderer.render(scene);
+    sceneRenderer?.render(scene);
 
     // Draw debug
-    const debugTexture =
-      setup.debugMode !== 0 ? textures[setup.debugMode - 1] : undefined;
-
     if (debugTexture !== undefined) {
-      const debugRenderer = debugRendererMemo.get(setup.debugMode - 1);
-
-      debugRenderer.render(debugTexture);
+      debugRenderer?.render(debugTexture);
     }
   },
 
   resize(state, size) {
-    const { debugRendererMemo, sceneRendererMemo, setup, target } = state;
+    const { debugRenderer, sceneRenderer, target } = state;
 
     state.projectionMatrix = Matrix4.fromIdentity([
       "setFromPerspective",
@@ -421,20 +404,22 @@ const application: Application<
       100,
     ]);
 
-    if (setup.debugMode !== 0) {
-      debugRendererMemo.get(setup.debugMode - 1).resize(size);
-    }
-
-    sceneRendererMemo
-      .get([setup.technique, getOptions(setup)])
-      .renderer.resize(size);
+    debugRenderer?.resize(size);
+    sceneRenderer?.resize(size);
 
     target.resize(size);
   },
 
   update(state, dt) {
-    const { camera, directionalLights, pointLights, setup, time } = state;
-    const pointLightRadius = pointLightParameters[setup.nbPointLights].radius;
+    const {
+      camera,
+      directionalLights,
+      move,
+      nbPointLights,
+      pointLights,
+      time,
+    } = state;
+    const pointLightRadius = pointLightParameters[nbPointLights].radius;
 
     for (let i = 0; i < directionalLights.length; ++i) {
       const { direction, mover } = directionalLights[i];
@@ -453,7 +438,7 @@ const application: Application<
     // Move camera
     camera.update(dt);
 
-    state.time += setup.move ? dt : 0;
+    state.time += move ? dt : 0;
   },
 };
 
