@@ -1,6 +1,7 @@
 import { Disposable } from "../language/lifecycle";
 import { MutableVector2, Vector2 } from "../math/vector";
 
+// FIXME: replace by './renderer/definition'
 type Renderer<TScene> = Disposable & {
   render(scene: TScene): void;
   resize(size: Vector2): void;
