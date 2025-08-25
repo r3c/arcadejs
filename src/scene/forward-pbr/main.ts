@@ -24,14 +24,16 @@ import {
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import { Mover, createOrbitMover } from "../move";
+import { createModel } from "../../engine/graphic/webgl/model";
+import { GlTexture } from "../../engine/graphic/webgl/texture";
+import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 import {
+  createForwardLightingRenderer,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
-} from "../../engine/graphic/webgl/renderers/forward-lighting";
-import { GlModel, createModel } from "../../engine/graphic/webgl/model";
-import { GlTexture } from "../../engine/graphic/webgl/texture";
-import { Camera, createOrbitCamera } from "../../engine/stage/camera";
+  RendererSubject,
+} from "../../engine/graphic/renderer";
 
 /*
  ** What changed?
@@ -59,11 +61,7 @@ type Light = {
 type ApplicationState = {
   camera: Camera;
   lights: Light[];
-  models: {
-    ground: GlModel;
-    helmet: GlModel;
-    light: GlModel;
-  };
+  lightSubjects: RendererSubject[][];
   time: number;
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
@@ -97,8 +95,10 @@ const application: Application<
     const target = new GlTarget(gl, screen.getSize());
 
     // Load meshes
-    const groundModel = await loadMeshFromJson("model/ground/mesh.json");
-    const helmetModel = await loadMeshFromGltf(
+    const groundMesh = await loadMeshFromJson("model/ground/mesh.json");
+    const groundModel = createModel(gl, groundMesh);
+
+    const helmetMesh = await loadMeshFromGltf(
       "model/damaged-helmet/DamagedHelmet.gltf",
       {
         transform: Matrix4.fromSource(
@@ -108,12 +108,20 @@ const application: Application<
         ),
       }
     );
-    const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
+    const helmetModel = createModel(gl, helmetMesh);
+
+    const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromSource(Matrix4.identity, [
         "scale",
         { x: 0.2, y: 0.2, z: 0.2 },
       ]),
     });
+    const lightModel = createModel(gl, lightMesh);
+    const lights = range(3).map((i) => ({
+      mover: createOrbitMover(i, 1, 3, 1),
+      position: Vector3.fromZero(),
+    }));
+    const lightSubjects = range(lights.length).map<RendererSubject[]>(() => []);
 
     // Load textures
     const brdf = loadTextureQuad(
@@ -152,31 +160,37 @@ const application: Application<
         { x: 0, y: 0, z: -5 },
         Vector2.zero
       ),
-      lights: range(3).map((i) => ({
-        mover: createOrbitMover(i, 1, 3, 1),
-        position: Vector3.fromZero(),
-      })),
-      models: {
-        ground: createModel(gl, groundModel),
-        helmet: createModel(gl, helmetModel),
-        light: createModel(gl, lightModel),
-      },
+      lights,
+      lightSubjects,
       projectionMatrix: Matrix4.identity,
-      rendererMemo: memoize(
-        createBooleansIndexer(6),
-        (flags) =>
-          new ForwardLightingRenderer(runtime, target, {
-            maxPointLights: 3,
-            lightModel: ForwardLightingLightModel.Physical,
-            lightModelPhysicalNoAmbient: !flags[0],
-            lightModelPhysicalNoIBL: !flags[3],
-            noEmissiveMap: !flags[1],
-            noHeightMap: !flags[4],
-            noNormalMap: !flags[5],
-            noOcclusionMap: !flags[2],
-            noShadow: true,
-          })
-      ),
+      rendererMemo: memoize(createBooleansIndexer(6), (flags) => {
+        const renderer = createForwardLightingRenderer(runtime, target, {
+          maxPointLights: 3,
+          lightModel: ForwardLightingLightModel.Physical,
+          lightModelPhysicalNoAmbient: !flags[0],
+          lightModelPhysicalNoIBL: !flags[3],
+          noEmissiveMap: !flags[1],
+          noHeightMap: !flags[4],
+          noNormalMap: !flags[5],
+          noOcclusionMap: !flags[2],
+          noShadow: true,
+        });
+
+        renderer.register({ model: helmetModel });
+
+        const groundSubject = renderer.register({ model: groundModel });
+
+        groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
+
+        // FIXME: only .slice(0, tweak.nbLights) lights should be registered
+        for (const subjects of lightSubjects) {
+          subjects.push(
+            renderer.register({ model: lightModel, noShadow: true })
+          );
+        }
+
+        return renderer;
+      }),
       setup: {} as any,
       target,
       textures: {
@@ -193,15 +207,8 @@ const application: Application<
   },
 
   render(state) {
-    const {
-      camera,
-      models,
-      projectionMatrix,
-      rendererMemo,
-      setup,
-      target,
-      textures,
-    } = state;
+    const { camera, projectionMatrix, rendererMemo, setup, target, textures } =
+      state;
 
     const lightPositions = state.lights
       .slice(0, setup.nbLights)
@@ -211,27 +218,6 @@ const application: Application<
     target.clear(0);
 
     // PBR render
-    const cube = {
-      matrix: Matrix4.identity,
-      model: models.helmet,
-      noShadow: false,
-    };
-
-    const ground = {
-      matrix: Matrix4.fromSource(Matrix4.identity, [
-        "translate",
-        { x: 0, y: -1.5, z: 0 },
-      ]),
-      model: models.ground,
-      noShadow: false,
-    };
-
-    const lights = lightPositions.map((position) => ({
-      matrix: Matrix4.fromSource(Matrix4.identity, ["translate", position]),
-      model: models.light,
-      noShadow: true,
-    }));
-
     const scene: ForwardLightingScene = {
       ambientLightColor: { x: 0.5, y: 0.5, z: 0.5 },
       environmentLight: {
@@ -239,7 +225,6 @@ const application: Application<
         diffuse: textures.diffuse,
         specular: textures.specular,
       },
-      objects: [cube, ground].concat(lights),
       pointLights: lightPositions.map((position) => ({
         color: { x: 1, y: 1, z: 1 },
         position,
@@ -268,13 +253,19 @@ const application: Application<
   },
 
   update(state, dt) {
-    const { camera, lights, setup, time } = state;
+    const { camera, lights, lightSubjects, setup, time } = state;
 
     // Update light positions
     for (let i = 0; i < lights.length; ++i) {
-      const position = lights[i].position;
+      const { mover, position } = lights[i];
+      const subjects = lightSubjects[i];
 
-      position.set(lights[i].mover(Vector3.zero, time * 0.0005));
+      position.set(mover(Vector3.zero, time * 0.0005));
+
+      for (const { transform } of subjects) {
+        transform.set(Matrix4.identity);
+        transform.translate(position);
+      }
     }
 
     // Move camera

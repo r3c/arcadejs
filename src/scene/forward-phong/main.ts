@@ -7,11 +7,6 @@ import {
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
 import { Renderer, WebGLScreen } from "../../engine/graphic/display";
-import {
-  ForwardLightingLightModel,
-  ForwardLightingRenderer,
-  ForwardLightingScene,
-} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -23,7 +18,7 @@ import {
   createBooleansIndexer,
   memoize,
 } from "../../engine/language/memo";
-import { GlModel, createModel } from "../../engine/graphic/webgl/model";
+import { createModel } from "../../engine/graphic/webgl/model";
 import {
   DebugTextureRenderer,
   DebugTextureEncoding,
@@ -31,6 +26,13 @@ import {
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { Camera, createOrbitCamera } from "../../engine/stage/camera";
+import {
+  createForwardLightingRenderer,
+  ForwardLightingLightModel,
+  ForwardLightingRenderer,
+  ForwardLightingScene,
+  RendererSubject,
+} from "../../engine/graphic/renderer";
 
 /*
  ** What changed?
@@ -55,13 +57,10 @@ type ApplicationState = {
   camera: Camera;
   debugRenderer: Renderer<GlTexture>;
   directionalLights: { mover: Mover; direction: MutableVector3 }[];
-  models: {
-    cube: GlModel;
-    ground: GlModel;
-    light: GlModel;
-  };
+  directionalLightSubjects: RendererSubject[][];
   time: number;
   pointLights: { mover: Mover; position: MutableVector3 }[];
+  pointLightSubjects: RendererSubject[][];
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
   setup: ApplicationSetup<typeof configuration>;
@@ -88,14 +87,33 @@ const application: Application<
     const target = new GlTarget(gl, screen.getSize());
 
     // Load models
-    const cubeModel = await loadMeshFromJson("model/cube/mesh.json");
-    const groundModel = await loadMeshFromJson("model/ground/mesh.json");
-    const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
+    const cubeMesh = await loadMeshFromJson("model/cube/mesh.json");
+    const cubeModel = createModel(gl, cubeMesh);
+    const groundMesh = await loadMeshFromJson("model/ground/mesh.json");
+    const groundModel = createModel(gl, groundMesh);
+    const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromSource(Matrix4.identity, [
         "scale",
         { x: 0.2, y: 0.2, z: 0.2 },
       ]),
     });
+    const lightModel = createModel(gl, lightMesh);
+
+    const directionalLights = range(3).map((i) => ({
+      direction: Vector3.fromZero(),
+      mover: createCircleMover(i),
+    }));
+    const directionalLightSubjects = range(directionalLights.length).map<
+      RendererSubject[]
+    >(() => []);
+
+    const pointLights = range(3).map((i) => ({
+      mover: createOrbitMover(i, 2, 2, 1),
+      position: Vector3.fromZero(),
+    }));
+    const pointLightSubjects = range(directionalLights.length).map<
+      RendererSubject[]
+    >(() => []);
 
     // Create state
     return {
@@ -114,34 +132,40 @@ const application: Application<
         zNear: 0.1,
         zFar: 100,
       }),
-      directionalLights: range(3).map((i) => ({
-        direction: Vector3.fromZero(),
-        mover: createCircleMover(i),
-      })),
-      models: {
-        cube: createModel(gl, cubeModel),
-        ground: createModel(gl, groundModel),
-        light: createModel(gl, lightModel),
-      },
-      pointLights: range(3).map((i) => ({
-        mover: createOrbitMover(i, 2, 2, 1),
-        position: Vector3.fromZero(),
-      })),
+      directionalLights,
+      directionalLightSubjects,
+      pointLights,
+      pointLightSubjects,
       projectionMatrix: Matrix4.identity,
-      rendererMemo: memoize(
-        createBooleansIndexer(5),
-        (flags) =>
-          new ForwardLightingRenderer(runtime, target, {
-            maxDirectionalLights: 3,
-            maxPointLights: 3,
-            lightModel: ForwardLightingLightModel.Phong,
-            lightModelPhongNoAmbient: !flags[0],
-            lightModelPhongNoDiffuse: !flags[1],
-            lightModelPhongNoSpecular: !flags[2],
-            noHeightMap: !flags[3],
-            noNormalMap: !flags[4],
-          })
-      ),
+      rendererMemo: memoize(createBooleansIndexer(5), (flags) => {
+        const renderer = createForwardLightingRenderer(runtime, target, {
+          maxDirectionalLights: 3,
+          maxPointLights: 3,
+          lightModel: ForwardLightingLightModel.Phong,
+          lightModelPhongNoAmbient: !flags[0],
+          lightModelPhongNoDiffuse: !flags[1],
+          lightModelPhongNoSpecular: !flags[2],
+          noHeightMap: !flags[3],
+          noNormalMap: !flags[4],
+        });
+
+        renderer.register({ model: cubeModel });
+
+        const groundSubject = renderer.register({ model: groundModel });
+
+        groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
+
+        for (const subjects of [
+          ...directionalLightSubjects, // FIXME: only .slice(0, tweak.nbDirectionalLights) lights should be registered
+          ...pointLightSubjects, // FIXME: only .slice(0, tweak.nbPointLights) lights should be registered
+        ]) {
+          subjects.push(
+            renderer.register({ model: lightModel, noShadow: true })
+          );
+        }
+
+        return renderer;
+      }),
       setup: {} as any,
       target,
       time: 0,
@@ -157,7 +181,6 @@ const application: Application<
       camera,
       debugRenderer,
       directionalLights,
-      models,
       pointLights,
       projectionMatrix,
       rendererMemo,
@@ -179,43 +202,6 @@ const application: Application<
           direction,
           shadow: true,
         })),
-      objects: [
-        {
-          matrix: Matrix4.identity,
-          model: models.cube,
-          noShadow: false,
-        },
-        {
-          matrix: Matrix4.fromSource(Matrix4.identity, [
-            "translate",
-            { x: 0, y: -1.5, z: 0 },
-          ]),
-          model: models.ground,
-          noShadow: false,
-        },
-      ]
-        .concat(
-          pointLights.slice(0, setup.nbPointLights).map(({ position }) => ({
-            matrix: Matrix4.fromSource(Matrix4.identity, [
-              "translate",
-              position,
-            ]),
-            model: models.light,
-            noShadow: true,
-          }))
-        )
-        .concat(
-          directionalLights
-            .slice(0, setup.nbDirectionalLights)
-            .map(({ direction }) => ({
-              matrix: Matrix4.fromSource(Matrix4.identity, [
-                "translate",
-                direction,
-              ]),
-              model: models.light,
-              noShadow: true,
-            }))
-        ),
       pointLights: pointLights
         .slice(0, setup.nbPointLights)
         .map(({ position }) => ({
@@ -251,21 +237,41 @@ const application: Application<
   },
 
   update(state, dt) {
-    const { camera, directionalLights, pointLights, setup, time } = state;
+    const {
+      camera,
+      directionalLights,
+      directionalLightSubjects,
+      pointLights,
+      pointLightSubjects,
+      setup,
+      time,
+    } = state;
 
     // Update light positions
     for (let i = 0; i < directionalLights.length; ++i) {
-      const direction = directionalLights[i].direction;
+      const { direction, mover } = directionalLights[i];
+      const subjects = directionalLightSubjects[i];
 
-      direction.set(directionalLights[i].mover(Vector3.zero, -time * 0.0005));
+      direction.set(mover(Vector3.zero, -time * 0.0005));
       direction.normalize();
       direction.scale(10);
+
+      for (const { transform } of subjects) {
+        transform.set(Matrix4.identity);
+        transform.translate(direction);
+      }
     }
 
     for (let i = 0; i < pointLights.length; ++i) {
-      const position = pointLights[i].position;
+      const { mover, position } = pointLights[i];
+      const subjects = pointLightSubjects[i];
 
-      position.set(pointLights[i].mover(Vector3.zero, time * 0.0005));
+      position.set(mover(Vector3.zero, time * 0.0005));
+
+      for (const { transform } of subjects) {
+        transform.set(Matrix4.identity);
+        transform.translate(position);
+      }
     }
 
     // Move camera

@@ -1,10 +1,6 @@
 import { type Application, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import {
-  ForwardLightingRenderer,
-  ForwardLightingScene,
-} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import {
   Mesh,
@@ -26,13 +22,19 @@ import {
 } from "../../engine/graphic/webgl/renderers/particle";
 import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
-import { GlModel, createModel } from "../../engine/graphic/webgl/model";
+import { createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 import { Camera, createBehindCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
+import {
+  createForwardLightingRenderer,
+  ForwardLightingRenderer,
+  ForwardLightingScene,
+  RendererSubject,
+} from "../../engine/graphic/renderer";
 
 type Player = {
   rotation: MutableQuaternion;
@@ -57,19 +59,17 @@ type Updater = (state: ApplicationState, dt: number) => void;
 type ApplicationState = {
   input: Input;
   lights: Light[];
-  models: {
-    light: GlModel;
-    ship: GlModel;
-    stars: GlModel[];
-  };
+  lightSubjects: RendererSubject[];
   move: number;
   player: Player;
   particleRenderer: ParticleRenderer;
   particleEmitter0: ParticleEmitter<number>;
   projectionMatrix: Matrix4;
   sceneRenderer: ForwardLightingRenderer;
+  shipSubject: RendererSubject;
   sprite: GlTexture;
   stars: Star[];
+  starSubjects: RendererSubject[];
   target: GlTarget;
   updaters: Updater[];
   viewMatrix: Matrix4;
@@ -98,12 +98,16 @@ const createLightUpdater = (): Updater => {
   let time = 0;
 
   return (state, dt) => {
-    const { lights, player } = state;
+    const { lights, lightSubjects, player } = state;
 
     for (let i = lights.length; i-- > 0; ) {
+      const lightSubject = lightSubjects[i];
       const { mover, position } = lights[i];
 
       position.set(mover(player.position, time * 0.001));
+
+      lightSubject.transform.set(Matrix4.identity);
+      lightSubject.transform.translate(position);
     }
 
     time += dt;
@@ -154,7 +158,7 @@ const createPlayerUpdater = (): Updater => {
   const v = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player } = state;
+    const { input, player, shipSubject } = state;
 
     const horizontalDelta =
       (input.isPressed("arrowleft") ? rThrust : 0) +
@@ -182,22 +186,33 @@ const createPlayerUpdater = (): Updater => {
     player.position.x = warp(player.position.x, 0, 10000);
     player.position.y = warp(player.position.y, 0, 10000);
     player.position.z = warp(player.position.z, 0, 10000);
+
+    shipSubject.transform.setFromRotationPosition(
+      Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
+      player.position
+    );
   };
 };
 
 // Update star positions
 const createStarUpdater = (): Updater => {
   return (state, dt) => {
-    const { player, stars } = state;
+    const { player, stars, starSubjects } = state;
 
     for (let i = stars.length; i-- > 0; ) {
-      const { position } = stars[i];
+      const star = stars[i];
+      const starSubject = starSubjects[i];
+      const { position, rotationAxis } = star;
 
       position.x = warp(position.x, player.position.x, 100);
       position.y = warp(position.y, player.position.y, 100);
       position.z = warp(position.z, player.position.z, 100);
 
-      stars[i].rotationAmount += dt * stars[i].rotationSpeed;
+      star.rotationAmount += dt * star.rotationSpeed;
+
+      starSubject.transform.set(Matrix4.identity);
+      starSubject.transform.translate(position);
+      starSubject.transform.rotate(rotationAxis, star.rotationAmount);
     }
   };
 };
@@ -217,14 +232,14 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
     const target = new GlTarget(gl, screen.getSize());
 
     // Load meshes
-    const lightModel = await loadMeshFromJson("model/sphere/mesh.json", {
+    const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromSource(Matrix4.identity, [
         "scale",
         { x: 0.25, y: 0.25, z: 0.25 },
       ]),
     });
 
-    const shipModel = await loadMeshFrom3ds("model/colmftr1/COLMFTR1.3DS", {
+    const shipMesh = await loadMeshFrom3ds("model/colmftr1/COLMFTR1.3DS", {
       transform: Matrix4.fromSource(Matrix4.identity, [
         "translate",
         { x: 0, y: 4, z: 0 },
@@ -292,45 +307,66 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       getZoom: () => input.fetchZoom(),
     });
 
+    const sceneRenderer = createForwardLightingRenderer(runtime, target, {
+      maxPointLights: 3,
+      noShadow: true,
+    });
+
+    // Ship
+    const shipSubject = sceneRenderer.register({
+      model: createModel(gl, shipMesh),
+    });
+
+    // Lights
+    const lights = range(2).map((i) => ({
+      mover: createOrbitMover(i, 5, 5, 2),
+      position: Vector3.fromZero(),
+    }));
+
+    const lightModel = createModel(gl, lightMesh);
+    const lightSubjects = lights.map(() =>
+      sceneRenderer.register({ model: lightModel, noShadow: true })
+    );
+
+    // Stars
+    const stars = range(starFieldCount).map(() => {
+      const x = Math.random() * 2 - 1;
+      const y = Math.random() * 2 - 1;
+      const z = Math.sqrt(x * x + y * y);
+
+      return {
+        position: Vector3.fromSource({
+          x: (Math.random() * 2 - 1) * starFieldRadius,
+          y: (Math.random() * 2 - 1) * starFieldRadius,
+          z: (Math.random() * 2 - 1) * starFieldRadius,
+        }),
+        rotationAmount: 0,
+        rotationAxis: { x, y, z },
+        rotationSpeed: Math.random() * 0.001,
+        variant: Math.floor(Math.random() * starMeshes.length),
+      };
+    });
+
+    const starModels = starMeshes.map((mesh) => createModel(gl, mesh));
+    const starSubjects = stars.map(({ variant }) =>
+      sceneRenderer.register({ model: starModels[variant] })
+    );
+
     // Create state
     const state: ApplicationState = {
       input,
-      lights: range(2).map((i) => ({
-        mover: createOrbitMover(i, 5, 5, 2),
-        position: Vector3.fromZero(),
-      })),
-      models: {
-        light: createModel(gl, lightModel),
-        ship: createModel(gl, shipModel),
-        stars: starMeshes.map((mesh) => createModel(gl, mesh)),
-      },
+      lights,
+      lightSubjects,
       move: 0,
       player,
       particleEmitter0,
       particleRenderer,
       projectionMatrix: Matrix4.identity,
-      sceneRenderer: new ForwardLightingRenderer(runtime, target, {
-        maxPointLights: 3,
-        noShadow: true,
-      }),
+      sceneRenderer,
+      shipSubject,
       sprite,
-      stars: range(starFieldCount).map(() => {
-        const x = Math.random() * 2 - 1;
-        const y = Math.random() * 2 - 1;
-        const z = Math.sqrt(x * x + y * y);
-
-        return {
-          position: Vector3.fromSource({
-            x: (Math.random() * 2 - 1) * starFieldRadius,
-            y: (Math.random() * 2 - 1) * starFieldRadius,
-            z: (Math.random() * 2 - 1) * starFieldRadius,
-          }),
-          rotationAmount: 0,
-          rotationAxis: { x, y, z },
-          rotationSpeed: Math.random() * 0.001,
-          variant: Math.floor(Math.random() * starMeshes.length),
-        };
-      }),
+      stars,
+      starSubjects,
       target,
       updaters: [
         createCameraUpdater(camera),
@@ -349,8 +385,6 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
 
   render(state) {
     const {
-      models,
-      player,
       particleRenderer,
       projectionMatrix,
       sceneRenderer,
@@ -363,31 +397,6 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
 
     const scene: ForwardLightingScene = {
       ambientLightColor: { x: 0, y: 0, z: 0 },
-      objects: [
-        {
-          matrix: Matrix4.fromIdentity([
-            "setFromRotationPosition",
-            Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
-            player.position,
-          ]),
-          model: models.ship,
-        },
-        ...state.stars.map(
-          ({ position, rotationAmount, rotationAxis, variant }) => ({
-            matrix: Matrix4.fromSource(
-              Matrix4.identity,
-              ["translate", position],
-              ["rotate", rotationAxis, rotationAmount]
-            ),
-            model: models.stars[variant],
-          })
-        ),
-        ...state.lights.map(({ position }) => ({
-          matrix: Matrix4.fromSource(Matrix4.identity, ["translate", position]),
-          model: models.light,
-          noShadow: true,
-        })),
-      ],
       pointLights: state.lights.map(({ position }) => ({
         color: { x: 1, y: 1, z: 1 },
         position,
