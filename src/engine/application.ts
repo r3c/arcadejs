@@ -1,11 +1,27 @@
 import { Screen } from "./graphic/display";
 import { Vector2 } from "./math/vector";
 
-type Application<TScreen extends Screen, TState, TTweak> = {
-  prepare: (screen: TScreen) => Promise<TState>;
-  render: (state: TState, tweak: Tweak<TTweak>) => void;
-  resize: (state: TState, tweak: Tweak<TTweak>, size: Vector2) => void;
-  update: (state: TState, tweak: Tweak<TTweak>, dt: number) => void;
+type Application<TScreen extends Screen, TState, TSetup> = {
+  change: (state: TState, setup: ApplicationSetup<TSetup>) => Promise<void>;
+  create: (screen: TScreen) => Promise<TState>;
+  render: (state: TState) => void;
+  resize: (state: TState, size: Vector2) => void;
+  update: (state: TState, dt: number) => void;
+};
+
+type ApplicationConfiguration<T extends object> = {
+  [key in keyof T]: ApplicationWidget<unknown>;
+};
+
+type ApplicationSetup<T> = {
+  [key in keyof T]: T[key] extends ApplicationWidget<infer TValue>
+    ? TValue
+    : never;
+};
+
+type ApplicationWidget<T> = {
+  createElement: (onChange: (value: T) => void) => HTMLElement;
+  defaultValue: T;
 };
 
 type Process = {
@@ -20,16 +36,6 @@ interface ScreenConstructor<TScreen extends Screen> {
   new (container: HTMLElement): TScreen;
 }
 
-type TweakConfiguration<T> = {
-  [key in keyof T]: TweakWidget<unknown>;
-};
-
-type TweakWidget<T> = (onChange: (value: T) => void) => HTMLElement;
-
-type Tweak<T> = {
-  [key in keyof T]: T[key] extends TweakWidget<infer TValue> ? TValue : never;
-};
-
 const canonicalize = (name: string): string => {
   return name
     .toLowerCase()
@@ -37,34 +43,40 @@ const canonicalize = (name: string): string => {
     .replaceAll(/^-+|-+$/g, "");
 };
 
-const configure = <T>(configuration: TweakConfiguration<T>): Tweak<T> => {
-  const container = document.getElementById("tweaks");
+const configure = <T extends object>(
+  configuration: ApplicationConfiguration<T>,
+  change: (setup: ApplicationSetup<T>) => void
+): ApplicationSetup<T> => {
+  const container = document.getElementById("setup");
 
   if (container === null) {
-    throw Error("missing tweak container");
+    throw Error("missing setup container");
   }
 
   while (container.childNodes.length > 0) {
     container.removeChild(container.childNodes[0]);
   }
 
-  const tweak: any = {};
+  const entries = Object.entries<ApplicationWidget<unknown>>(configuration);
+  const setup: any = {};
 
-  for (const key in configuration) {
-    tweak[key] = 0;
+  for (const [key, { createElement, defaultValue }] of entries) {
+    setup[key] = defaultValue;
 
-    const onChange = (value: any) => (tweak[key] = value);
-    const element = configuration[key](onChange);
+    const element = createElement((value: any) => {
+      setup[key] = value;
+
+      change(setup);
+    });
 
     container.appendChild(element);
   }
 
-  return tweak;
+  return setup;
 };
 
-const createButton =
-  (caption: string): TweakWidget<void> =>
-  (onChange) => {
+const createButton = (caption: string): ApplicationWidget<void> => ({
+  createElement: (onChange) => {
     const element = document.createElement("input");
 
     element.onclick = () => onChange();
@@ -72,11 +84,16 @@ const createButton =
     element.value = caption;
 
     return element;
-  };
+  },
 
-const createCheckbox =
-  (caption: string, initial: boolean): TweakWidget<boolean> =>
-  (onChange) => {
+  defaultValue: undefined,
+});
+
+const createCheckbox = (
+  caption: string,
+  defaultValue: boolean
+): ApplicationWidget<boolean> => ({
+  createElement: (onChange) => {
     const checkbox = document.createElement("input");
     const element = document.createElement("span");
     const update = () => onChange(checkbox.checked);
@@ -85,22 +102,22 @@ const createCheckbox =
     element.appendChild(document.createTextNode(caption));
     element.className = "container";
 
-    checkbox.checked = initial;
+    checkbox.checked = defaultValue;
     checkbox.onchange = update;
     checkbox.type = "checkbox";
 
-    update();
-
     return element;
-  };
+  },
 
-const createSelect =
-  (
-    caption: string | undefined,
-    options: string[],
-    initial: number
-  ): TweakWidget<number> =>
-  (onChange) => {
+  defaultValue,
+});
+
+const createSelect = (
+  caption: string | undefined,
+  options: string[],
+  defaultValue: number
+): ApplicationWidget<number> => ({
+  createElement: (onChange) => {
     const element = document.createElement("span");
     const select = document.createElement("select");
     const update = () => onChange(select.selectedIndex);
@@ -117,28 +134,29 @@ const createSelect =
     for (let i = 0; i < options.length; ++i) {
       const option = document.createElement("option");
 
-      option.selected = i === initial;
+      option.selected = i === defaultValue;
       option.text = options[i];
 
       select.options.add(option);
     }
 
-    update();
-
     return element;
-  };
+  },
 
-const declare = <TScreen extends Screen, TState, TTweak>(
+  defaultValue,
+});
+
+const declare = <TScreen extends Screen, TState, TSetup extends object>(
   title: string,
   screenConstructor: ScreenConstructor<TScreen>,
-  configuration: TweakConfiguration<TTweak>,
-  application: Application<TScreen, TState, TTweak>
+  configuration: ApplicationConfiguration<TSetup>,
+  application: Application<TScreen, TState, TSetup>
 ): Process => {
   let runtime:
-    | { screen: TScreen; state: TState; tweak: Tweak<TTweak> }
+    | { screen: TScreen; state: TState; setup: ApplicationSetup<TSetup> }
     | undefined = undefined;
 
-  const { prepare, render, resize, update } = application;
+  const { change, create, render, resize, update } = application;
 
   return {
     requestFullscreen: () => runtime?.screen.requestFullscreen(),
@@ -154,24 +172,26 @@ const declare = <TScreen extends Screen, TState, TTweak>(
       }
 
       const screen = new screenConstructor(container);
-      const state = await prepare(screen);
-      const tweak = configure(configuration);
+      const state = await create(screen);
+      const setup = configure(configuration, (setup) => change(state, setup));
 
-      screen.addResizeHandler((size) => resize(state, tweak, size));
+      await change(state, setup);
 
-      runtime = { screen, state, tweak };
+      screen.addResizeHandler((size) => resize(state, size));
+
+      runtime = { screen, state, setup };
     },
     step: (dt: number) => {
       if (runtime === undefined) {
         return;
       }
 
-      const { screen, state, tweak } = runtime;
+      const { screen, state } = runtime;
 
       screen.resize();
 
-      update(state, tweak, dt);
-      requestAnimationFrame(() => render(state, tweak));
+      update(state, dt);
+      requestAnimationFrame(() => render(state));
     },
     stop: () => {
       runtime = undefined;
@@ -204,12 +224,14 @@ const run = (applications: Process[]) => {
   let frames = 0;
   let then = 0;
 
-  const expanderBuilder = createButton("Fullscreen");
-  const expander = expanderBuilder(() => current?.requestFullscreen());
+  const expanderWidget = createButton("Fullscreen");
+  const expander = expanderWidget.createElement(() =>
+    current?.requestFullscreen()
+  );
 
   const selectorOptions = applications.map(({ title }) => title);
-  const selectorBuilder = createSelect(undefined, selectorOptions, hashValue);
-  const selector = selectorBuilder(async (value: number) => {
+  const selectorWidget = createSelect(undefined, selectorOptions, hashValue);
+  const selector = selectorWidget.createElement(async (value: number) => {
     const application = applications[value];
 
     if (current !== undefined) {
@@ -260,9 +282,9 @@ const run = (applications: Process[]) => {
 
 export {
   type Application,
-  type Tweak,
-  type TweakConfiguration,
-  type TweakWidget,
+  type ApplicationConfiguration,
+  type ApplicationSetup,
+  type ApplicationWidget,
   createCheckbox,
   createSelect,
   declare,

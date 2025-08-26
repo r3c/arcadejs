@@ -1,6 +1,6 @@
 import {
   type Application,
-  type Tweak,
+  type ApplicationSetup,
   createCheckbox,
   createSelect,
   declare,
@@ -64,10 +64,11 @@ type ApplicationState = {
   pointLights: { mover: Mover; position: MutableVector3 }[];
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
+  setup: ApplicationSetup<typeof configuration>;
   target: GlTarget;
 };
 
-const getOptions = (tweak: Tweak<typeof configuration>) => [
+const getOptions = (tweak: ApplicationSetup<typeof configuration>) => [
   tweak.lightAmbient,
   tweak.lightDiffuse,
   tweak.lightSpecular,
@@ -80,7 +81,7 @@ const application: Application<
   ApplicationState,
   typeof configuration
 > = {
-  async prepare(screen) {
+  async create(screen) {
     const gl = screen.context;
     const input = new Input(screen.canvas);
     const runtime = createRuntime(screen.context);
@@ -141,12 +142,17 @@ const application: Application<
             noNormalMap: !flags[4],
           })
       ),
+      setup: {} as any,
       target,
       time: 0,
     };
   },
 
-  render(state, tweak) {
+  async change(state, setup) {
+    state.setup = setup;
+  },
+
+  render(state) {
     const {
       camera,
       debugRenderer,
@@ -155,6 +161,7 @@ const application: Application<
       pointLights,
       projectionMatrix,
       rendererMemo,
+      setup,
       target,
     } = state;
 
@@ -162,11 +169,11 @@ const application: Application<
     target.clear(0);
 
     // Forward pass
-    const sceneRenderer = rendererMemo.get(getOptions(tweak));
+    const sceneRenderer = rendererMemo.get(getOptions(setup));
     const scene: ForwardLightingScene = {
       ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
       directionalLights: directionalLights
-        .slice(0, tweak.nbDirectionalLights)
+        .slice(0, setup.nbDirectionalLights)
         .map(({ direction }) => ({
           color: { x: 0.8, y: 0.8, z: 0.8 },
           direction,
@@ -188,7 +195,7 @@ const application: Application<
         },
       ]
         .concat(
-          pointLights.slice(0, tweak.nbPointLights).map(({ position }) => ({
+          pointLights.slice(0, setup.nbPointLights).map(({ position }) => ({
             matrix: Matrix4.fromSource(Matrix4.identity, [
               "translate",
               position,
@@ -199,7 +206,7 @@ const application: Application<
         )
         .concat(
           directionalLights
-            .slice(0, tweak.nbDirectionalLights)
+            .slice(0, setup.nbDirectionalLights)
             .map(({ direction }) => ({
               matrix: Matrix4.fromSource(Matrix4.identity, [
                 "translate",
@@ -210,7 +217,7 @@ const application: Application<
             }))
         ),
       pointLights: pointLights
-        .slice(0, tweak.nbPointLights)
+        .slice(0, setup.nbPointLights)
         .map(({ position }) => ({
           color: { x: 0.8, y: 0.8, z: 0.8 },
           position,
@@ -223,13 +230,13 @@ const application: Application<
     sceneRenderer.render(scene);
 
     // Draw texture debug
-    if (tweak.debugMode === 1) {
+    if (setup.debugMode === 1) {
       debugRenderer.render(sceneRenderer.directionalShadowBuffers[0]);
     }
   },
 
-  resize(state, tweak, size) {
-    state.rendererMemo.get(getOptions(tweak)).resize(size);
+  resize(state, size) {
+    const { rendererMemo, setup, target } = state;
 
     state.projectionMatrix = Matrix4.fromIdentity([
       "setFromPerspective",
@@ -238,11 +245,13 @@ const application: Application<
       0.1,
       100,
     ]);
-    state.target.resize(size);
+
+    rendererMemo.get(getOptions(setup)).resize(size);
+    target.resize(size);
   },
 
-  update(state, tweak, dt) {
-    const { camera, directionalLights, pointLights, time } = state;
+  update(state, dt) {
+    const { camera, directionalLights, pointLights, setup, time } = state;
 
     // Update light positions
     for (let i = 0; i < directionalLights.length; ++i) {
@@ -262,7 +271,7 @@ const application: Application<
     // Move camera
     camera.update(dt);
 
-    state.time += tweak.move ? dt : 0;
+    state.time += setup.move ? dt : 0;
   },
 };
 

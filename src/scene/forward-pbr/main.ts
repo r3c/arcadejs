@@ -1,6 +1,6 @@
 import {
   type Application,
-  type Tweak,
+  type ApplicationSetup,
   createCheckbox,
   createSelect,
   declare,
@@ -67,6 +67,7 @@ type ApplicationState = {
   time: number;
   projectionMatrix: Matrix4;
   rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
+  setup: ApplicationSetup<typeof configuration>;
   target: GlTarget;
   textures: {
     brdf: GlTexture;
@@ -75,7 +76,7 @@ type ApplicationState = {
   };
 };
 
-const getOptions = (tweak: Tweak<typeof configuration>) => [
+const getOptions = (tweak: ApplicationSetup<typeof configuration>) => [
   tweak.lightAmbient,
   tweak.lightEmissive,
   tweak.useOcclusion,
@@ -89,7 +90,7 @@ const application: Application<
   ApplicationState,
   typeof configuration
 > = {
-  async prepare(screen) {
+  async create(screen) {
     const gl = screen.context;
     const input = new Input(screen.canvas);
     const runtime = createRuntime(gl);
@@ -176,6 +177,7 @@ const application: Application<
             noShadow: true,
           })
       ),
+      setup: {} as any,
       target,
       textures: {
         brdf,
@@ -186,12 +188,23 @@ const application: Application<
     };
   },
 
-  render(state, tweak) {
-    const { camera, models, projectionMatrix, rendererMemo, target, textures } =
-      state;
+  async change(state, setup) {
+    state.setup = setup;
+  },
+
+  render(state) {
+    const {
+      camera,
+      models,
+      projectionMatrix,
+      rendererMemo,
+      setup,
+      target,
+      textures,
+    } = state;
 
     const lightPositions = state.lights
-      .slice(0, tweak.nbLights)
+      .slice(0, setup.nbLights)
       .map((light) => light.position);
 
     // Draw scene
@@ -236,11 +249,12 @@ const application: Application<
       viewMatrix: camera.viewMatrix,
     };
 
-    rendererMemo.get(getOptions(tweak)).render(scene);
+    rendererMemo.get(getOptions(setup)).render(scene);
   },
 
-  resize(state, tweak, size) {
-    state.rendererMemo.get(getOptions(tweak)).resize(size);
+  resize(state, size) {
+    const { rendererMemo, setup, target } = state;
+
     state.projectionMatrix = Matrix4.fromIdentity([
       "setFromPerspective",
       Math.PI / 4,
@@ -248,11 +262,13 @@ const application: Application<
       0.1,
       100,
     ]);
-    state.target.resize(size);
+
+    rendererMemo.get(getOptions(setup)).resize(size);
+    target.resize(size);
   },
 
-  update(state, tweak, dt) {
-    const { camera, lights, time } = state;
+  update(state, dt) {
+    const { camera, lights, setup, time } = state;
 
     // Update light positions
     for (let i = 0; i < lights.length; ++i) {
@@ -264,7 +280,7 @@ const application: Application<
     // Move camera
     camera.update(dt);
 
-    state.time += tweak.move ? dt : 0;
+    state.time += setup.move ? dt : 0;
   },
 };
 
