@@ -38,12 +38,12 @@ html {
   flex: initial;
 }
 
-.console .scene {
-  flex: initial;
+.console .setup {
+  flex: auto;
 }
 
-.console .tweak {
-  flex: auto;
+.console .scene {
+  flex: initial;
 }
 
 .control {

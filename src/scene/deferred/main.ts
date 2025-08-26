@@ -1,6 +1,6 @@
 import {
   type Application,
-  type Tweak,
+  type ApplicationSetup,
   createCheckbox,
   createSelect,
   declare,
@@ -153,10 +153,11 @@ type ApplicationState = {
   pointLights: ScenePointLight[];
   projectionMatrix: Matrix4;
   sceneRendererMemo: Memo<[number, boolean[]], SceneRenderer>;
+  setup: ApplicationSetup<typeof configuration>;
   target: GlTarget;
 };
 
-const getOptions = (tweak: Tweak<typeof configuration>) => [
+const getOptions = (tweak: ApplicationSetup<typeof configuration>) => [
   tweak.lightAmbient,
   tweak.lightDiffuse,
   tweak.lightSpecular,
@@ -167,7 +168,7 @@ const application: Application<
   ApplicationState,
   typeof configuration
 > = {
-  async prepare(screen) {
+  async create(screen) {
     const gl = screen.context;
     const input = new Input(screen.canvas);
     const runtime = createRuntime(gl);
@@ -293,36 +294,42 @@ const application: Application<
           }
         }
       ),
+      setup: {} as any,
       target,
       time: 0,
       viewMatrix: Matrix4.fromIdentity(),
     };
   },
 
-  render(state, tweak) {
+  async change(state, setup) {
+    state.setup = setup;
+  },
+
+  render(state) {
     const {
       camera,
       debugRendererMemo,
       models,
       projectionMatrix,
       sceneRendererMemo,
+      setup,
       target,
     } = state;
 
     // Pick active lights
     const directionalLights = state.directionalLights.slice(
       0,
-      directionalLightParameters[tweak.nbDirectionalLights].count
+      directionalLightParameters[setup.nbDirectionalLights].count
     );
     const pointLights = state.pointLights.slice(
       0,
-      pointLightParameters[tweak.nbPointLights].count
+      pointLightParameters[setup.nbPointLights].count
     );
 
     // Draw scene
     const { renderer, textures } = sceneRendererMemo.get([
-      tweak.technique,
-      getOptions(tweak),
+      setup.technique,
+      getOptions(setup),
     ]);
 
     const scene: DeferredLightingScene = {
@@ -394,23 +401,17 @@ const application: Application<
 
     // Draw debug
     const debugTexture =
-      tweak.debugMode !== 0 ? textures[tweak.debugMode - 1] : undefined;
+      setup.debugMode !== 0 ? textures[setup.debugMode - 1] : undefined;
 
     if (debugTexture !== undefined) {
-      const debugRenderer = debugRendererMemo.get(tweak.debugMode - 1);
+      const debugRenderer = debugRendererMemo.get(setup.debugMode - 1);
 
       debugRenderer.render(debugTexture);
     }
   },
 
-  resize(state, tweak, size) {
-    if (tweak.debugMode !== 0) {
-      state.debugRendererMemo.get(tweak.debugMode - 1).resize(size);
-    }
-
-    state.sceneRendererMemo
-      .get([tweak.technique, getOptions(tweak)])
-      .renderer.resize(size);
+  resize(state, size) {
+    const { debugRendererMemo, sceneRendererMemo, setup, target } = state;
 
     state.projectionMatrix = Matrix4.fromIdentity([
       "setFromPerspective",
@@ -420,12 +421,20 @@ const application: Application<
       100,
     ]);
 
-    state.target.resize(size);
+    if (setup.debugMode !== 0) {
+      debugRendererMemo.get(setup.debugMode - 1).resize(size);
+    }
+
+    sceneRendererMemo
+      .get([setup.technique, getOptions(setup)])
+      .renderer.resize(size);
+
+    target.resize(size);
   },
 
-  update(state, tweak, dt) {
-    const { camera, directionalLights, pointLights, time } = state;
-    const pointLightRadius = pointLightParameters[tweak.nbPointLights].radius;
+  update(state, dt) {
+    const { camera, directionalLights, pointLights, setup, time } = state;
+    const pointLightRadius = pointLightParameters[setup.nbPointLights].radius;
 
     for (let i = 0; i < directionalLights.length; ++i) {
       const { direction, mover } = directionalLights[i];
@@ -444,7 +453,7 @@ const application: Application<
     // Move camera
     camera.update(dt);
 
-    state.time += tweak.move ? dt : 0;
+    state.time += setup.move ? dt : 0;
   },
 };
 

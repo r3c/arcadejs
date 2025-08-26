@@ -1,5 +1,6 @@
 import {
   type Application,
+  ApplicationSetup,
   createSelect,
   declare,
 } from "../../engine/application";
@@ -32,6 +33,7 @@ type ApplicationState = {
   cubeWithColor: Mesh;
   cubeWithTexture: Mesh;
   projection: Matrix4;
+  setup: ApplicationSetup<typeof configuration>;
   rendererDefault: SoftwareRenderer;
   rendererWire: SoftwareRenderer;
 };
@@ -41,7 +43,7 @@ const application: Application<
   ApplicationState,
   typeof configuration
 > = {
-  async prepare(screen) {
+  async create(screen) {
     const input = new Input(screen.canvas);
 
     return {
@@ -59,10 +61,15 @@ const application: Application<
       projection: Matrix4.identity,
       rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
       rendererWire: new SoftwareRenderer(screen, SoftwareDrawMode.Wire),
+      setup: {} as any,
     };
   },
 
-  render(state, tweak) {
+  async change(state, setup) {
+    state.setup = setup;
+  },
+
+  render(state) {
     const {
       camera,
       cubeWithColor,
@@ -70,10 +77,11 @@ const application: Application<
       projection,
       rendererDefault,
       rendererWire,
+      setup,
     } = state;
 
-    const mesh = tweak.renderMode === 2 ? cubeWithTexture : cubeWithColor;
-    const renderer = tweak.renderMode === 0 ? rendererWire : rendererDefault;
+    const mesh = setup.renderMode === 2 ? cubeWithTexture : cubeWithColor;
+    const renderer = setup.renderMode === 0 ? rendererWire : rendererDefault;
 
     renderer.render({
       objects: [{ matrix: Matrix4.identity, mesh }],
@@ -81,7 +89,7 @@ const application: Application<
     });
   },
 
-  resize(state, _, size) {
+  resize(state, size) {
     state.projection = Matrix4.fromIdentity([
       "setFromPerspective",
       Math.PI / 4,
@@ -91,7 +99,7 @@ const application: Application<
     ]);
   },
 
-  update(state, _, dt) {
+  update(state, dt) {
     const { camera } = state;
 
     camera.update(dt);

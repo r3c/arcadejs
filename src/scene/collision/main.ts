@@ -166,8 +166,8 @@ const intersectLineWithPlane = (
   return intersection >= 0 && intersection <= 1 ? intersection : undefined;
 };
 
-const application: Application<WebGLScreen, ApplicationState, undefined> = {
-  async prepare(screen) {
+const application: Application<WebGLScreen, ApplicationState, object> = {
+  async create(screen) {
     const gl = screen.context;
     const input = new Input(screen.canvas);
     const runtime = createRuntime(gl);
@@ -261,6 +261,8 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
     return state;
   },
 
+  async change() {},
+
   render(state) {
     const {
       camera,
@@ -327,7 +329,7 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
     sceneRenderer.render(scene);
   },
 
-  resize(state, _, size) {
+  resize(state, size) {
     state.projectionMatrix = Matrix4.fromIdentity([
       "setFromPerspective",
       Math.PI / 4,
@@ -340,13 +342,13 @@ const application: Application<WebGLScreen, ApplicationState, undefined> = {
     state.target.resize(size);
   },
 
-  update(state, _, dt) {
+  update(state, dt) {
     for (const updater of state.updaters) {
       updater(state, dt);
     }
   },
 };
 
-const process = declare("Collision", WebGLScreen, undefined, application);
+const process = declare("Collision", WebGLScreen, {}, application);
 
 export { process };

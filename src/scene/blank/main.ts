@@ -10,12 +10,14 @@ type ApplicationState = {
   renderer: SoftwareRenderer;
 };
 
-const application: Application<Context2DScreen, ApplicationState, undefined> = {
-  async prepare(screen) {
+const application: Application<Context2DScreen, ApplicationState, object> = {
+  async create(screen) {
     return {
       renderer: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
     };
   },
+
+  async change() {},
 
   render(state) {
     state.renderer.render({
@@ -28,11 +30,6 @@ const application: Application<Context2DScreen, ApplicationState, undefined> = {
   update() {},
 };
 
-const process = declare(
-  "Blank screen",
-  Context2DScreen,
-  undefined,
-  application
-);
+const process = declare("Blank screen", Context2DScreen, {}, application);
 
 export { process };
