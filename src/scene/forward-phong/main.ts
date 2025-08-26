@@ -1,6 +1,5 @@
 import {
   type Application,
-  type ApplicationSetup,
   createCheckbox,
   createSelect,
   declare,
@@ -11,14 +10,9 @@ import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
-import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { GlRuntime, GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { Mover, createCircleMover, createOrbitMover } from "../move";
-import {
-  Memo,
-  createBooleansIndexer,
-  memoize,
-} from "../../engine/language/memo";
-import { createModel } from "../../engine/graphic/webgl/model";
+import { createModel, GlModel } from "../../engine/graphic/webgl/model";
 import {
   DebugTextureRenderer,
   DebugTextureEncoding,
@@ -55,25 +49,24 @@ const configuration = {
 
 type ApplicationState = {
   camera: Camera;
+  debugMode: boolean;
   debugRenderer: Renderer<GlTexture>;
   directionalLights: { mover: Mover; direction: MutableVector3 }[];
-  directionalLightSubjects: RendererSubject[][];
-  time: number;
+  directionalLightSubjects: RendererSubject[];
+  models: {
+    cube: GlModel;
+    ground: GlModel;
+    light: GlModel;
+  };
+  move: boolean;
   pointLights: { mover: Mover; position: MutableVector3 }[];
-  pointLightSubjects: RendererSubject[][];
+  pointLightSubjects: RendererSubject[];
   projectionMatrix: Matrix4;
-  rendererMemo: Memo<boolean[], ForwardLightingRenderer>;
-  setup: ApplicationSetup<typeof configuration>;
+  renderer: ForwardLightingRenderer | undefined;
+  runtime: GlRuntime;
   target: GlTarget;
+  time: number;
 };
-
-const getOptions = (tweak: ApplicationSetup<typeof configuration>) => [
-  tweak.lightAmbient,
-  tweak.lightDiffuse,
-  tweak.lightSpecular,
-  tweak.useHeightMap,
-  tweak.useNormalMap,
-];
 
 const application: Application<
   WebGLScreen,
@@ -88,32 +81,23 @@ const application: Application<
 
     // Load models
     const cubeMesh = await loadMeshFromJson("model/cube/mesh.json");
-    const cubeModel = createModel(gl, cubeMesh);
     const groundMesh = await loadMeshFromJson("model/ground/mesh.json");
-    const groundModel = createModel(gl, groundMesh);
     const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromSource(Matrix4.identity, [
         "scale",
         { x: 0.2, y: 0.2, z: 0.2 },
       ]),
     });
-    const lightModel = createModel(gl, lightMesh);
 
     const directionalLights = range(3).map((i) => ({
       direction: Vector3.fromZero(),
       mover: createCircleMover(i),
     }));
-    const directionalLightSubjects = range(directionalLights.length).map<
-      RendererSubject[]
-    >(() => []);
 
     const pointLights = range(3).map((i) => ({
       mover: createOrbitMover(i, 2, 2, 1),
       position: Vector3.fromZero(),
     }));
-    const pointLightSubjects = range(directionalLights.length).map<
-      RendererSubject[]
-    >(() => []);
 
     // Create state
     return {
@@ -126,6 +110,7 @@ const application: Application<
         { x: 0, y: 0, z: -5 },
         Vector2.zero
       ),
+      debugMode: false,
       debugRenderer: new DebugTextureRenderer(runtime, target, {
         encoding: DebugTextureEncoding.Monochrome,
         channel: DebugTextureChannel.Red,
@@ -133,39 +118,18 @@ const application: Application<
         zFar: 100,
       }),
       directionalLights,
-      directionalLightSubjects,
+      directionalLightSubjects: [],
+      models: {
+        cube: createModel(gl, cubeMesh),
+        ground: createModel(gl, groundMesh),
+        light: createModel(gl, lightMesh),
+      },
+      move: false,
       pointLights,
-      pointLightSubjects,
+      pointLightSubjects: [],
       projectionMatrix: Matrix4.identity,
-      rendererMemo: memoize(createBooleansIndexer(5), (flags) => {
-        const renderer = createForwardLightingRenderer(runtime, target, {
-          maxDirectionalLights: 3,
-          maxPointLights: 3,
-          lightModel: ForwardLightingLightModel.Phong,
-          lightModelPhongNoAmbient: !flags[0],
-          lightModelPhongNoDiffuse: !flags[1],
-          lightModelPhongNoSpecular: !flags[2],
-          noHeightMap: !flags[3],
-          noNormalMap: !flags[4],
-        });
-
-        renderer.register({ model: cubeModel });
-
-        const groundSubject = renderer.register({ model: groundModel });
-
-        groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
-
-        for (const subjects of [
-          ...directionalLightSubjects, // FIXME: only .slice(0, tweak.nbDirectionalLights) lights should be registered
-          ...pointLightSubjects, // FIXME: only .slice(0, tweak.nbPointLights) lights should be registered
-        ]) {
-          subjects.push(
-            renderer.register({ model: lightModel, noShadow: true })
-          );
-        }
-
-        return renderer;
-      }),
+      renderer: undefined,
+      runtime,
       setup: {} as any,
       target,
       time: 0,
@@ -173,18 +137,54 @@ const application: Application<
   },
 
   async change(state, setup) {
-    state.setup = setup;
+    const { models, runtime, target } = state;
+
+    if (state.renderer !== undefined) {
+      state.renderer.dispose();
+    }
+
+    const renderer = createForwardLightingRenderer(runtime, target, {
+      maxDirectionalLights: 3,
+      maxPointLights: 3,
+      lightModel: ForwardLightingLightModel.Phong,
+      lightModelPhongNoAmbient: !setup.lightAmbient,
+      lightModelPhongNoDiffuse: !setup.lightDiffuse,
+      lightModelPhongNoSpecular: !setup.lightSpecular,
+      noHeightMap: !setup.useHeightMap,
+      noNormalMap: !setup.useNormalMap,
+    });
+
+    renderer.register({ model: models.cube });
+
+    const groundSubject = renderer.register({ model: models.ground });
+
+    groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
+
+    const directionalLightSubjects = range(setup.nbDirectionalLights).map(() =>
+      renderer.register({ model: models.light, noShadow: true })
+    );
+    const pointLightSubjects = range(setup.nbPointLights).map(() =>
+      renderer.register({ model: models.light, noShadow: true })
+    );
+
+    state.debugMode = setup.debugMode !== 0;
+    state.directionalLightSubjects = directionalLightSubjects;
+    state.move = setup.move;
+    state.pointLightSubjects = pointLightSubjects;
+    state.renderer = renderer;
   },
 
   render(state) {
     const {
       camera,
+      debugMode,
       debugRenderer,
       directionalLights,
+      directionalLightSubjects,
       pointLights,
+      pointLightSubjects,
       projectionMatrix,
-      rendererMemo,
-      setup,
+      renderer,
       target,
     } = state;
 
@@ -192,18 +192,17 @@ const application: Application<
     target.clear(0);
 
     // Forward pass
-    const sceneRenderer = rendererMemo.get(getOptions(setup));
     const scene: ForwardLightingScene = {
       ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
       directionalLights: directionalLights
-        .slice(0, setup.nbDirectionalLights)
+        .slice(0, directionalLightSubjects.length)
         .map(({ direction }) => ({
           color: { x: 0.8, y: 0.8, z: 0.8 },
           direction,
           shadow: true,
         })),
       pointLights: pointLights
-        .slice(0, setup.nbPointLights)
+        .slice(0, pointLightSubjects.length)
         .map(({ position }) => ({
           color: { x: 0.8, y: 0.8, z: 0.8 },
           position,
@@ -213,16 +212,16 @@ const application: Application<
       viewMatrix: camera.viewMatrix,
     };
 
-    sceneRenderer.render(scene);
+    renderer?.render(scene);
 
     // Draw texture debug
-    if (setup.debugMode === 1) {
-      debugRenderer.render(sceneRenderer.directionalShadowBuffers[0]);
+    if (debugMode && renderer !== undefined) {
+      debugRenderer.render(renderer.directionalShadowBuffers[0]);
     }
   },
 
   resize(state, size) {
-    const { rendererMemo, setup, target } = state;
+    const { renderer, target } = state;
 
     state.projectionMatrix = Matrix4.fromIdentity([
       "setFromPerspective",
@@ -232,7 +231,7 @@ const application: Application<
       100,
     ]);
 
-    rendererMemo.get(getOptions(setup)).resize(size);
+    renderer?.resize(size);
     target.resize(size);
   },
 
@@ -241,43 +240,39 @@ const application: Application<
       camera,
       directionalLights,
       directionalLightSubjects,
+      move,
       pointLights,
       pointLightSubjects,
-      setup,
       time,
     } = state;
 
     // Update light positions
-    for (let i = 0; i < directionalLights.length; ++i) {
+    for (let i = 0; i < directionalLightSubjects.length; ++i) {
       const { direction, mover } = directionalLights[i];
-      const subjects = directionalLightSubjects[i];
+      const subject = directionalLightSubjects[i];
 
       direction.set(mover(Vector3.zero, -time * 0.0005));
       direction.normalize();
       direction.scale(10);
 
-      for (const { transform } of subjects) {
-        transform.set(Matrix4.identity);
-        transform.translate(direction);
-      }
+      subject.transform.set(Matrix4.identity);
+      subject.transform.translate(direction);
     }
 
-    for (let i = 0; i < pointLights.length; ++i) {
+    for (let i = 0; i < pointLightSubjects.length; ++i) {
       const { mover, position } = pointLights[i];
-      const subjects = pointLightSubjects[i];
+      const subject = pointLightSubjects[i];
 
       position.set(mover(Vector3.zero, time * 0.0005));
 
-      for (const { transform } of subjects) {
-        transform.set(Matrix4.identity);
-        transform.translate(position);
-      }
+      subject.transform.set(Matrix4.identity);
+      subject.transform.translate(position);
     }
 
     // Move camera
     camera.update(dt);
 
-    state.time += setup.move ? dt : 0;
+    state.time += move ? dt : 0;
   },
 };
 
