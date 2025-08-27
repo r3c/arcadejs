@@ -201,6 +201,7 @@ const declare = <TScreen extends Screen, TState, TSetup extends object>(
 };
 
 const run = (applications: Process[]) => {
+  // Sanity checks
   const frameContainer = document.getElementById("frame");
 
   if (frameContainer === null) {
@@ -219,19 +220,13 @@ const run = (applications: Process[]) => {
     0
   );
 
+  // Initialize application lifecycle
   let current: Process | undefined;
   let elapsed = 0;
   let frames = 0;
   let then = 0;
 
-  const expanderWidget = createButton("Fullscreen");
-  const expander = expanderWidget.createElement(() =>
-    current?.requestFullscreen()
-  );
-
-  const selectorOptions = applications.map(({ title }) => title);
-  const selectorWidget = createSelect(undefined, selectorOptions, hashValue);
-  const selector = selectorWidget.createElement(async (value: number) => {
+  const start = async (value: number) => {
     const application = applications[value];
 
     if (current !== undefined) {
@@ -250,7 +245,7 @@ const run = (applications: Process[]) => {
     await application.start();
 
     current = application;
-  });
+  };
 
   const tick = (time: number) => {
     window.requestAnimationFrame(tick);
@@ -274,9 +269,21 @@ const run = (applications: Process[]) => {
     ++frames;
   };
 
-  sceneContainer.appendChild(expander);
-  sceneContainer.appendChild(selector);
+  // Initialize control elements
+  const fullscreenWidget = createButton("Fullscreen");
+  const fullscreen = fullscreenWidget.createElement(() =>
+    current?.requestFullscreen()
+  );
 
+  const sceneOptions = applications.map(({ title }) => title);
+  const sceneWidget = createSelect(undefined, sceneOptions, hashValue);
+  const scene = sceneWidget.createElement(start);
+
+  sceneContainer.appendChild(fullscreen);
+  sceneContainer.appendChild(scene);
+
+  // Start scene
+  start(hashValue);
   tick(0);
 };
 
