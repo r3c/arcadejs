@@ -27,6 +27,10 @@ html {
   border-radius: 8px;
 }
 
+.console .configuration {
+  flex: auto;
+}
+
 .control .container {
   display: flex;
   align-items: center;
@@ -36,10 +40,6 @@ html {
 
 .console .frame {
   flex: initial;
-}
-
-.console .setup {
-  flex: auto;
 }
 
 .console .scene {

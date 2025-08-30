@@ -1,22 +1,16 @@
 import { Screen } from "./graphic/display";
 import { Vector2 } from "./math/vector";
 
-type Application<TScreen extends Screen, TState, TSetup> = {
-  change: (state: TState, setup: ApplicationSetup<TSetup>) => Promise<void>;
+type Application<TScreen extends Screen, TState, TConfiguration> = {
+  change: (state: TState, configuration: TConfiguration) => Promise<void>;
   create: (screen: TScreen) => Promise<TState>;
   render: (state: TState) => void;
   resize: (state: TState, size: Vector2) => void;
   update: (state: TState, dt: number) => void;
 };
 
-type ApplicationConfiguration<T extends object> = {
-  [key in keyof T]: ApplicationWidget<unknown>;
-};
-
-type ApplicationSetup<T> = {
-  [key in keyof T]: T[key] extends ApplicationWidget<infer TValue>
-    ? TValue
-    : never;
+type ApplicationConfigurator<T> = {
+  [key in keyof T]: ApplicationWidget<T[key]>;
 };
 
 type ApplicationWidget<T> = {
@@ -44,35 +38,35 @@ const canonicalize = (name: string): string => {
 };
 
 const configure = <T extends object>(
-  configuration: ApplicationConfiguration<T>,
-  change: (setup: ApplicationSetup<T>) => void
-): ApplicationSetup<T> => {
-  const container = document.getElementById("setup");
+  configurator: ApplicationConfigurator<T>,
+  change: (configuration: T) => void
+): T => {
+  const container = document.getElementById("configuration");
 
   if (container === null) {
-    throw Error("missing setup container");
+    throw Error("missing configuration container");
   }
 
   while (container.childNodes.length > 0) {
     container.removeChild(container.childNodes[0]);
   }
 
-  const entries = Object.entries<ApplicationWidget<unknown>>(configuration);
-  const setup: any = {};
+  const entries = Object.entries<ApplicationWidget<unknown>>(configurator);
+  const configuration: any = {};
 
   for (const [key, { createElement, defaultValue }] of entries) {
-    setup[key] = defaultValue;
+    configuration[key] = defaultValue;
 
     const element = createElement((value: any) => {
-      setup[key] = value;
+      configuration[key] = value;
 
-      change(setup);
+      change(configuration);
     });
 
     container.appendChild(element);
   }
 
-  return setup;
+  return configuration;
 };
 
 const createButton = (caption: string): ApplicationWidget<void> => ({
@@ -146,14 +140,14 @@ const createSelect = (
   defaultValue,
 });
 
-const declare = <TScreen extends Screen, TState, TSetup extends object>(
+const declare = <TScreen extends Screen, TState, TConfiguration extends object>(
   title: string,
   screenConstructor: ScreenConstructor<TScreen>,
-  configuration: ApplicationConfiguration<TSetup>,
-  application: Application<TScreen, TState, TSetup>
+  configurator: ApplicationConfigurator<TConfiguration>,
+  application: Application<TScreen, TState, TConfiguration>
 ): Process => {
   let runtime:
-    | { screen: TScreen; state: TState; setup: ApplicationSetup<TSetup> }
+    | { configuration: TConfiguration; screen: TScreen; state: TState }
     | undefined = undefined;
 
   const { change, create, render, resize, update } = application;
@@ -173,13 +167,15 @@ const declare = <TScreen extends Screen, TState, TSetup extends object>(
 
       const screen = new screenConstructor(container);
       const state = await create(screen);
-      const setup = configure(configuration, (setup) => change(state, setup));
+      const configuration = configure(configurator, (configuration) =>
+        change(state, configuration)
+      );
 
-      await change(state, setup);
+      await change(state, configuration);
 
       screen.addResizeHandler((size) => resize(state, size));
 
-      runtime = { screen, state, setup };
+      runtime = { configuration, screen, state };
     },
     step: (dt: number) => {
       if (runtime === undefined) {
@@ -289,8 +285,7 @@ const run = (applications: Process[]) => {
 
 export {
   type Application,
-  type ApplicationConfiguration,
-  type ApplicationSetup,
+  type ApplicationConfigurator,
   type ApplicationWidget,
   createCheckbox,
   createSelect,

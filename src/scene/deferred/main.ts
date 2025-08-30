@@ -1,5 +1,6 @@
 import {
   type Application,
+  ApplicationConfigurator,
   createCheckbox,
   createSelect,
   declare,
@@ -151,7 +152,7 @@ type ApplicationState = {
 const application: Application<
   WebGLScreen,
   ApplicationState,
-  typeof configuration
+  typeof configuration extends ApplicationConfigurator<infer T> ? T : never
 > = {
   async create(screen) {
     const gl = screen.context;
@@ -226,42 +227,42 @@ const application: Application<
     };
   },
 
-  async change(state, setup) {
+  async change(state, configuration) {
     const { runtime, target } = state;
 
     state.debugRenderer?.dispose();
     state.sceneRenderer?.dispose();
 
     state.debugRenderer =
-      setup.debugMode !== 0
+      configuration.debugMode !== 0
         ? new DebugTextureRenderer(runtime, target, {
-            channel: debugConfigurations[setup.debugMode - 1].channel,
-            encoding: debugConfigurations[setup.debugMode - 1].encoding,
+            channel: debugConfigurations[configuration.debugMode - 1].channel,
+            encoding: debugConfigurations[configuration.debugMode - 1].encoding,
             zNear: 0.1,
             zFar: 100,
           })
         : undefined;
 
-    switch (setup.technique) {
+    switch (configuration.technique) {
       case 0:
       default:
         {
           const renderer = new DeferredShadingRenderer(runtime, target, {
             lightModel: DeferredShadingLightModel.Phong,
-            lightModelPhongNoAmbient: !setup.lightAmbient,
-            lightModelPhongNoDiffuse: !setup.lightDiffuse,
-            lightModelPhongNoSpecular: !setup.lightSpecular,
+            lightModelPhongNoAmbient: !configuration.lightAmbient,
+            lightModelPhongNoDiffuse: !configuration.lightDiffuse,
+            lightModelPhongNoSpecular: !configuration.lightSpecular,
           });
 
           state.debugTexture =
-            setup.debugMode !== 0
+            configuration.debugMode !== 0
               ? [
                   renderer.depthBuffer,
                   renderer.diffuseAndShininessBuffer,
                   renderer.normalAndSpecularBuffer,
                   renderer.diffuseAndShininessBuffer,
                   renderer.normalAndSpecularBuffer,
-                ][setup.debugMode - 1]
+                ][configuration.debugMode - 1]
               : undefined;
           state.sceneRenderer = renderer;
         }
@@ -271,13 +272,13 @@ const application: Application<
         {
           const renderer = new DeferredLightingRenderer(runtime, target, {
             lightModel: DeferredLightingLightModel.Phong,
-            lightModelPhongNoAmbient: !setup.lightAmbient,
-            lightModelPhongNoDiffuse: !setup.lightDiffuse,
-            lightModelPhongNoSpecular: !setup.lightSpecular,
+            lightModelPhongNoAmbient: !configuration.lightAmbient,
+            lightModelPhongNoDiffuse: !configuration.lightDiffuse,
+            lightModelPhongNoSpecular: !configuration.lightSpecular,
           });
 
           state.debugTexture =
-            setup.debugMode !== 0
+            configuration.debugMode !== 0
               ? [
                   renderer.depthBuffer,
                   undefined,
@@ -286,16 +287,16 @@ const application: Application<
                   renderer.normalAndGlossBuffer,
                   renderer.lightBuffer,
                   renderer.lightBuffer,
-                ][setup.debugMode - 1]
+                ][configuration.debugMode - 1]
               : undefined;
           state.sceneRenderer = renderer;
         }
         break;
     }
 
-    state.move = setup.move;
-    state.nbDirectionalLights = setup.nbDirectionalLights;
-    state.nbPointLights = setup.nbPointLights;
+    state.move = configuration.move;
+    state.nbDirectionalLights = configuration.nbDirectionalLights;
+    state.nbPointLights = configuration.nbPointLights;
   },
 
   render(state) {

@@ -10,10 +10,10 @@
 - Support animated models and load animations from glTF files
 - Implement feature-level attributes (e.g. no texture) in forward lighting renderer [forward-lighting-feature]
 - Factorize materials when merging meshes [material-factorize]
-- Improve typing of application configuration [application-configuration-typing]
 
 ## Done
 
+- Improve typing of application configuration [application-configuration-typing]
 - Split scene update and draw to perform batch sorting only on change
 - Fix sRGB/RGB not applied in deferred shading
 - Strong typing for tweaks

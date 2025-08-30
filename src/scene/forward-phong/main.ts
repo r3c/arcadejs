@@ -1,5 +1,6 @@
 import {
   type Application,
+  ApplicationConfigurator,
   createCheckbox,
   createSelect,
   declare,
@@ -71,7 +72,7 @@ type ApplicationState = {
 const application: Application<
   WebGLScreen,
   ApplicationState,
-  typeof configuration
+  typeof configuration extends ApplicationConfigurator<infer T> ? T : never
 > = {
   async create(screen) {
     const gl = screen.context;
@@ -135,7 +136,7 @@ const application: Application<
     };
   },
 
-  async change(state, setup) {
+  async change(state, configuration) {
     const { models, runtime, target } = state;
 
     state.renderer?.dispose();
@@ -144,11 +145,11 @@ const application: Application<
       maxDirectionalLights: 3,
       maxPointLights: 3,
       lightModel: ForwardLightingLightModel.Phong,
-      lightModelPhongNoAmbient: !setup.lightAmbient,
-      lightModelPhongNoDiffuse: !setup.lightDiffuse,
-      lightModelPhongNoSpecular: !setup.lightSpecular,
-      noHeightMap: !setup.useHeightMap,
-      noNormalMap: !setup.useNormalMap,
+      lightModelPhongNoAmbient: !configuration.lightAmbient,
+      lightModelPhongNoDiffuse: !configuration.lightDiffuse,
+      lightModelPhongNoSpecular: !configuration.lightSpecular,
+      noHeightMap: !configuration.useHeightMap,
+      noNormalMap: !configuration.useNormalMap,
     });
 
     renderer.register({ model: models.cube });
@@ -157,16 +158,16 @@ const application: Application<
 
     groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
 
-    const directionalLightSubjects = range(setup.nbDirectionalLights).map(() =>
-      renderer.register({ model: models.light, noShadow: true })
-    );
-    const pointLightSubjects = range(setup.nbPointLights).map(() =>
+    const directionalLightSubjects = range(
+      configuration.nbDirectionalLights
+    ).map(() => renderer.register({ model: models.light, noShadow: true }));
+    const pointLightSubjects = range(configuration.nbPointLights).map(() =>
       renderer.register({ model: models.light, noShadow: true })
     );
 
-    state.debugMode = setup.debugMode !== 0;
+    state.debugMode = configuration.debugMode !== 0;
     state.directionalLightSubjects = directionalLightSubjects;
-    state.move = setup.move;
+    state.move = configuration.move;
     state.pointLightSubjects = pointLightSubjects;
     state.renderer = renderer;
   },

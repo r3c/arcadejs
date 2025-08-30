@@ -1,5 +1,6 @@
 import {
   type Application,
+  ApplicationConfigurator,
   createSelect,
   declare,
 } from "../../engine/application";
@@ -40,7 +41,7 @@ type ApplicationState = {
 const application: Application<
   Context2DScreen,
   ApplicationState,
-  typeof configuration
+  typeof configuration extends ApplicationConfigurator<infer T> ? T : never
 > = {
   async create(screen) {
     const input = new Input(screen.canvas);
@@ -63,8 +64,8 @@ const application: Application<
     };
   },
 
-  async change(state, setup) {
-    const { renderMode } = setup;
+  async change(state, configuration) {
+    const { renderMode } = configuration;
 
     const mesh = renderMode === 2 ? state.cubeWithTexture : state.cubeWithColor;
     const renderer = createSoftwareRenderer(

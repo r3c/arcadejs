@@ -224,7 +224,7 @@ const warp = (position: number, center: number, radius: number): number => {
   return ((position - shift + range) % range) + shift;
 };
 
-const application: Application<WebGLScreen, ApplicationState, object> = {
+const application: Application<WebGLScreen, ApplicationState, unknown> = {
   async create(screen) {
     const gl = screen.context;
     const input = new Input(screen.canvas);

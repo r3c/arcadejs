@@ -170,7 +170,7 @@ const intersectLineWithPlane = (
   return intersection >= 0 && intersection <= 1 ? intersection : undefined;
 };
 
-const application: Application<WebGLScreen, ApplicationState, object> = {
+const application: Application<WebGLScreen, ApplicationState, unknown> = {
   async create(screen) {
     const gl = screen.context;
     const input = new Input(screen.canvas);
