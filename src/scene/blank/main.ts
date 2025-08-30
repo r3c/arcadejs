@@ -3,7 +3,8 @@ import { Context2DScreen } from "../../engine/graphic/display";
 import {
   SoftwareDrawMode,
   SoftwareRenderer,
-} from "../../engine/graphic/software";
+  createSoftwareRenderer,
+} from "../../engine/graphic/renderer";
 import { Matrix4 } from "../../engine/math/matrix";
 
 type ApplicationState = {
@@ -13,7 +14,7 @@ type ApplicationState = {
 const application: Application<Context2DScreen, ApplicationState, object> = {
   async create(screen) {
     return {
-      renderer: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
+      renderer: createSoftwareRenderer(screen, SoftwareDrawMode.Default),
     };
   },
 
@@ -21,8 +22,8 @@ const application: Application<Context2DScreen, ApplicationState, object> = {
 
   render(state) {
     state.renderer.render({
-      objects: [],
-      state: { projection: Matrix4.identity, view: Matrix4.identity },
+      projection: Matrix4.identity,
+      view: Matrix4.identity,
     });
   },
 

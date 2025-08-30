@@ -1,8 +1,8 @@
-import { Context2DScreen } from "./display";
-import { Matrix4 } from "../math/matrix";
-import { Material, Mesh, defaultColor } from "./mesh";
-import { Vector2, Vector3, Vector4 } from "../math/vector";
-import { Renderer } from "./display";
+import { Context2DScreen } from "../display";
+import { Matrix4, MutableMatrix4 } from "../../math/matrix";
+import { Material, Mesh, defaultColor } from "../mesh";
+import { Vector2, Vector3, Vector4 } from "../../math/vector";
+import { Renderer } from "./definition";
 
 const enum SoftwareDrawMode {
   Default,
@@ -339,73 +339,81 @@ const projectVertexToScreen = (
   };
 };
 
-type SoftwareObject = {
-  matrix: Matrix4;
-  mesh: Mesh;
-};
+type SoftwareRenderer = Renderer<SoftwareScene, SoftwareSubject>;
 
-type SoftwareScene<TSceneState> = {
-  objects: Iterable<SoftwareObject>;
-  state: TSceneState;
-};
-
-type SceneState = {
+type SoftwareScene = {
   projection: Matrix4;
   view: Matrix4;
 };
 
-class SoftwareRenderer implements Renderer<SoftwareScene<SceneState>> {
-  private readonly drawMode: SoftwareDrawMode;
-  private readonly screen: Context2DScreen;
+type SoftwareSubject = {
+  mesh: Mesh;
+};
 
-  public constructor(screen: Context2DScreen, drawMode: SoftwareDrawMode) {
-    this.drawMode = drawMode;
-    this.screen = screen;
-  }
+const createSoftwareRenderer = (
+  screen: Context2DScreen,
+  drawMode: SoftwareDrawMode
+): SoftwareRenderer => {
+  const subjects: { mesh: Mesh; transform: MutableMatrix4 }[] = [];
 
-  public dispose() {
-    // No-op
-  }
+  return {
+    register: (subject) => {
+      const { mesh } = subject;
+      const transform = Matrix4.fromIdentity();
 
-  public render(scene: SoftwareScene<SceneState>) {
-    const { objects, state } = scene;
-    const screen = this.screen;
-    const size = screen.getSize();
+      subjects.push({ mesh, transform });
 
-    if (size.x === 0 || size.y === 0) {
-      return;
-    }
+      return {
+        remove: () => {},
+        transform,
+      };
+    },
 
-    const image = {
-      colors: new Uint8ClampedArray(size.x * size.y * 4),
-      depths: new Float32Array(size.x * size.y),
-      size,
-    };
+    render: (scene) => {
+      const { projection, view } = scene;
+      const size = screen.getSize();
 
-    image.depths.fill(Math.pow(2, 127));
+      if (size.x === 0 || size.y === 0) {
+        return;
+      }
 
-    const modelViewProjection = Matrix4.fromIdentity();
-    const viewProjection = Matrix4.fromSource(state.projection);
+      const image = {
+        colors: new Uint8ClampedArray(size.x * size.y * 4),
+        depths: new Float32Array(size.x * size.y),
+        size,
+      };
 
-    viewProjection.multiply(state.view);
+      image.depths.fill(Math.pow(2, 127));
 
-    for (const { matrix, mesh } of objects) {
-      modelViewProjection.set(viewProjection);
-      modelViewProjection.multiply(matrix);
+      const modelViewProjection = Matrix4.fromIdentity();
+      const viewProjection = Matrix4.fromSource(projection);
 
-      drawMesh(image, mesh, modelViewProjection, this.drawMode);
-    }
+      viewProjection.multiply(view);
 
-    screen.context.putImageData(
-      new ImageData(image.colors, image.size.x, image.size.y),
-      0,
-      0
-    );
-  }
+      for (const { mesh, transform } of subjects) {
+        modelViewProjection.set(viewProjection);
+        modelViewProjection.multiply(transform);
 
-  public resize() {
-    // No-op
-  }
-}
+        drawMesh(image, mesh, modelViewProjection, drawMode);
+      }
 
-export { SoftwareDrawMode, SoftwareRenderer };
+      screen.context.putImageData(
+        new ImageData(image.colors, image.size.x, image.size.y),
+        0,
+        0
+      );
+    },
+
+    resize: () => {
+      // No-op
+    },
+  };
+};
+
+export {
+  type SoftwareRenderer,
+  type SoftwareScene,
+  type SoftwareSubject,
+  SoftwareDrawMode,
+  createSoftwareRenderer,
+};
