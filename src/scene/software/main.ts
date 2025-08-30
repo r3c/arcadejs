@@ -8,12 +8,13 @@ import { Context2DScreen } from "../../engine/graphic/display";
 import { Mesh, loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import {} from "../../engine/graphic/mesh";
+import { Vector2 } from "../../engine/math/vector";
+import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 import {
   SoftwareDrawMode,
   SoftwareRenderer,
-} from "../../engine/graphic/software";
-import { Vector2 } from "../../engine/math/vector";
-import { Camera, createOrbitCamera } from "../../engine/stage/camera";
+  createSoftwareRenderer,
+} from "../../engine/graphic/renderer";
 
 /*
  ** What changed?
@@ -32,9 +33,8 @@ type ApplicationState = {
   cubeWithColor: Mesh;
   cubeWithTexture: Mesh;
   projection: Matrix4;
-  renderMode: number;
-  rendererDefault: SoftwareRenderer;
-  rendererWire: SoftwareRenderer;
+  renderer: SoftwareRenderer | undefined;
+  screen: Context2DScreen;
 };
 
 const application: Application<
@@ -58,33 +58,31 @@ const application: Application<
       cubeWithColor: await loadMeshFromJson("model/cube-color/mesh.json"),
       cubeWithTexture: await loadMeshFromJson("model/cube/mesh.json"),
       projection: Matrix4.identity,
-      renderMode: 0,
-      rendererDefault: new SoftwareRenderer(screen, SoftwareDrawMode.Default),
-      rendererWire: new SoftwareRenderer(screen, SoftwareDrawMode.Wire),
+      renderer: undefined,
+      screen,
     };
   },
 
   async change(state, setup) {
-    state.renderMode = setup.renderMode;
+    const { renderMode } = setup;
+
+    const mesh = renderMode === 2 ? state.cubeWithTexture : state.cubeWithColor;
+    const renderer = createSoftwareRenderer(
+      state.screen,
+      renderMode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default
+    );
+
+    renderer.register({ mesh });
+
+    state.renderer = renderer;
   },
 
   render(state) {
-    const {
-      camera,
-      cubeWithColor,
-      cubeWithTexture,
+    const { camera, projection, renderer } = state;
+
+    renderer?.render({
       projection,
-      renderMode,
-      rendererDefault,
-      rendererWire,
-    } = state;
-
-    const mesh = renderMode === 2 ? cubeWithTexture : cubeWithColor;
-    const renderer = renderMode === 0 ? rendererWire : rendererDefault;
-
-    renderer.render({
-      objects: [{ matrix: Matrix4.identity, mesh }],
-      state: { projection, view: camera.viewMatrix },
+      view: camera.viewMatrix,
     });
   },
 

@@ -7,6 +7,13 @@ import {
   ForwardLightingScene,
   ForwardLightingSubject,
 } from "./renderer/forward-lighting";
+import {
+  SoftwareDrawMode,
+  SoftwareRenderer,
+  SoftwareScene,
+  SoftwareSubject,
+  createSoftwareRenderer,
+} from "./renderer/software";
 
 export {
   type ForwardLightingConfiguration,
@@ -15,6 +22,11 @@ export {
   type ForwardLightingSubject,
   type Renderer,
   type RendererSubject,
+  type SoftwareRenderer,
+  type SoftwareScene,
+  type SoftwareSubject,
   ForwardLightingLightModel,
+  SoftwareDrawMode,
   createForwardLightingRenderer,
+  createSoftwareRenderer,
 };
