@@ -254,6 +254,7 @@ const createFlattenedPolygons = (
 const createMergedMesh = (instances: Iterable<MeshInstance>): Mesh => {
   const children: Mesh[] = [];
 
+  // [material-factorize]
   for (const { mesh, transform } of instances) {
     children.push({
       children: [mesh],

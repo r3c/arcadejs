@@ -431,6 +431,7 @@ const createLightBinder = (
   runtime: GlRuntime,
   configuration: Required<ForwardLightingConfiguration>
 ): PainterBinder<LightScene> => {
+  // [forward-lighting-feature]
   return (_feature) => {
     const shader = createLightShader(runtime, configuration);
 
