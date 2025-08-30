@@ -181,6 +181,7 @@ const createFlattenedPolygons = (
   ]);
 
   for (const polygon of mesh.polygons) {
+    // FIXME: map doesn't work as materials are often different instances at loading
     const flatPolygon: Polygon = flatPolygons.get(polygon.material) ?? {
       coordinates: undefined,
       indices: [],

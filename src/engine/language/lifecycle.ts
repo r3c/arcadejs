@@ -4,10 +4,11 @@ type Disposable = {
 
 type DelegateDisposable = Disposable & {
   register: (disposable: Disposable) => void;
+  remove: (disposable: Disposable) => void;
 };
 
 const createDelegateDisposable = (): DelegateDisposable => {
-  const disposables: Disposable[] = [];
+  const disposables: Set<Disposable> = new Set();
 
   return {
     dispose: () => {
@@ -17,7 +18,11 @@ const createDelegateDisposable = (): DelegateDisposable => {
     },
 
     register: (disposable) => {
-      disposables.push(disposable);
+      disposables.add(disposable);
+    },
+
+    remove: (disposable) => {
+      disposables.delete(disposable);
     },
   };
 };

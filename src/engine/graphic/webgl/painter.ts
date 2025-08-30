@@ -64,12 +64,7 @@ type PainterResource = {
 
 type PainterShader<TScene> = {
   binding: PainterBinding<TScene>;
-  volumes: PainterVolume[];
-};
-
-type PainterVolume = {
-  material: GlMaterial;
-  mesh: PainterMesh;
+  meshesByMaterial: Map<GlMaterial, Map<Symbol, PainterMesh>>;
 };
 
 const drawModes = {
@@ -183,54 +178,95 @@ const createBindingPainter = <TScene>(
     dispose: disposable.dispose,
 
     register: (mesh) => {
+      const removals: { featureKey: number; materials: GlMaterial[] }[] = [];
       const results = explode(mesh);
+      const symbol = Symbol();
 
-      for (const [featureKey, meshesByMaterial] of results) {
+      for (const [featureKey, meshByMaterial] of results) {
         let shader = shaders.get(featureKey);
-        let volumes: PainterVolume[];
+        let meshesByMaterial: Map<GlMaterial, Map<Symbol, PainterMesh>>;
 
         if (shader === undefined) {
           const binding = binder(keyToFeature(featureKey));
 
           disposable.register(binding);
 
-          volumes = [];
+          meshesByMaterial = new Map();
 
-          shaders.set(featureKey, { binding, volumes });
+          shaders.set(featureKey, { binding, meshesByMaterial });
         } else {
-          volumes = shader.volumes;
+          meshesByMaterial = shader.meshesByMaterial;
         }
 
-        for (const [material, mesh] of meshesByMaterial.entries()) {
-          volumes.push({ material, mesh });
+        const materials: GlMaterial[] = [];
+
+        for (const [material, mesh] of meshByMaterial.entries()) {
+          const meshes = meshesByMaterial.get(material) ?? new Map();
+
+          meshesByMaterial.set(material, meshes);
+
+          materials.push(material);
+          meshes.set(symbol, mesh);
         }
+
+        removals.push({ featureKey, materials });
       }
 
       return {
         remove: () => {
-          throw new Error("not implemented");
+          for (const { featureKey, materials } of removals) {
+            const shader = shaders.get(featureKey);
+
+            if (shader === undefined) {
+              continue;
+            }
+
+            const { binding, meshesByMaterial } = shader;
+
+            for (const material of materials) {
+              const meshes = meshesByMaterial.get(material);
+
+              if (meshes === undefined) {
+                continue;
+              }
+
+              meshes.delete(symbol);
+
+              if (meshes.size === 0) {
+                meshesByMaterial.delete(material);
+              }
+            }
+
+            if (meshesByMaterial.size === 0) {
+              binding.dispose();
+              disposable.remove(binding);
+              shaders.delete(featureKey);
+            }
+          }
         },
       };
     },
 
     render: (target, scene, viewMatrix) => {
-      for (const { binding, volumes } of shaders.values()) {
+      for (const { binding, meshesByMaterial } of shaders.values()) {
         const { materialBinding, matrixBinding, polygonBinding, sceneBinding } =
           binding;
 
         sceneBinding.bind(scene);
 
-        for (const { material, mesh } of volumes) {
+        for (const [material, meshes] of meshesByMaterial.entries()) {
           materialBinding.bind(material);
 
-          draw(
-            target,
-            matrixBinding,
-            polygonBinding,
-            mesh,
-            viewMatrix,
-            Matrix4.identity
-          );
+          for (const mesh of meshes.values()) {
+            draw(
+              target,
+              matrixBinding,
+              polygonBinding,
+              mesh,
+              viewMatrix,
+              Matrix4.identity
+            );
+          }
         }
       }
     },
