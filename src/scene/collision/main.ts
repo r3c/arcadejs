@@ -1,20 +1,22 @@
 import { type Application, declare } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
-import {
-  ForwardLightingRenderer,
-  ForwardLightingScene,
-} from "../../engine/graphic/webgl/renderers/forward-lighting";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
-import { GlModel, createModel } from "../../engine/graphic/webgl/model";
+import { createModel } from "../../engine/graphic/webgl/model";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
+import {
+  createForwardLightingRenderer,
+  ForwardLightingRenderer,
+  ForwardLightingScene,
+} from "../../engine/graphic/renderer/forward-lighting";
+import { RendererSubject } from "../../engine/graphic/renderer";
 
 type Plane = {
   distance: number;
@@ -37,15 +39,11 @@ type ApplicationState = {
   camera: Camera;
   input: Input;
   lights: Light[];
-  models: {
-    floor0: GlModel;
-    floor1: GlModel;
-    sphere: GlModel;
-  };
   surfaces: { collision: boolean; plane: Plane }[];
   player: Player;
   projectionMatrix: Matrix4;
-  sceneRenderer: ForwardLightingRenderer;
+  renderer: ForwardLightingRenderer;
+  sphereSubject: RendererSubject;
   target: GlTarget;
   updaters: Updater[];
 };
@@ -89,7 +87,7 @@ const createPlayerUpdater = (): Updater => {
   const yMovement = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player, surfaces } = state;
+    const { input, player, sphereSubject, surfaces } = state;
 
     const xDelta =
       (input.isPressed("arrowleft") ? -thrust : 0) +
@@ -143,6 +141,12 @@ const createPlayerUpdater = (): Updater => {
 
     // Update position
     player.position.add(velocity);
+
+    // Reflect into subject
+    sphereSubject.transform.setFromRotationPosition(
+      Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
+      player.position
+    );
   };
 };
 
@@ -178,13 +182,73 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       transform: Matrix4.fromIdentity(["scale", { x: 2, y: 0.01, z: 2 }]),
     });
 
-    const floor1 = await loadMeshFromJson("model/cube/mesh.json", {
-      transform: Matrix4.fromIdentity(["scale", { x: 2, y: 0.01, z: 2 }]),
-    });
-
     const sphere = await loadMeshFromJson("model/sphere/mesh.json", {
       transform: Matrix4.fromIdentity(["scale", { x: 0.25, y: 0.25, z: 0.25 }]),
     });
+
+    // Declare collision surfaces
+    const surfaces: { collision: boolean; plane: Plane }[] = [
+      {
+        collision: false,
+        plane: {
+          distance: 1,
+          normal: Vector3.fromSource({ x: 0, y: -1, z: 0 }, ["normalize"]),
+        },
+      },
+      {
+        collision: false,
+        plane: {
+          distance: 1,
+          normal: Vector3.fromSource({ x: 0, y: 1, z: 0 }, ["normalize"]),
+        },
+      },
+      {
+        collision: false,
+        plane: {
+          distance: 1,
+          normal: Vector3.fromSource({ x: 1, y: 1, z: 0 }, ["normalize"]),
+        },
+      },
+      {
+        collision: false,
+        plane: {
+          distance: 1,
+          normal: Vector3.fromSource({ x: -1, y: -1, z: 0 }, ["normalize"]),
+        },
+      },
+    ];
+
+    // Create renderer
+    const renderer = createForwardLightingRenderer(runtime, target, {
+      maxPointLights: 3,
+      noShadow: true,
+    });
+
+    const sphereSubject = renderer.register({ model: createModel(gl, sphere) });
+
+    const floor0Model = createModel(gl, floor0);
+
+    for (const { plane } of surfaces) {
+      const t0 = Vector3.fromSource(
+        plane.normal,
+        ["cross", { x: 1, y: 0, z: 0 }],
+        ["normalize"]
+      );
+
+      const t2 = Vector3.fromSource(plane.normal, ["cross", t0], ["normalize"]);
+
+      const rotation = Matrix3.fromIdentity([
+        "setFromVectors",
+        t0,
+        plane.normal,
+        t2,
+      ]);
+
+      const subject = renderer.register({ model: floor0Model });
+
+      subject.transform.setFromRotationPosition(rotation, Vector3.zero);
+      subject.transform.translate({ x: 0, y: plane.distance, z: 0 });
+    }
 
     // Create state
     const state: ApplicationState = {
@@ -202,11 +266,6 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
         mover: createOrbitMover(i, 5, 5, 2),
         position: Vector3.fromZero(),
       })),
-      models: {
-        floor0: createModel(gl, floor0),
-        floor1: createModel(gl, floor1),
-        sphere: createModel(gl, sphere),
-      },
       player: {
         rotation: Quaternion.fromIdentity([
           "setFromRotation",
@@ -216,40 +275,9 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
         position: Vector3.fromZero(),
       },
       projectionMatrix: Matrix4.identity,
-      sceneRenderer: new ForwardLightingRenderer(runtime, target, {
-        maxPointLights: 3,
-        noShadow: true,
-      }),
-      surfaces: [
-        {
-          collision: false,
-          plane: {
-            distance: 1,
-            normal: Vector3.fromSource({ x: 0, y: -1, z: 0 }, ["normalize"]),
-          },
-        },
-        {
-          collision: false,
-          plane: {
-            distance: 1,
-            normal: Vector3.fromSource({ x: 0, y: 1, z: 0 }, ["normalize"]),
-          },
-        },
-        {
-          collision: false,
-          plane: {
-            distance: 1,
-            normal: Vector3.fromSource({ x: 1, y: 1, z: 0 }, ["normalize"]),
-          },
-        },
-        {
-          collision: false,
-          plane: {
-            distance: 1,
-            normal: Vector3.fromSource({ x: -1, y: -1, z: 0 }, ["normalize"]),
-          },
-        },
-      ],
+      renderer,
+      sphereSubject,
+      surfaces,
       target,
       updaters: [
         createCameraUpdater(),
@@ -264,59 +292,13 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
   async change() {},
 
   render(state) {
-    const {
-      camera,
-      models,
-      player,
-      projectionMatrix,
-      sceneRenderer,
-      surfaces,
-      target,
-    } = state;
+    const { camera, projectionMatrix, renderer, target } = state;
 
     // Draw scene
     target.clear(0);
 
     const scene: ForwardLightingScene = {
       ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-      objects: [
-        {
-          matrix: Matrix4.fromIdentity([
-            "setFromRotationPosition",
-            Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
-            player.position,
-          ]),
-          model: models.sphere,
-        },
-        ...surfaces.map(({ collision, plane }) => {
-          const t0 = Vector3.fromSource(
-            plane.normal,
-            ["cross", { x: 1, y: 0, z: 0 }],
-            ["normalize"]
-          );
-
-          const t2 = Vector3.fromSource(
-            plane.normal,
-            ["cross", t0],
-            ["normalize"]
-          );
-
-          const rotation = Matrix3.fromIdentity([
-            "setFromVectors",
-            t0,
-            plane.normal,
-            t2,
-          ]);
-
-          return {
-            matrix: Matrix4.fromIdentity(
-              ["setFromRotationPosition", rotation, Vector3.zero],
-              ["translate", { x: 0, y: plane.distance, z: 0 }]
-            ),
-            model: collision ? models.floor1 : models.floor0,
-          };
-        }),
-      ],
       pointLights: state.lights.map(({ position }) => ({
         color: { x: 1, y: 1, z: 1 },
         position,
@@ -326,7 +308,7 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       viewMatrix: camera.viewMatrix,
     };
 
-    sceneRenderer.render(scene);
+    renderer.render(scene);
   },
 
   resize(state, size) {
@@ -338,7 +320,7 @@ const application: Application<WebGLScreen, ApplicationState, object> = {
       10000,
     ]);
 
-    state.sceneRenderer.resize(size);
+    state.renderer.resize(size);
     state.target.resize(size);
   },
 
