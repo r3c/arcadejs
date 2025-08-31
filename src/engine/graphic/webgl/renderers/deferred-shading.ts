@@ -16,7 +16,6 @@ import {
   phongLightCast,
   phongLightType,
 } from "../shaders/phong";
-import { mesh as quadMesh } from "./resources/quad";
 import { shininessDecode, shininessEncode } from "../shaders/shininess";
 import { Vector2, Vector3 } from "../../../math/vector";
 import {
@@ -47,6 +46,7 @@ import { GlTexture } from "../texture";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
 import { linearToStandard, luminance, standardToLinear } from "../shaders/rgb";
+import { commonMesh } from "../../mesh";
 
 const enum DeferredShadingLightModel {
   None,
@@ -724,7 +724,7 @@ class DeferredShadingRenderer implements Renderer<DeferredShadingScene> {
       x: gl.drawingBufferWidth,
       y: gl.drawingBufferHeight,
     });
-    const quad = createModel(gl, quadMesh);
+    const quad = createModel(gl, commonMesh.quad);
     const sceneTarget = new GlTarget(gl, {
       x: gl.drawingBufferWidth,
       y: gl.drawingBufferHeight,
