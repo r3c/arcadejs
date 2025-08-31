@@ -224,213 +224,215 @@ const warp = (position: number, center: number, radius: number): number => {
   return ((position - shift + range) % range) + shift;
 };
 
-const application: Application<WebGLScreen, ApplicationState, unknown> = {
-  async create(screen) {
-    const gl = screen.context;
-    const input = new Input(screen.canvas);
-    const runtime = createRuntime(gl);
-    const target = new GlTarget(gl, screen.getSize());
+const applicationBuilder = async (
+  screen: WebGLScreen
+): Promise<Application<unknown>> => {
+  const gl = screen.context;
+  const input = new Input(screen.canvas);
+  const runtime = createRuntime(gl);
+  const target = new GlTarget(gl, screen.getSize());
 
-    // Load meshes
-    const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromSource(Matrix4.identity, [
-        "scale",
-        { x: 0.25, y: 0.25, z: 0.25 },
-      ]),
-    });
+  // Load meshes
+  const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
+    transform: Matrix4.fromSource(Matrix4.identity, [
+      "scale",
+      { x: 0.25, y: 0.25, z: 0.25 },
+    ]),
+  });
 
-    const shipMesh = await loadMeshFrom3ds("model/colmftr1/COLMFTR1.3DS", {
-      transform: Matrix4.fromSource(Matrix4.identity, [
-        "translate",
-        { x: 0, y: 4, z: 0 },
-      ]),
-    });
+  const shipMesh = await loadMeshFrom3ds("model/colmftr1/COLMFTR1.3DS", {
+    transform: Matrix4.fromSource(Matrix4.identity, [
+      "translate",
+      { x: 0, y: 4, z: 0 },
+    ]),
+  });
 
-    const starMesh = await loadMeshFromObj(
-      "model/asteroid/Asteroid_Asset_Pack.obj",
-      { format: { variables: { type: "rock_0005" } } }
-    );
+  const starMesh = await loadMeshFromObj(
+    "model/asteroid/Asteroid_Asset_Pack.obj",
+    { format: { variables: { type: "rock_0005" } } }
+  );
 
-    const starMeshes: Mesh[] = starMesh.children.map((child) =>
-      changeMeshCenter(child)
-    );
+  const starMeshes: Mesh[] = starMesh.children.map((child) =>
+    changeMeshCenter(child)
+  );
 
-    // Load textures
-    const spriteImage = await loadFromURL("model/particle/fire.png");
-    const sprite = loadTextureQuad(gl, spriteImage);
+  // Load textures
+  const spriteImage = await loadFromURL("model/particle/fire.png");
+  const sprite = loadTextureQuad(gl, spriteImage);
 
-    // Particle effects
-    const particleRenderer = new ParticleRenderer(runtime, target);
+  // Particle effects
+  const particleRenderer = new ParticleRenderer(runtime, target);
 
-    const particleEasing0 = getEasing(EasingType.QuadraticOut);
-    const particleEmitter0 = particleRenderer.register<number>(
-      1000,
-      sprite,
-      5,
-      (seed) => {
-        const sequence = createFloatSequence(seed);
+  const particleEasing0 = getEasing(EasingType.QuadraticOut);
+  const particleEmitter0 = particleRenderer.register<number>(
+    1000,
+    sprite,
+    5,
+    (seed) => {
+      const sequence = createFloatSequence(seed);
 
-        return (spark, rankSpan, timeSpan) => {
-          const pitch = sequence(rankSpan + 0.1) * pi2;
-          const roll = sequence(rankSpan + 0.2) * pi2;
-          const rotationAngle = sequence(rankSpan + 0.3) * pi2;
-          const rotationSpeed = sequence(rankSpan + 0.4) - 0.5;
-          const velocity = sequence(rankSpan + 0.5) * 0.5;
-          const position = particleEasing0(timeSpan * velocity);
+      return (spark, rankSpan, timeSpan) => {
+        const pitch = sequence(rankSpan + 0.1) * pi2;
+        const roll = sequence(rankSpan + 0.2) * pi2;
+        const rotationAngle = sequence(rankSpan + 0.3) * pi2;
+        const rotationSpeed = sequence(rankSpan + 0.4) - 0.5;
+        const velocity = sequence(rankSpan + 0.5) * 0.5;
+        const position = particleEasing0(timeSpan * velocity);
 
-          spark.position.x = Math.cos(pitch) * Math.cos(roll) * position;
-          spark.position.y = Math.sin(pitch) * Math.cos(roll) * position;
-          spark.position.z = Math.sin(roll) * position;
-          spark.radius = (1 - timeSpan) * 0.5;
-          spark.rotation = (rotationAngle + timeSpan * rotationSpeed) * pi2;
-          spark.tint.x = 0.4;
-          spark.tint.y = 0.4;
-          spark.tint.z = 1;
-          spark.tint.w = (1 - timeSpan) * 0.5;
-          spark.variant = Math.floor((rankSpan * 5) % 5);
-        };
-      }
-    );
-
-    const player: Player = {
-      rotation: Quaternion.fromIdentity([
-        "setFromRotation",
-        { x: 1, y: 0, z: 0 },
-        0,
-      ]),
-      position: Vector3.fromZero(),
-    };
-
-    const camera = createBehindCamera({
-      getPosition: () => player.position,
-      getRotation: () => player.rotation,
-      getZoom: () => input.fetchZoom(),
-    });
-
-    const sceneRenderer = createForwardLightingRenderer(runtime, target, {
-      maxPointLights: 3,
-      noShadow: true,
-    });
-
-    // Ship
-    const shipSubject = sceneRenderer.register({
-      model: createModel(gl, shipMesh),
-    });
-
-    // Lights
-    const lights = range(2).map((i) => ({
-      mover: createOrbitMover(i, 5, 5, 2),
-      position: Vector3.fromZero(),
-    }));
-
-    const lightModel = createModel(gl, lightMesh);
-    const lightSubjects = lights.map(() =>
-      sceneRenderer.register({ model: lightModel, noShadow: true })
-    );
-
-    // Stars
-    const stars = range(starFieldCount).map(() => {
-      const x = Math.random() * 2 - 1;
-      const y = Math.random() * 2 - 1;
-      const z = Math.sqrt(x * x + y * y);
-
-      return {
-        position: Vector3.fromSource({
-          x: (Math.random() * 2 - 1) * starFieldRadius,
-          y: (Math.random() * 2 - 1) * starFieldRadius,
-          z: (Math.random() * 2 - 1) * starFieldRadius,
-        }),
-        rotationAmount: 0,
-        rotationAxis: { x, y, z },
-        rotationSpeed: Math.random() * 0.001,
-        variant: Math.floor(Math.random() * starMeshes.length),
+        spark.position.x = Math.cos(pitch) * Math.cos(roll) * position;
+        spark.position.y = Math.sin(pitch) * Math.cos(roll) * position;
+        spark.position.z = Math.sin(roll) * position;
+        spark.radius = (1 - timeSpan) * 0.5;
+        spark.rotation = (rotationAngle + timeSpan * rotationSpeed) * pi2;
+        spark.tint.x = 0.4;
+        spark.tint.y = 0.4;
+        spark.tint.z = 1;
+        spark.tint.w = (1 - timeSpan) * 0.5;
+        spark.variant = Math.floor((rankSpan * 5) % 5);
       };
-    });
-
-    const starModels = starMeshes.map((mesh) => createModel(gl, mesh));
-    const starSubjects = stars.map(({ variant }) =>
-      sceneRenderer.register({ model: starModels[variant] })
-    );
-
-    // Create state
-    const state: ApplicationState = {
-      input,
-      lights,
-      lightSubjects,
-      move: 0,
-      player,
-      particleEmitter0,
-      particleRenderer,
-      projectionMatrix: Matrix4.identity,
-      sceneRenderer,
-      shipSubject,
-      sprite,
-      stars,
-      starSubjects,
-      target,
-      updaters: [
-        createCameraUpdater(camera),
-        createPlayerUpdater(),
-        createParticleUpdater(),
-        createStarUpdater(),
-        createLightUpdater(),
-      ],
-      viewMatrix: camera.viewMatrix,
-    };
-
-    return state;
-  },
-
-  async change() {},
-
-  render(state) {
-    const {
-      particleRenderer,
-      projectionMatrix,
-      sceneRenderer,
-      target,
-      viewMatrix,
-    } = state;
-
-    // Draw scene
-    target.clear(0);
-
-    const scene: ForwardLightingScene = {
-      ambientLightColor: { x: 0, y: 0, z: 0 },
-      pointLights: state.lights.map(({ position }) => ({
-        color: { x: 1, y: 1, z: 1 },
-        position,
-        radius: 100,
-      })),
-      projectionMatrix,
-      viewMatrix,
-    };
-
-    sceneRenderer.render(scene);
-    particleRenderer.render(scene);
-  },
-
-  resize(state, size) {
-    state.projectionMatrix = Matrix4.fromIdentity([
-      "setFromPerspective",
-      Math.PI / 4,
-      size.x / size.y,
-      0.1,
-      10000,
-    ]);
-
-    state.particleRenderer.resize(size);
-    state.sceneRenderer.resize(size);
-    state.target.resize(size);
-  },
-
-  update(state, dt) {
-    for (const updater of state.updaters) {
-      updater(state, dt);
     }
-  },
+  );
+
+  const player: Player = {
+    rotation: Quaternion.fromIdentity([
+      "setFromRotation",
+      { x: 1, y: 0, z: 0 },
+      0,
+    ]),
+    position: Vector3.fromZero(),
+  };
+
+  const camera = createBehindCamera({
+    getPosition: () => player.position,
+    getRotation: () => player.rotation,
+    getZoom: () => input.fetchZoom(),
+  });
+
+  const sceneRenderer = createForwardLightingRenderer(runtime, target, {
+    maxPointLights: 3,
+    noShadow: true,
+  });
+
+  // Ship
+  const shipSubject = sceneRenderer.register({
+    model: createModel(gl, shipMesh),
+  });
+
+  // Lights
+  const lights = range(2).map((i) => ({
+    mover: createOrbitMover(i, 5, 5, 2),
+    position: Vector3.fromZero(),
+  }));
+
+  const lightModel = createModel(gl, lightMesh);
+  const lightSubjects = lights.map(() =>
+    sceneRenderer.register({ model: lightModel, noShadow: true })
+  );
+
+  // Stars
+  const stars = range(starFieldCount).map(() => {
+    const x = Math.random() * 2 - 1;
+    const y = Math.random() * 2 - 1;
+    const z = Math.sqrt(x * x + y * y);
+
+    return {
+      position: Vector3.fromSource({
+        x: (Math.random() * 2 - 1) * starFieldRadius,
+        y: (Math.random() * 2 - 1) * starFieldRadius,
+        z: (Math.random() * 2 - 1) * starFieldRadius,
+      }),
+      rotationAmount: 0,
+      rotationAxis: { x, y, z },
+      rotationSpeed: Math.random() * 0.001,
+      variant: Math.floor(Math.random() * starMeshes.length),
+    };
+  });
+
+  const starModels = starMeshes.map((mesh) => createModel(gl, mesh));
+  const starSubjects = stars.map(({ variant }) =>
+    sceneRenderer.register({ model: starModels[variant] })
+  );
+
+  // Create state
+  const state: ApplicationState = {
+    input,
+    lights,
+    lightSubjects,
+    move: 0,
+    player,
+    particleEmitter0,
+    particleRenderer,
+    projectionMatrix: Matrix4.identity,
+    sceneRenderer,
+    shipSubject,
+    sprite,
+    stars,
+    starSubjects,
+    target,
+    updaters: [
+      createCameraUpdater(camera),
+      createPlayerUpdater(),
+      createParticleUpdater(),
+      createStarUpdater(),
+      createLightUpdater(),
+    ],
+    viewMatrix: camera.viewMatrix,
+  };
+
+  return {
+    async change() {},
+
+    dispose() {},
+
+    render() {
+      const {
+        particleRenderer,
+        projectionMatrix,
+        sceneRenderer,
+        target,
+        viewMatrix,
+      } = state;
+
+      // Draw scene
+      target.clear(0);
+
+      const scene: ForwardLightingScene = {
+        ambientLightColor: { x: 0, y: 0, z: 0 },
+        pointLights: state.lights.map(({ position }) => ({
+          color: { x: 1, y: 1, z: 1 },
+          position,
+          radius: 100,
+        })),
+        projectionMatrix,
+        viewMatrix,
+      };
+
+      sceneRenderer.render(scene);
+      particleRenderer.render(scene);
+    },
+
+    resize(size) {
+      state.projectionMatrix = Matrix4.fromIdentity([
+        "setFromPerspective",
+        Math.PI / 4,
+        size.x / size.y,
+        0.1,
+        10000,
+      ]);
+
+      state.particleRenderer.resize(size);
+      state.sceneRenderer.resize(size);
+      state.target.resize(size);
+    },
+
+    update(dt) {
+      for (const updater of state.updaters) {
+        updater(state, dt);
+      }
+    },
+  };
 };
 
-const process = declare("Venus³", WebGLScreen, {}, application);
+const process = declare("Venus³", WebGLScreen, applicationBuilder, {});
 
 export { process };

@@ -1,13 +1,17 @@
+import { Disposable } from "./language/lifecycle";
 import { Screen } from "./graphic/display";
 import { Vector2 } from "./math/vector";
 
-type Application<TScreen extends Screen, TState, TConfiguration> = {
-  change: (state: TState, configuration: TConfiguration) => Promise<void>;
-  create: (screen: TScreen) => Promise<TState>;
-  render: (state: TState) => void;
-  resize: (state: TState, size: Vector2) => void;
-  update: (state: TState, dt: number) => void;
+type Application<TConfiguration> = Disposable & {
+  change: (configuration: TConfiguration) => Promise<void>;
+  render: () => void;
+  resize: (size: Vector2) => void;
+  update: (dt: number) => void;
 };
+
+type ApplicationBuilder<TScreen extends Screen, TConfiguration> = (
+  screen: TScreen
+) => Promise<Application<TConfiguration>>;
 
 type ApplicationConfigurator<T> = {
   [key in keyof T]: ApplicationWidget<T[key]>;
@@ -37,7 +41,7 @@ const canonicalize = (name: string): string => {
     .replaceAll(/^-+|-+$/g, "");
 };
 
-const configure = <T extends object>(
+const configure = <T>(
   configurator: ApplicationConfigurator<T>,
   change: (configuration: T) => void
 ): T => {
@@ -140,21 +144,27 @@ const createSelect = (
   defaultValue,
 });
 
-const declare = <TScreen extends Screen, TState, TConfiguration extends object>(
+const declare = <TScreen extends Screen, TConfiguration>(
   title: string,
   screenConstructor: ScreenConstructor<TScreen>,
-  configurator: ApplicationConfigurator<TConfiguration>,
-  application: Application<TScreen, TState, TConfiguration>
+  applicationBuilder: ApplicationBuilder<TScreen, TConfiguration>,
+  configurator: ApplicationConfigurator<TConfiguration>
 ): Process => {
   let runtime:
-    | { configuration: TConfiguration; screen: TScreen; state: TState }
+    | {
+        application: Application<TConfiguration>;
+        configuration: TConfiguration;
+        screen: TScreen;
+      }
     | undefined = undefined;
-
-  const { change, create, render, resize, update } = application;
 
   return {
     requestFullscreen: () => runtime?.screen.requestFullscreen(),
     start: async () => {
+      if (runtime !== undefined) {
+        return;
+      }
+
       const container = document.getElementById("screen");
 
       if (container === null) {
@@ -166,30 +176,33 @@ const declare = <TScreen extends Screen, TState, TConfiguration extends object>(
       }
 
       const screen = new screenConstructor(container);
-      const state = await create(screen);
-      const configuration = configure(configurator, (configuration) =>
-        change(state, configuration)
-      );
+      const application = await applicationBuilder(screen);
+      const configuration = configure(configurator, application.change);
 
-      await change(state, configuration);
+      await application.change(configuration);
 
-      screen.addResizeHandler((size) => resize(state, size));
+      screen.addResizeHandler(application.resize);
 
-      runtime = { configuration, screen, state };
+      runtime = { application, configuration, screen };
     },
     step: (dt: number) => {
       if (runtime === undefined) {
         return;
       }
 
-      const { screen, state } = runtime;
+      const { application, screen } = runtime;
 
       screen.resize();
 
-      update(state, dt);
-      requestAnimationFrame(() => render(state));
+      application.update(dt);
+      requestAnimationFrame(application.render);
     },
     stop: () => {
+      if (runtime === undefined) {
+        return;
+      }
+
+      runtime.application.dispose();
       runtime = undefined;
     },
     title,
