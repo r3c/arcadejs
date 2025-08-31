@@ -143,11 +143,11 @@ const loadMaterial = (
         gl,
         undefined,
         GlTextureType.Quad,
-        texture.image.width,
-        texture.image.height,
+        texture.imageData.width,
+        texture.imageData.height,
         GlTextureFormat.RGBA8,
-        texture.filter,
-        texture.image
+        texture.sampler,
+        texture.imageData
       );
 
       textures.set(texture, glTexture);

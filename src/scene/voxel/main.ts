@@ -2,7 +2,7 @@ import { Application, declare } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
-import { Library, loadMeshFromJson } from "../../engine/graphic/mesh";
+import { createLibrary, loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import { createWorldGraphic, createWorldPhysic } from "./world";
@@ -35,7 +35,7 @@ const applicationBuilder = async (
   worldScaleVector.set(worldScale);
   worldScaleVector.scale(0.5);
 
-  const library: Library = { textures: new Map() };
+  const library = createLibrary();
   const transform = Matrix4.fromSource(Matrix4.identity, [
     "scale",
     worldScaleVector,

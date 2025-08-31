@@ -15,16 +15,10 @@ const enum Interpolation {
   Nearest,
 }
 
-interface Filter {
-  magnifier: Interpolation;
-  minifier: Interpolation;
-  mipmap: boolean;
-  wrap: Wrap;
-}
-
-interface Library {
-  textures: Map<string, Promise<Texture>>;
-}
+type Library = {
+  getOrLoadMaterial: (reference: MaterialReference) => Promise<Material>;
+  getOrLoadTexture: (path: string, sampler: TextureSampler) => Promise<Texture>;
+};
 
 interface Polygon {
   coordinates?: Vector2[];
@@ -36,7 +30,7 @@ interface Polygon {
   tints?: Vector4[];
 }
 
-interface Material {
+type Material = {
   diffuseColor?: Vector4;
   diffuseMap?: Texture;
   emissiveColor?: Vector4;
@@ -54,7 +48,35 @@ interface Material {
   shininess?: number;
   specularColor?: Vector4;
   specularMap?: Texture;
-}
+};
+
+type MaterialReference = {
+  diffuseColor?: Vector4;
+  diffusePath?: string;
+  diffuseSampler?: TextureSampler;
+  emissiveColor?: Vector4;
+  emissivePath?: string;
+  emissiveSampler?: TextureSampler;
+  heightPath?: string;
+  heightSampler?: TextureSampler;
+  heightParallaxBias?: number;
+  heightParallaxScale?: number;
+  metalnessPath?: string;
+  metalnessSampler?: TextureSampler;
+  metalnessStrength?: number;
+  normalPath?: string;
+  normalSampler?: TextureSampler;
+  occlusionPath?: string;
+  occlusionSampler?: TextureSampler;
+  occlusionStrength?: number;
+  roughnessPath?: string;
+  roughnessSampler?: TextureSampler;
+  roughnessStrength?: number;
+  shininess?: number;
+  specularColor?: Vector4;
+  specularPath?: string;
+  specularSampler?: TextureSampler;
+};
 
 interface Mesh {
   children: Mesh[];
@@ -62,10 +84,17 @@ interface Mesh {
   transform: Matrix4;
 }
 
-interface Texture {
-  filter: Filter;
-  image: ImageData;
-}
+type Texture = {
+  imageData: ImageData;
+  sampler: TextureSampler;
+};
+
+type TextureSampler = {
+  magnifier: Interpolation;
+  minifier: Interpolation;
+  mipmap: boolean;
+  wrap: Wrap;
+};
 
 const enum Wrap {
   Clamp,
@@ -80,23 +109,24 @@ const defaultColor: Vector4 = {
   w: 1,
 };
 
-const defaultFilter: Filter = {
-  magnifier: Interpolation.Nearest,
-  minifier: Interpolation.Nearest,
-  mipmap: false,
-  wrap: Wrap.Clamp,
+const defaultSampler: TextureSampler = {
+  magnifier: Interpolation.Linear,
+  minifier: Interpolation.Linear,
+  mipmap: true,
+  wrap: Wrap.Repeat,
 };
 
 export {
   type BoundingBox,
-  type Filter,
   type Library,
   type Material,
+  type MaterialReference,
   type Mesh,
   type Polygon,
   type Texture,
+  type TextureSampler,
   Interpolation,
   Wrap,
   defaultColor,
-  defaultFilter,
+  defaultSampler,
 };

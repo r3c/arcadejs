@@ -183,7 +183,7 @@ const drawScanline = (
       // Diffuse map
       if (material.diffuseMap !== undefined) {
         const coord = lerpVector2(begin.coord, end.coord, ratio);
-        const image = material.diffuseMap.image;
+        const image = material.diffuseMap.imageData;
 
         const x = ~~(coord.x * image.width) % image.width;
         const y = ~~(coord.y * image.height) % image.height;

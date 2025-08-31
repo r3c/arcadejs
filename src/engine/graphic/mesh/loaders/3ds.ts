@@ -1,13 +1,11 @@
 import { type Codec, asciiCodec } from "../../../text/encoding";
-import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
 import {
   defaultColor,
-  Interpolation,
+  Library,
   Material,
+  MaterialReference,
   Mesh,
-  Texture,
-  Wrap,
 } from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import {
@@ -26,14 +24,14 @@ import { Vector2, Vector3, Vector4 } from "../../../math/vector";
 
 type Context = {
   codec: Codec;
-  directory: string;
-  file: string;
+  library: Library;
   reader: BinaryReader;
+  url: string;
 };
 
 type RawMaterial = {
-  material: Material;
   name: string;
+  reference: MaterialReference;
 };
 
 type RawModel = {
@@ -52,17 +50,22 @@ const invalidChunk = (file: string, chunk: number, description: string) => {
   return Error(`invalid chunk ${chunk} in file ${file}: ${description}`);
 };
 
-const load = async (url: string): Promise<Mesh> => {
+const load = async (url: string, library: Library): Promise<Mesh> => {
+  const reader = new BinaryReader(
+    await readURL(BinaryFormat, url),
+    Endian.Little
+  );
+
   const context = {
     codec: asciiCodec,
-    directory: getPathDirectory(url),
-    file: url,
-    reader: new BinaryReader(await readURL(BinaryFormat, url), Endian.Little),
+    library,
+    reader,
+    url,
   };
 
   const { materials, polygons } = await scan(
     context,
-    context.reader.getLength(),
+    reader.getLength(),
     readRoot,
     {
       materials: new Map(),
@@ -129,10 +132,12 @@ const readEdit = async (
       return state;
 
     case 0xafff: // DIT_MATERIAL
-      const { material, name } = await scan(context, end, readMaterial, {
-        material: {},
+      const { name, reference } = await scan(context, end, readMaterial, {
         name: "",
+        reference: {},
       });
+
+      const material = await context.library.getOrLoadMaterial(reference);
 
       state.materials.set(name, material);
 
@@ -169,7 +174,7 @@ const readMaterial = async (
       break;
 
     case 0xa020: // Diffuse color
-      state.material.diffuseColor = await scan(
+      state.reference.diffuseColor = await scan(
         context,
         end,
         readColor,
@@ -179,7 +184,7 @@ const readMaterial = async (
       break;
 
     case 0xa030: // Specular color
-      state.material.specularColor = await scan(
+      state.reference.specularColor = await scan(
         context,
         end,
         readColor,
@@ -189,12 +194,12 @@ const readMaterial = async (
       break;
 
     case 0xa040: // Shininess
-      state.material.shininess = context.reader.readInt16u();
+      state.reference.shininess = context.reader.readInt16u();
 
       break;
 
     case 0xa200: // Texture 1
-      state.material.diffuseMap = await scan(
+      state.reference.diffusePath = await scan(
         context,
         end,
         readMaterialMap,
@@ -204,7 +209,7 @@ const readMaterial = async (
       break;
 
     case 0xa204: // Specular map
-      state.material.specularMap = await scan(
+      state.reference.specularPath = await scan(
         context,
         end,
         readMaterialMap,
@@ -214,7 +219,7 @@ const readMaterial = async (
       break;
 
     case 0xa230: // Bump map
-      state.material.heightMap = await scan(
+      state.reference.heightPath = await scan(
         context,
         end,
         readMaterialMap,
@@ -231,24 +236,16 @@ const readMaterialMap = async (
   context: Context,
   _end: number,
   chunk: number,
-  state: Texture | undefined
+  state: string | undefined
 ) => {
   switch (chunk) {
     case 0xa300:
-      return {
-        filter: {
-          magnifier: Interpolation.Linear,
-          minifier: Interpolation.Linear,
-          mipmap: true,
-          wrap: Wrap.Repeat,
-        },
-        image: await loadFromURL(
-          combinePath(
-            context.directory,
-            context.codec.decode(context.reader.readBufferZero())
-          )
-        ),
-      };
+      const { codec, reader, url } = context;
+
+      return combinePath(
+        getPathDirectory(url),
+        codec.decode(reader.readBufferZero())
+      );
   }
 
   return state;
@@ -359,7 +356,7 @@ const readRoot = async (
 
     default:
       throw invalidChunk(
-        context.file,
+        context.url,
         chunk,
         "only main chunk 0x4d4d is accepted at top-level"
       );

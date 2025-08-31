@@ -1,14 +1,5 @@
-import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
-import {
-  Interpolation,
-  Library,
-  Material,
-  Mesh,
-  Polygon,
-  Texture,
-  Wrap,
-} from "../definition";
+import { Library, Material, Mesh, Polygon } from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import { JSONFormat, readURL } from "../../../io/stream";
 import { Vector2, Vector3, Vector4 } from "../../../math/vector";
@@ -19,7 +10,7 @@ type JsonConfiguration = {
 
 type JsonMaterialState = {
   directory: string;
-  textures: Map<string, Promise<Texture>>;
+  library: Library;
   variables: Record<string, string>;
 };
 
@@ -49,12 +40,13 @@ const load = async (
     throw invalid(urlOrData, root, "object");
   }
 
+  const variables = configuration?.variables ?? {};
   const materials =
     root.materials !== undefined
       ? await toMapOf("materials", root.materials, toMaterial, {
           directory,
-          textures: library.textures,
-          variables: configuration?.variables ?? {},
+          library,
+          variables,
         })
       : new Map<string, Material>();
 
@@ -163,13 +155,13 @@ const toMaterial = async (
 
   const material = instance as any;
 
-  return {
+  return await state.library.getOrLoadMaterial({
     diffuseColor: toOptional(
       `${name}.diffuseColor`,
       material.diffuseColor,
       toColor
     ),
-    diffuseMap: await toTexture(
+    diffusePath: toPathOptional(
       `${name}.diffuseMap`,
       material.diffuseMap,
       state
@@ -179,12 +171,12 @@ const toMaterial = async (
       material.emissiveColor,
       toColor
     ),
-    emissiveMap: await toTexture(
+    emissivePath: toPathOptional(
       `${name}.emissiveMap`,
       material.emissiveMap,
       state
     ),
-    heightMap: await toTexture(`${name}.heightMap`, material.heightMap, state),
+    heightPath: toPathOptional(`${name}.heightMap`, material.heightMap, state),
     heightParallaxBias: toOptional(
       `${name}.heightParallaxBias`,
       material.heightParallaxBias,
@@ -195,7 +187,7 @@ const toMaterial = async (
       material.heightParallaxScale,
       toDecimal
     ),
-    metalnessMap: await toTexture(
+    metalnessPath: toPathOptional(
       `${name}.metalnessMap`,
       material.metalnessMap,
       state
@@ -205,8 +197,8 @@ const toMaterial = async (
       material.metalnessStrength,
       toDecimal
     ),
-    normalMap: await toTexture(`${name}.normalMap`, material.normalMap, state),
-    occlusionMap: await toTexture(
+    normalPath: toPathOptional(`${name}.normalMap`, material.normalMap, state),
+    occlusionPath: toPathOptional(
       `${name}.occlusionMap`,
       material.occlusionMap,
       state
@@ -216,7 +208,7 @@ const toMaterial = async (
       material.occlusionStrength,
       toDecimal
     ),
-    roughnessMap: await toTexture(
+    roughnessPath: toPathOptional(
       `${name}.roughnessMap`,
       material.roughnessMap,
       state
@@ -232,12 +224,12 @@ const toMaterial = async (
       material.specularColor,
       toColor
     ),
-    specularMap: await toTexture(
+    specularPath: toPathOptional(
       `${name}.specularMap`,
       material.specularMap,
       state
     ),
-  };
+  });
 };
 
 const toOptional = <TValue>(
@@ -263,6 +255,16 @@ const toPath = (
   );
 
   return combinePath(state.directory, tail);
+};
+
+const toPathOptional = (
+  name: string,
+  instance: unknown,
+  state: JsonMaterialState
+): string | undefined => {
+  return toOptional(name, instance, (name, instance) =>
+    toPath(name, instance, state)
+  );
 };
 
 const toPolygon = (
@@ -318,40 +320,6 @@ const toString = (name: string, instance: unknown): string => {
   }
 
   return instance;
-};
-
-const toTexture = async (
-  name: string,
-  instance: unknown,
-  state: JsonMaterialState
-): Promise<Texture | undefined> => {
-  if (typeof instance !== "string") {
-    return undefined;
-  }
-
-  const path = toPath(name, instance, state);
-
-  let texture = state.textures.get(path);
-
-  if (texture === undefined) {
-    texture = new Promise<Texture>(async (resolve) => {
-      const image = await loadFromURL(path);
-
-      resolve({
-        filter: {
-          magnifier: Interpolation.Linear,
-          minifier: Interpolation.Linear,
-          mipmap: true,
-          wrap: Wrap.Repeat,
-        },
-        image,
-      });
-    });
-
-    state.textures.set(path, texture);
-  }
-
-  return texture;
 };
 
 const toVertex = (name: string, instance: unknown): Vector3 => {

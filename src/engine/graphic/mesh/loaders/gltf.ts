@@ -1,8 +1,17 @@
 import { asciiCodec } from "../../../text/encoding";
 import { mapOptional } from "../../../language/optional";
-import { Channel, loadFromURL, mapChannels } from "../../image";
+import { Channel, mapChannels } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
-import { Interpolation, Material, Mesh, Polygon, Wrap } from "../definition";
+import {
+  Interpolation,
+  Library,
+  Material,
+  Mesh,
+  Polygon,
+  Texture,
+  TextureSampler,
+  Wrap,
+} from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import {
   BinaryFormat,
@@ -65,17 +74,17 @@ const enum TfComponentType {
 
 type TfMaterial = {
   baseColorFactor: Vector4 | undefined;
-  baseColorTexture: TfTexture | undefined;
+  baseColorTexture: Texture | undefined;
   emissiveFactor: Vector4 | undefined;
-  emissiveTexture: TfTexture | undefined;
+  emissiveTexture: Texture | undefined;
   metallicFactor: number;
-  metallicRoughnessTexture: TfTexture | undefined;
+  metallicRoughnessTexture: Texture | undefined;
   roughnessFactor: number;
   name: string;
   normalFactor: Vector4 | undefined;
-  normalTexture: TfTexture | undefined;
+  normalTexture: Texture | undefined;
   occlusionFactor: Vector4 | undefined;
-  occlusionTexture: TfTexture | undefined;
+  occlusionTexture: Texture | undefined;
 };
 
 type TfMesh = {
@@ -98,20 +107,8 @@ type TfPrimitive = {
   tints: TfAccessor | undefined;
 };
 
-type TfSampler = {
-  magnifier: Interpolation;
-  minifier: Interpolation;
-  mipmap: boolean;
-  wrap: Wrap;
-};
-
 type TfScene = {
   nodes: TfNode[];
-};
-
-type TfTexture = {
-  image: ImageData;
-  sampler: TfSampler;
 };
 
 enum TfType {
@@ -193,20 +190,20 @@ const expandAccessor = <T>(
 
 const expandMaterial = (material: TfMaterial): Material => {
   const toMap = (
-    textureOrUndefined: TfTexture | undefined,
+    textureOrUndefined: Texture | undefined,
     channels?: Channel[]
-  ) =>
+  ): Texture | undefined =>
     mapOptional(textureOrUndefined, (texture) => ({
-      filter: {
+      imageData:
+        channels !== undefined
+          ? mapChannels(texture.imageData, channels)
+          : texture.imageData,
+      sampler: {
         magnifier: texture.sampler.magnifier,
         minifier: texture.sampler.minifier,
         mipmap: texture.sampler.mipmap,
         wrap: texture.sampler.wrap,
       },
-      image:
-        channels !== undefined
-          ? mapChannels(texture.image, channels)
-          : texture.image,
     }));
 
   return {
@@ -482,16 +479,15 @@ const loadBufferView = (
   };
 };
 
-const loadImage = async (
+const loadImagePath = (
   url: string,
   bufferViews: TfBufferView[],
   definition: any,
   index: number
-): Promise<ImageData> => {
-  if (definition.uri !== undefined)
-    return await loadFromURL(
-      combinePath(getPathDirectory(url), definition.uri)
-    );
+): string => {
+  if (definition.uri !== undefined) {
+    return combinePath(getPathDirectory(url), definition.uri);
+  }
 
   const source = `image[${index}]`;
 
@@ -506,9 +502,8 @@ const loadImage = async (
       bufferViews
     );
     const blob = new Blob([bufferView.buffer], { type: definition.mimeType });
-    const uri = window.URL.createObjectURL(blob);
 
-    return loadFromURL(uri);
+    return window.URL.createObjectURL(blob);
   }
 
   throw invalidData(url, source + " specifies no URI nor buffer data");
@@ -516,7 +511,7 @@ const loadImage = async (
 
 const loadMaterial = (
   url: string,
-  textures: TfTexture[],
+  textures: Texture[],
   material: any,
   index: number
 ): TfMaterial => {
@@ -729,7 +724,8 @@ const loadPrimitive = (
 const loadRoot = async (
   url: string,
   structure: any,
-  embedded: ArrayBuffer | undefined
+  embedded: ArrayBuffer | undefined,
+  library: Library
 ): Promise<Mesh> => {
   const defaultScene = <number | undefined>structure.scene;
   const version: string =
@@ -760,22 +756,22 @@ const loadRoot = async (
   );
 
   // Materials
-  const images: ImageData[] = await Promise.all(
-    convertArrayOf(url, "images", structure.images || [], (value, index) =>
-      loadImage(url, bufferViews, value, index)
-    )
+  const imagePaths: string[] = convertArrayOf(
+    url,
+    "images",
+    structure.images || [],
+    (value, index) => loadImagePath(url, bufferViews, value, index)
   );
-  const samplers: TfSampler[] = convertArrayOf(
+  const samplers: TextureSampler[] = convertArrayOf(
     url,
     "samplers",
     structure.samplers || [],
     (value, index) => loadSampler(url, value, index)
   );
-  const textures: TfTexture[] = convertArrayOf(
-    url,
-    "textures",
-    structure.textures || [],
-    (value, index) => loadTexture(url, images, samplers, value, index)
+  const textures: Texture[] = await Promise.all(
+    convertArrayOf(url, "textures", structure.textures || [], (value, index) =>
+      loadTexture(url, library, imagePaths, samplers, value, index)
+    )
   );
   const materials: TfMaterial[] = convertArrayOf(
     url,
@@ -826,7 +822,11 @@ const loadRoot = async (
   };
 };
 
-const loadSampler = (_url: string, sampler: any, _index: number): TfSampler => {
+const loadSampler = (
+  _url: string,
+  sampler: any,
+  _index: number
+): TextureSampler => {
   const magFilter = parseInt(sampler.magFilter || 9729);
   const minFilter = parseInt(sampler.minFilter || 9729);
   const wrap = Math.min(
@@ -874,27 +874,34 @@ const loadScene = (
   };
 };
 
-const loadTexture = (
+const loadTexture = async (
   url: string,
-  images: ImageData[],
-  samplers: TfSampler[],
+  library: Library,
+  imagePaths: string[],
+  samplers: TextureSampler[],
   texture: any,
   index: number
-): TfTexture => {
+): Promise<Texture> => {
   const source = `texture[${index}]`;
 
-  return {
-    image: convertReferenceTo(url, source + ".source", texture.source, images),
-    sampler: convertReferenceTo(
-      url,
-      source + ".sampler",
-      texture.sampler,
-      samplers
-    ),
-  };
+  const imagePath = convertReferenceTo(
+    url,
+    source + ".source",
+    texture.source,
+    imagePaths
+  );
+
+  const sampler = convertReferenceTo(
+    url,
+    source + ".sampler",
+    texture.sampler,
+    samplers
+  );
+
+  return await library.getOrLoadTexture(imagePath, sampler);
 };
 
-const load = async (url: string): Promise<Mesh> => {
+const load = async (url: string, library: Library): Promise<Mesh> => {
   const buffer = await readURL(BinaryFormat, url);
   const codec = asciiCodec;
   const reader = new BinaryReader(buffer, Endian.Little);
@@ -948,7 +955,7 @@ const load = async (url: string): Promise<Mesh> => {
     throw invalidData(url, "format is not recognized");
   }
 
-  return loadRoot(url, structure, embedded);
+  return loadRoot(url, structure, embedded, library);
 };
 
 export { load };

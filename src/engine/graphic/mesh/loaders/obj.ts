@@ -1,13 +1,5 @@
-import { loadFromURL } from "../../image";
 import { Matrix4 } from "../../../math/matrix";
-import {
-  Interpolation,
-  Library,
-  Material,
-  Mesh,
-  Texture,
-  Wrap,
-} from "../definition";
+import { Library, Material, MaterialReference, Mesh } from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import { StringFormat, readURL } from "../../../io/stream";
 import { Vector2, Vector3 } from "../../../math/vector";
@@ -48,21 +40,25 @@ const invalidLine = (file: string, lineIndex: number, description: string) => {
 
 const load = async (
   url: string,
-  _: Library,
+  library: Library,
   configuration: Partial<WavefrontOBJConfiguration> | undefined
 ): Promise<Mesh> => {
   const data = await readURL(StringFormat, url);
 
-  return loadObject(data, url, configuration?.variables ?? {});
+  return loadObject(data, url, library, configuration?.variables ?? {});
 };
 
 const loadMaterial = async (
   materials: Map<string | undefined, Material>,
   data: string,
   fileName: string,
+  library: Library,
   variables: Record<string, string>
 ) => {
-  let current: Material | undefined;
+  const directory = getPathDirectory(fileName);
+
+  let materialName: string | undefined;
+  let materialReference: MaterialReference | undefined;
 
   for (const { fields, lineIndex } of parseFile(data, fileName, variables)) {
     switch (fields[0]) {
@@ -75,74 +71,74 @@ const loadMaterial = async (
         break;
 
       case "Kd": // Diffuse color
-        if (fields.length < 4 || current === undefined) {
+        if (fields.length < 4 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "diffuse color");
         }
 
-        current.diffuseColor = parseVector4(fields);
+        materialReference.diffuseColor = parseVector4(fields);
 
         break;
 
       case "Ke": // Emissive color
-        if (fields.length < 4 || current === undefined) {
+        if (fields.length < 4 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "emissive color");
         }
 
-        current.emissiveColor = parseVector4(fields);
+        materialReference.emissiveColor = parseVector4(fields);
 
         break;
 
       case "Ks": // Specular color
-        if (fields.length < 4 || current === undefined) {
+        if (fields.length < 4 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "specular color");
         }
 
-        current.specularColor = parseVector4(fields);
+        materialReference.specularColor = parseVector4(fields);
 
         break;
 
       case "map_bump": // Bump map texture
-        if (fields.length < 2 || current === undefined) {
+        if (fields.length < 2 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "bump map");
         }
 
-        current.heightMap = await loadTexture(fileName, fields[1]);
+        materialReference.heightPath = combinePath(directory, fields[1]);
 
         break;
 
       case "map_Kd": // Diffuse map texture
-        if (fields.length < 2 || current === undefined) {
+        if (fields.length < 2 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "diffuse map");
         }
 
-        current.diffuseMap = await loadTexture(fileName, fields[1]);
+        materialReference.diffusePath = combinePath(directory, fields[1]);
 
         break;
 
       case "map_Ks": // Specular map texture
-        if (fields.length < 2 || current === undefined) {
+        if (fields.length < 2 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "specular map");
         }
 
-        current.specularMap = await loadTexture(fileName, fields[1]);
+        materialReference.specularPath = combinePath(directory, fields[1]);
 
         break;
 
       case "map_normal": // Normal map texture (custom extension)
-        if (fields.length < 2 || current === undefined) {
+        if (fields.length < 2 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "normal map");
         }
 
-        current.normalMap = await loadTexture(fileName, fields[1]);
+        materialReference.normalPath = combinePath(directory, fields[1]);
 
         break;
 
       case "Ns": // Material shininess
-        if (fields.length < 2 || current === undefined) {
+        if (fields.length < 2 || materialReference === undefined) {
           throw invalidLine(fileName, lineIndex, "shininess");
         }
 
-        current.shininess = parseFloat(fields[1]);
+        materialReference.shininess = parseFloat(fields[1]);
 
         break;
 
@@ -151,10 +147,14 @@ const loadMaterial = async (
           throw invalidLine(fileName, lineIndex, "material");
         }
 
-        const material = {};
+        if (materialReference !== undefined) {
+          const material = await library.getOrLoadMaterial(materialReference);
 
-        materials.set(fields[1], material);
-        current = material;
+          materials.set(materialName, material);
+        }
+
+        materialName = fields[1];
+        materialReference = {};
 
         break;
 
@@ -162,11 +162,18 @@ const loadMaterial = async (
         throw invalidLine(fileName, lineIndex, `prefix '${fields[0]}'`);
     }
   }
+
+  if (materialReference !== undefined) {
+    const material = await library.getOrLoadMaterial(materialReference);
+
+    materials.set(materialName, material);
+  }
 };
 
 const loadObject = async (
   data: string,
   fileName: string,
+  library: Library,
   variables: Record<string, string>
 ): Promise<Mesh> => {
   const allCoordinates: Vector2[] = [];
@@ -208,10 +215,15 @@ const loadObject = async (
         }
 
         const directory = getPathDirectory(fileName);
-        const library = combinePath(directory, fields[1]);
+        const libraryPath = combinePath(directory, fields[1]);
+        const libraryData = await readURL(StringFormat, libraryPath);
 
-        await readURL(StringFormat, library).then((data) =>
-          loadMaterial(allMaterials, data, library, variables)
+        await loadMaterial(
+          allMaterials,
+          libraryData,
+          libraryPath,
+          library,
+          variables
         );
 
         break;
@@ -373,21 +385,6 @@ const loadObject = async (
 
   return { children, polygons: [], transform: Matrix4.identity };
 };
-
-const loadTexture = async (
-  fileName: string,
-  textureName: string
-): Promise<Texture> => ({
-  filter: {
-    magnifier: Interpolation.Linear,
-    minifier: Interpolation.Linear,
-    mipmap: true,
-    wrap: Wrap.Repeat,
-  },
-  image: await loadFromURL(
-    combinePath(getPathDirectory(fileName), textureName)
-  ),
-});
 
 const parseFace = (face: string) => {
   const indices = face.split(/\//);
