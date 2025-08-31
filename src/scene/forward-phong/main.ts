@@ -141,7 +141,14 @@ const applicationBuilder = async (
       renderer = newRenderer;
     },
 
-    dispose() {},
+    dispose() {
+      models.cube.dispose();
+      models.ground.dispose();
+      models.light.dispose();
+      renderer?.dispose();
+      runtime.dispose();
+      target.dispose();
+    },
 
     render() {
       // Clear screen

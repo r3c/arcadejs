@@ -23,7 +23,6 @@ import {
 import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
 import { createModel } from "../../engine/graphic/webgl/model";
-import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
@@ -31,7 +30,6 @@ import { Camera, createBehindCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 import {
   createForwardLightingRenderer,
-  ForwardLightingRenderer,
   ForwardLightingScene,
   RendererSubject,
 } from "../../engine/graphic/renderer";
@@ -60,19 +58,12 @@ type ApplicationState = {
   input: Input;
   lights: Light[];
   lightSubjects: RendererSubject[];
-  move: number;
   player: Player;
   particleRenderer: ParticleRenderer;
   particleEmitter0: ParticleEmitter<number>;
-  projectionMatrix: Matrix4;
-  sceneRenderer: ForwardLightingRenderer;
   shipSubject: RendererSubject;
-  sprite: GlTexture;
   stars: Star[];
   starSubjects: RendererSubject[];
-  target: GlTarget;
-  updaters: Updater[];
-  viewMatrix: Matrix4;
 };
 
 const pi2 = Math.PI * 2;
@@ -354,45 +345,38 @@ const applicationBuilder = async (
   );
 
   // Create state
+  const projectionMatrix = Matrix4.fromIdentity();
   const state: ApplicationState = {
     input,
     lights,
     lightSubjects,
-    move: 0,
     player,
     particleEmitter0,
     particleRenderer,
-    projectionMatrix: Matrix4.identity,
-    sceneRenderer,
     shipSubject,
-    sprite,
     stars,
     starSubjects,
-    target,
-    updaters: [
-      createCameraUpdater(camera),
-      createPlayerUpdater(),
-      createParticleUpdater(),
-      createStarUpdater(),
-      createLightUpdater(),
-    ],
-    viewMatrix: camera.viewMatrix,
   };
+  const updaters = [
+    createCameraUpdater(camera),
+    createPlayerUpdater(),
+    createParticleUpdater(),
+    createStarUpdater(),
+    createLightUpdater(),
+  ];
 
   return {
     async change() {},
 
-    dispose() {},
+    dispose() {
+      particleRenderer.dispose();
+      runtime.dispose();
+      sceneRenderer.dispose();
+      sprite.dispose();
+      target.dispose();
+    },
 
     render() {
-      const {
-        particleRenderer,
-        projectionMatrix,
-        sceneRenderer,
-        target,
-        viewMatrix,
-      } = state;
-
       // Draw scene
       target.clear(0);
 
@@ -404,7 +388,7 @@ const applicationBuilder = async (
           radius: 100,
         })),
         projectionMatrix,
-        viewMatrix,
+        viewMatrix: camera.viewMatrix,
       };
 
       sceneRenderer.render(scene);
@@ -412,21 +396,19 @@ const applicationBuilder = async (
     },
 
     resize(size) {
-      state.projectionMatrix = Matrix4.fromIdentity([
-        "setFromPerspective",
+      particleRenderer.resize(size);
+      projectionMatrix.setFromPerspective(
         Math.PI / 4,
         size.x / size.y,
         0.1,
-        10000,
-      ]);
-
-      state.particleRenderer.resize(size);
-      state.sceneRenderer.resize(size);
-      state.target.resize(size);
+        10000
+      );
+      sceneRenderer.resize(size);
+      target.resize(size);
     },
 
     update(dt) {
-      for (const updater of state.updaters) {
+      for (const updater of updaters) {
         updater(state, dt);
       }
     },

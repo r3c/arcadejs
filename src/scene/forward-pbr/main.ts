@@ -170,7 +170,14 @@ const applicationBuilder = async (
       renderer = newRenderer;
     },
 
-    dispose() {},
+    dispose() {
+      models.ground.dispose();
+      models.helmet.dispose();
+      models.light.dispose();
+      renderer?.dispose();
+      runtime.dispose();
+      target.dispose();
+    },
 
     render() {
       // Draw scene
