@@ -170,167 +170,169 @@ const intersectLineWithPlane = (
   return intersection >= 0 && intersection <= 1 ? intersection : undefined;
 };
 
-const application: Application<WebGLScreen, ApplicationState, unknown> = {
-  async create(screen) {
-    const gl = screen.context;
-    const input = new Input(screen.canvas);
-    const runtime = createRuntime(gl);
-    const target = new GlTarget(gl, screen.getSize());
+const applicationBuilder = async (
+  screen: WebGLScreen
+): Promise<Application<unknown>> => {
+  const gl = screen.context;
+  const input = new Input(screen.canvas);
+  const runtime = createRuntime(gl);
+  const target = new GlTarget(gl, screen.getSize());
 
-    // Load meshes
-    const floor0 = await loadMeshFromJson("model/cube/mesh.json", {
-      transform: Matrix4.fromIdentity(["scale", { x: 2, y: 0.01, z: 2 }]),
-    });
+  // Load meshes
+  const floor0 = await loadMeshFromJson("model/cube/mesh.json", {
+    transform: Matrix4.fromIdentity(["scale", { x: 2, y: 0.01, z: 2 }]),
+  });
 
-    const sphere = await loadMeshFromJson("model/sphere/mesh.json", {
-      transform: Matrix4.fromIdentity(["scale", { x: 0.25, y: 0.25, z: 0.25 }]),
-    });
+  const sphere = await loadMeshFromJson("model/sphere/mesh.json", {
+    transform: Matrix4.fromIdentity(["scale", { x: 0.25, y: 0.25, z: 0.25 }]),
+  });
 
-    // Declare collision surfaces
-    const surfaces: { collision: boolean; plane: Plane }[] = [
-      {
-        collision: false,
-        plane: {
-          distance: 1,
-          normal: Vector3.fromSource({ x: 0, y: -1, z: 0 }, ["normalize"]),
-        },
+  // Declare collision surfaces
+  const surfaces: { collision: boolean; plane: Plane }[] = [
+    {
+      collision: false,
+      plane: {
+        distance: 1,
+        normal: Vector3.fromSource({ x: 0, y: -1, z: 0 }, ["normalize"]),
       },
-      {
-        collision: false,
-        plane: {
-          distance: 1,
-          normal: Vector3.fromSource({ x: 0, y: 1, z: 0 }, ["normalize"]),
-        },
+    },
+    {
+      collision: false,
+      plane: {
+        distance: 1,
+        normal: Vector3.fromSource({ x: 0, y: 1, z: 0 }, ["normalize"]),
       },
-      {
-        collision: false,
-        plane: {
-          distance: 1,
-          normal: Vector3.fromSource({ x: 1, y: 1, z: 0 }, ["normalize"]),
-        },
+    },
+    {
+      collision: false,
+      plane: {
+        distance: 1,
+        normal: Vector3.fromSource({ x: 1, y: 1, z: 0 }, ["normalize"]),
       },
-      {
-        collision: false,
-        plane: {
-          distance: 1,
-          normal: Vector3.fromSource({ x: -1, y: -1, z: 0 }, ["normalize"]),
-        },
+    },
+    {
+      collision: false,
+      plane: {
+        distance: 1,
+        normal: Vector3.fromSource({ x: -1, y: -1, z: 0 }, ["normalize"]),
       },
-    ];
+    },
+  ];
 
-    // Create renderer
-    const renderer = createForwardLightingRenderer(runtime, target, {
-      maxPointLights: 3,
-      noShadow: true,
-    });
+  // Create renderer
+  const renderer = createForwardLightingRenderer(runtime, target, {
+    maxPointLights: 3,
+    noShadow: true,
+  });
 
-    const sphereSubject = renderer.register({ model: createModel(gl, sphere) });
+  const sphereSubject = renderer.register({ model: createModel(gl, sphere) });
 
-    const floor0Model = createModel(gl, floor0);
+  const floor0Model = createModel(gl, floor0);
 
-    for (const { plane } of surfaces) {
-      const t0 = Vector3.fromSource(
-        plane.normal,
-        ["cross", { x: 1, y: 0, z: 0 }],
-        ["normalize"]
-      );
+  for (const { plane } of surfaces) {
+    const t0 = Vector3.fromSource(
+      plane.normal,
+      ["cross", { x: 1, y: 0, z: 0 }],
+      ["normalize"]
+    );
 
-      const t2 = Vector3.fromSource(plane.normal, ["cross", t0], ["normalize"]);
+    const t2 = Vector3.fromSource(plane.normal, ["cross", t0], ["normalize"]);
 
-      const rotation = Matrix3.fromIdentity([
-        "setFromVectors",
-        t0,
-        plane.normal,
-        t2,
-      ]);
-
-      const subject = renderer.register({ model: floor0Model });
-
-      subject.transform.setFromRotationPosition(rotation, Vector3.zero);
-      subject.transform.translate({ x: 0, y: plane.distance, z: 0 });
-    }
-
-    // Create state
-    const state: ApplicationState = {
-      camera: createOrbitCamera(
-        {
-          getRotate: () => input.fetchMove(Pointer.Grab),
-          getMove: () => input.fetchMove(Pointer.Drag),
-          getZoom: () => input.fetchZoom(),
-        },
-        { x: 0, y: 0, z: -5 },
-        Vector2.zero
-      ),
-      input,
-      lights: range(2).map((i) => ({
-        mover: createOrbitMover(i, 5, 5, 2),
-        position: Vector3.fromZero(),
-      })),
-      player: {
-        rotation: Quaternion.fromIdentity([
-          "setFromRotation",
-          { x: 0, y: 0, z: 1 },
-          0,
-        ]),
-        position: Vector3.fromZero(),
-      },
-      projectionMatrix: Matrix4.identity,
-      renderer,
-      sphereSubject,
-      surfaces,
-      target,
-      updaters: [
-        createCameraUpdater(),
-        createPlayerUpdater(),
-        createLightUpdater(),
-      ],
-    };
-
-    return state;
-  },
-
-  async change() {},
-
-  render(state) {
-    const { camera, projectionMatrix, renderer, target } = state;
-
-    // Draw scene
-    target.clear(0);
-
-    const scene: ForwardLightingScene = {
-      ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-      pointLights: state.lights.map(({ position }) => ({
-        color: { x: 1, y: 1, z: 1 },
-        position,
-        radius: 100,
-      })),
-      projectionMatrix,
-      viewMatrix: camera.viewMatrix,
-    };
-
-    renderer.render(scene);
-  },
-
-  resize(state, size) {
-    state.projectionMatrix = Matrix4.fromIdentity([
-      "setFromPerspective",
-      Math.PI / 4,
-      size.x / size.y,
-      0.1,
-      10000,
+    const rotation = Matrix3.fromIdentity([
+      "setFromVectors",
+      t0,
+      plane.normal,
+      t2,
     ]);
 
-    state.renderer.resize(size);
-    state.target.resize(size);
-  },
+    const subject = renderer.register({ model: floor0Model });
 
-  update(state, dt) {
-    for (const updater of state.updaters) {
-      updater(state, dt);
-    }
-  },
+    subject.transform.setFromRotationPosition(rotation, Vector3.zero);
+    subject.transform.translate({ x: 0, y: plane.distance, z: 0 });
+  }
+
+  // Create state
+  const state: ApplicationState = {
+    camera: createOrbitCamera(
+      {
+        getRotate: () => input.fetchMove(Pointer.Grab),
+        getMove: () => input.fetchMove(Pointer.Drag),
+        getZoom: () => input.fetchZoom(),
+      },
+      { x: 0, y: 0, z: -5 },
+      Vector2.zero
+    ),
+    input,
+    lights: range(2).map((i) => ({
+      mover: createOrbitMover(i, 5, 5, 2),
+      position: Vector3.fromZero(),
+    })),
+    player: {
+      rotation: Quaternion.fromIdentity([
+        "setFromRotation",
+        { x: 0, y: 0, z: 1 },
+        0,
+      ]),
+      position: Vector3.fromZero(),
+    },
+    projectionMatrix: Matrix4.identity,
+    renderer,
+    sphereSubject,
+    surfaces,
+    target,
+    updaters: [
+      createCameraUpdater(),
+      createPlayerUpdater(),
+      createLightUpdater(),
+    ],
+  };
+
+  return {
+    async change() {},
+
+    dispose() {},
+
+    render() {
+      const { camera, projectionMatrix, renderer, target } = state;
+
+      // Draw scene
+      target.clear(0);
+
+      const scene: ForwardLightingScene = {
+        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+        pointLights: state.lights.map(({ position }) => ({
+          color: { x: 1, y: 1, z: 1 },
+          position,
+          radius: 100,
+        })),
+        projectionMatrix,
+        viewMatrix: camera.viewMatrix,
+      };
+
+      renderer.render(scene);
+    },
+
+    resize(size) {
+      state.projectionMatrix = Matrix4.fromIdentity([
+        "setFromPerspective",
+        Math.PI / 4,
+        size.x / size.y,
+        0.1,
+        10000,
+      ]);
+
+      state.renderer.resize(size);
+      state.target.resize(size);
+    },
+
+    update(dt) {
+      for (const updater of state.updaters) {
+        updater(state, dt);
+      }
+    },
+  };
 };
 
-const process = declare("Collision", WebGLScreen, {}, application);
+const process = declare("Collision", WebGLScreen, applicationBuilder, {});
 
 export { process };
