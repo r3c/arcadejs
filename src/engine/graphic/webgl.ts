@@ -1,6 +1,6 @@
 import { range } from "../language/iterable";
 import { Matrix3, Matrix4 } from "../math/matrix";
-import { Filter, Interpolation, Wrap, defaultFilter } from "./mesh";
+import { TextureSampler, Interpolation, Wrap, defaultSampler } from "./mesh";
 import { MutableVector2, Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
 import { Disposable } from "../language/lifecycle";
@@ -66,7 +66,7 @@ const createRuntime = (context: GlContext): GlRuntime => {
       1,
       1,
       GlTextureFormat.RGBA8,
-      defaultFilter,
+      defaultSampler,
       new ImageData(
         new Uint8ClampedArray(
           Vector4.toArray(
@@ -121,7 +121,7 @@ const loadTextureCube = (
   faceNegativeY: ImageData,
   facePositiveZ: ImageData,
   faceNegativeZ: ImageData,
-  filter?: Filter
+  filter?: TextureSampler
 ): GlTexture => {
   return createTexture(
     gl,
@@ -130,7 +130,7 @@ const loadTextureCube = (
     facePositiveX.width,
     facePositiveX.height,
     GlTextureFormat.RGBA8,
-    filter ?? defaultFilter,
+    filter ?? defaultSampler,
     [
       facePositiveX,
       faceNegativeX,
@@ -145,7 +145,7 @@ const loadTextureCube = (
 const loadTextureQuad = (
   gl: GlContext,
   image: ImageData,
-  filter?: Filter
+  filter?: TextureSampler
 ): GlTexture => {
   return createTexture(
     gl,
@@ -154,7 +154,7 @@ const loadTextureQuad = (
     image.width,
     image.height,
     GlTextureFormat.RGBA8,
-    filter ?? defaultFilter,
+    filter ?? defaultSampler,
     image
   );
 };
@@ -251,7 +251,7 @@ class GlTarget {
           size.x,
           size.y,
           texture.format,
-          defaultFilter,
+          defaultSampler,
           undefined
         );
       }

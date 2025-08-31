@@ -1,5 +1,5 @@
 import { Disposable } from "../../language/lifecycle";
-import { Filter, Interpolation, Wrap } from "../mesh";
+import { TextureSampler, Interpolation, Wrap } from "../mesh";
 import { GlContext } from "./resource";
 
 /**
@@ -136,7 +136,7 @@ const createTexture = (
   width: number,
   height: number,
   format: GlTextureFormat,
-  filter: Filter,
+  sampler: TextureSampler,
   image: ImageData | ImageData[] | undefined
 ): GlTexture => {
   const target = textureGetTarget(gl, type);
@@ -159,21 +159,21 @@ const createTexture = (
 
   // Define texture format, filtering & wrapping parameters
   const magnifierFilter =
-    filter.magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+    sampler.magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
   const minifierFilter =
-    filter.minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+    sampler.minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
   const mipmapFilter =
-    filter.minifier === Interpolation.Linear
+    sampler.minifier === Interpolation.Linear
       ? gl.NEAREST_MIPMAP_LINEAR
       : gl.NEAREST_MIPMAP_NEAREST;
   const nativeFormat = formatGetNative(gl, format);
-  const wrap = textureGetWrap(gl, filter.wrap);
+  const wrap = textureGetWrap(gl, sampler.wrap);
 
   gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
   gl.texParameteri(
     target,
     gl.TEXTURE_MIN_FILTER,
-    filter !== undefined && filter.mipmap ? mipmapFilter : minifierFilter
+    sampler !== undefined && sampler.mipmap ? mipmapFilter : minifierFilter
   );
   gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
   gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
@@ -220,7 +220,7 @@ const createTexture = (
     }
   }
 
-  if (filter.mipmap) {
+  if (sampler.mipmap) {
     gl.generateMipmap(target);
   }
 

@@ -2,22 +2,24 @@ import { Matrix4 } from "../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../math/vector";
 import {
   BoundingBox,
-  Filter,
   Interpolation,
   Library,
   Material,
+  MaterialReference,
   Mesh,
   Polygon,
   Texture,
+  TextureSampler,
   Wrap,
   defaultColor,
-  defaultFilter,
+  defaultSampler,
 } from "./mesh/definition";
 import { range } from "../language/iterable";
 import { load as loadFrom3ds } from "./mesh/loaders/3ds";
 import { load as loadFromGltf } from "./mesh/loaders/gltf";
 import { load as loadFromJson } from "./mesh/loaders/json";
 import { load as loadFromObj } from "./mesh/loaders/obj";
+import { loadFromURL } from "./image";
 
 type Configuration<TFormat> = {
   format: TFormat;
@@ -251,6 +253,88 @@ const createFlattenedPolygons = (
   }
 };
 
+const createLibrary = (): Library => {
+  const texturePromises = new Map<string, Promise<Texture>>();
+  const getOrLoadMaterial = async (
+    reference: MaterialReference
+  ): Promise<Material> => {
+    // TODO [material-factorize]
+    return {
+      diffuseColor: reference.diffuseColor,
+      diffuseMap: await getOrLoadOptionalTexture(
+        reference.diffusePath,
+        reference.diffuseSampler
+      ),
+      emissiveColor: reference.emissiveColor,
+      emissiveMap: await getOrLoadOptionalTexture(
+        reference.emissivePath,
+        reference.emissiveSampler
+      ),
+      heightMap: await getOrLoadOptionalTexture(
+        reference.heightPath,
+        reference.heightSampler
+      ),
+      heightParallaxBias: reference.heightParallaxBias,
+      heightParallaxScale: reference.heightParallaxScale,
+      metalnessMap: await getOrLoadOptionalTexture(
+        reference.metalnessPath,
+        reference.metalnessSampler
+      ),
+      metalnessStrength: reference.metalnessStrength,
+      normalMap: await getOrLoadOptionalTexture(
+        reference.normalPath,
+        reference.normalSampler
+      ),
+      occlusionMap: await getOrLoadOptionalTexture(
+        reference.occlusionPath,
+        reference.occlusionSampler
+      ),
+      occlusionStrength: reference.occlusionStrength,
+      roughnessMap: await getOrLoadOptionalTexture(
+        reference.roughnessPath,
+        reference.roughnessSampler
+      ),
+      roughnessStrength: reference.roughnessStrength,
+      shininess: reference.shininess,
+      specularColor: reference.specularColor,
+      specularMap: await getOrLoadOptionalTexture(
+        reference.specularPath,
+        reference.specularSampler
+      ),
+    };
+  };
+
+  const getOrLoadTexture = async (
+    path: string,
+    sampler: TextureSampler
+  ): Promise<Texture> => {
+    let texturePromise = texturePromises.get(path);
+
+    if (texturePromise === undefined) {
+      texturePromise = new Promise<Texture>(async (resolve) => {
+        const image = await loadFromURL(path);
+
+        resolve({ imageData: image, sampler });
+      });
+
+      texturePromises.set(path, texturePromise);
+    }
+
+    return texturePromise;
+  };
+
+  const getOrLoadOptionalTexture = async (
+    path: string | undefined,
+    sampler: TextureSampler | undefined
+  ): Promise<Texture | undefined> => {
+    return path !== undefined
+      ? await getOrLoadTexture(path, sampler ?? defaultSampler)
+      : undefined;
+  };
+
+  return { getOrLoadMaterial, getOrLoadTexture };
+};
+
 const createMergedMesh = (instances: Iterable<MeshInstance>): Mesh => {
   const children: Mesh[] = [];
 
@@ -279,7 +363,7 @@ const createMeshLoader = <TSource, TFormat>(
   return async (source, configurationOrUndefined) => {
     // Load mesh using underlying loading callback
     const configuration = configurationOrUndefined ?? {};
-    const library = configuration.library ?? { textures: new Map() };
+    const library = configuration.library ?? createLibrary();
     const mesh = await loadCallback(source, library, configuration.format);
 
     // Transform top-level meshes using provided transform matrix if any
@@ -386,21 +470,22 @@ const reduceMeshPositions = <TState>(
 };
 
 export {
-  type Filter,
   type Library,
   type Material,
   type Mesh,
   type MeshInstance,
   type Polygon,
   type Texture,
+  type TextureSampler,
   Interpolation,
   Wrap,
   defaultColor,
-  defaultFilter,
+  defaultSampler,
   changeMeshCenter,
   computeBoundingBox,
   computeCenter,
   createFlattenedMesh,
+  createLibrary,
   createMergedMesh,
   loadMeshFrom3ds,
   loadMeshFromGltf,
