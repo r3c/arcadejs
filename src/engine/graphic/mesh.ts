@@ -20,6 +20,7 @@ import { load as loadFromGltf } from "./mesh/loaders/gltf";
 import { load as loadFromJson } from "./mesh/loaders/json";
 import { load as loadFromObj } from "./mesh/loaders/obj";
 import { loadFromURL } from "./image";
+import { getHashCode, isEqual } from "../language/dynamic";
 
 type Configuration<TFormat> = {
   format: TFormat;
@@ -254,54 +255,80 @@ const createFlattenedPolygons = (
 };
 
 const createLibrary = (): Library => {
+  type MaterialMatch = {
+    materialPromise: Promise<Material>;
+    reference: MaterialReference;
+  };
+
+  const materialMatchesByHashCode = new Map<number, MaterialMatch[]>();
   const texturePromises = new Map<string, Promise<Texture>>();
+
   const getOrLoadMaterial = async (
     reference: MaterialReference
   ): Promise<Material> => {
-    // TODO [material-factorize]
-    return {
-      diffuseColor: reference.diffuseColor,
-      diffuseMap: await getOrLoadOptionalTexture(
-        reference.diffusePath,
-        reference.diffuseSampler
-      ),
-      emissiveColor: reference.emissiveColor,
-      emissiveMap: await getOrLoadOptionalTexture(
-        reference.emissivePath,
-        reference.emissiveSampler
-      ),
-      heightMap: await getOrLoadOptionalTexture(
-        reference.heightPath,
-        reference.heightSampler
-      ),
-      heightParallaxBias: reference.heightParallaxBias,
-      heightParallaxScale: reference.heightParallaxScale,
-      metalnessMap: await getOrLoadOptionalTexture(
-        reference.metalnessPath,
-        reference.metalnessSampler
-      ),
-      metalnessStrength: reference.metalnessStrength,
-      normalMap: await getOrLoadOptionalTexture(
-        reference.normalPath,
-        reference.normalSampler
-      ),
-      occlusionMap: await getOrLoadOptionalTexture(
-        reference.occlusionPath,
-        reference.occlusionSampler
-      ),
-      occlusionStrength: reference.occlusionStrength,
-      roughnessMap: await getOrLoadOptionalTexture(
-        reference.roughnessPath,
-        reference.roughnessSampler
-      ),
-      roughnessStrength: reference.roughnessStrength,
-      shininess: reference.shininess,
-      specularColor: reference.specularColor,
-      specularMap: await getOrLoadOptionalTexture(
-        reference.specularPath,
-        reference.specularSampler
-      ),
-    };
+    const hashCode = getHashCode(reference);
+
+    const materialMatches = materialMatchesByHashCode.get(hashCode) ?? [];
+    const materialMatch = materialMatches.find((match) =>
+      isEqual(match.reference, reference)
+    );
+
+    let materialPromise = materialMatch?.materialPromise;
+
+    if (materialPromise === undefined) {
+      materialPromise = new Promise<Material>(async (resolve) => {
+        const material = {
+          diffuseColor: reference.diffuseColor,
+          diffuseMap: await getOrLoadOptionalTexture(
+            reference.diffusePath,
+            reference.diffuseSampler
+          ),
+          emissiveColor: reference.emissiveColor,
+          emissiveMap: await getOrLoadOptionalTexture(
+            reference.emissivePath,
+            reference.emissiveSampler
+          ),
+          heightMap: await getOrLoadOptionalTexture(
+            reference.heightPath,
+            reference.heightSampler
+          ),
+          heightParallaxBias: reference.heightParallaxBias,
+          heightParallaxScale: reference.heightParallaxScale,
+          metalnessMap: await getOrLoadOptionalTexture(
+            reference.metalnessPath,
+            reference.metalnessSampler
+          ),
+          metalnessStrength: reference.metalnessStrength,
+          normalMap: await getOrLoadOptionalTexture(
+            reference.normalPath,
+            reference.normalSampler
+          ),
+          occlusionMap: await getOrLoadOptionalTexture(
+            reference.occlusionPath,
+            reference.occlusionSampler
+          ),
+          occlusionStrength: reference.occlusionStrength,
+          roughnessMap: await getOrLoadOptionalTexture(
+            reference.roughnessPath,
+            reference.roughnessSampler
+          ),
+          roughnessStrength: reference.roughnessStrength,
+          shininess: reference.shininess,
+          specularColor: reference.specularColor,
+          specularMap: await getOrLoadOptionalTexture(
+            reference.specularPath,
+            reference.specularSampler
+          ),
+        };
+
+        resolve(material);
+      });
+
+      materialMatches.push({ materialPromise, reference });
+      materialMatchesByHashCode.set(hashCode, materialMatches);
+    }
+
+    return materialPromise;
   };
 
   const getOrLoadTexture = async (
@@ -312,9 +339,9 @@ const createLibrary = (): Library => {
 
     if (texturePromise === undefined) {
       texturePromise = new Promise<Texture>(async (resolve) => {
-        const image = await loadFromURL(path);
+        const imageData = await loadFromURL(path);
 
-        resolve({ imageData: image, sampler });
+        resolve({ imageData, sampler });
       });
 
       texturePromises.set(path, texturePromise);
@@ -472,6 +499,7 @@ const reduceMeshPositions = <TState>(
 export {
   type Library,
   type Material,
+  type MaterialReference,
   type Mesh,
   type MeshInstance,
   type Polygon,
