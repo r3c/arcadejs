@@ -74,17 +74,17 @@ const enum TfComponentType {
 
 type TfMaterial = {
   baseColorFactor: Vector4 | undefined;
-  baseColorTexture: Texture | undefined;
+  baseColorTexture: TfTexture | undefined;
   emissiveFactor: Vector4 | undefined;
-  emissiveTexture: Texture | undefined;
+  emissiveTexture: TfTexture | undefined;
   metallicFactor: number;
-  metallicRoughnessTexture: Texture | undefined;
+  metallicRoughnessTexture: TfTexture | undefined;
   roughnessFactor: number;
   name: string;
   normalFactor: Vector4 | undefined;
-  normalTexture: Texture | undefined;
+  normalTexture: TfTexture | undefined;
   occlusionFactor: Vector4 | undefined;
-  occlusionTexture: Texture | undefined;
+  occlusionTexture: TfTexture | undefined;
 };
 
 type TfMesh = {
@@ -109,6 +109,11 @@ type TfPrimitive = {
 
 type TfScene = {
   nodes: TfNode[];
+};
+
+type TfTexture = {
+  imagePath: string;
+  sampler: TextureSampler;
 };
 
 enum TfType {
@@ -188,38 +193,49 @@ const expandAccessor = <T>(
   return result;
 };
 
-const expandMaterial = (material: TfMaterial): Material => {
-  const toMap = (
-    textureOrUndefined: Texture | undefined,
+const expandMaterial = async (
+  material: TfMaterial,
+  library: Library
+): Promise<Material> => {
+  const toMap = async (
+    textureOrUndefined: TfTexture | undefined,
     channels?: Channel[]
-  ): Texture | undefined =>
-    mapOptional(textureOrUndefined, (texture) => ({
-      imageData:
-        channels !== undefined
-          ? mapChannels(texture.imageData, channels)
-          : texture.imageData,
-      sampler: {
-        magnifier: texture.sampler.magnifier,
-        minifier: texture.sampler.minifier,
-        mipmap: texture.sampler.mipmap,
-        wrap: texture.sampler.wrap,
-      },
-    }));
+  ): Promise<Texture | undefined> => {
+    if (textureOrUndefined === undefined) {
+      return undefined;
+    }
+
+    const texture = await library.getOrLoadTexture(
+      textureOrUndefined.imagePath,
+      textureOrUndefined.sampler
+    );
+
+    return channels !== undefined
+      ? {
+          imageData: mapChannels(texture.imageData, channels),
+          sampler: texture.sampler,
+        }
+      : texture;
+  };
 
   return {
     diffuseColor: material.baseColorFactor,
-    diffuseMap: toMap(material.baseColorTexture),
+    diffuseMap: await toMap(material.baseColorTexture),
     emissiveColor: material.emissiveFactor,
-    emissiveMap: toMap(material.emissiveTexture),
-    metalnessMap: toMap(material.metallicRoughnessTexture, [Channel.Blue]),
+    emissiveMap: await toMap(material.emissiveTexture),
+    metalnessMap: await toMap(material.metallicRoughnessTexture, [
+      Channel.Blue,
+    ]),
     metalnessStrength: material.metallicFactor,
     //normalFactor: material.normalFactor, // FIXME: normalFactor is not supported yet
-    normalMap: toMap(material.normalTexture),
-    occlusionMap: toMap(material.occlusionTexture),
+    normalMap: await toMap(material.normalTexture),
+    occlusionMap: await toMap(material.occlusionTexture),
     occlusionStrength: mapOptional(material.occlusionFactor, (factor) =>
       Math.max(factor.x, factor.y, factor.z, factor.w)
     ),
-    roughnessMap: toMap(material.metallicRoughnessTexture, [Channel.Green]),
+    roughnessMap: await toMap(material.metallicRoughnessTexture, [
+      Channel.Green,
+    ]),
     roughnessStrength: material.roughnessFactor,
   };
 };
@@ -511,7 +527,7 @@ const loadImagePath = (
 
 const loadMaterial = (
   url: string,
-  textures: Texture[],
+  textures: TfTexture[],
   material: any,
   index: number
 ): TfMaterial => {
@@ -768,10 +784,11 @@ const loadRoot = async (
     structure.samplers || [],
     (value, index) => loadSampler(url, value, index)
   );
-  const textures: Texture[] = await Promise.all(
-    convertArrayOf(url, "textures", structure.textures || [], (value, index) =>
-      loadTexture(url, library, imagePaths, samplers, value, index)
-    )
+  const textures: TfTexture[] = convertArrayOf(
+    url,
+    "textures",
+    structure.textures || [],
+    (value, index) => loadTexture(url, imagePaths, samplers, value, index)
   );
   const materials: TfMaterial[] = convertArrayOf(
     url,
@@ -809,9 +826,11 @@ const loadRoot = async (
   }
 
   // Convert to common types
-  const outputMaterials = new Map(
-    materials.map((m) => [m.name, expandMaterial(m)])
-  );
+  const outputMaterials = new Map<string, Material>();
+
+  for (const material of materials) {
+    outputMaterials.set(material.name, await expandMaterial(material, library));
+  }
 
   return {
     children: scenes[defaultScene].nodes.map((node) =>
@@ -874,14 +893,13 @@ const loadScene = (
   };
 };
 
-const loadTexture = async (
+const loadTexture = (
   url: string,
-  library: Library,
   imagePaths: string[],
   samplers: TextureSampler[],
   texture: any,
   index: number
-): Promise<Texture> => {
+): TfTexture => {
   const source = `texture[${index}]`;
 
   const imagePath = convertReferenceTo(
@@ -898,7 +916,7 @@ const loadTexture = async (
     samplers
   );
 
-  return await library.getOrLoadTexture(imagePath, sampler);
+  return { imagePath, sampler };
 };
 
 const load = async (url: string, library: Library): Promise<Mesh> => {
