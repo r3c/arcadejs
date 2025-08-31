@@ -1,5 +1,4 @@
 import { Matrix4 } from "../../../math/matrix";
-import { mesh as quadMesh } from "./resources/quad";
 import { GlRuntime, GlTarget } from "../../webgl";
 import {
   GlShader,
@@ -16,6 +15,7 @@ import { linearToStandard } from "../shaders/rgb";
 import { normalDecode } from "../shaders/normal";
 import { linearDepth } from "../shaders/depth";
 import { Vector2 } from "../../../math/vector";
+import { commonMesh } from "../../mesh";
 
 const enum DebugTextureEncoding {
   Identity,
@@ -178,7 +178,7 @@ class DebugTextureRenderer implements Renderer<GlTexture> {
     const shader = createShader(runtime, configuration);
 
     this.painter = createPainter(shader);
-    this.quad = createModel(runtime.context, quadMesh);
+    this.quad = createModel(runtime.context, commonMesh.quad);
     this.runtime = runtime;
     this.scale = configuration.scale ?? 0.4;
     this.shader = shader;
