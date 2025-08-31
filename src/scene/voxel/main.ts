@@ -49,7 +49,7 @@ const worldChunkSize = { x: 16, y: 16, z: 16 };
 const worldScale = { x: 0.1, y: 0.1, z: 0.1 };
 const timeFactor = 20;
 
-const application: Application<WebGLScreen, ApplicationState, object> = {
+const application: Application<WebGLScreen, ApplicationState, unknown> = {
   async create(screen) {
     const gl = screen.context;
     const input = new Input(screen.canvas);

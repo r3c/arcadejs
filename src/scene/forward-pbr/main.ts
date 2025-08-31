@@ -1,5 +1,6 @@
 import {
   type Application,
+  ApplicationConfigurator,
   createCheckbox,
   createSelect,
   declare,
@@ -78,7 +79,7 @@ type ApplicationState = {
 const application: Application<
   WebGLScreen,
   ApplicationState,
-  typeof configuration
+  typeof configuration extends ApplicationConfigurator<infer T> ? T : never
 > = {
   async create(screen) {
     const gl = screen.context;
@@ -170,7 +171,7 @@ const application: Application<
     };
   },
 
-  async change(state, setup) {
+  async change(state, configuration) {
     const { models, runtime, target } = state;
 
     state.renderer?.dispose();
@@ -178,12 +179,12 @@ const application: Application<
     const renderer = createForwardLightingRenderer(runtime, target, {
       maxPointLights: 3,
       lightModel: ForwardLightingLightModel.Physical,
-      lightModelPhysicalNoAmbient: !setup.lightAmbient,
-      lightModelPhysicalNoIBL: !setup.useIBL,
-      noEmissiveMap: !setup.lightEmissive,
-      noHeightMap: !setup.useHeightMap,
-      noNormalMap: !setup.useNormalMap,
-      noOcclusionMap: !setup.useOcclusion,
+      lightModelPhysicalNoAmbient: !configuration.lightAmbient,
+      lightModelPhysicalNoIBL: !configuration.useIBL,
+      noEmissiveMap: !configuration.lightEmissive,
+      noHeightMap: !configuration.useHeightMap,
+      noNormalMap: !configuration.useNormalMap,
+      noOcclusionMap: !configuration.useOcclusion,
       noShadow: true,
     });
 
@@ -193,12 +194,12 @@ const application: Application<
 
     groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
 
-    const lightSubjects = range(setup.nbLights).map(() =>
+    const lightSubjects = range(configuration.nbLights).map(() =>
       renderer.register({ model: models.light, noShadow: true })
     );
 
     state.lightSubjects = lightSubjects;
-    state.move = setup.move;
+    state.move = configuration.move;
     state.renderer = renderer;
   },
 

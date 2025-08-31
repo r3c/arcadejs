@@ -11,7 +11,7 @@ type ApplicationState = {
   renderer: SoftwareRenderer;
 };
 
-const application: Application<Context2DScreen, ApplicationState, object> = {
+const application: Application<Context2DScreen, ApplicationState, unknown> = {
   async create(screen) {
     return {
       renderer: createSoftwareRenderer(screen, SoftwareDrawMode.Default),
