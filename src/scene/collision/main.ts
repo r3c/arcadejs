@@ -13,7 +13,6 @@ import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 import {
   createForwardLightingRenderer,
-  ForwardLightingRenderer,
   ForwardLightingScene,
 } from "../../engine/graphic/renderer/forward-lighting";
 import { RendererSubject } from "../../engine/graphic/renderer";
@@ -41,11 +40,7 @@ type ApplicationState = {
   lights: Light[];
   surfaces: { collision: boolean; plane: Plane }[];
   player: Player;
-  projectionMatrix: Matrix4;
-  renderer: ForwardLightingRenderer;
   sphereSubject: RendererSubject;
-  target: GlTarget;
-  updaters: Updater[];
 };
 
 // Move camera
@@ -225,7 +220,8 @@ const applicationBuilder = async (
     noShadow: true,
   });
 
-  const sphereSubject = renderer.register({ model: createModel(gl, sphere) });
+  const sphereModel = createModel(gl, sphere);
+  const sphereSubject = renderer.register({ model: sphereModel });
 
   const floor0Model = createModel(gl, floor0);
 
@@ -252,16 +248,18 @@ const applicationBuilder = async (
   }
 
   // Create state
+  const camera = createOrbitCamera(
+    {
+      getRotate: () => input.fetchMove(Pointer.Grab),
+      getMove: () => input.fetchMove(Pointer.Drag),
+      getZoom: () => input.fetchZoom(),
+    },
+    { x: 0, y: 0, z: -5 },
+    Vector2.zero
+  );
+  const projectionMatrix = Matrix4.fromIdentity();
   const state: ApplicationState = {
-    camera: createOrbitCamera(
-      {
-        getRotate: () => input.fetchMove(Pointer.Grab),
-        getMove: () => input.fetchMove(Pointer.Drag),
-        getZoom: () => input.fetchZoom(),
-      },
-      { x: 0, y: 0, z: -5 },
-      Vector2.zero
-    ),
+    camera,
     input,
     lights: range(2).map((i) => ({
       mover: createOrbitMover(i, 5, 5, 2),
@@ -275,26 +273,27 @@ const applicationBuilder = async (
       ]),
       position: Vector3.fromZero(),
     },
-    projectionMatrix: Matrix4.identity,
-    renderer,
     sphereSubject,
     surfaces,
-    target,
-    updaters: [
-      createCameraUpdater(),
-      createPlayerUpdater(),
-      createLightUpdater(),
-    ],
   };
+  const updaters = [
+    createCameraUpdater(),
+    createPlayerUpdater(),
+    createLightUpdater(),
+  ];
 
   return {
     async change() {},
 
-    dispose() {},
+    dispose() {
+      renderer.dispose();
+      runtime.dispose();
+      floor0Model.dispose();
+      sphereModel.dispose();
+      target.dispose();
+    },
 
     render() {
-      const { camera, projectionMatrix, renderer, target } = state;
-
       // Draw scene
       target.clear(0);
 
@@ -313,20 +312,18 @@ const applicationBuilder = async (
     },
 
     resize(size) {
-      state.projectionMatrix = Matrix4.fromIdentity([
-        "setFromPerspective",
+      projectionMatrix.setFromPerspective(
         Math.PI / 4,
         size.x / size.y,
         0.1,
-        10000,
-      ]);
-
-      state.renderer.resize(size);
-      state.target.resize(size);
+        10000
+      );
+      renderer.resize(size);
+      target.resize(size);
     },
 
     update(dt) {
-      for (const updater of state.updaters) {
+      for (const updater of updaters) {
         updater(state, dt);
       }
     },

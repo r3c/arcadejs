@@ -261,7 +261,17 @@ const applicationBuilder = async (
       nbPointLights = configuration.nbPointLights;
     },
 
-    dispose() {},
+    dispose() {
+      debugRenderer?.dispose();
+      debugTexture?.dispose();
+      models.cube.dispose();
+      models.directionalLight.dispose();
+      models.ground.dispose();
+      models.pointLight.dispose();
+      runtime.dispose();
+      sceneRenderer?.dispose();
+      target.dispose();
+    },
 
     render() {
       // Pick active lights
