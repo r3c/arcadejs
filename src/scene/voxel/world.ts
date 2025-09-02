@@ -132,15 +132,11 @@ const createWorldGraphic = (
 
   const chunkSubjects = range(chunks.length).map(() =>
     renderer.register({
-      model: {
+      mesh: {
+        children: [],
         dispose: () => {},
-        library: undefined,
-        mesh: {
-          children: [],
-          dispose: () => {},
-          primitives: [],
-          transform: Matrix4.identity,
-        },
+        primitives: [],
+        transform: Matrix4.identity,
       },
       noShadow: false,
     })
@@ -284,9 +280,11 @@ const createWorldGraphic = (
           library,
         });
 
+        // FIXME: dispose previous model
+
         chunkSubjects[chunkIndex].remove();
         chunkSubjects[chunkIndex] = renderer.register({
-          model,
+          mesh: model.mesh,
           noShadow: true,
         });
       }

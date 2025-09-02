@@ -156,14 +156,14 @@ const applicationBuilder = async (
         noShadow: true,
       });
 
-      newRenderer.register({ model: models.helmet });
+      newRenderer.register({ mesh: models.helmet.mesh });
 
-      const groundSubject = newRenderer.register({ model: models.ground });
+      const groundSubject = newRenderer.register({ mesh: models.ground.mesh });
 
       groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
 
       lightSubjects = range(configuration.nbLights).map(() =>
-        newRenderer.register({ model: models.light, noShadow: true })
+        newRenderer.register({ mesh: models.light.mesh, noShadow: true })
       );
 
       move = configuration.move;

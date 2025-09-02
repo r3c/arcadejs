@@ -221,7 +221,7 @@ const applicationBuilder = async (
   });
 
   const sphereModel = createModel(gl, sphere);
-  const sphereSubject = renderer.register({ model: sphereModel });
+  const sphereSubject = renderer.register({ mesh: sphereModel.mesh });
 
   const floor0Model = createModel(gl, floor0);
 
@@ -241,7 +241,7 @@ const applicationBuilder = async (
       t2,
     ]);
 
-    const subject = renderer.register({ model: floor0Model });
+    const subject = renderer.register({ mesh: floor0Model.mesh });
 
     subject.transform.setFromRotationPosition(rotation, Vector3.zero);
     subject.transform.translate({ x: 0, y: plane.distance, z: 0 });

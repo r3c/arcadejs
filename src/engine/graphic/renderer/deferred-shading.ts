@@ -38,7 +38,7 @@ import {
 } from "../webgl/shader";
 import {
   GlMaterial,
-  GlModel,
+  GlMesh,
   GlPolygon,
   createModel,
   createTransformableMesh,
@@ -381,7 +381,7 @@ type DeferredShadingScene = {
 };
 
 type DeferredShadingSubject = {
-  model: GlModel;
+  mesh: GlMesh;
 };
 
 type AmbientLightScene = {
@@ -803,8 +803,8 @@ const createDeferredShadingRenderer = (
     },
 
     register(subject) {
-      const { model } = subject;
-      const { mesh, transform } = createTransformableMesh(model.mesh);
+      const { mesh: originalMesh } = subject;
+      const { mesh, transform } = createTransformableMesh(originalMesh);
 
       const resource = geometryPainter.register(mesh);
 

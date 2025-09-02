@@ -123,17 +123,17 @@ const applicationBuilder = async (
         noNormalMap: !configuration.useNormalMap,
       });
 
-      newRenderer.register({ model: models.cube });
+      newRenderer.register({ mesh: models.cube.mesh });
 
-      const groundSubject = newRenderer.register({ model: models.ground });
+      const groundSubject = newRenderer.register({ mesh: models.ground.mesh });
 
       groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
 
       directionalLightSubjects = range(configuration.nbDirectionalLights).map(
-        () => newRenderer.register({ model: models.light, noShadow: true })
+        () => newRenderer.register({ mesh: models.light.mesh, noShadow: true })
       );
       pointLightSubjects = range(configuration.nbPointLights).map(() =>
-        newRenderer.register({ model: models.light, noShadow: true })
+        newRenderer.register({ mesh: models.light.mesh, noShadow: true })
       );
 
       debugMode = configuration.debugMode !== 0;

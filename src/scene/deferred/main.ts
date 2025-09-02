@@ -270,7 +270,7 @@ const applicationBuilder = async (
 
       // Register cube subjects
       for (const i of range(16)) {
-        const cubeSubject = newRenderer.register({ model: models.cube });
+        const cubeSubject = newRenderer.register({ mesh: models.cube.mesh });
 
         cubeSubject.transform.translate({
           x: ((i % 4) - 1.5) * 2,
@@ -280,7 +280,7 @@ const applicationBuilder = async (
       }
 
       // Register ground subject
-      const groundSubject = newRenderer.register({ model: models.ground });
+      const groundSubject = newRenderer.register({ mesh: models.ground.mesh });
 
       groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
 
@@ -299,11 +299,11 @@ const applicationBuilder = async (
         directionalLightParameter.count
       );
       directionalLightSubjects = range(directionalLights.length).map(() =>
-        newRenderer.register({ model: models.directionalLight })
+        newRenderer.register({ mesh: models.directionalLight.mesh })
       );
       pointLights = allPointLights.slice(0, pointLightParameter.count);
       pointLightSubjects = range(pointLights.length).map(() =>
-        newRenderer.register({ model: models.pointLight })
+        newRenderer.register({ mesh: models.pointLight.mesh })
       );
 
       move = configuration.move;
