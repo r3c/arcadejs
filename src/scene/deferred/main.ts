@@ -13,25 +13,29 @@ import {
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import {
   DeferredLightingLightModel,
-  DeferredLightingRenderer,
-} from "../../engine/graphic/webgl/renderers/deferred-lighting";
-import { Renderer, WebGLScreen } from "../../engine/graphic/display";
+  DeferredLightingSubject,
+  createDeferredLightingRenderer,
+} from "../../engine/graphic/renderer/deferred-lighting";
+import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { createCircleMover, createOrbitMover } from "../move";
-import { DeferredLightingScene } from "../../engine/graphic/webgl/renderers/deferred-lighting";
+import { DeferredLightingScene } from "../../engine/graphic/renderer/deferred-lighting";
 import { brightColor } from "../../engine/graphic/color";
 import { createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import {
   DeferredShadingLightModel,
-  DeferredShadingRenderer,
   DeferredShadingScene,
-} from "../../engine/graphic/webgl/renderers/deferred-shading";
+  DeferredShadingSubject,
+  createDeferredShadingRenderer,
+} from "../../engine/graphic/renderer/deferred-shading";
 import { createOrbitCamera } from "../../engine/stage/camera";
+import { Renderer, RendererSubject } from "../../engine/graphic/renderer";
+import { Disposable } from "../../engine/language/lifecycle";
 
 /*
  ** What changed?
@@ -111,7 +115,9 @@ const pointLightParameters = [
   { count: 2000, radius: 1 },
 ];
 
-type Scene = DeferredLightingScene & DeferredShadingScene;
+type DeferredRenderer = Renderer<DeferredScene, DeferredSubject> & Disposable;
+type DeferredScene = DeferredLightingScene & DeferredShadingScene;
+type DeferredSubject = DeferredLightingSubject & DeferredShadingSubject;
 
 type Configuration = typeof configurator extends ApplicationConfigurator<
   infer T
@@ -125,6 +131,7 @@ const applicationBuilder = async (
   const gl = screen.context;
   const input = new Input(screen.canvas);
   const runtime = createRuntime(gl);
+  const target = new GlTarget(gl, screen.getSize());
 
   // Load meshes
   const cubeModel = await loadMeshFromJson("model/cube/mesh.json", {
@@ -149,7 +156,6 @@ const applicationBuilder = async (
       { x: 0.1, y: 0.1, z: 0.1 },
     ]),
   });
-  const target = new GlTarget(gl, screen.getSize());
 
   // Create state
   const camera = createOrbitCamera(
@@ -183,10 +189,12 @@ const applicationBuilder = async (
 
   let debugRenderer: DebugTextureRenderer | undefined = undefined;
   let debugTexture: GlTexture | undefined = undefined;
+  let directionalLights: typeof allDirectionalLights;
+  let directionalLightSubjects: RendererSubject[] = [];
   let move = false;
-  let nbDirectionalLights = 0;
-  let nbPointLights = 0;
-  let sceneRenderer: Renderer<Scene> | undefined = undefined;
+  let pointLights: typeof allPointLights;
+  let pointLightSubjects: RendererSubject[] = [];
+  let sceneRenderer: DeferredRenderer | undefined = undefined;
   let time = 0;
 
   return {
@@ -205,11 +213,13 @@ const applicationBuilder = async (
             })
           : undefined;
 
+      let newRenderer: DeferredRenderer;
+
       switch (configuration.technique) {
         case 0:
         default:
           {
-            const renderer = new DeferredShadingRenderer(runtime, target, {
+            const renderer = createDeferredShadingRenderer(runtime, target, {
               lightModel: DeferredShadingLightModel.Phong,
               lightModelPhongNoAmbient: !configuration.lightAmbient,
               lightModelPhongNoDiffuse: !configuration.lightDiffuse,
@@ -226,13 +236,14 @@ const applicationBuilder = async (
                     renderer.normalAndSpecularBuffer,
                   ][configuration.debugMode - 1]
                 : undefined;
-            sceneRenderer = renderer;
+            newRenderer = renderer;
           }
+
           break;
 
         case 1:
           {
-            const renderer = new DeferredLightingRenderer(runtime, target, {
+            const renderer = createDeferredLightingRenderer(runtime, target, {
               lightModel: DeferredLightingLightModel.Phong,
               lightModelPhongNoAmbient: !configuration.lightAmbient,
               lightModelPhongNoDiffuse: !configuration.lightDiffuse,
@@ -251,14 +262,52 @@ const applicationBuilder = async (
                     renderer.lightBuffer,
                   ][configuration.debugMode - 1]
                 : undefined;
-            sceneRenderer = renderer;
+            newRenderer = renderer;
           }
+
           break;
       }
 
+      // Register cube subjects
+      for (const i of range(16)) {
+        const cubeSubject = newRenderer.register({ model: models.cube });
+
+        cubeSubject.transform.translate({
+          x: ((i % 4) - 1.5) * 2,
+          y: 0,
+          z: (Math.floor(i / 4) - 1.5) * 2,
+        });
+      }
+
+      // Register ground subject
+      const groundSubject = newRenderer.register({ model: models.ground });
+
+      groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
+
+      // Update lights & light subjects
+      const directionalLightParameter =
+        directionalLightParameters[configuration.nbDirectionalLights];
+      const pointLightParameter =
+        pointLightParameters[configuration.nbPointLights];
+
+      for (const pointLight of allPointLights) {
+        pointLight.radius = pointLightParameter.radius;
+      }
+
+      directionalLights = allDirectionalLights.slice(
+        0,
+        directionalLightParameter.count
+      );
+      directionalLightSubjects = range(directionalLights.length).map(() =>
+        newRenderer.register({ model: models.directionalLight })
+      );
+      pointLights = allPointLights.slice(0, pointLightParameter.count);
+      pointLightSubjects = range(pointLights.length).map(() =>
+        newRenderer.register({ model: models.pointLight })
+      );
+
       move = configuration.move;
-      nbDirectionalLights = configuration.nbDirectionalLights;
-      nbPointLights = configuration.nbPointLights;
+      sceneRenderer = newRenderer;
     },
 
     dispose() {
@@ -274,81 +323,17 @@ const applicationBuilder = async (
     },
 
     render() {
-      // Pick active lights
-      const directionalLights = allDirectionalLights.slice(
-        0,
-        directionalLightParameters[nbDirectionalLights].count
-      );
-      const pointLights = allPointLights.slice(
-        0,
-        pointLightParameters[nbPointLights].count
-      );
+      // Clear screen
+      target.clear(0);
 
       // Draw scene
       const scene: DeferredLightingScene = {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
         directionalLights,
-        objects: [
-          {
-            matrix: Matrix4.fromSource(Matrix4.identity, [
-              "translate",
-              {
-                x: 0,
-                y: -1.5,
-                z: 0,
-              },
-            ]),
-            model: models.ground,
-          },
-        ]
-          .concat(
-            range(16).map((i) => ({
-              matrix: Matrix4.fromSource(Matrix4.identity, [
-                "translate",
-                {
-                  x: ((i % 4) - 1.5) * 2,
-                  y: 0,
-                  z: (Math.floor(i / 4) - 1.5) * 2,
-                },
-              ]),
-              model: models.cube,
-              state: undefined,
-            }))
-          )
-          .concat(
-            directionalLights.map((light) => {
-              const direction = Vector3.fromSource(
-                light.direction,
-                ["normalize"],
-                ["scale", 10]
-              );
-
-              return {
-                matrix: Matrix4.fromSource(Matrix4.identity, [
-                  "translate",
-                  direction,
-                ]),
-                model: models.directionalLight,
-                state: undefined,
-              };
-            })
-          )
-          .concat(
-            pointLights.map((light) => ({
-              matrix: Matrix4.fromSource(Matrix4.identity, [
-                "translate",
-                light.position,
-              ]),
-              model: models.pointLight,
-              state: undefined,
-            }))
-          ),
         pointLights,
         projectionMatrix,
         viewMatrix: camera.viewMatrix,
       };
-
-      target.clear(0);
 
       sceneRenderer?.render(scene);
 
@@ -372,20 +357,26 @@ const applicationBuilder = async (
     },
 
     update(dt) {
-      const pointLightRadius = pointLightParameters[nbPointLights].radius;
-
-      for (let i = 0; i < allDirectionalLights.length; ++i) {
-        const { direction, mover } = allDirectionalLights[i];
+      for (let i = 0; i < directionalLights.length; ++i) {
+        const { direction, mover } = directionalLights[i];
+        const subject = directionalLightSubjects[i];
 
         direction.set(mover(Vector3.zero, time * 0.001));
+        direction.normalize();
+        direction.scale(10);
+
+        subject.transform.set(Matrix4.identity);
+        subject.transform.translate(direction);
       }
 
-      for (let i = 0; i < allPointLights.length; ++i) {
-        const { mover, position } = allPointLights[i];
+      for (let i = 0; i < pointLights.length; ++i) {
+        const { mover, position } = pointLights[i];
+        const subject = pointLightSubjects[i];
 
         position.set(mover(Vector3.zero, time * 0.0002));
 
-        allPointLights[i].radius = pointLightRadius;
+        subject.transform.set(Matrix4.identity);
+        subject.transform.translate(position);
       }
 
       // Move camera
