@@ -56,12 +56,6 @@ type GlModelConfiguration = {
   library?: GlLibrary;
 };
 
-// FIXME: should not be part of `model` module, replace with concept of model instance
-type GlObject = {
-  matrix: Matrix4;
-  model: GlModel;
-};
-
 type GlPolygon = Disposable & {
   coordinate: GlShaderAttribute | undefined;
   normal: GlShaderAttribute | undefined;
@@ -387,7 +381,6 @@ export {
   type GlMaterial,
   type GlMesh,
   type GlModel,
-  type GlObject,
   type GlPolygon,
   type GlTransformableMesh,
   createLibrary,

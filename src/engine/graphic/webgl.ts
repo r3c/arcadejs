@@ -1,5 +1,4 @@
 import { range } from "../language/iterable";
-import { Matrix3, Matrix4 } from "../math/matrix";
 import { TextureSampler, Interpolation, Wrap, defaultSampler } from "./mesh";
 import { MutableVector2, Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
@@ -37,12 +36,6 @@ type GlAttachmentTexture = {
 type GlDrawMode =
   | WebGL2RenderingContext["TRIANGLES"]
   | WebGL2RenderingContext["LINES"];
-
-// FIXME: delete class once not used anymore
-type GlGeometry = {
-  modelMatrix: Matrix4;
-  normalMatrix: Matrix3;
-};
 
 type GlPainter<TScene> = {
   paint(target: GlTarget, scene: TScene): void;
@@ -509,7 +502,6 @@ class GlTarget {
 }
 
 export {
-  type GlGeometry,
   type GlPainter,
   type GlRuntime,
   GlTarget,
