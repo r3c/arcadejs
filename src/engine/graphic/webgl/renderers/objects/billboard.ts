@@ -54,7 +54,7 @@ const nbCubeVertices = 8;
 /**
  * Build simple quad intended to be displayed full screen.
  */
-const directionalLightBillboard = (
+const createDirectionalLightBillboard = (
   gl: GlContext
 ): GlDirectionalLightBillboard => {
   const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
@@ -89,7 +89,7 @@ const directionalLightBillboard = (
  * intended to be displayed always facing camera using a custom view matrix
  * with no rotation.
  */
-const pointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
+const createPointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
   const color = createDynamicArrayBuffer(gl, Float32Array, 10);
   const colorBuffer = createFlexibleArray(Float32Array, 10);
   const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
@@ -174,6 +174,6 @@ export {
   type GlDirectionalLightPolygon,
   type GlPointLightBillboard,
   type GlPointLightPolygon,
-  directionalLightBillboard,
-  pointLightBillboard,
+  createDirectionalLightBillboard,
+  createPointLightBillboard,
 };

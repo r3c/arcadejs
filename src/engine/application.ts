@@ -179,9 +179,9 @@ const declare = <TScreen extends Screen, TConfiguration>(
       const application = await applicationBuilder(screen);
       const configuration = configure(configurator, application.change);
 
-      await application.change(configuration);
-
       screen.addResizeHandler(application.resize);
+
+      await application.change(configuration);
 
       runtime = { application, configuration, screen };
     },

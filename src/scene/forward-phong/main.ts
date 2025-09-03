@@ -154,7 +154,7 @@ const applicationBuilder = async (
       // Clear screen
       target.clear(0);
 
-      // Forward pass
+      // Draw scene
       const scene: ForwardLightingScene = {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
         directionalLights: directionalLights

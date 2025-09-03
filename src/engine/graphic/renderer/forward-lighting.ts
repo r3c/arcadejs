@@ -10,8 +10,8 @@ import {
   resultLightType,
 } from "../webgl/shaders/light";
 import { materialSample, materialType } from "../webgl/shaders/material";
-import { ObjectScene, createObjectPainter } from "../webgl/painters/object";
-import { Matrix4, MutableMatrix4 } from "../../math/matrix";
+import { createObjectPainter } from "../webgl/painters/object";
+import { Matrix4 } from "../../math/matrix";
 import { normalPerturb } from "../webgl/shaders/normal";
 import { parallaxPerturb } from "../webgl/shaders/parallax";
 import { pbrEnvironment, pbrLight } from "../webgl/shaders/pbr";
@@ -37,8 +37,8 @@ import {
   shaderUniform,
 } from "../webgl/shader";
 import {
+  createTransformableMesh,
   GlMaterial,
-  GlMesh,
   GlModel,
   GlObject,
   GlPolygon,
@@ -78,11 +78,6 @@ enum ForwardLightingLightModel {
   Physical,
 }
 
-type ForwardLightingSubject = {
-  model: GlModel;
-  noShadow?: boolean;
-};
-
 type ShadowDirectionalLight = DirectionalLight & {
   shadowMap: GlTexture;
   shadowViewMatrix: Matrix4;
@@ -109,6 +104,11 @@ type ForwardLightingScene = {
   viewMatrix: Matrix4;
 };
 
+type ForwardLightingSubject = {
+  model: GlModel;
+  noShadow?: boolean;
+};
+
 type LightScene = {
   ambientLightColor: Vector3;
   directionalShadowLights: ShadowDirectionalLight[];
@@ -123,7 +123,8 @@ type LightScene = {
   viewMatrix: Matrix4;
 };
 
-type ShadowScene = ObjectScene & {
+type ShadowScene = {
+  objects: Iterable<GlObject>;
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
@@ -967,23 +968,6 @@ const createForwardLightingRenderer = (
     },
 
     resize: () => {},
-  };
-};
-
-// FIXME: move to shared module
-const createTransformableMesh = (
-  mesh: GlMesh
-): { mesh: GlMesh; transform: MutableMatrix4 } => {
-  const transform = Matrix4.fromIdentity();
-
-  return {
-    mesh: {
-      children: [mesh],
-      dispose: mesh.dispose,
-      primitives: [],
-      transform,
-    },
-    transform,
   };
 };
 

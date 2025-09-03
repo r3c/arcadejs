@@ -1,6 +1,6 @@
 import { mapOptional } from "../../language/optional";
 import { Disposable } from "../../language/lifecycle";
-import { Matrix4 } from "../../math/matrix";
+import { Matrix4, MutableMatrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { Material, Mesh, Polygon, Texture } from "../mesh";
 import {
@@ -75,6 +75,11 @@ type GlPrimitive = Disposable & {
   index: GlBuffer;
   material: GlMaterial;
   polygon: GlPolygon;
+};
+
+type GlTransformableMesh = {
+  mesh: GlMesh;
+  transform: MutableMatrix4;
 };
 
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
@@ -267,6 +272,20 @@ const createModel = (
   };
 };
 
+const createTransformableMesh = (mesh: GlMesh): GlTransformableMesh => {
+  const transform = Matrix4.fromIdentity();
+
+  return {
+    mesh: {
+      children: [mesh],
+      dispose: mesh.dispose,
+      primitives: [],
+      transform,
+    },
+    transform,
+  };
+};
+
 const loadPrimitive = (
   gl: GlContext,
   library: GlLibrary,
@@ -371,6 +390,8 @@ export {
   type GlModel,
   type GlObject,
   type GlPolygon,
+  type GlTransformableMesh,
   createLibrary,
   createModel,
+  createTransformableMesh,
 };
