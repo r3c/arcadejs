@@ -150,7 +150,7 @@ const createBindingPainter = <TScene>(
       }
     }
 
-    for (const { index, material, polygon } of primitives) {
+    for (const { indexBuffer, material, polygon } of primitives) {
       const key = polygonToKey(polygon);
 
       // Get or register by polygon feature key
@@ -168,7 +168,7 @@ const createBindingPainter = <TScene>(
       meshes.set(material, mesh);
 
       // Append primitive
-      mesh.primitives.push({ indexBuffer: index, polygon });
+      mesh.primitives.push({ indexBuffer, polygon });
     }
 
     return results;
