@@ -10,7 +10,6 @@ import {
   resultLightType,
 } from "../webgl/shaders/light";
 import { materialSample, materialType } from "../webgl/shaders/material";
-import { createObjectPainter } from "../webgl/painters/object";
 import { Matrix4 } from "../../math/matrix";
 import { normalPerturb } from "../webgl/shaders/normal";
 import { parallaxPerturb } from "../webgl/shaders/parallax";
@@ -22,14 +21,7 @@ import {
 } from "../webgl/shaders/phong";
 import { linearToStandard, standardToLinear } from "../webgl/shaders/rgb";
 import { Vector3 } from "../../math/vector";
-import {
-  GlGeometry,
-  GlPainter,
-  GlRuntime,
-  GlTarget,
-  GlTextureFormat,
-  GlTextureType,
-} from "../webgl";
+import { GlRuntime, GlTarget, GlTextureFormat, GlTextureType } from "../webgl";
 import {
   GlShader,
   GlShaderDirectives,
@@ -40,7 +32,6 @@ import {
   createTransformableMesh,
   GlMaterial,
   GlMesh,
-  GlObject,
   GlPolygon,
 } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
@@ -89,11 +80,6 @@ type EnvironmentLight = {
   specular: GlTexture;
 };
 
-type ForwardLightingObstacle = {
-  mesh: GlMesh;
-  transform: Matrix4;
-};
-
 type ForwardLightingRenderer = Disposable &
   Renderer<ForwardLightingScene, ForwardLightingSubject> & {
     // FIXME: debug
@@ -129,7 +115,6 @@ type LightScene = {
 };
 
 type ShadowScene = {
-  objects: Iterable<GlObject>;
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
@@ -751,36 +736,51 @@ const createLightShader = (
   );
 };
 
-const createDirectionalShadowPainter = (
-  shader: GlShader
-): GlPainter<ShadowScene> => {
-  const polygonBinding = shader.declare<GlPolygon>();
+const createDirectionalShadowBinder = (
+  runtime: GlRuntime
+): PainterBinder<ShadowScene> => {
+  return () => {
+    const shader = createDirectionalShadowShader(runtime);
 
-  polygonBinding.setAttribute("positions", ({ position }) => position);
+    const polygonBinding = shader.declare<GlPolygon>();
 
-  const geometryBinding = shader.declare<GlGeometry>();
+    polygonBinding.setAttribute("positions", ({ position }) => position);
 
-  geometryBinding.setUniform(
-    "modelMatrix",
-    shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
-  );
+    const matrixBinding = shader.declare<PainterMatrix>();
 
-  const sceneBinding = shader.declare<ShadowScene>();
+    matrixBinding.setUniform(
+      "modelMatrix",
+      shaderUniform.matrix4f(({ model }) => model)
+    );
 
-  sceneBinding.setUniform(
-    "projectionMatrix",
-    shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
-  );
-  sceneBinding.setUniform(
-    "viewMatrix",
-    shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
-  );
+    const sceneBinding = shader.declare<ShadowScene>();
 
-  return createObjectPainter<ShadowScene>(
-    sceneBinding,
-    geometryBinding,
-    undefined,
-    polygonBinding
+    sceneBinding.setUniform(
+      "projectionMatrix",
+      shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+    );
+    sceneBinding.setUniform(
+      "viewMatrix",
+      shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+    );
+
+    const materialBinding = shader.declare<GlMaterial>();
+
+    return {
+      dispose: shader.dispose,
+      materialBinding,
+      matrixBinding,
+      polygonBinding,
+      sceneBinding,
+    };
+  };
+};
+
+const createDirectionalShadowShader = (runtime: GlRuntime): GlShader => {
+  return runtime.createShader(
+    shadowDirectionalVertexShader,
+    shadowDirectionalFragmentShader,
+    {}
   );
 };
 
@@ -822,13 +822,10 @@ const createForwardLightingRenderer = (
   const directionalShadowBuffers = directionalShadowTargets.map((target) =>
     target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
   );
-  const directionalShadowShader = runtime.createShader(
-    shadowDirectionalVertexShader,
-    shadowDirectionalFragmentShader,
-    {}
-  );
-  const directionalShadowPainter = createDirectionalShadowPainter(
-    directionalShadowShader
+  const directionalShadowBinder = createDirectionalShadowBinder(runtime);
+  const directionalShadowPainter = createBindingPainter(
+    PainterMode.Triangle,
+    directionalShadowBinder
   );
   const directionalShadowProjectionMatrix = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -841,14 +838,13 @@ const createForwardLightingRenderer = (
   ]);
   const maxDirectionalLights = fullConfiguration.maxDirectionalLights;
   const shadowDirection = Vector3.fromZero();
-  const obstacles: Map<Symbol, ForwardLightingObstacle> = new Map();
 
   return {
     // FIXME: debug
     directionalShadowBuffers,
 
     dispose: () => {
-      directionalShadowShader.dispose();
+      directionalShadowPainter.dispose();
       lightPainter.dispose();
     },
 
@@ -856,23 +852,14 @@ const createForwardLightingRenderer = (
       const { mesh: originalMesh, noShadow } = subject;
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
-      const resource = lightPainter.register(mesh);
-      let obstacleKey: Symbol | undefined;
-
-      if (noShadow !== true) {
-        obstacleKey = Symbol();
-        obstacles.set(obstacleKey, { mesh, transform });
-      } else {
-        obstacleKey = undefined;
-      }
+      const shadowResource =
+        noShadow !== true ? directionalShadowPainter.register(mesh) : undefined;
+      const lightResource = lightPainter.register(mesh);
 
       return {
         remove: () => {
-          if (obstacleKey !== undefined) {
-            obstacles.delete(obstacleKey);
-          }
-
-          resource.remove();
+          shadowResource?.remove();
+          lightResource.remove();
         },
 
         transform,
@@ -935,14 +922,11 @@ const createForwardLightingRenderer = (
 
           target.clear(0);
 
-          directionalShadowPainter.paint(target, {
-            objects: [...obstacles.values()].map(({ mesh, transform }) => ({
-              matrix: transform,
-              model: { dispose: () => {}, library: undefined, mesh },
-            })),
-            projectionMatrix: directionalShadowProjectionMatrix,
-            viewMatrix,
-          });
+          directionalShadowPainter.render(
+            target,
+            { projectionMatrix: directionalShadowProjectionMatrix, viewMatrix },
+            viewMatrix
+          );
 
           directionalShadowLights.push({
             color: light.color,
