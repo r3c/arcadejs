@@ -50,7 +50,7 @@ import { GlTexture } from "../webgl/texture";
 import {
   createTransformableMesh,
   GlMaterial,
-  GlModel,
+  GlMesh,
   GlPolygon,
 } from "../webgl/model";
 import { GlBuffer } from "../webgl/resource";
@@ -399,7 +399,7 @@ type DeferredLightingScene = {
 };
 
 type DeferredLightingSubject = {
-  model: GlModel;
+  mesh: GlMesh;
 };
 
 type LightScene = {
@@ -794,8 +794,8 @@ const createDeferredLightingRenderer = (
     },
 
     register(subject) {
-      const { model } = subject;
-      const { mesh, transform } = createTransformableMesh(model.mesh);
+      const { mesh: originalMesh } = subject;
+      const { mesh, transform } = createTransformableMesh(originalMesh);
 
       const geometryResource = geometryPainter.register(mesh);
       const materialResource = materialPainter.register(mesh);

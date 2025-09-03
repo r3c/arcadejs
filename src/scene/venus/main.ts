@@ -305,8 +305,9 @@ const applicationBuilder = async (
   });
 
   // Ship
+  const shipModel = createModel(gl, shipMesh);
   const shipSubject = sceneRenderer.register({
-    model: createModel(gl, shipMesh),
+    mesh: shipModel.mesh,
   });
 
   // Lights
@@ -317,7 +318,7 @@ const applicationBuilder = async (
 
   const lightModel = createModel(gl, lightMesh);
   const lightSubjects = lights.map(() =>
-    sceneRenderer.register({ model: lightModel, noShadow: true })
+    sceneRenderer.register({ mesh: lightModel.mesh, noShadow: true })
   );
 
   // Stars
@@ -341,7 +342,7 @@ const applicationBuilder = async (
 
   const starModels = starMeshes.map((mesh) => createModel(gl, mesh));
   const starSubjects = stars.map(({ variant }) =>
-    sceneRenderer.register({ model: starModels[variant] })
+    sceneRenderer.register({ mesh: starModels[variant].mesh })
   );
 
   // Create state
@@ -369,9 +370,15 @@ const applicationBuilder = async (
     async change() {},
 
     dispose() {
+      for (const starModel of starModels) {
+        starModel.dispose();
+      }
+
+      lightModel.dispose();
       particleRenderer.dispose();
       runtime.dispose();
       sceneRenderer.dispose();
+      shipModel.dispose();
       sprite.dispose();
       target.dispose();
     },

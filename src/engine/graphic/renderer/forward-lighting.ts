@@ -39,7 +39,7 @@ import {
 import {
   createTransformableMesh,
   GlMaterial,
-  GlModel,
+  GlMesh,
   GlObject,
   GlPolygon,
 } from "../webgl/model";
@@ -89,6 +89,11 @@ type EnvironmentLight = {
   specular: GlTexture;
 };
 
+type ForwardLightingObstacle = {
+  mesh: GlMesh;
+  transform: Matrix4;
+};
+
 type ForwardLightingRenderer = Disposable &
   Renderer<ForwardLightingScene, ForwardLightingSubject> & {
     // FIXME: debug
@@ -105,7 +110,7 @@ type ForwardLightingScene = {
 };
 
 type ForwardLightingSubject = {
-  model: GlModel;
+  mesh: GlMesh;
   noShadow?: boolean;
 };
 
@@ -836,7 +841,7 @@ const createForwardLightingRenderer = (
   ]);
   const maxDirectionalLights = fullConfiguration.maxDirectionalLights;
   const shadowDirection = Vector3.fromZero();
-  const obstacles: Map<Symbol, GlObject> = new Map();
+  const obstacles: Map<Symbol, ForwardLightingObstacle> = new Map();
 
   return {
     // FIXME: debug
@@ -848,15 +853,15 @@ const createForwardLightingRenderer = (
     },
 
     register: (subject) => {
-      const { model, noShadow } = subject;
-      const { mesh, transform } = createTransformableMesh(model.mesh);
+      const { mesh: originalMesh, noShadow } = subject;
+      const { mesh, transform } = createTransformableMesh(originalMesh);
 
       const resource = lightPainter.register(mesh);
       let obstacleKey: Symbol | undefined;
 
       if (noShadow !== true) {
         obstacleKey = Symbol();
-        obstacles.set(obstacleKey, { matrix: transform, model });
+        obstacles.set(obstacleKey, { mesh, transform });
       } else {
         obstacleKey = undefined;
       }
@@ -931,7 +936,10 @@ const createForwardLightingRenderer = (
           target.clear(0);
 
           directionalShadowPainter.paint(target, {
-            objects: obstacles.values(),
+            objects: [...obstacles.values()].map(({ mesh, transform }) => ({
+              matrix: transform,
+              model: { dispose: () => {}, library: undefined, mesh },
+            })),
             projectionMatrix: directionalShadowProjectionMatrix,
             viewMatrix,
           });

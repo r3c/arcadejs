@@ -119,7 +119,10 @@ const applicationBuilder = async (
   });
 
   // Create select box
-  const selectSubject = renderer.register({ model: select, noShadow: false });
+  const selectSubject = renderer.register({
+    mesh: select.mesh,
+    noShadow: false,
+  });
 
   // Create state
   const maxWorldRenderSize = Math.max(
