@@ -5,7 +5,7 @@ import { GlBuffer } from "../resource";
 import { GlShaderBinding } from "../shader";
 
 type ObjectBatch = {
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   modelMatrix: Matrix4;
   normalMatrix: Matrix3;
   polygon: GlPolygon;
@@ -33,7 +33,7 @@ const group = (
     ["invert"]
   );
 
-  for (const { index, material, polygon } of primitives) {
+  for (const { indexBuffer, material, polygon } of primitives) {
     let meshBatches = batchByMaterial.get(material);
 
     if (meshBatches === undefined) {
@@ -43,7 +43,7 @@ const group = (
     }
 
     meshBatches.push({
-      index,
+      indexBuffer,
       modelMatrix,
       normalMatrix,
       polygon,
@@ -65,10 +65,15 @@ const paint = (
   for (const [material, meshBatches] of materialMap.entries()) {
     materialBinding?.bind(material);
 
-    for (const { index, polygon, modelMatrix, normalMatrix } of meshBatches) {
+    for (const {
+      indexBuffer,
+      polygon,
+      modelMatrix,
+      normalMatrix,
+    } of meshBatches) {
       geometryBinding?.bind({ normalMatrix, modelMatrix });
       polygonBinding?.bind(polygon);
-      target.draw(0, WebGL2RenderingContext["TRIANGLES"], index);
+      target.draw(0, WebGL2RenderingContext["TRIANGLES"], indexBuffer);
     }
   }
 };

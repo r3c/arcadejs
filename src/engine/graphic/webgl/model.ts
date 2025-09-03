@@ -71,8 +71,7 @@ type GlPolygon = Disposable & {
 };
 
 type GlPrimitive = Disposable & {
-  // FIXME: rename to `indexBuffer`
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   material: GlMaterial;
   polygon: GlPolygon;
 };
@@ -219,8 +218,8 @@ const loadMesh = (gl: GlContext, mesh: Mesh, library: GlLibrary): GlMesh => {
         child.dispose();
       }
 
-      for (const { index, polygon } of primitives) {
-        index.dispose();
+      for (const { indexBuffer, polygon } of primitives) {
+        indexBuffer.dispose();
         polygon.coordinate?.buffer.dispose();
         polygon.normal?.buffer.dispose();
         polygon.position.buffer.dispose();
@@ -377,7 +376,7 @@ const loadPrimitive = (
       material?.dispose();
       polygon.dispose();
     },
-    index,
+    indexBuffer: index,
     material: material ?? defaultMaterial,
     polygon,
   };
