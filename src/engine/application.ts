@@ -154,6 +154,7 @@ const declare = <TScreen extends Screen, TConfiguration>(
     | {
         application: Application<TConfiguration>;
         configuration: TConfiguration;
+        handle: number | undefined;
         screen: TScreen;
       }
     | undefined = undefined;
@@ -183,7 +184,7 @@ const declare = <TScreen extends Screen, TConfiguration>(
 
       await application.change(configuration);
 
-      runtime = { application, configuration, screen };
+      runtime = { application, configuration, handle: undefined, screen };
     },
     step: (dt: number) => {
       if (runtime === undefined) {
@@ -193,13 +194,17 @@ const declare = <TScreen extends Screen, TConfiguration>(
       const { application, screen } = runtime;
 
       screen.resize();
-
       application.update(dt);
-      requestAnimationFrame(application.render);
+
+      runtime.handle = requestAnimationFrame(application.render);
     },
     stop: () => {
       if (runtime === undefined) {
         return;
+      }
+
+      if (runtime.handle !== undefined) {
+        cancelAnimationFrame(runtime.handle);
       }
 
       runtime.application.dispose();
