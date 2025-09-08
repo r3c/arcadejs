@@ -1,21 +1,22 @@
-import { range } from "../../../language/iterable";
-import { Matrix4 } from "../../../math/matrix";
-import { Vector3 } from "../../../math/vector";
-import { Renderer } from "../../display";
-import { Mesh, Polygon, createFlattenedMesh } from "../../mesh";
-import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
-import { WirePainter } from "../painters/wire";
+import { Disposable } from "../../language/lifecycle";
+import { range } from "../../language/iterable";
+import { Matrix4 } from "../../math/matrix";
+import { Vector3 } from "../../math/vector";
+import { Mesh, Polygon, createFlattenedMesh } from "../mesh";
+import { GlRuntime, GlTarget } from "../webgl";
 import {
   GlBuffer,
   createStaticArrayBuffer,
   createStaticIndexBuffer,
-} from "../resource";
+} from "../webgl/resource";
 import {
   GlShader,
   GlShaderAttribute,
+  GlShaderBinding,
   createAttribute,
   shaderUniform,
-} from "../shader";
+} from "../webgl/shader";
+import { Renderer } from "./definition";
 
 type WireModel = {
   index: GlBuffer;
@@ -23,18 +24,24 @@ type WireModel = {
   tint: GlShaderAttribute;
 };
 
-type WireObject = {
+type WireRenderer = Disposable & Renderer<WireScene, WireSubject, void>;
+
+type WireSubject = {
   modelMatrix: Matrix4;
   wireModel: WireModel;
 };
 
 type WireScene = {
-  objects: Iterable<WireObject>;
   projectionMatrix: Matrix4;
   viewMatrix: Matrix4;
 };
 
-const createWirePainter = (shader: GlShader): GlPainter<WireScene> => {
+const createWireBinding = (
+  shader: GlShader
+): {
+  sceneBinding: GlShaderBinding<WireScene>;
+  subjectBinding: GlShaderBinding<WireSubject>;
+} => {
   const sceneBinding = shader.declare<WireScene>();
 
   sceneBinding.setUniform(
@@ -47,21 +54,20 @@ const createWirePainter = (shader: GlShader): GlPainter<WireScene> => {
     shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
   );
 
-  const wireBinding = shader.declare<WireObject>();
+  const subjectBinding = shader.declare<WireSubject>();
 
-  wireBinding.setUniform(
+  subjectBinding.setUniform(
     "modelMatrix",
     shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
   );
 
-  wireBinding.setAttribute("position", ({ wireModel }) => wireModel.position);
-  wireBinding.setAttribute("tint", ({ wireModel }) => wireModel.tint);
-
-  return new WirePainter(
-    sceneBinding,
-    wireBinding,
-    ({ wireModel }) => wireModel.index
+  subjectBinding.setAttribute(
+    "position",
+    ({ wireModel }) => wireModel.position
   );
+  subjectBinding.setAttribute("tint", ({ wireModel }) => wireModel.tint);
+
+  return { sceneBinding, subjectBinding };
 };
 
 const extractMeshNormals = (
@@ -182,39 +188,53 @@ void main(void) {
   fragColor = vec4(lineTint, 1.0);
 }`;
 
-class WireRenderer implements Renderer<WireScene> {
-  private readonly painter: GlPainter<WireScene>;
-  private readonly shader: GlShader;
-  private readonly target: GlTarget;
+const createWireRenderer = (
+  runtime: GlRuntime,
+  target: GlTarget
+): WireRenderer => {
+  const shader = runtime.createShader(wireVertexShader, wireFragmentShader, {});
+  const { sceneBinding, subjectBinding } = createWireBinding(shader);
+  const subjects = new Map<Symbol, WireSubject>();
 
-  public constructor(runtime: GlRuntime, target: GlTarget) {
-    const shader = runtime.createShader(
-      wireVertexShader,
-      wireFragmentShader,
-      {}
-    );
+  return {
+    append(subject) {
+      const symbol = Symbol();
 
-    this.painter = createWirePainter(shader);
-    this.shader = shader;
-    this.target = target;
-  }
+      subjects.set(symbol, subject);
 
-  dispose() {
-    this.shader.dispose();
-  }
+      return {
+        action: undefined,
+        remove: () => subjects.delete(symbol),
+      };
+    },
 
-  render(scene: WireScene): void {
-    this.painter.paint(this.target, scene);
-  }
+    dispose() {
+      shader.dispose();
+    },
 
-  resize(): void {}
-}
+    render(scene: WireScene): void {
+      sceneBinding.bind(scene);
+
+      for (const subject of subjects.values()) {
+        subjectBinding.bind(subject);
+
+        target.draw(
+          0,
+          WebGL2RenderingContext["LINES"],
+          subject.wireModel.index
+        );
+      }
+    },
+
+    resize() {},
+  };
+};
 
 export {
   type WireModel,
-  type WireObject,
+  type WireRenderer,
   type WireScene,
-  WireRenderer,
+  createWireRenderer,
   extractMeshNormals,
   extractMeshTangents,
 };
