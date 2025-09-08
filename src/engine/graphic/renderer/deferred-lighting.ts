@@ -19,6 +19,7 @@ import {
   phongLightApply,
   phongLightCast,
   phongLightType,
+  PhongLightVariant,
 } from "../webgl/shaders/phong";
 import {
   linearToStandard,
@@ -36,9 +37,9 @@ import {
 } from "../webgl/billboard";
 import {
   shaderUniform,
-  shaderDirective,
-  GlShaderDirectives,
   GlShader,
+  shaderCondition,
+  shaderSwitch,
 } from "../webgl/shader";
 import { GlTexture } from "../webgl/texture";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
@@ -63,27 +64,38 @@ const enum DeferredLightingLightType {
   Point,
 }
 
-const geometryVertexShader = `
+type LightDirective = {
+  hasShadow: boolean;
+  type: DeferredLightingLightType;
+};
+
+type MaterialDirective = {
+  lightModelPhongAmbient: boolean;
+  lightModelPhongDiffuse: boolean;
+  lightModelPhongSpecular: boolean;
+};
+
+const createGeometryVertexShader = () => `
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coordinate;
+in vec2 coordinates;
 in vec3 normals;
-in vec3 position;
+in vec3 positions;
 in vec3 tangents;
 
 out vec3 bitangent; // Bitangent at point in camera space
-out vec2 coord; // Texture coordinate
+out vec2 coordinate; // Texture coordinates
 out vec3 normal; // Normal at point in camera space
 out vec3 point; // Point position in camera space
 out vec3 tangent; // Tangent at point in camera space
 
 void main(void) {
-  vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
+  vec4 pointCamera = viewMatrix * modelMatrix * vec4(positions, 1.0);
 
-  coord = coordinate;
+  coordinate = coordinates;
   normal = normalize(normalMatrix * normals);
   point = pointCamera.xyz;
   tangent = normalize(normalMatrix * tangents);
@@ -93,20 +105,20 @@ void main(void) {
   gl_Position = projectionMatrix * pointCamera;
 }`;
 
-const geometryFragmentShader = `
+const createGeometryFragmentShader = () => `
 uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 uniform sampler2D normalMap;
 uniform float shininess;
 
-${normalEncode.declare()}
-${normalPerturb.declare()}
-${parallaxPerturb.declare()}
-${shininessEncode.declare()}
+${normalEncode.declare({})}
+${normalPerturb.declare({})}
+${parallaxPerturb.declare({})}
+${shininessEncode.declare({})}
 
 in vec3 bitangent;
-in vec2 coord;
+in vec2 coordinate;
 in vec3 normal;
 in vec3 point;
 in vec3 tangent;
@@ -117,36 +129,36 @@ void main(void) {
   mat3 tbn = mat3(tangent, bitangent, normal);
 
   vec3 eye = normalize(-point);
-  vec2 coordParallax = ${parallaxPerturb.invoke(
-    "heightMap",
-    "coord",
-    "eye",
-    "heightParallaxScale",
-    "heightParallaxBias",
-    "tbn"
-  )};
+  vec2 coordParallax = ${parallaxPerturb.invoke({
+    coordinate: "coordinate",
+    eyeDirection: "eye",
+    parallaxScale: "heightParallaxScale",
+    parallaxBias: "heightParallaxBias",
+    sampler: "heightMap",
+    tbn: "tbn",
+  })};
 
   // Color target: [normal.xy, shininess, unused]
-  vec3 normalModified = ${normalPerturb.invoke(
-    "normalMap",
-    "coordParallax",
-    "tbn"
-  )};
-  vec2 normalPack = ${normalEncode.invoke("normalModified")};
+  vec3 normalModified = ${normalPerturb.invoke({
+    sampler: "normalMap",
+    coordinate: "coordParallax",
+    tbn: "tbn",
+  })};
+  vec2 normalPack = ${normalEncode.invoke({ decoded: "normalModified" })};
 
-  float shininessPack = ${shininessEncode.invoke("shininess")};
+  float shininessPack = ${shininessEncode.invoke({ decoded: "shininess" })};
 
   normalAndGloss = vec4(normalPack, shininessPack, 0.0);
 }`;
 
-const lightHeaderShader = `
-${directionalLight.declare("HAS_SHADOW")}
-${pointLight.declare("HAS_SHADOW")}
+const createLightHeaderShader = (directive: LightDirective) => `
+${directionalLight.declare(directive)}
+${pointLight.declare(directive)}
 
 uniform ${directionalLightType} directionalLight;`;
 
-const lightVertexShader = `
-${lightHeaderShader}
+const createLightVertexShader = (directive: LightDirective) => `
+${createLightHeaderShader(directive)}
 
 uniform mat4 billboardMatrix;
 uniform mat4 modelMatrix;
@@ -158,14 +170,22 @@ in vec3 lightPosition;
 in float lightRadius;
 in vec3 lightShift;
 
-#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-out vec3 lightDistanceCamera;
-#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
+${shaderSwitch(
+  directive.type,
+  [
+    DeferredLightingLightType.Directional,
+    `
+out vec3 lightDistanceCamera;`,
+  ],
+  [
+    DeferredLightingLightType.Point,
+    `
 out vec3 lightPositionCamera;
 out vec3 pointLightColor;
 out vec3 pointLightPosition;
-out float pointLightRadius;
-#endif
+out float pointLightRadius;`,
+  ]
+)}
 
 vec3 toCameraDirection(in vec3 worldDirection) {
   return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
@@ -176,22 +196,30 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 }
 
 void main(void) {
-  #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-    lightDistanceCamera = toCameraDirection(directionalLight.direction);
-  #elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
-    lightPositionCamera = toCameraPosition(lightPosition);
-    pointLightColor = lightColor;
-    pointLightPosition = lightPosition;
-    pointLightRadius = lightRadius;
-  #endif
+${shaderSwitch(
+  directive.type,
+  [
+    DeferredLightingLightType.Directional,
+    `
+  lightDistanceCamera = toCameraDirection(directionalLight.direction);`,
+  ],
+  [
+    DeferredLightingLightType.Point,
+    `
+  lightPositionCamera = toCameraPosition(lightPosition);
+  pointLightColor = lightColor;
+  pointLightPosition = lightPosition;
+  pointLightRadius = lightRadius;`,
+  ]
+)}
 
   gl_Position =
     projectionMatrix * viewMatrix * modelMatrix * vec4(lightPosition, 1.0) +
     projectionMatrix * billboardMatrix * modelMatrix * vec4(lightShift, 0.0);
 }`;
 
-const lightFragmentShader = `
-${lightHeaderShader}
+const createLightFragmentShader = (directive: LightDirective) => `
+${createLightHeaderShader(directive)}
 
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
@@ -199,20 +227,28 @@ uniform vec2 viewportSize;
 uniform sampler2D depthBuffer;
 uniform sampler2D normalAndGlossBuffer;
 
-${luminance.declare()}
-${normalDecode.declare()}
-${phongLightApply.declare("1", "1")}
-${phongLightCast.declare()}
-${shininessDecode.declare()}
+${luminance.declare({})}
+${normalDecode.declare({})}
+${phongLightApply.declare({ diffuse: true, specular: true })}
+${phongLightCast.declare({ variant: PhongLightVariant.Standard })}
+${shininessDecode.declare({})}
 
-#if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-in vec3 lightDistanceCamera;
-#elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
+${shaderSwitch(
+  directive.type,
+  [
+    DeferredLightingLightType.Directional,
+    `
+in vec3 lightDistanceCamera;`,
+  ],
+  [
+    DeferredLightingLightType.Point,
+    `
 in vec3 lightPositionCamera;
 in vec3 pointLightColor;
 in vec3 pointLightPosition;
-in float pointLightRadius;
-#endif
+in float pointLightRadius;`,
+  ]
+)}
 
 layout(location=0) out vec4 fragColor;
 
@@ -231,76 +267,87 @@ void main(void) {
   vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
   // Decode geometry
-  vec3 normal = ${normalDecode.invoke("normalAndGlossSample.rg")};
+  vec3 normal = ${normalDecode.invoke({ encoded: "normalAndGlossSample.rg" })};
 
   // Decode material properties
-  float shininess = ${shininessDecode.invoke("normalAndGlossSample.b")};
+  float shininess = ${shininessDecode.invoke({
+    encoded: "normalAndGlossSample.b",
+  })};
 
-  // Compute point in camera space from fragment coord and depth buffer
+  // Compute point in camera space from fragment coordinate and depth buffer
   vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
   vec3 eye = normalize(-point);
 
   // Compute lightning parameters
-  #if LIGHT_TYPE == ${DeferredLightingLightType.Directional}
-    ${resultLightType} light = ${directionalLight.invoke(
-  "directionalLight",
-  "lightDistanceCamera"
-)};
-  #elif LIGHT_TYPE == ${DeferredLightingLightType.Point}
-    ${pointLightType} pointLight = ${pointLightType}(pointLightColor, pointLightPosition, pointLightRadius);
-    ${resultLightType} light = ${pointLight.invoke(
-  "pointLight",
-  "lightPositionCamera - point"
-)};
-  #endif
+${shaderSwitch(
+  directive.type,
+  [
+    DeferredLightingLightType.Directional,
+    `
+  ${resultLightType} light = ${directionalLight.invoke({
+      distanceCamera: "lightDistanceCamera",
+      light: "directionalLight",
+    })};`,
+  ],
+  [
+    DeferredLightingLightType.Point,
+    `
+  vec3 lightDistanceCamera = lightPositionCamera - point;
+  ${pointLightType} pointLight = ${pointLightType}(pointLightColor, pointLightPosition, pointLightRadius);
+  ${resultLightType} light = ${pointLight.invoke({
+      distanceCamera: "lightDistanceCamera",
+      light: "pointLight",
+    })};`,
+  ]
+)}
 
-  ${phongLightType} phongLight = ${phongLightCast.invoke(
-  "light",
-  "shininess",
-  "normal",
-  "eye"
-)};
+  ${phongLightType} phongLight = ${phongLightCast.invoke({
+  eye: "eye",
+  light: "light",
+  normal: "normal",
+  shininess: "shininess",
+})};
 
   // Emit lighting parameters
   // Note: specular light approximate using ony channel
   vec3 diffuseColor = phongLight.diffuseStrength * phongLight.color;
   vec3 specularColor = phongLight.specularStrength * phongLight.color;
-  float specularValue = ${luminance.invoke("specularColor")};
+  float specularValue = ${luminance.invoke({ color: "specularColor" })};
 
   fragColor = exp2(-vec4(diffuseColor, specularValue));
 }`;
 
-const materialVertexShader = `
+const createMaterialVertexShader = (_: MaterialDirective) => `
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
-in vec2 coordinate;
+in vec2 coordinates;
 in vec3 normals;
-in vec3 position;
+in vec3 positions;
 in vec3 tangents;
 
 out vec3 bitangent;
-out vec2 coord;
+out vec2 coordinate;
 out vec3 normal;
 out vec3 point;
 out vec3 tangent;
 
 void main(void) {
-  vec4 pointCamera = viewMatrix * modelMatrix * vec4(position, 1.0);
+  vec4 pointCamera = viewMatrix * modelMatrix * vec4(positions, 1.0);
 
   normal = normalize(normalMatrix * normals);
   tangent = normalize(normalMatrix * tangents);
 
   bitangent = cross(normal, tangent);
-  coord = coordinate;
+  coordinate = coordinates;
   point = pointCamera.xyz;
 
   gl_Position = projectionMatrix * pointCamera;
 }`;
 
-const materialFragmentShader = `
+const createMaterialFragmentShader = (directive: MaterialDirective) => `
 uniform vec3 ambientLightColor;
 uniform sampler2D lightBuffer;
 
@@ -312,12 +359,12 @@ uniform sampler2D heightMap;
 uniform float heightParallaxBias;
 uniform float heightParallaxScale;
 
-${parallaxPerturb.declare()}
-${linearToStandard.declare()}
-${standardToLinear.declare()}
+${parallaxPerturb.declare({})}
+${linearToStandard.declare({})}
+${standardToLinear.declare({})}
 
 in vec3 bitangent;
-in vec2 coord;
+in vec2 coordinate;
 in vec3 normal;
 in vec3 point;
 in vec3 tangent;
@@ -332,22 +379,26 @@ void main(void) {
   // Read material properties from uniforms
   mat3 tbn = mat3(tangent, bitangent, normal);
 
-  vec3 eye = normalize(-point);
-  vec2 coordParallax = ${parallaxPerturb.invoke(
-    "heightMap",
-    "coord",
-    "eye",
-    "heightParallaxScale",
-    "heightParallaxBias",
-    "tbn"
-  )};
+  vec3 eyeDirection = normalize(-point);
+  vec2 coordinateParallax = ${parallaxPerturb.invoke({
+    coordinate: "coordinate",
+    eyeDirection: "eyeDirection",
+    parallaxScale: "heightParallaxScale",
+    parallaxBias: "heightParallaxBias",
+    sampler: "heightMap",
+    tbn: "tbn",
+  })};
 
-  vec4 diffuseSample = texture(diffuseMap, coordParallax);
-  vec3 diffuseLinear = ${standardToLinear.invoke("diffuseSample.rgb")};
+  vec4 diffuseSample = texture(diffuseMap, coordinateParallax);
+  vec3 diffuseLinear = ${standardToLinear.invoke({
+    standard: "diffuseSample.rgb",
+  })};
   vec3 diffuse = diffuseColor.rgb * diffuseLinear;
 
-  vec4 specularSample = texture(specularMap, coordParallax);
-  vec3 specularLinear = ${standardToLinear.invoke("specularSample.rgb")};
+  vec4 specularSample = texture(specularMap, coordinateParallax);
+  vec3 specularLinear = ${standardToLinear.invoke({
+    standard: "specularSample.rgb",
+  })};
   vec3 specular = specularColor.rgb * specularLinear;
 
   // Emit final fragment color
@@ -356,11 +407,23 @@ void main(void) {
   vec3 specularLightColor = lightSample.aaa;
 
   vec3 color =
-    diffuse * ambientLightColor * float(LIGHT_MODEL_AMBIENT) +
-    diffuse * diffuseLightColor * float(LIGHT_MODEL_PHONG_DIFFUSE) +
-    specular * specularLightColor * float(LIGHT_MODEL_PHONG_SPECULAR);
+    diffuse * ambientLightColor * ${shaderCondition(
+      directive.lightModelPhongAmbient,
+      "1.0",
+      "0.0"
+    )} +
+    diffuse * diffuseLightColor * ${shaderCondition(
+      directive.lightModelPhongDiffuse,
+      "1.0",
+      "0.0"
+    )} +
+    specular * specularLightColor * ${shaderCondition(
+      directive.lightModelPhongSpecular,
+      "1.0",
+      "0.0"
+    )};
 
-  fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
+  fragColor = vec4(${linearToStandard.invoke({ linear: "color" })}, 1.0);
 }`;
 
 type DeferredLightingConfiguration = {
@@ -420,15 +483,31 @@ const createGeometryBinder = (
   runtime: GlRuntime,
   configuration: DeferredLightingConfiguration
 ): GlMeshBinder<DeferredLightingScene> => {
-  return () => {
+  return (feature) => {
     const shader = createGeometryShader(runtime);
 
     const polygonBinding = shader.declare<GlPolygon>();
 
-    polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
-    polygonBinding.setAttribute("normals", ({ normal }) => normal);
-    polygonBinding.setAttribute("position", ({ position }) => position);
-    polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
+    if (feature.hasCoordinate) {
+      polygonBinding.setAttribute(
+        "coordinates",
+        ({ coordinate }) => coordinate
+      );
+    }
+
+    if (feature.hasNormal) {
+      polygonBinding.setAttribute("normals", ({ normal }) => normal);
+    }
+
+    polygonBinding.setAttribute("positions", ({ position }) => position);
+
+    if (feature.hasTangent) {
+      polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
+    }
+
+    if (feature.hasTint) {
+      // FIXME: missing support for tints
+    }
 
     const matrixBinding = shader.declare<GlMeshMatrix>();
 
@@ -493,7 +572,10 @@ const createGeometryBinder = (
 };
 
 const createGeometryShader = (runtime: GlRuntime): GlShader => {
-  return runtime.createShader(geometryVertexShader, geometryFragmentShader, {});
+  return runtime.createShader(
+    createGeometryVertexShader(),
+    createGeometryFragmentShader()
+  );
 };
 
 const loadLightBinding = <TScene extends LightScene>(
@@ -503,9 +585,10 @@ const loadLightBinding = <TScene extends LightScene>(
 ) => {
   // Setup light shader
   // FIXME: should be disposed
-  const shader = runtime.createShader(lightVertexShader, lightFragmentShader, {
-    LIGHT_TYPE: shaderDirective.number(type),
-  });
+  const shader = runtime.createShader(
+    createLightVertexShader({ hasShadow: false, type }),
+    createLightFragmentShader({ hasShadow: false, type })
+  );
 
   const binding = shader.declare<TScene>();
 
@@ -598,15 +681,31 @@ const createMaterialBinder = (
   runtime: GlRuntime,
   configuration: DeferredLightingConfiguration
 ): GlMeshBinder<MaterialScene> => {
-  return () => {
+  return (feature) => {
     const shader = createMaterialShader(runtime, configuration);
 
     const polygonBinding = shader.declare<GlPolygon>();
 
-    polygonBinding.setAttribute("coordinate", ({ coordinate }) => coordinate);
-    polygonBinding.setAttribute("normals", ({ normal }) => normal);
-    polygonBinding.setAttribute("position", ({ position }) => position);
-    polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
+    if (feature.hasCoordinate) {
+      polygonBinding.setAttribute(
+        "coordinates",
+        ({ coordinate }) => coordinate
+      );
+    }
+
+    if (feature.hasNormal) {
+      polygonBinding.setAttribute("normals", ({ normal }) => normal);
+    }
+
+    polygonBinding.setAttribute("positions", ({ position }) => position);
+
+    if (feature.hasTangent) {
+      polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
+    }
+
+    if (feature.hasTint) {
+      // FIXME: missing support for  tints
+    }
 
     const matrixBinding = shader.declare<GlMeshMatrix>();
 
@@ -690,28 +789,15 @@ const createMaterialShader = (
   runtime: GlRuntime,
   configuration: DeferredLightingConfiguration
 ): GlShader => {
-  // Build directives from configuration
-  const directives: GlShaderDirectives = {};
-
-  switch (configuration.lightModel) {
-    case DeferredLightingLightModel.Phong:
-      directives["LIGHT_MODEL_AMBIENT"] = shaderDirective.boolean(
-        !configuration.lightModelPhongNoAmbient
-      );
-      directives["LIGHT_MODEL_PHONG_DIFFUSE"] = shaderDirective.boolean(
-        !configuration.lightModelPhongNoDiffuse
-      );
-      directives["LIGHT_MODEL_PHONG_SPECULAR"] = shaderDirective.boolean(
-        !configuration.lightModelPhongNoSpecular
-      );
-
-      break;
-  }
+  const directive: MaterialDirective = {
+    lightModelPhongAmbient: !configuration.lightModelPhongNoAmbient,
+    lightModelPhongDiffuse: !configuration.lightModelPhongNoDiffuse,
+    lightModelPhongSpecular: !configuration.lightModelPhongNoSpecular,
+  };
 
   return runtime.createShader(
-    materialVertexShader,
-    materialFragmentShader,
-    directives
+    createMaterialVertexShader(directive),
+    createMaterialFragmentShader(directive)
   );
 };
 

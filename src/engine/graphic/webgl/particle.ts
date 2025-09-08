@@ -16,11 +16,7 @@ import {
   createDynamicArrayBuffer,
   createDynamicIndexBuffer,
 } from "./resource";
-import {
-  GlShaderAttribute,
-  createAttribute,
-  shaderUniform,
-} from "./shader";
+import { GlShaderAttribute, createAttribute, shaderUniform } from "./shader";
 import { GlTexture } from "./texture";
 import { createGlBindingPainter } from "../painter";
 
@@ -250,8 +246,7 @@ const createBillboard = (
 const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
   const shader = runtime.createShader(
     particleVertexShader,
-    particleFragmentShader,
-    {}
+    particleFragmentShader
   );
 
   // Declare billboard binding (unique to each particle source)

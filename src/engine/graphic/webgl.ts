@@ -11,7 +11,7 @@ import {
   renderbufferCreate,
   createTexture,
 } from "./webgl/texture";
-import { GlShader, GlShaderDirectives, createShader } from "./webgl/shader";
+import { GlShader, createShader } from "./webgl/shader";
 
 type GlAttachment = {
   renderbuffer: GlAttachmentRenderbuffer | undefined;
@@ -40,8 +40,7 @@ type GlDrawMode =
 type GlRuntime = Disposable & {
   createShader: (
     vertexShaderSource: string,
-    fragmentShaderSource: string,
-    directives: GlShaderDirectives
+    fragmentShaderSource: string
   ) => GlShader;
   context: GlContext;
 };
@@ -88,16 +87,14 @@ const createRuntime = (context: GlContext): GlRuntime => {
       textureNormal.dispose();
       textureWhite.dispose();
     },
-    createShader: (vertexShaderSource, fragmentShaderSource, directives) => {
-      return createShader(
+    createShader: (vertexShaderSource, fragmentShaderSource) =>
+      createShader(
         context,
         useProgram,
         shaderDefault,
         vertexShaderSource,
-        fragmentShaderSource,
-        directives
-      );
-    },
+        fragmentShaderSource
+      ),
     context,
   };
 };

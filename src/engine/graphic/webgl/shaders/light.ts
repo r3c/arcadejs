@@ -1,5 +1,5 @@
 import { Vector3 } from "../../../math/vector";
-import { GlShaderFunction } from "../language";
+import { shaderCondition, GlShaderFunction } from "../shader";
 
 type DirectionalLight = {
   color: Vector3;
@@ -17,17 +17,7 @@ const directionalLightType = "DirectionalLight";
 const pointLightType = "PointLight";
 const resultLightType = "ResultLight";
 
-const directionalLight: GlShaderFunction<[string], [string, string]> = {
-  declare: (hasShadow: string) => `
-struct ${directionalLightType} {
-  vec3 color;
-  vec3 direction;
-#ifdef ${hasShadow}
-  bool castShadow;
-  mat4 shadowViewMatrix;
-#endif
-};
-
+const resultLightTableDeclare = `
 #ifndef LIGHT_RESULT_TYPE
 #define LIGHT_RESULT_TYPE
 struct ${resultLightType} {
@@ -35,7 +25,25 @@ struct ${resultLightType} {
   vec3 direction;
   float strength;
 };
-#endif
+#endif`;
+
+const directionalLight: GlShaderFunction<
+  { hasShadow: boolean },
+  { light: string; distanceCamera: string }
+> = {
+  declare: ({ hasShadow }) => `
+struct ${directionalLightType} {
+  vec3 color;
+  vec3 direction;
+${shaderCondition(
+  hasShadow,
+  `
+  bool castShadow;
+  mat4 shadowViewMatrix;`
+)}
+};
+
+${resultLightTableDeclare}
 
 ${resultLightType} lightSourceDirectional(in ${directionalLightType} light, in vec3 distanceCamera) {
   return ${resultLightType}(
@@ -45,11 +53,14 @@ ${resultLightType} lightSourceDirectional(in ${directionalLightType} light, in v
   );
 }`,
 
-  invoke: (light: string, distanceCamera: string) =>
+  invoke: ({ light, distanceCamera }) =>
     `lightSourceDirectional(${light}, ${distanceCamera})`,
 };
 
-const pointLight: GlShaderFunction<[string], [string, string]> = {
+const pointLight: GlShaderFunction<
+  { hasShadow: boolean },
+  { light: string; distanceCamera: string }
+> = {
   declare: () => `
 struct ${pointLightType} {
   vec3 color;
@@ -57,14 +68,7 @@ struct ${pointLightType} {
   float radius;
 };
 
-#ifndef LIGHT_RESULT_TYPE
-#define LIGHT_RESULT_TYPE
-struct ${resultLightType} {
-  vec3 color;
-  vec3 direction;
-  float strength;
-};
-#endif
+${resultLightTableDeclare}
 
 ${resultLightType} lightSourcePoint(in ${pointLightType} light, in vec3 distanceCamera) {
   return ${resultLightType}(
@@ -74,7 +78,7 @@ ${resultLightType} lightSourcePoint(in ${pointLightType} light, in vec3 distance
   );
 }`,
 
-  invoke: (light: string, distanceCamera: string): string =>
+  invoke: ({ light, distanceCamera }) =>
     `lightSourcePoint(${light}, ${distanceCamera})`,
 };
 
