@@ -339,7 +339,15 @@ const projectVertexToScreen = (
   };
 };
 
-type SoftwareRenderer = Renderer<SoftwareScene, SoftwareSubject>;
+type SoftwareAction = {
+  transform: MutableMatrix4;
+};
+
+type SoftwareRenderer = Renderer<
+  SoftwareScene,
+  SoftwareSubject,
+  SoftwareAction
+>;
 
 type SoftwareScene = {
   projection: Matrix4;
@@ -357,15 +365,15 @@ const createSoftwareRenderer = (
   const subjects: { mesh: Mesh; transform: MutableMatrix4 }[] = [];
 
   return {
-    register: (subject) => {
+    append: (subject) => {
       const { mesh } = subject;
       const transform = Matrix4.fromIdentity();
 
       subjects.push({ mesh, transform });
 
       return {
-        remove: () => {},
-        transform,
+        action: { transform },
+        remove: () => {}, // FIXME: not implemented
       };
     },
 
@@ -411,6 +419,7 @@ const createSoftwareRenderer = (
 };
 
 export {
+  type SoftwareAction,
   type SoftwareRenderer,
   type SoftwareScene,
   type SoftwareSubject,

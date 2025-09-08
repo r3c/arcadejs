@@ -8,7 +8,7 @@ import {
   pointLightType,
   resultLightType,
 } from "../webgl/shaders/light";
-import { Matrix4 } from "../../math/matrix";
+import { Matrix4, MutableMatrix4 } from "../../math/matrix";
 import {
   normalEncode,
   normalPerturb,
@@ -373,6 +373,10 @@ void main(void) {
   fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
 
+type DeferredLightingAction = {
+  transform: MutableMatrix4;
+};
+
 type DeferredLightingConfiguration = {
   lightModel: DeferredLightingLightModel;
   lightModelPhongNoAmbient?: boolean;
@@ -383,7 +387,11 @@ type DeferredLightingConfiguration = {
 };
 
 type DeferredLightingRenderer = Disposable &
-  Renderer<DeferredLightingScene, DeferredLightingSubject> & {
+  Renderer<
+    DeferredLightingScene,
+    DeferredLightingSubject,
+    DeferredLightingAction
+  > & {
     // FIXME: debug
     depthBuffer: GlTexture;
     lightBuffer: GlTexture;
@@ -793,7 +801,7 @@ const createDeferredLightingRenderer = (
       materialPainter.dispose();
     },
 
-    register(subject) {
+    append(subject) {
       const { mesh: originalMesh } = subject;
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
@@ -801,11 +809,11 @@ const createDeferredLightingRenderer = (
       const materialResource = materialPainter.register(mesh);
 
       return {
+        action: { transform },
         remove: () => {
           geometryResource.remove();
           materialResource.remove();
         },
-        transform,
       };
     },
 
@@ -927,6 +935,7 @@ const createDeferredLightingRenderer = (
 };
 
 export {
+  type DeferredLightingAction,
   type DeferredLightingConfiguration,
   type DeferredLightingRenderer,
   type DeferredLightingScene,

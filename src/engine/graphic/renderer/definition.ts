@@ -1,11 +1,10 @@
-import { MutableMatrix4 } from "../../math/matrix";
 import { Vector2 } from "../../math/vector";
 
-type Renderer<TScene, TSubject> = {
+type Renderer<TScene, TSubject, TAction> = {
   /**
-   * Register subject into current renderer.
+   * Append subject to renderer.
    */
-  register: (subject: TSubject) => RendererSubject;
+  append: (subject: TSubject) => RendererHandle<TAction>;
 
   /**
    * Render scene.
@@ -18,9 +17,9 @@ type Renderer<TScene, TSubject> = {
   resize: (size: Vector2) => void;
 };
 
-type RendererSubject = {
+type RendererHandle<TAction> = {
+  action: TAction;
   remove: () => void;
-  transform: MutableMatrix4;
 };
 
-export { type Renderer, type RendererSubject };
+export { type Renderer, type RendererHandle };

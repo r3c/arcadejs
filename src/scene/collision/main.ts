@@ -13,9 +13,10 @@ import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 import {
   createForwardLightingRenderer,
+  ForwardLightingAction,
   ForwardLightingScene,
 } from "../../engine/graphic/renderer/forward-lighting";
-import { RendererSubject } from "../../engine/graphic/renderer";
+import { RendererHandle } from "../../engine/graphic/renderer";
 
 type Plane = {
   distance: number;
@@ -40,7 +41,7 @@ type ApplicationState = {
   lights: Light[];
   surfaces: { collision: boolean; plane: Plane }[];
   player: Player;
-  sphereSubject: RendererSubject;
+  sphereHandle: RendererHandle<ForwardLightingAction>;
 };
 
 // Move camera
@@ -82,7 +83,7 @@ const createPlayerUpdater = (): Updater => {
   const yMovement = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player, sphereSubject, surfaces } = state;
+    const { input, player, sphereHandle, surfaces } = state;
 
     const xDelta =
       (input.isPressed("arrowleft") ? -thrust : 0) +
@@ -138,7 +139,7 @@ const createPlayerUpdater = (): Updater => {
     player.position.add(velocity);
 
     // Reflect into subject
-    sphereSubject.transform.setFromRotationPosition(
+    sphereHandle.action.transform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
       player.position
     );
@@ -221,7 +222,7 @@ const applicationBuilder = async (
   });
 
   const sphereModel = createModel(gl, sphere);
-  const sphereSubject = renderer.register({ mesh: sphereModel.mesh });
+  const sphereSubject = renderer.append({ mesh: sphereModel.mesh });
 
   const floor0Model = createModel(gl, floor0);
 
@@ -241,10 +242,10 @@ const applicationBuilder = async (
       t2,
     ]);
 
-    const subject = renderer.register({ mesh: floor0Model.mesh });
+    const { action } = renderer.append({ mesh: floor0Model.mesh });
 
-    subject.transform.setFromRotationPosition(rotation, Vector3.zero);
-    subject.transform.translate({ x: 0, y: plane.distance, z: 0 });
+    action.transform.setFromRotationPosition(rotation, Vector3.zero);
+    action.transform.translate({ x: 0, y: plane.distance, z: 0 });
   }
 
   // Create state
@@ -273,7 +274,7 @@ const applicationBuilder = async (
       ]),
       position: Vector3.fromZero(),
     },
-    sphereSubject,
+    sphereHandle: sphereSubject,
     surfaces,
   };
   const updaters = [

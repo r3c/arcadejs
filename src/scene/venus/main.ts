@@ -31,8 +31,9 @@ import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 import {
   createForwardLightingRenderer,
   ForwardLightingScene,
-  RendererSubject,
+  RendererHandle,
 } from "../../engine/graphic/renderer";
+import { ForwardLightingAction } from "../../engine/graphic/renderer/forward-lighting";
 
 type Player = {
   rotation: MutableQuaternion;
@@ -57,13 +58,13 @@ type Updater = (state: ApplicationState, dt: number) => void;
 type ApplicationState = {
   input: Input;
   lights: Light[];
-  lightSubjects: RendererSubject[];
+  lightHandles: RendererHandle<ForwardLightingAction>[];
   player: Player;
   particleRenderer: ParticleRenderer;
   particleEmitter0: ParticleEmitter<number>;
-  shipSubject: RendererSubject;
+  shipHandle: RendererHandle<ForwardLightingAction>;
   stars: Star[];
-  starSubjects: RendererSubject[];
+  starHandles: RendererHandle<ForwardLightingAction>[];
 };
 
 const pi2 = Math.PI * 2;
@@ -89,16 +90,16 @@ const createLightUpdater = (): Updater => {
   let time = 0;
 
   return (state, dt) => {
-    const { lights, lightSubjects, player } = state;
+    const { lights, lightHandles, player } = state;
 
     for (let i = lights.length; i-- > 0; ) {
-      const lightSubject = lightSubjects[i];
       const { mover, position } = lights[i];
+      const { action } = lightHandles[i];
 
       position.set(mover(player.position, time * 0.001));
 
-      lightSubject.transform.set(Matrix4.identity);
-      lightSubject.transform.translate(position);
+      action.transform.set(Matrix4.identity);
+      action.transform.translate(position);
     }
 
     time += dt;
@@ -149,7 +150,7 @@ const createPlayerUpdater = (): Updater => {
   const v = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player, shipSubject } = state;
+    const { input, player, shipHandle } = state;
 
     const horizontalDelta =
       (input.isPressed("arrowleft") ? rThrust : 0) +
@@ -178,7 +179,7 @@ const createPlayerUpdater = (): Updater => {
     player.position.y = warp(player.position.y, 0, 10000);
     player.position.z = warp(player.position.z, 0, 10000);
 
-    shipSubject.transform.setFromRotationPosition(
+    shipHandle.action.transform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
       player.position
     );
@@ -188,12 +189,12 @@ const createPlayerUpdater = (): Updater => {
 // Update star positions
 const createStarUpdater = (): Updater => {
   return (state, dt) => {
-    const { player, stars, starSubjects } = state;
+    const { player, stars, starHandles } = state;
 
     for (let i = stars.length; i-- > 0; ) {
       const star = stars[i];
-      const starSubject = starSubjects[i];
       const { position, rotationAxis } = star;
+      const { action } = starHandles[i];
 
       position.x = warp(position.x, player.position.x, 100);
       position.y = warp(position.y, player.position.y, 100);
@@ -201,9 +202,9 @@ const createStarUpdater = (): Updater => {
 
       star.rotationAmount += dt * star.rotationSpeed;
 
-      starSubject.transform.set(Matrix4.identity);
-      starSubject.transform.translate(position);
-      starSubject.transform.rotate(rotationAxis, star.rotationAmount);
+      action.transform.set(Matrix4.identity);
+      action.transform.translate(position);
+      action.transform.rotate(rotationAxis, star.rotationAmount);
     }
   };
 };
@@ -306,7 +307,7 @@ const applicationBuilder = async (
 
   // Ship
   const shipModel = createModel(gl, shipMesh);
-  const shipSubject = sceneRenderer.register({
+  const shipHandle = sceneRenderer.append({
     mesh: shipModel.mesh,
   });
 
@@ -317,8 +318,8 @@ const applicationBuilder = async (
   }));
 
   const lightModel = createModel(gl, lightMesh);
-  const lightSubjects = lights.map(() =>
-    sceneRenderer.register({ mesh: lightModel.mesh, noShadow: true })
+  const lightHandles = lights.map(() =>
+    sceneRenderer.append({ mesh: lightModel.mesh, noShadow: true })
   );
 
   // Stars
@@ -341,8 +342,8 @@ const applicationBuilder = async (
   });
 
   const starModels = starMeshes.map((mesh) => createModel(gl, mesh));
-  const starSubjects = stars.map(({ variant }) =>
-    sceneRenderer.register({ mesh: starModels[variant].mesh })
+  const starHandles = stars.map(({ variant }) =>
+    sceneRenderer.append({ mesh: starModels[variant].mesh })
   );
 
   // Create state
@@ -350,13 +351,13 @@ const applicationBuilder = async (
   const state: ApplicationState = {
     input,
     lights,
-    lightSubjects,
+    lightHandles,
     player,
     particleEmitter0,
     particleRenderer,
-    shipSubject,
+    shipHandle,
     stars,
-    starSubjects,
+    starHandles,
   };
   const updaters = [
     createCameraUpdater(camera),

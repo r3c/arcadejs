@@ -10,7 +10,7 @@ import {
   resultLightType,
 } from "../webgl/shaders/light";
 import { materialSample, materialType } from "../webgl/shaders/material";
-import { Matrix4 } from "../../math/matrix";
+import { Matrix4, MutableMatrix4 } from "../../math/matrix";
 import { normalPerturb } from "../webgl/shaders/normal";
 import { parallaxPerturb } from "../webgl/shaders/parallax";
 import { pbrEnvironment, pbrLight } from "../webgl/shaders/pbr";
@@ -80,8 +80,16 @@ type EnvironmentLight = {
   specular: GlTexture;
 };
 
+type ForwardLightingAction = {
+  transform: MutableMatrix4;
+};
+
 type ForwardLightingRenderer = Disposable &
-  Renderer<ForwardLightingScene, ForwardLightingSubject> & {
+  Renderer<
+    ForwardLightingScene,
+    ForwardLightingSubject,
+    ForwardLightingAction
+  > & {
     // FIXME: debug
     directionalShadowBuffers: GlTexture[];
   };
@@ -848,7 +856,7 @@ const createForwardLightingRenderer = (
       lightPainter.dispose();
     },
 
-    register: (subject) => {
+    append: (subject) => {
       const { mesh: originalMesh, noShadow } = subject;
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
@@ -857,12 +865,11 @@ const createForwardLightingRenderer = (
       const lightResource = lightPainter.register(mesh);
 
       return {
+        action: { transform },
         remove: () => {
           shadowResource?.remove();
           lightResource.remove();
         },
-
-        transform,
       };
     },
 
@@ -964,6 +971,7 @@ const createForwardLightingRenderer = (
 };
 
 export {
+  type ForwardLightingAction,
   type ForwardLightingConfiguration,
   type ForwardLightingRenderer,
   type ForwardLightingScene,
