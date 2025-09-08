@@ -26,8 +26,9 @@ import {
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
-  RendererSubject,
+  RendererHandle,
 } from "../../engine/graphic/renderer";
+import { ForwardLightingAction } from "../../engine/graphic/renderer/forward-lighting";
 
 /*
  ** What changed?
@@ -135,7 +136,7 @@ const applicationBuilder = async (
     specular,
   };
 
-  let lightSubjects: RendererSubject[] = [];
+  let lightHandles: RendererHandle<ForwardLightingAction>[] = [];
   let move = false;
   let renderer: ForwardLightingRenderer | undefined = undefined;
   let time = 0;
@@ -156,14 +157,14 @@ const applicationBuilder = async (
         noShadow: true,
       });
 
-      newRenderer.register({ mesh: models.helmet.mesh });
+      newRenderer.append({ mesh: models.helmet.mesh });
 
-      const groundSubject = newRenderer.register({ mesh: models.ground.mesh });
+      const groundHandle = newRenderer.append({ mesh: models.ground.mesh });
 
-      groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
+      groundHandle.action.transform.translate({ x: 0, y: -1.5, z: 0 });
 
-      lightSubjects = range(configuration.nbLights).map(() =>
-        newRenderer.register({ mesh: models.light.mesh, noShadow: true })
+      lightHandles = range(configuration.nbLights).map(() =>
+        newRenderer.append({ mesh: models.light.mesh, noShadow: true })
       );
 
       move = configuration.move;
@@ -192,7 +193,7 @@ const applicationBuilder = async (
           specular: textures.specular,
         },
         pointLights: lights
-          .slice(0, lightSubjects.length)
+          .slice(0, lightHandles.length)
           .map(({ position }) => ({
             color: { x: 1, y: 1, z: 1 },
             position,
@@ -218,14 +219,14 @@ const applicationBuilder = async (
 
     update(dt) {
       // Update light positions
-      for (let i = 0; i < lightSubjects.length; ++i) {
+      for (let i = 0; i < lightHandles.length; ++i) {
         const { mover, position } = lights[i];
-        const subject = lightSubjects[i];
+        const { action } = lightHandles[i];
 
         position.set(mover(Vector3.zero, time * 0.0005));
 
-        subject.transform.set(Matrix4.identity);
-        subject.transform.translate(position);
+        action.transform.set(Matrix4.identity);
+        action.transform.translate(position);
       }
 
       // Move camera

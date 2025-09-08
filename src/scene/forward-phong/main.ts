@@ -25,8 +25,9 @@ import {
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
-  RendererSubject,
+  RendererHandle,
 } from "../../engine/graphic/renderer";
+import { ForwardLightingAction } from "../../engine/graphic/renderer/forward-lighting";
 
 /*
  ** What changed?
@@ -102,9 +103,9 @@ const applicationBuilder = async (
   const projectionMatrix = Matrix4.fromIdentity();
 
   let debugMode = false;
-  let directionalLightSubjects: RendererSubject[] = [];
+  let directionalLightHandles: RendererHandle<ForwardLightingAction>[] = [];
   let move = false;
-  let pointLightSubjects: RendererSubject[] = [];
+  let pointLightHandles: RendererHandle<ForwardLightingAction>[] = [];
   let renderer: ForwardLightingRenderer | undefined = undefined;
   let time = 0;
 
@@ -123,17 +124,17 @@ const applicationBuilder = async (
         noNormalMap: !configuration.useNormalMap,
       });
 
-      newRenderer.register({ mesh: models.cube.mesh });
+      newRenderer.append({ mesh: models.cube.mesh });
 
-      const groundSubject = newRenderer.register({ mesh: models.ground.mesh });
+      const groundHandle = newRenderer.append({ mesh: models.ground.mesh });
 
-      groundSubject.transform.translate({ x: 0, y: -1.5, z: 0 });
+      groundHandle.action.transform.translate({ x: 0, y: -1.5, z: 0 });
 
-      directionalLightSubjects = range(configuration.nbDirectionalLights).map(
-        () => newRenderer.register({ mesh: models.light.mesh, noShadow: true })
+      directionalLightHandles = range(configuration.nbDirectionalLights).map(
+        () => newRenderer.append({ mesh: models.light.mesh, noShadow: true })
       );
-      pointLightSubjects = range(configuration.nbPointLights).map(() =>
-        newRenderer.register({ mesh: models.light.mesh, noShadow: true })
+      pointLightHandles = range(configuration.nbPointLights).map(() =>
+        newRenderer.append({ mesh: models.light.mesh, noShadow: true })
       );
 
       debugMode = configuration.debugMode !== 0;
@@ -158,14 +159,14 @@ const applicationBuilder = async (
       const scene: ForwardLightingScene = {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
         directionalLights: directionalLights
-          .slice(0, directionalLightSubjects.length)
+          .slice(0, directionalLightHandles.length)
           .map(({ direction }) => ({
             color: { x: 0.8, y: 0.8, z: 0.8 },
             direction,
             shadow: true,
           })),
         pointLights: pointLights
-          .slice(0, pointLightSubjects.length)
+          .slice(0, pointLightHandles.length)
           .map(({ position }) => ({
             color: { x: 0.8, y: 0.8, z: 0.8 },
             position,
@@ -196,26 +197,26 @@ const applicationBuilder = async (
 
     update(dt) {
       // Update light positions
-      for (let i = 0; i < directionalLightSubjects.length; ++i) {
+      for (let i = 0; i < directionalLightHandles.length; ++i) {
         const { direction, mover } = directionalLights[i];
-        const subject = directionalLightSubjects[i];
+        const { action } = directionalLightHandles[i];
 
         direction.set(mover(Vector3.zero, -time * 0.0005));
         direction.normalize();
         direction.scale(10);
 
-        subject.transform.set(Matrix4.identity);
-        subject.transform.translate(direction);
+        action.transform.set(Matrix4.identity);
+        action.transform.translate(direction);
       }
 
-      for (let i = 0; i < pointLightSubjects.length; ++i) {
+      for (let i = 0; i < pointLightHandles.length; ++i) {
         const { mover, position } = pointLights[i];
-        const subject = pointLightSubjects[i];
+        const { action } = pointLightHandles[i];
 
         position.set(mover(Vector3.zero, time * 0.0005));
 
-        subject.transform.set(Matrix4.identity);
-        subject.transform.translate(position);
+        action.transform.set(Matrix4.identity);
+        action.transform.translate(position);
       }
 
       // Move camera

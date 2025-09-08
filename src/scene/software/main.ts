@@ -64,7 +64,7 @@ const applicationBuilder = async (
         mode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default
       );
 
-      renderer.register({ mesh });
+      renderer.append({ mesh });
     },
 
     dispose() {},

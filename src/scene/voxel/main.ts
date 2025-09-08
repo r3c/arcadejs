@@ -119,7 +119,7 @@ const applicationBuilder = async (
   });
 
   // Create select box
-  const selectSubject = renderer.register({
+  const selectHandle = renderer.append({
     mesh: select.mesh,
     noShadow: false,
   });
@@ -255,8 +255,8 @@ const applicationBuilder = async (
       }
 
       // Update state
-      selectSubject.transform.set(Matrix4.fromIdentity());
-      selectSubject.transform.translate(
+      selectHandle.action.transform.set(Matrix4.fromIdentity());
+      selectHandle.action.transform.translate(
         worldGraphic.findRenderPosition(lookOffset)
       );
 
