@@ -1,30 +1,33 @@
-import { createFlexibleArray } from "../../../io/memory";
-import { range } from "../../../language/iterable";
-import { Matrix4, MutableMatrix4 } from "../../../math/matrix";
+import { Disposable } from "../../language/lifecycle";
+import { createFlexibleArray } from "../../io/memory";
+import { range } from "../../language/iterable";
+import { Matrix4, MutableMatrix4 } from "../../math/matrix";
 import {
   MutableVector3,
   MutableVector4,
   Vector2,
   Vector3,
   Vector4,
-} from "../../../math/vector";
-import { Renderer } from "../../display";
-import { GlPainter, GlRuntime, GlTarget } from "../../webgl";
-import { SinglePainter } from "../painters/single";
+} from "../../math/vector";
+import { Renderer } from "./definition";
+import { GlRuntime, GlTarget } from "../webgl";
+import { SinglePainter } from "../webgl/painters/single";
 import {
   GlBuffer,
   GlContext,
   createDynamicArrayBuffer,
   createDynamicIndexBuffer,
-} from "../resource";
+} from "../webgl/resource";
 import {
-  GlShader,
   GlShaderAttribute,
-  GlShaderBinding,
   createAttribute,
   shaderUniform,
-} from "../shader";
-import { GlTexture } from "../texture";
+} from "../webgl/shader";
+import { GlTexture } from "../webgl/texture";
+
+type ParticleAction<TSeed> = {
+  emit: (count: number, center: Vector3, seed: TSeed) => void;
+};
 
 type ParticleBillboard = {
   dispose: () => void;
@@ -38,12 +41,6 @@ type ParticleBillboard = {
   sprite: GlTexture | undefined;
 };
 
-type ParticleEmitter<TSeed> = (
-  count: number,
-  center: Vector3,
-  seed: TSeed
-) => void;
-
 type ParticlePolygon = {
   coordinate: GlShaderAttribute;
   corner: GlShaderAttribute;
@@ -51,8 +48,13 @@ type ParticlePolygon = {
   tint: GlShaderAttribute;
 };
 
+type ParticleRenderer<TSeed> = Disposable &
+  Renderer<ParticleScene, ParticleSubject<TSeed>, ParticleAction<TSeed>> & {
+    update: (dt: number) => void;
+  };
+
 type ParticleSource = {
-  update: (spark: ParticleSpark, rankSpan: number, timeSpan: number) => void;
+  update: ParticleUpdater;
   center: Vector3;
   count: number;
   duration: number;
@@ -72,7 +74,12 @@ type ParticleScene = {
   viewMatrix: Matrix4;
 };
 
-type ParticleState = Pick<ParticleBillboard, "index" | "polygon" | "sprite">;
+type ParticleSubject<TSeed> = {
+  duration: number;
+  sprite: GlTexture | undefined;
+  variants: number;
+  define: (seed: TSeed) => ParticleUpdater;
+};
 
 type ParticleUpdater = (
   spark: ParticleSpark,
@@ -239,196 +246,191 @@ const createBillboard = (
   };
 };
 
-class ParticleRenderer implements Renderer<ParticleScene> {
-  private readonly billboards: ParticleBillboard[];
-  private readonly painter: GlPainter<ParticleState>;
-  private readonly runtime: GlRuntime;
-  private readonly sceneBinding: GlShaderBinding<SceneState>;
-  private readonly sceneState: SceneState;
-  private readonly shader: GlShader;
-  private readonly target: GlTarget;
+const createParticleRenderer = <TSeed>(
+  runtime: GlRuntime,
+  target: GlTarget
+): ParticleRenderer<TSeed> => {
+  const shader = runtime.createShader(
+    particleVertexShader,
+    particleFragmentShader,
+    {}
+  );
 
-  public constructor(runtime: GlRuntime, target: GlTarget) {
-    const shader = runtime.createShader(
-      particleVertexShader,
-      particleFragmentShader,
-      {}
-    );
+  // Declare billboard binding (unique to each particle source)
+  const billboardBinding = shader.declare<ParticleBillboard>();
 
-    // Declare billboard binding (unique to each particle source)
-    const billboardBinding = shader.declare<ParticleBillboard>();
+  billboardBinding.setAttribute(
+    "particleCoordinate",
+    ({ polygon }) => polygon.coordinate
+  );
 
-    billboardBinding.setAttribute(
-      "particleCoordinate",
-      ({ polygon }) => polygon.coordinate
-    );
+  billboardBinding.setAttribute(
+    "particleCorner",
+    ({ polygon }) => polygon.corner
+  );
 
-    billboardBinding.setAttribute(
-      "particleCorner",
-      ({ polygon }) => polygon.corner
-    );
+  billboardBinding.setAttribute(
+    "particlePosition",
+    ({ polygon }) => polygon.position
+  );
 
-    billboardBinding.setAttribute(
-      "particlePosition",
-      ({ polygon }) => polygon.position
-    );
+  billboardBinding.setAttribute("particleTint", ({ polygon }) => polygon.tint);
 
-    billboardBinding.setAttribute(
-      "particleTint",
-      ({ polygon }) => polygon.tint
-    );
+  billboardBinding.setUniform(
+    "sprite",
+    shaderUniform.tex2dWhite(({ sprite }) => sprite)
+  );
 
-    billboardBinding.setUniform(
-      "sprite",
-      shaderUniform.tex2dWhite(({ sprite }) => sprite)
-    );
+  // Declare scene binding (shared by all particle sources)
+  const sceneBinding = shader.declare<SceneState>();
 
-    // Declare scene binding (shared by all particle sources)
-    const sceneBinding = shader.declare<SceneState>();
+  sceneBinding.setUniform(
+    "billboardMatrix",
+    shaderUniform.matrix4f(({ billboardMatrix }) => billboardMatrix)
+  );
 
-    sceneBinding.setUniform(
-      "billboardMatrix",
-      shaderUniform.matrix4f(({ billboardMatrix }) => billboardMatrix)
-    );
+  sceneBinding.setUniform(
+    "projectionMatrix",
+    shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+  );
 
-    sceneBinding.setUniform(
-      "projectionMatrix",
-      shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
-    );
+  sceneBinding.setUniform(
+    "viewMatrix",
+    shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+  );
 
-    sceneBinding.setUniform(
-      "viewMatrix",
-      shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
-    );
+  const billboards: ParticleBillboard[] = [];
+  const painter = new SinglePainter(billboardBinding, ({ index }) => index);
+  const sceneState = {
+    billboardMatrix: Matrix4.fromIdentity(),
+    projectionMatrix: Matrix4.identity,
+    viewMatrix: Matrix4.identity,
+  };
 
-    this.billboards = [];
-    this.painter = new SinglePainter(billboardBinding, ({ index }) => index);
-    this.runtime = runtime;
-    this.sceneBinding = sceneBinding;
-    this.sceneState = {
-      billboardMatrix: Matrix4.fromIdentity(),
-      projectionMatrix: Matrix4.identity,
-      viewMatrix: Matrix4.identity,
-    };
-    this.shader = shader;
-    this.target = target;
-  }
+  return {
+    append(subject) {
+      const { define, duration, sprite, variants } = subject;
 
-  public register<TSeed>(
-    duration: number,
-    sprite: GlTexture | undefined,
-    variants: number,
-    define: (seed: TSeed) => ParticleUpdater
-  ): ParticleEmitter<TSeed> {
-    const billboard = createBillboard(this.runtime.context, sprite, variants);
+      const billboard = createBillboard(runtime.context, sprite, variants);
 
-    this.billboards.push(billboard);
+      billboards.push(billboard);
 
-    return (count, center, seed) => {
-      billboard.sources.push({
-        center: { x: center.x, y: center.y, z: center.z },
-        count,
-        duration,
-        elapsed: 0,
-        update: define(seed),
-      });
-    };
-  }
+      return {
+        action: {
+          emit: (count, center, seed) => {
+            billboard.sources.push({
+              center: { x: center.x, y: center.y, z: center.z },
+              count,
+              duration,
+              elapsed: 0,
+              update: define(seed),
+            });
+          },
+        },
 
-  public dispose() {
-    for (const billboard of this.billboards) {
-      billboard.dispose();
-    }
+        remove: () => {}, // FIXME: not implemented
+      };
+    },
 
-    this.shader.dispose();
-  }
-
-  public render(scene: ParticleScene) {
-    const { projectionMatrix, viewMatrix } = scene;
-    const gl = this.runtime.context;
-    const sceneState = this.sceneState;
-
-    // Build billboard matrix from view matrix to get camera-facing quads by
-    // copying view matrix and cancelling any rotation.
-    sceneState.billboardMatrix.v00 = 1;
-    sceneState.billboardMatrix.v01 = 0;
-    sceneState.billboardMatrix.v02 = 0;
-    sceneState.billboardMatrix.v03 = viewMatrix.v03;
-    sceneState.billboardMatrix.v10 = 0;
-    sceneState.billboardMatrix.v11 = 1;
-    sceneState.billboardMatrix.v12 = 0;
-    sceneState.billboardMatrix.v13 = viewMatrix.v13;
-    sceneState.billboardMatrix.v20 = 0;
-    sceneState.billboardMatrix.v21 = 0;
-    sceneState.billboardMatrix.v22 = 1;
-    sceneState.billboardMatrix.v23 = viewMatrix.v23;
-    sceneState.billboardMatrix.v30 = viewMatrix.v30;
-    sceneState.billboardMatrix.v31 = viewMatrix.v31;
-    sceneState.billboardMatrix.v32 = viewMatrix.v32;
-    sceneState.billboardMatrix.v33 = viewMatrix.v33;
-
-    // Copy projection & view matrices from input scene
-    sceneState.projectionMatrix = projectionMatrix;
-    sceneState.viewMatrix = viewMatrix;
-
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-    gl.enable(gl.DEPTH_TEST);
-    gl.depthMask(false);
-
-    this.sceneBinding.bind(sceneState);
-
-    for (let i = 0; i < this.billboards.length; ++i) {
-      this.painter.paint(this.target, this.billboards[i]);
-    }
-  }
-
-  public resize(_size: Vector2) {}
-
-  public update(dt: number) {
-    for (const billboard of this.billboards) {
-      const { flush, reserve, sources, spark, write } = billboard;
-
-      // Update all sources and remove expired ones
-      let nbSparks = 0;
-
-      for (let sourceIndex = 0; sourceIndex < sources.length; ) {
-        const source = sources[sourceIndex];
-
-        source.elapsed += dt;
-
-        if (source.elapsed >= source.duration) {
-          sources[sourceIndex] = sources[sources.length - 1];
-          sources.pop();
-
-          continue;
-        }
-
-        nbSparks += source.count;
-
-        sourceIndex++;
+    dispose() {
+      for (const billboard of billboards) {
+        billboard.dispose();
       }
 
-      reserve(nbSparks);
+      shader.dispose();
+    },
 
-      let sparkIndex = 0;
+    render(scene) {
+      const { projectionMatrix, viewMatrix } = scene;
+      const gl = runtime.context;
 
-      for (let sourceIndex = 0; sourceIndex < sources.length; ++sourceIndex) {
-        const source = sources[sourceIndex];
-        const { center, count, duration, elapsed, update } = source;
+      // Build billboard matrix from view matrix to get camera-facing quads by
+      // copying view matrix and cancelling any rotation.
+      sceneState.billboardMatrix.v00 = 1;
+      sceneState.billboardMatrix.v01 = 0;
+      sceneState.billboardMatrix.v02 = 0;
+      sceneState.billboardMatrix.v03 = viewMatrix.v03;
+      sceneState.billboardMatrix.v10 = 0;
+      sceneState.billboardMatrix.v11 = 1;
+      sceneState.billboardMatrix.v12 = 0;
+      sceneState.billboardMatrix.v13 = viewMatrix.v13;
+      sceneState.billboardMatrix.v20 = 0;
+      sceneState.billboardMatrix.v21 = 0;
+      sceneState.billboardMatrix.v22 = 1;
+      sceneState.billboardMatrix.v23 = viewMatrix.v23;
+      sceneState.billboardMatrix.v30 = viewMatrix.v30;
+      sceneState.billboardMatrix.v31 = viewMatrix.v31;
+      sceneState.billboardMatrix.v32 = viewMatrix.v32;
+      sceneState.billboardMatrix.v33 = viewMatrix.v33;
 
-        for (let i = count; i-- > 0; ) {
-          update(spark, i / count, elapsed / duration);
+      // Copy projection & view matrices from input scene
+      sceneState.projectionMatrix = projectionMatrix;
+      sceneState.viewMatrix = viewMatrix;
 
-          spark.position.add(center);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(false);
 
-          write(sparkIndex++);
-        }
+      sceneBinding.bind(sceneState);
+
+      for (let i = 0; i < billboards.length; ++i) {
+        painter.paint(target, billboards[i]);
       }
+    },
 
-      flush();
-    }
-  }
-}
+    resize() {},
 
-export { type ParticleEmitter, type ParticleScene, ParticleRenderer };
+    update(dt) {
+      for (const billboard of billboards) {
+        const { flush, reserve, sources, spark, write } = billboard;
+
+        // Update all sources and remove expired ones
+        let nbSparks = 0;
+
+        for (let sourceIndex = 0; sourceIndex < sources.length; ) {
+          const source = sources[sourceIndex];
+
+          source.elapsed += dt;
+
+          if (source.elapsed >= source.duration) {
+            sources[sourceIndex] = sources[sources.length - 1];
+            sources.pop();
+
+            continue;
+          }
+
+          nbSparks += source.count;
+
+          sourceIndex++;
+        }
+
+        reserve(nbSparks);
+
+        let sparkIndex = 0;
+
+        for (let sourceIndex = 0; sourceIndex < sources.length; ++sourceIndex) {
+          const source = sources[sourceIndex];
+          const { center, count, duration, elapsed, update } = source;
+
+          for (let i = count; i-- > 0; ) {
+            update(spark, i / count, elapsed / duration);
+
+            spark.position.add(center);
+
+            write(sparkIndex++);
+          }
+        }
+
+        flush();
+      }
+    },
+  };
+};
+
+export {
+  type ParticleAction,
+  type ParticleRenderer,
+  type ParticleScene,
+  createParticleRenderer,
+};

@@ -763,7 +763,7 @@ const createDeferredShadingRenderer = (
     PainterMode.Triangle,
     ambientLightBinder
   );
-  ambientLightPainter.register(quad.mesh);
+  ambientLightPainter.append(quad.mesh);
   const depthBuffer = geometryTarget.setupDepthTexture(
     GlTextureFormat.Depth16,
     GlTextureType.Quad
@@ -814,7 +814,7 @@ const createDeferredShadingRenderer = (
       const { mesh: originalMesh } = subject;
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
-      const resource = geometryPainter.register(mesh);
+      const resource = geometryPainter.append(mesh);
 
       return {
         action: { transform },
