@@ -861,8 +861,8 @@ const createForwardLightingRenderer = (
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
       const shadowResource =
-        noShadow !== true ? directionalShadowPainter.register(mesh) : undefined;
-      const lightResource = lightPainter.register(mesh);
+        noShadow !== true ? directionalShadowPainter.append(mesh) : undefined;
+      const lightResource = lightPainter.append(mesh);
 
       return {
         action: { transform },

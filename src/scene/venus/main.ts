@@ -17,9 +17,10 @@ import {
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import {
+  ParticleAction,
   ParticleRenderer,
-  ParticleEmitter,
-} from "../../engine/graphic/webgl/renderers/particle";
+  createParticleRenderer,
+} from "../../engine/graphic/renderer/particle";
 import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
 import { createModel } from "../../engine/graphic/webgl/model";
@@ -60,8 +61,8 @@ type ApplicationState = {
   lights: Light[];
   lightHandles: RendererHandle<ForwardLightingAction>[];
   player: Player;
-  particleRenderer: ParticleRenderer;
-  particleEmitter0: ParticleEmitter<number>;
+  particleRenderer: ParticleRenderer<number>;
+  particleAction0: ParticleAction<number>;
   shipHandle: RendererHandle<ForwardLightingAction>;
   stars: Star[];
   starHandles: RendererHandle<ForwardLightingAction>[];
@@ -113,7 +114,7 @@ const createParticleUpdater = (): Updater => {
   let smoke = 0;
 
   return (state, dt) => {
-    const { particleEmitter0, particleRenderer, player } = state;
+    const { particleAction0, particleRenderer, player } = state;
 
     smoke += dt;
 
@@ -123,7 +124,7 @@ const createParticleUpdater = (): Updater => {
         smokeOrigin.rotate(player.rotation);
         smokeOrigin.add(player.position);
 
-        particleEmitter0(10, smokeOrigin, Math.random());
+        particleAction0.emit(10, smokeOrigin, Math.random());
       }
 
       smoke -= 20;
@@ -253,14 +254,11 @@ const applicationBuilder = async (
   const sprite = loadTextureQuad(gl, spriteImage);
 
   // Particle effects
-  const particleRenderer = new ParticleRenderer(runtime, target);
+  const particleRenderer = createParticleRenderer<number>(runtime, target);
 
   const particleEasing0 = getEasing(EasingType.QuadraticOut);
-  const particleEmitter0 = particleRenderer.register<number>(
-    1000,
-    sprite,
-    5,
-    (seed) => {
+  const particleHandle0 = particleRenderer.append({
+    define: (seed) => {
       const sequence = createFloatSequence(seed);
 
       return (spark, rankSpan, timeSpan) => {
@@ -282,8 +280,11 @@ const applicationBuilder = async (
         spark.tint.w = (1 - timeSpan) * 0.5;
         spark.variant = Math.floor((rankSpan * 5) % 5);
       };
-    }
-  );
+    },
+    duration: 1000,
+    sprite,
+    variants: 5,
+  });
 
   const player: Player = {
     rotation: Quaternion.fromIdentity([
@@ -353,7 +354,7 @@ const applicationBuilder = async (
     lights,
     lightHandles,
     player,
-    particleEmitter0,
+    particleAction0: particleHandle0.action,
     particleRenderer,
     shipHandle,
     stars,

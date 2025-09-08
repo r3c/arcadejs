@@ -7,11 +7,11 @@ import { GlShaderBinding } from "./shader";
 
 type Painter<TScene> = Disposable & {
   /**
-   * Register a new mesh on this painter to be displayed on each render until it
+   * Append a new mesh on this painter to be displayed on each render until it
    * is deleted. Once registered, mesh's transform matrix can be updated but its
    * children and polygons cannot.
    */
-  register: (mesh: GlMesh) => PainterResource;
+  append: (mesh: GlMesh) => PainterHandle;
 
   /**
    * Render current painter with all its registered meshes onto given target.
@@ -58,7 +58,7 @@ type PainterPrimitive = {
   polygon: GlPolygon;
 };
 
-type PainterResource = {
+type PainterHandle = {
   remove: () => void;
 };
 
@@ -177,7 +177,7 @@ const createBindingPainter = <TScene>(
   return {
     dispose: disposable.dispose,
 
-    register: (mesh) => {
+    append: (mesh) => {
       const removals: { featureKey: number; materials: GlMaterial[] }[] = [];
       const results = explode(mesh);
       const symbol = Symbol();

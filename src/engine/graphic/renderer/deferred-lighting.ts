@@ -805,8 +805,8 @@ const createDeferredLightingRenderer = (
       const { mesh: originalMesh } = subject;
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
-      const geometryResource = geometryPainter.register(mesh);
-      const materialResource = materialPainter.register(mesh);
+      const geometryResource = geometryPainter.append(mesh);
+      const materialResource = materialPainter.append(mesh);
 
       return {
         action: { transform },
