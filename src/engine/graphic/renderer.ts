@@ -1,5 +1,23 @@
 import { Renderer } from "./renderer/definition";
 import {
+  DeferredLightingConfiguration,
+  DeferredLightingHandle,
+  DeferredLightingLightModel,
+  DeferredLightingRenderer,
+  DeferredLightingScene,
+  DeferredLightingSubject,
+  createDeferredLightingRenderer,
+} from "./renderer/deferred-lighting";
+import {
+  DeferredShadingConfiguration,
+  DeferredShadingHandle,
+  DeferredShadingLightModel,
+  DeferredShadingRenderer,
+  DeferredShadingScene,
+  DeferredShadingSubject,
+  createDeferredShadingRenderer,
+} from "./renderer/deferred-shading";
+import {
   createForwardLightingRenderer,
   ForwardLightingConfiguration,
   ForwardLightingHandle,
@@ -9,6 +27,12 @@ import {
   ForwardLightingSubject,
 } from "./renderer/forward-lighting";
 import {
+  ParticleHandle,
+  ParticleRenderer,
+  ParticleScene,
+  createParticleRenderer,
+} from "./renderer/particle";
+import {
   SoftwareDrawMode,
   SoftwareRenderer,
   SoftwareScene,
@@ -17,17 +41,35 @@ import {
 } from "./renderer/software";
 
 export {
+  type DeferredLightingConfiguration,
+  type DeferredLightingHandle,
+  type DeferredLightingRenderer,
+  type DeferredLightingScene,
+  type DeferredLightingSubject,
+  type DeferredShadingConfiguration,
+  type DeferredShadingHandle,
+  type DeferredShadingRenderer,
+  type DeferredShadingScene,
+  type DeferredShadingSubject,
   type ForwardLightingConfiguration,
   type ForwardLightingHandle,
   type ForwardLightingRenderer,
   type ForwardLightingScene,
   type ForwardLightingSubject,
+  type ParticleHandle,
+  type ParticleRenderer,
+  type ParticleScene,
   type Renderer,
   type SoftwareRenderer,
   type SoftwareScene,
   type SoftwareSubject,
+  DeferredLightingLightModel,
+  DeferredShadingLightModel,
   ForwardLightingLightModel,
   SoftwareDrawMode,
+  createDeferredLightingRenderer,
+  createDeferredShadingRenderer,
   createForwardLightingRenderer,
+  createParticleRenderer,
   createSoftwareRenderer,
 };

@@ -17,10 +17,13 @@ import {
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import {
+  ForwardLightingHandle,
+  ForwardLightingScene,
   ParticleHandle,
   ParticleRenderer,
+  createForwardLightingRenderer,
   createParticleRenderer,
-} from "../../engine/graphic/renderer/particle";
+} from "../../engine/graphic/renderer";
 import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
 import { createModel } from "../../engine/graphic/webgl/model";
@@ -29,11 +32,6 @@ import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 import { Camera, createBehindCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
-import {
-  createForwardLightingRenderer,
-  ForwardLightingHandle,
-  ForwardLightingScene,
-} from "../../engine/graphic/renderer";
 
 type Player = {
   rotation: MutableQuaternion;

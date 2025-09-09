@@ -15,7 +15,7 @@ import {
   createForwardLightingRenderer,
   ForwardLightingHandle,
   ForwardLightingScene,
-} from "../../engine/graphic/renderer/forward-lighting";
+} from "../../engine/graphic/renderer";
 
 type Plane = {
   distance: number;

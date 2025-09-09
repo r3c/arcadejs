@@ -14,9 +14,15 @@ import {
 import {
   DeferredLightingHandle,
   DeferredLightingLightModel,
+  DeferredLightingScene,
   DeferredLightingSubject,
+  DeferredShadingHandle,
+  DeferredShadingLightModel,
+  DeferredShadingScene,
+  DeferredShadingSubject,
   createDeferredLightingRenderer,
-} from "../../engine/graphic/renderer/deferred-lighting";
+  createDeferredShadingRenderer,
+} from "../../engine/graphic/renderer";
 import { WebGLScreen } from "../../engine/graphic/display";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
@@ -24,17 +30,9 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { createCircleMover, createOrbitMover } from "../move";
-import { DeferredLightingScene } from "../../engine/graphic/renderer/deferred-lighting";
 import { brightColor } from "../../engine/graphic/color";
 import { createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
-import {
-  DeferredShadingHandle,
-  DeferredShadingLightModel,
-  DeferredShadingScene,
-  DeferredShadingSubject,
-  createDeferredShadingRenderer,
-} from "../../engine/graphic/renderer/deferred-shading";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import { Renderer } from "../../engine/graphic/renderer";
 import { Disposable } from "../../engine/language/lifecycle";

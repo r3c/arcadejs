@@ -8,7 +8,7 @@ import {
   ForwardLightingSubject,
   Renderer,
 } from "../../engine/graphic/renderer";
-import { ForwardLightingHandle } from "../../engine/graphic/renderer/forward-lighting";
+import { ForwardLightingHandle } from "../../engine/graphic/renderer";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { range } from "../../engine/language/iterable";

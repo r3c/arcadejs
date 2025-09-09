@@ -1,11 +1,4 @@
-import { Disposable } from "../language/lifecycle";
 import { MutableVector2, Vector2 } from "../math/vector";
-
-// FIXME: replace by './renderer/definition'
-type Renderer<TScene> = Disposable & {
-  render(scene: TScene): void;
-  resize(size: Vector2): void;
-};
 
 class Screen {
   public readonly canvas: HTMLCanvasElement;
@@ -101,4 +94,4 @@ class WebGLScreen extends Screen {
   }
 }
 
-export { type Renderer, Context2DScreen, Screen, WebGLScreen };
+export { Context2DScreen, Screen, WebGLScreen };
