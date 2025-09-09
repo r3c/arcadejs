@@ -17,7 +17,7 @@ import {
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import {
-  ParticleAction,
+  ParticleHandle,
   ParticleRenderer,
   createParticleRenderer,
 } from "../../engine/graphic/renderer/particle";
@@ -31,10 +31,9 @@ import { Camera, createBehindCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 import {
   createForwardLightingRenderer,
+  ForwardLightingHandle,
   ForwardLightingScene,
-  RendererHandle,
 } from "../../engine/graphic/renderer";
-import { ForwardLightingAction } from "../../engine/graphic/renderer/forward-lighting";
 
 type Player = {
   rotation: MutableQuaternion;
@@ -59,13 +58,13 @@ type Updater = (state: ApplicationState, dt: number) => void;
 type ApplicationState = {
   input: Input;
   lights: Light[];
-  lightHandles: RendererHandle<ForwardLightingAction>[];
+  lightHandles: ForwardLightingHandle[];
   player: Player;
   particleRenderer: ParticleRenderer<number>;
-  particleAction0: ParticleAction<number>;
-  shipHandle: RendererHandle<ForwardLightingAction>;
+  particleHandle0: ParticleHandle<number>;
+  shipHandle: ForwardLightingHandle;
   stars: Star[];
-  starHandles: RendererHandle<ForwardLightingAction>[];
+  starHandles: ForwardLightingHandle[];
 };
 
 const pi2 = Math.PI * 2;
@@ -95,12 +94,12 @@ const createLightUpdater = (): Updater => {
 
     for (let i = lights.length; i-- > 0; ) {
       const { mover, position } = lights[i];
-      const { action } = lightHandles[i];
+      const { transform } = lightHandles[i];
 
       position.set(mover(player.position, time * 0.001));
 
-      action.transform.set(Matrix4.identity);
-      action.transform.translate(position);
+      transform.set(Matrix4.identity);
+      transform.translate(position);
     }
 
     time += dt;
@@ -114,7 +113,11 @@ const createParticleUpdater = (): Updater => {
   let smoke = 0;
 
   return (state, dt) => {
-    const { particleAction0, particleRenderer, player } = state;
+    const {
+      particleHandle0: particleAction0,
+      particleRenderer,
+      player,
+    } = state;
 
     smoke += dt;
 
@@ -180,7 +183,7 @@ const createPlayerUpdater = (): Updater => {
     player.position.y = warp(player.position.y, 0, 10000);
     player.position.z = warp(player.position.z, 0, 10000);
 
-    shipHandle.action.transform.setFromRotationPosition(
+    shipHandle.transform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
       player.position
     );
@@ -195,7 +198,7 @@ const createStarUpdater = (): Updater => {
     for (let i = stars.length; i-- > 0; ) {
       const star = stars[i];
       const { position, rotationAxis } = star;
-      const { action } = starHandles[i];
+      const { transform } = starHandles[i];
 
       position.x = warp(position.x, player.position.x, 100);
       position.y = warp(position.y, player.position.y, 100);
@@ -203,9 +206,9 @@ const createStarUpdater = (): Updater => {
 
       star.rotationAmount += dt * star.rotationSpeed;
 
-      action.transform.set(Matrix4.identity);
-      action.transform.translate(position);
-      action.transform.rotate(rotationAxis, star.rotationAmount);
+      transform.set(Matrix4.identity);
+      transform.translate(position);
+      transform.rotate(rotationAxis, star.rotationAmount);
     }
   };
 };
@@ -354,7 +357,7 @@ const applicationBuilder = async (
     lights,
     lightHandles,
     player,
-    particleAction0: particleHandle0.action,
+    particleHandle0,
     particleRenderer,
     shipHandle,
     stars,

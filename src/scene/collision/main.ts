@@ -13,10 +13,9 @@ import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 import {
   createForwardLightingRenderer,
-  ForwardLightingAction,
+  ForwardLightingHandle,
   ForwardLightingScene,
 } from "../../engine/graphic/renderer/forward-lighting";
-import { RendererHandle } from "../../engine/graphic/renderer";
 
 type Plane = {
   distance: number;
@@ -41,7 +40,7 @@ type ApplicationState = {
   lights: Light[];
   surfaces: { collision: boolean; plane: Plane }[];
   player: Player;
-  sphereHandle: RendererHandle<ForwardLightingAction>;
+  sphereHandle: ForwardLightingHandle;
 };
 
 // Move camera
@@ -139,7 +138,7 @@ const createPlayerUpdater = (): Updater => {
     player.position.add(velocity);
 
     // Reflect into subject
-    sphereHandle.action.transform.setFromRotationPosition(
+    sphereHandle.transform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
       player.position
     );
@@ -242,10 +241,10 @@ const applicationBuilder = async (
       t2,
     ]);
 
-    const { action } = renderer.append({ mesh: floor0Model.mesh });
+    const { transform } = renderer.append({ mesh: floor0Model.mesh });
 
-    action.transform.setFromRotationPosition(rotation, Vector3.zero);
-    action.transform.translate({ x: 0, y: plane.distance, z: 0 });
+    transform.setFromRotationPosition(rotation, Vector3.zero);
+    transform.translate({ x: 0, y: plane.distance, z: 0 });
   }
 
   // Create state

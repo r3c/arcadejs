@@ -1,7 +1,8 @@
-import { Renderer, RendererHandle } from "./renderer/definition";
+import { Renderer } from "./renderer/definition";
 import {
   createForwardLightingRenderer,
   ForwardLightingConfiguration,
+  ForwardLightingHandle,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
@@ -17,11 +18,11 @@ import {
 
 export {
   type ForwardLightingConfiguration,
+  type ForwardLightingHandle,
   type ForwardLightingRenderer,
   type ForwardLightingScene,
   type ForwardLightingSubject,
   type Renderer,
-  type RendererHandle,
   type SoftwareRenderer,
   type SoftwareScene,
   type SoftwareSubject,

@@ -8,7 +8,7 @@ import {
   ForwardLightingSubject,
   Renderer,
 } from "../../engine/graphic/renderer";
-import { ForwardLightingAction } from "../../engine/graphic/renderer/forward-lighting";
+import { ForwardLightingHandle } from "../../engine/graphic/renderer/forward-lighting";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { range } from "../../engine/language/iterable";
@@ -106,7 +106,7 @@ const cubeFaces: WorldCubeFace[] = [
 const createWorldGraphic = (
   runtime: GlRuntime,
   renderer: Pick<
-    Renderer<unknown, ForwardLightingSubject, ForwardLightingAction>,
+    Renderer<unknown, ForwardLightingSubject, ForwardLightingHandle>,
     "append"
   >,
   chunkCount: Vector3,

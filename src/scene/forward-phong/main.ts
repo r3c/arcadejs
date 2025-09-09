@@ -22,12 +22,11 @@ import {
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
   createForwardLightingRenderer,
+  ForwardLightingHandle,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
-  RendererHandle,
 } from "../../engine/graphic/renderer";
-import { ForwardLightingAction } from "../../engine/graphic/renderer/forward-lighting";
 
 /*
  ** What changed?
@@ -103,9 +102,9 @@ const applicationBuilder = async (
   const projectionMatrix = Matrix4.fromIdentity();
 
   let debugMode = false;
-  let directionalLightHandles: RendererHandle<ForwardLightingAction>[] = [];
+  let directionalLightHandles: ForwardLightingHandle[] = [];
   let move = false;
-  let pointLightHandles: RendererHandle<ForwardLightingAction>[] = [];
+  let pointLightHandles: ForwardLightingHandle[] = [];
   let renderer: ForwardLightingRenderer | undefined = undefined;
   let time = 0;
 
@@ -128,7 +127,7 @@ const applicationBuilder = async (
 
       const groundHandle = newRenderer.append({ mesh: models.ground.mesh });
 
-      groundHandle.action.transform.translate({ x: 0, y: -1.5, z: 0 });
+      groundHandle.transform.translate({ x: 0, y: -1.5, z: 0 });
 
       directionalLightHandles = range(configuration.nbDirectionalLights).map(
         () => newRenderer.append({ mesh: models.light.mesh, noShadow: true })
@@ -199,24 +198,24 @@ const applicationBuilder = async (
       // Update light positions
       for (let i = 0; i < directionalLightHandles.length; ++i) {
         const { direction, mover } = directionalLights[i];
-        const { action } = directionalLightHandles[i];
+        const { transform } = directionalLightHandles[i];
 
         direction.set(mover(Vector3.zero, -time * 0.0005));
         direction.normalize();
         direction.scale(10);
 
-        action.transform.set(Matrix4.identity);
-        action.transform.translate(direction);
+        transform.set(Matrix4.identity);
+        transform.translate(direction);
       }
 
       for (let i = 0; i < pointLightHandles.length; ++i) {
         const { mover, position } = pointLights[i];
-        const { action } = pointLightHandles[i];
+        const { transform } = pointLightHandles[i];
 
         position.set(mover(Vector3.zero, time * 0.0005));
 
-        action.transform.set(Matrix4.identity);
-        action.transform.translate(position);
+        transform.set(Matrix4.identity);
+        transform.translate(position);
       }
 
       // Move camera
