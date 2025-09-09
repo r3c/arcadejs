@@ -23,7 +23,7 @@ import {
   createDeferredLightingRenderer,
   createDeferredShadingRenderer,
 } from "../../engine/graphic/renderer";
-import { WebGLScreen } from "../../engine/graphic/display";
+import { WebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";

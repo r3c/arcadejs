@@ -1,6 +1,6 @@
 import { type Application, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/display";
+import { WebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import {
   Mesh,

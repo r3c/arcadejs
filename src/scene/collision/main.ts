@@ -1,6 +1,6 @@
 import { type Application, declare } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/display";
+import { WebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4 } from "../../engine/math/matrix";
