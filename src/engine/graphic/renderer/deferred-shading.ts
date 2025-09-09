@@ -28,7 +28,7 @@ import {
   GlPointLightPolygon,
   createDirectionalLightBillboard,
   createPointLightBillboard,
-} from "../webgl/renderers/objects/billboard";
+} from "../webgl/billboard";
 import {
   GlShader,
   GlShaderAttribute,
