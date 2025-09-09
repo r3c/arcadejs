@@ -27,19 +27,13 @@ import {
 } from "../webgl/shaders/rgb";
 import { shininessDecode, shininessEncode } from "../webgl/shaders/shininess";
 import { Vector2, Vector3 } from "../../math/vector";
-import {
-  GlPainter,
-  GlRuntime,
-  GlTarget,
-  GlTextureFormat,
-  GlTextureType,
-} from "../webgl";
+import { GlRuntime, GlTarget, GlTextureFormat, GlTextureType } from "../webgl";
 import {
   GlDirectionalLightPolygon,
   GlPointLightPolygon,
   createDirectionalLightBillboard,
   createPointLightBillboard,
-} from "../webgl/renderers/objects/billboard";
+} from "../webgl/billboard";
 import {
   shaderUniform,
   shaderDirective,
@@ -54,7 +48,7 @@ import {
   createTransformableMesh,
 } from "../webgl/model";
 import { GlBuffer } from "../webgl/resource";
-import { SinglePainter } from "../webgl/painters/single";
+import { GlPainter, SinglePainter } from "../webgl/painters/single";
 import { Renderer } from "./definition";
 import {
   GlMeshBinder,

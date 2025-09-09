@@ -37,10 +37,6 @@ type GlDrawMode =
   | WebGL2RenderingContext["TRIANGLES"]
   | WebGL2RenderingContext["LINES"];
 
-type GlPainter<TScene> = {
-  paint(target: GlTarget, scene: TScene): void;
-};
-
 type GlRuntime = Disposable & {
   createShader: (
     vertexShaderSource: string,
@@ -502,7 +498,6 @@ class GlTarget {
 }
 
 export {
-  type GlPainter,
   type GlRuntime,
   GlTarget,
   GlTextureFormat,

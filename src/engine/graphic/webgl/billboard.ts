@@ -1,14 +1,14 @@
-import { createFlexibleArray } from "../../../../io/memory";
-import { Disposable } from "../../../../language/lifecycle";
+import { createFlexibleArray } from "../../io/memory";
+import { Disposable } from "../../language/lifecycle";
 import {
   GlBuffer,
   GlContext,
   createDynamicArrayBuffer,
   createDynamicIndexBuffer,
   createStaticArrayBuffer,
-} from "../../resource";
-import { GlShaderAttribute, createAttribute } from "../../shader";
-import { PointLight } from "../../shaders/light";
+} from "./resource";
+import { GlShaderAttribute, createAttribute } from "./shader";
+import { PointLight } from "./shaders/light";
 
 type GlDirectionalLightBillboard = Disposable & {
   index: GlBuffer;

@@ -1,6 +1,10 @@
-import { GlPainter, GlTarget } from "../../webgl";
+import { GlTarget } from "../../webgl";
 import { GlBuffer } from "../resource";
 import { GlShaderBinding } from "../shader";
+
+type GlPainter<TScene> = {
+  paint(target: GlTarget, scene: TScene): void;
+};
 
 class SinglePainter<TScene> implements GlPainter<TScene> {
   private readonly binding: GlShaderBinding<TScene>;
@@ -25,4 +29,4 @@ class SinglePainter<TScene> implements GlPainter<TScene> {
   }
 }
 
-export { SinglePainter };
+export { type GlPainter, SinglePainter };
