@@ -1,3 +1,4 @@
+import { Disposable } from "../../../language/lifecycle";
 import { Matrix4 } from "../../../math/matrix";
 import { GlRuntime, GlTarget } from "../../webgl";
 import {
@@ -8,7 +9,6 @@ import {
 } from "../shader";
 import { SinglePainter } from "../painters/single";
 import { GlBuffer } from "../resource";
-import { Renderer } from "../../display";
 import { GlTexture } from "../texture";
 import { GlModel, createModel } from "../model";
 import { linearToStandard } from "../shaders/rgb";
@@ -162,7 +162,7 @@ const createShader = (
   });
 };
 
-class DebugTextureRenderer implements Renderer<GlTexture> {
+class DebugTextureRenderer implements Disposable {
   private readonly painter: SinglePainter<DebugTextureScene>;
   private readonly quad: GlModel;
   private readonly runtime: GlRuntime;
