@@ -5,7 +5,7 @@ import {
   declare,
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
-import { Context2DScreen } from "../../engine/graphic/display";
+import { Context2DScreen } from "../../engine/graphic/screen";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import {} from "../../engine/graphic/mesh";

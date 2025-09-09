@@ -1,4 +1,4 @@
-import { Context2DScreen } from "../display";
+import { Context2DScreen } from "../screen";
 import { Matrix4, MutableMatrix4 } from "../../math/matrix";
 import { Material, Mesh, defaultColor } from "../mesh";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";

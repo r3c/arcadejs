@@ -1,5 +1,5 @@
 import { type Application, declare } from "../../engine/application";
-import { Context2DScreen } from "../../engine/graphic/display";
+import { Context2DScreen } from "../../engine/graphic/screen";
 import {
   SoftwareDrawMode,
   createSoftwareRenderer,

@@ -1,5 +1,5 @@
 import { Disposable } from "./language/lifecycle";
-import { Screen } from "./graphic/display";
+import { Screen } from "./graphic/screen";
 import { Vector2 } from "./math/vector";
 
 type Application<TConfiguration> = Disposable & {

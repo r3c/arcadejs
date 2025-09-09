@@ -6,7 +6,7 @@ import {
   declare,
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/display";
+import { WebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
 import { loadMeshFromGltf, loadMeshFromJson } from "../../engine/graphic/mesh";
