@@ -150,7 +150,7 @@ const applicationBuilder = async (
     ]),
     radius: maxWorldRenderSize,
   }));
-  const projectionMatrix = Matrix4.fromIdentity();
+  const projection = Matrix4.fromIdentity();
 
   let move = 0;
   let time = 0;
@@ -281,20 +281,15 @@ const applicationBuilder = async (
           position,
           radius,
         })),
-        projectionMatrix,
-        viewMatrix: camera.viewMatrix,
+        projection,
+        view: camera.viewMatrix,
       };
 
       renderer.render(lightScene);
     },
 
     resize(size) {
-      projectionMatrix.setFromPerspective(
-        Math.PI / 4,
-        size.x / size.y,
-        0.1,
-        100
-      );
+      projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
       renderer.resize(size);
       target.resize(size);
     },
