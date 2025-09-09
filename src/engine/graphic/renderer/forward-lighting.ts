@@ -36,11 +36,12 @@ import {
 } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
 import {
-  PainterBinder,
-  PainterMatrix,
-  PainterMode,
-  createBindingPainter,
-} from "../webgl/painter";
+  GlMeshBinder,
+  GlMeshMatrix,
+  GlMeshRendererMode,
+  GlMeshScene,
+  createGlMeshRenderer,
+} from "./gl-mesh";
 import { Renderer } from "./definition";
 
 type ForwardLightingConfiguration = {
@@ -71,7 +72,7 @@ enum ForwardLightingLightModel {
 
 type ShadowDirectionalLight = DirectionalLight & {
   shadowMap: GlTexture;
-  shadowViewMatrix: Matrix4;
+  shadowView: Matrix4;
 };
 
 type EnvironmentLight = {
@@ -95,13 +96,12 @@ type ForwardLightingRenderer = Disposable &
     directionalShadowBuffers: GlTexture[];
   };
 
-type ForwardLightingScene = {
+type ForwardLightingScene = GlMeshScene & {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   environmentLight?: EnvironmentLight;
   pointLights?: PointLight[];
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
+  projection: Matrix4;
 };
 
 type ForwardLightingSubject = {
@@ -109,7 +109,7 @@ type ForwardLightingSubject = {
   noShadow?: boolean;
 };
 
-type LightScene = {
+type LightScene = GlMeshScene & {
   ambientLightColor: Vector3;
   directionalShadowLights: ShadowDirectionalLight[];
   environmentLight?: {
@@ -118,14 +118,12 @@ type LightScene = {
     specular: GlTexture;
   };
   pointShadowLights: PointLight[]; // FIXME: extend PointLight with extra properties
-  projectionMatrix: Matrix4;
-  projectionShadowMatrix: Matrix4;
-  viewMatrix: Matrix4;
+  projection: Matrix4;
+  projectionShadow: Matrix4;
 };
 
-type ShadowScene = {
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
+type ShadowScene = GlMeshScene & {
+  projection: Matrix4;
 };
 
 const lightHeaderShader = (
@@ -430,7 +428,7 @@ void main(void) {
 const createLightBinder = (
   runtime: GlRuntime,
   configuration: Required<ForwardLightingConfiguration>
-): PainterBinder<LightScene> => {
+): GlMeshBinder<LightScene> => {
   // [forward-lighting-feature]
   return (_feature) => {
     const shader = createLightShader(runtime, configuration);
@@ -444,7 +442,7 @@ const createLightBinder = (
     polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
 
     // Bind matrix uniforms
-    const matrixBinding = shader.declare<PainterMatrix>();
+    const matrixBinding = shader.declare<GlMeshMatrix>();
 
     matrixBinding.setUniform(
       "modelMatrix",
@@ -460,20 +458,17 @@ const createLightBinder = (
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+      shaderUniform.matrix4f(({ projection }) => projection)
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+      shaderUniform.matrix4f(({ view }) => view)
     );
 
     if (!configuration.noShadow) {
       sceneBinding.setUniform(
         "shadowProjectionMatrix",
-        shaderUniform.matrix4f(
-          ({ projectionShadowMatrix: shadowProjectionMatrix }) =>
-            shadowProjectionMatrix
-        )
+        shaderUniform.matrix4f(({ projectionShadow }) => projectionShadow)
       );
     }
 
@@ -625,7 +620,7 @@ const createLightBinder = (
           `directionalLights[${index}].shadowViewMatrix`,
           shaderUniform.matrix4f(({ directionalShadowLights }) =>
             index < directionalShadowLights.length
-              ? directionalShadowLights[index].shadowViewMatrix
+              ? directionalShadowLights[index].shadowView
               : Matrix4.identity
           )
         );
@@ -686,10 +681,10 @@ const createLightBinder = (
 
     return {
       dispose: shader.dispose,
-      materialBinding,
-      matrixBinding,
-      polygonBinding,
-      sceneBinding,
+      material: materialBinding,
+      matrix: matrixBinding,
+      polygon: polygonBinding,
+      scene: sceneBinding,
     };
   };
 };
@@ -747,7 +742,7 @@ const createLightShader = (
 
 const createDirectionalShadowBinder = (
   runtime: GlRuntime
-): PainterBinder<ShadowScene> => {
+): GlMeshBinder<ShadowScene> => {
   return () => {
     const shader = createDirectionalShadowShader(runtime);
 
@@ -755,7 +750,7 @@ const createDirectionalShadowBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const matrixBinding = shader.declare<PainterMatrix>();
+    const matrixBinding = shader.declare<GlMeshMatrix>();
 
     matrixBinding.setUniform(
       "modelMatrix",
@@ -766,21 +761,21 @@ const createDirectionalShadowBinder = (
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+      shaderUniform.matrix4f(({ projection }) => projection)
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+      shaderUniform.matrix4f(({ view }) => view)
     );
 
     const materialBinding = shader.declare<GlMaterial>();
 
     return {
       dispose: shader.dispose,
-      materialBinding,
-      matrixBinding,
-      polygonBinding,
-      sceneBinding,
+      material: materialBinding,
+      matrix: matrixBinding,
+      polygon: polygonBinding,
+      scene: sceneBinding,
     };
   };
 };
@@ -826,17 +821,22 @@ const createForwardLightingRenderer = (
     fullConfiguration.maxDirectionalLights
   ).map(() => new GlTarget(gl, targetSize));
   const lightBinder = createLightBinder(runtime, fullConfiguration);
-  const lightPainter = createBindingPainter(PainterMode.Triangle, lightBinder);
+  const lightRenderer = createGlMeshRenderer(
+    target,
+    GlMeshRendererMode.Triangle,
+    lightBinder
+  );
 
   const directionalShadowBuffers = directionalShadowTargets.map((target) =>
     target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
   );
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
-  const directionalShadowPainter = createBindingPainter(
-    PainterMode.Triangle,
+  const directionalShadowRenderer = createGlMeshRenderer(
+    target,
+    GlMeshRendererMode.Triangle,
     directionalShadowBinder
   );
-  const directionalShadowProjectionMatrix = Matrix4.fromIdentity([
+  const directionalShadowProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
     -10,
     10,
@@ -853,8 +853,8 @@ const createForwardLightingRenderer = (
     directionalShadowBuffers,
 
     dispose: () => {
-      directionalShadowPainter.dispose();
-      lightPainter.dispose();
+      directionalShadowRenderer.dispose();
+      lightRenderer.dispose();
     },
 
     append: (subject) => {
@@ -862,8 +862,8 @@ const createForwardLightingRenderer = (
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
       const shadowResource =
-        noShadow !== true ? directionalShadowPainter.append(mesh) : undefined;
-      const lightResource = lightPainter.append(mesh);
+        noShadow !== true ? directionalShadowRenderer.append(mesh) : undefined;
+      const lightResource = lightRenderer.append(mesh);
 
       return {
         remove: () => {
@@ -880,8 +880,8 @@ const createForwardLightingRenderer = (
         directionalLights,
         environmentLight,
         pointLights,
-        projectionMatrix,
-        viewMatrix,
+        projection,
+        view,
       } = scene;
 
       gl.colorMask(false, false, false, false);
@@ -913,7 +913,7 @@ const createForwardLightingRenderer = (
             -light.direction.z
           );
 
-          const viewMatrix = Matrix4.fromSource(
+          const shadowView = Matrix4.fromSource(
             Matrix4.identity,
             ["translate", { x: 0, y: 0, z: -10 }],
             [
@@ -930,18 +930,17 @@ const createForwardLightingRenderer = (
 
           target.clear(0);
 
-          directionalShadowPainter.render(
-            target,
-            { projectionMatrix: directionalShadowProjectionMatrix, viewMatrix },
-            viewMatrix
-          );
+          directionalShadowRenderer.render({
+            projection: directionalShadowProjection,
+            view,
+          });
 
           directionalShadowLights.push({
             color: light.color,
             direction: light.direction,
             shadow: light.shadow,
             shadowMap: directionalShadowBuffers[bufferIndex],
-            shadowViewMatrix: viewMatrix,
+            shadowView,
           });
 
           ++bufferIndex;
@@ -952,19 +951,15 @@ const createForwardLightingRenderer = (
       gl.colorMask(true, true, true, true);
       gl.cullFace(gl.BACK);
 
-      lightPainter.render(
-        target,
-        {
-          ambientLightColor: ambientLightColor ?? Vector3.zero,
-          directionalShadowLights,
-          environmentLight,
-          pointShadowLights: pointLights ?? [],
-          projectionMatrix,
-          projectionShadowMatrix: directionalShadowProjectionMatrix,
-          viewMatrix,
-        },
-        viewMatrix
-      );
+      lightRenderer.render({
+        ambientLightColor: ambientLightColor ?? Vector3.zero,
+        directionalShadowLights,
+        environmentLight,
+        pointShadowLights: pointLights ?? [],
+        projection,
+        projectionShadow: directionalShadowProjection,
+        view,
+      });
     },
 
     resize: () => {},

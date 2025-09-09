@@ -351,7 +351,7 @@ const applicationBuilder = async (
   );
 
   // Create state
-  const projectionMatrix = Matrix4.fromIdentity();
+  const projection = Matrix4.fromIdentity();
   const state: ApplicationState = {
     input,
     lights,
@@ -399,8 +399,8 @@ const applicationBuilder = async (
           position,
           radius: 100,
         })),
-        projectionMatrix,
-        viewMatrix: camera.viewMatrix,
+        projection,
+        view: camera.viewMatrix,
       };
 
       sceneRenderer.render(scene);
@@ -409,12 +409,7 @@ const applicationBuilder = async (
 
     resize(size) {
       particleRenderer.resize(size);
-      projectionMatrix.setFromPerspective(
-        Math.PI / 4,
-        size.x / size.y,
-        0.1,
-        10000
-      );
+      projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
       sceneRenderer.resize(size);
       target.resize(size);
     },

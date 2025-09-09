@@ -54,11 +54,12 @@ import {
 import { commonMesh } from "../mesh";
 import { Renderer } from "./definition";
 import {
-  createBindingPainter,
-  PainterBinder,
-  PainterMatrix,
-  PainterMode,
-} from "../webgl/painter";
+  GlMeshBinder,
+  GlMeshMatrix,
+  GlMeshRendererMode,
+  GlMeshScene,
+  createGlMeshRenderer,
+} from "./gl-mesh";
 
 const enum DeferredShadingLightModel {
   None,
@@ -381,39 +382,35 @@ type DeferredShadingRenderer = Disposable &
     normalAndSpecularBuffer: GlTexture;
   };
 
-type DeferredShadingScene = {
+type DeferredShadingScene = GlMeshScene & {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   pointLights?: PointLight[];
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
+  projection: Matrix4;
 };
 
 type DeferredShadingSubject = {
   mesh: GlMesh;
 };
 
-type AmbientLightScene = {
+type AmbientLightScene = GlMeshScene & {
   diffuseAndShininessBuffer: GlTexture;
   ambientLightColor: Vector3;
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
+  projection: Matrix4;
 };
 
-type GeometryScene = {
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
+type GeometryScene = GlMeshScene & {
+  projection: Matrix4;
 };
 
-type LightScene = {
+type LightScene = GlMeshScene & {
   diffuseAndShininessBuffer: GlTexture;
   depthBuffer: GlTexture;
   index: GlBuffer;
+  model: Matrix4;
   normalAndSpecularBuffer: GlTexture;
-  projectionMatrix: Matrix4;
-  viewportSize: Vector2;
-  modelMatrix: Matrix4;
-  viewMatrix: Matrix4;
+  projection: Matrix4;
+  viewport: Vector2;
 };
 
 type DirectionalLightScene = LightScene & {
@@ -422,7 +419,7 @@ type DirectionalLightScene = LightScene & {
 };
 
 type PointLightScene = LightScene & {
-  billboardMatrix: Matrix4;
+  billboard: Matrix4;
   polygon: GlPointLightPolygon;
 };
 
@@ -435,7 +432,7 @@ type PostScene = {
 const createAmbientLightBinder = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration
-): PainterBinder<AmbientLightScene> => {
+): GlMeshBinder<AmbientLightScene> => {
   return () => {
     const shader = createAmbientLightShader(runtime, configuration);
 
@@ -443,7 +440,7 @@ const createAmbientLightBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const matrixBinding = shader.declare<PainterMatrix>();
+    const matrixBinding = shader.declare<GlMeshMatrix>();
 
     matrixBinding.setUniform(
       "modelMatrix",
@@ -454,11 +451,11 @@ const createAmbientLightBinder = (
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+      shaderUniform.matrix4f(({ projection }) => projection)
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+      shaderUniform.matrix4f(({ view }) => view)
     );
     sceneBinding.setUniform(
       "diffuseAndShininess",
@@ -473,10 +470,10 @@ const createAmbientLightBinder = (
 
     return {
       dispose: shader.dispose,
-      materialBinding,
-      matrixBinding,
-      polygonBinding,
-      sceneBinding,
+      material: materialBinding,
+      matrix: matrixBinding,
+      polygon: polygonBinding,
+      scene: sceneBinding,
     };
   };
 };
@@ -508,7 +505,7 @@ const createAmbientLightShader = (
 const createGeometryBinder = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration
-): PainterBinder<GeometryScene> => {
+): GlMeshBinder<GeometryScene> => {
   return () => {
     const shader = createGeometryShader(runtime);
 
@@ -520,7 +517,7 @@ const createGeometryBinder = (
     polygonBinding.setAttribute("positions", ({ position }) => position);
     polygonBinding.setAttribute("tangents", ({ tangent }) => tangent);
 
-    const matrixBinding = shader.declare<PainterMatrix>();
+    const matrixBinding = shader.declare<GlMeshMatrix>();
 
     matrixBinding.setUniform(
       "modelMatrix",
@@ -535,11 +532,11 @@ const createGeometryBinder = (
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+      shaderUniform.matrix4f(({ projection }) => projection)
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+      shaderUniform.matrix4f(({ view }) => view)
     );
 
     const materialBinding = shader.declare<GlMaterial>();
@@ -591,10 +588,10 @@ const createGeometryBinder = (
 
     return {
       dispose: shader.dispose,
-      materialBinding,
-      matrixBinding,
-      polygonBinding,
-      sceneBinding,
+      material: materialBinding,
+      matrix: matrixBinding,
+      polygon: polygonBinding,
+      scene: sceneBinding,
     };
   };
 };
@@ -637,12 +634,12 @@ const loadLightBinding = <TScene extends LightScene>(
 
   binding.setUniform(
     "modelMatrix",
-    shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
+    shaderUniform.matrix4f(({ model }) => model)
   );
   binding.setUniform(
     "inverseProjectionMatrix",
-    shaderUniform.matrix4f(({ projectionMatrix }) => {
-      const inverseProjectionMatrix = Matrix4.fromSource(projectionMatrix);
+    shaderUniform.matrix4f(({ projection }) => {
+      const inverseProjectionMatrix = Matrix4.fromSource(projection);
 
       inverseProjectionMatrix.invert();
 
@@ -651,15 +648,15 @@ const loadLightBinding = <TScene extends LightScene>(
   );
   binding.setUniform(
     "projectionMatrix",
-    shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+    shaderUniform.matrix4f(({ projection }) => projection)
   );
   binding.setUniform(
     "viewMatrix",
-    shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+    shaderUniform.matrix4f(({ view }) => view)
   );
   binding.setUniform(
     "viewportSize",
-    shaderUniform.vector2f(({ viewportSize }) => viewportSize)
+    shaderUniform.vector2f(({ viewport }) => viewport)
   );
   binding.setUniform(
     "diffuseAndShininess",
@@ -716,7 +713,7 @@ const loadPointLightPainter = (
 
   binding.setUniform(
     "billboardMatrix",
-    shaderUniform.matrix4f(({ billboardMatrix }) => billboardMatrix)
+    shaderUniform.matrix4f(({ billboard }) => billboard)
   );
   binding.setAttribute("lightColor", ({ polygon: p }) => p.lightColor);
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
@@ -760,11 +757,12 @@ const createDeferredShadingRenderer = (
     GlTextureType.Quad
   );
   const ambientLightBinder = createAmbientLightBinder(runtime, configuration);
-  const ambientLightPainter = createBindingPainter(
-    PainterMode.Triangle,
+  const ambientLightRenderer = createGlMeshRenderer(
+    sceneTarget,
+    GlMeshRendererMode.Triangle,
     ambientLightBinder
   );
-  ambientLightPainter.append(quad.mesh);
+  ambientLightRenderer.append(quad.mesh);
   const depthBuffer = geometryTarget.setupDepthTexture(
     GlTextureFormat.Depth16,
     GlTextureType.Quad
@@ -784,8 +782,9 @@ const createDeferredShadingRenderer = (
     1,
   ]);
   const geometryBinder = createGeometryBinder(runtime, configuration);
-  const geometryPainter = createBindingPainter(
-    PainterMode.Triangle,
+  const geometryRenderer = createGlMeshRenderer(
+    geometryTarget,
+    GlMeshRendererMode.Triangle,
     geometryBinder
   );
   const pointLightBillboard = createPointLightBillboard(gl);
@@ -806,8 +805,8 @@ const createDeferredShadingRenderer = (
     normalAndSpecularBuffer,
 
     dispose() {
-      ambientLightPainter.dispose();
-      geometryPainter.dispose();
+      ambientLightRenderer.dispose();
+      geometryRenderer.dispose();
       quad.dispose();
     },
 
@@ -815,7 +814,7 @@ const createDeferredShadingRenderer = (
       const { mesh: originalMesh } = subject;
       const { mesh, transform } = createTransformableMesh(originalMesh);
 
-      const resource = geometryPainter.append(mesh);
+      const resource = geometryRenderer.append(mesh);
 
       return {
         remove: resource.remove,
@@ -828,28 +827,28 @@ const createDeferredShadingRenderer = (
         ambientLightColor,
         directionalLights,
         pointLights,
-        projectionMatrix,
-        viewMatrix,
+        projection,
+        view,
       } = scene;
 
-      const viewportSize = {
+      const viewport = {
         x: gl.drawingBufferWidth,
         y: gl.drawingBufferHeight,
       };
 
       // Build billboard matrix from view matrix to get camera-facing quads by
       // copying view matrix and cancelling any rotation.
-      const billboardMatrix = Matrix4.fromSource(viewMatrix);
+      const billboard = Matrix4.fromSource(view);
 
-      billboardMatrix.v00 = 1;
-      billboardMatrix.v01 = 0;
-      billboardMatrix.v02 = 0;
-      billboardMatrix.v10 = 0;
-      billboardMatrix.v11 = 1;
-      billboardMatrix.v12 = 0;
-      billboardMatrix.v20 = 0;
-      billboardMatrix.v21 = 0;
-      billboardMatrix.v22 = 1;
+      billboard.v00 = 1;
+      billboard.v01 = 0;
+      billboard.v02 = 0;
+      billboard.v10 = 0;
+      billboard.v11 = 1;
+      billboard.v12 = 0;
+      billboard.v20 = 0;
+      billboard.v21 = 0;
+      billboard.v22 = 1;
 
       // Draw scene geometries
       gl.enable(gl.CULL_FACE);
@@ -861,7 +860,7 @@ const createDeferredShadingRenderer = (
       gl.depthMask(true);
 
       geometryTarget.clear(0);
-      geometryPainter.render(geometryTarget, scene, viewMatrix);
+      geometryRenderer.render(scene);
 
       // Draw scene lights
       gl.disable(gl.DEPTH_TEST);
@@ -874,16 +873,12 @@ const createDeferredShadingRenderer = (
 
       // Draw ambient light using fullscreen quad
       if (ambientLightColor !== undefined) {
-        ambientLightPainter.render(
-          sceneTarget,
-          {
-            diffuseAndShininessBuffer: diffuseAndShininessBuffer,
-            ambientLightColor,
-            projectionMatrix: fullscreenProjection,
-            viewMatrix: Matrix4.identity,
-          },
-          Matrix4.identity
-        );
+        ambientLightRenderer.render({
+          diffuseAndShininessBuffer: diffuseAndShininessBuffer,
+          ambientLightColor,
+          projection: fullscreenProjection,
+          view: Matrix4.identity,
+        });
       }
 
       // Draw directional lights using fullscreen quads
@@ -892,9 +887,9 @@ const createDeferredShadingRenderer = (
         // passing 2 distinct "view" matrices to light shader:
         // - One for projecting our quad to fullscreen
         // - One for computing light directions in camera space
-        const modelMatrix = Matrix4.fromSource(viewMatrix);
+        const model = Matrix4.fromSource(view);
 
-        modelMatrix.invert();
+        model.invert();
 
         for (const directionalLight of directionalLights) {
           directionalLightPainter.paint(sceneTarget, {
@@ -902,12 +897,12 @@ const createDeferredShadingRenderer = (
             depthBuffer: depthBuffer,
             directionalLight,
             index: directionalLightBillboard.index,
-            modelMatrix,
+            model,
             normalAndSpecularBuffer: normalAndSpecularBuffer,
             polygon: directionalLightBillboard.polygon,
-            projectionMatrix: fullscreenProjection,
-            viewMatrix,
-            viewportSize,
+            projection: fullscreenProjection,
+            view,
+            viewport,
           });
         }
       }
@@ -918,15 +913,15 @@ const createDeferredShadingRenderer = (
 
         pointLightPainter.paint(sceneTarget, {
           diffuseAndShininessBuffer: diffuseAndShininessBuffer,
-          billboardMatrix,
-          depthBuffer: depthBuffer,
+          billboard,
+          depthBuffer,
           index: pointLightBillboard.index,
-          modelMatrix: Matrix4.identity, // FIXME: remove from shader
+          model: Matrix4.identity, // FIXME: remove from shader
           normalAndSpecularBuffer: normalAndSpecularBuffer,
           polygon: pointLightBillboard.polygon,
-          projectionMatrix,
-          viewMatrix,
-          viewportSize,
+          projection,
+          view,
+          viewport,
         });
       }
 

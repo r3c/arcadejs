@@ -193,7 +193,7 @@ const applicationBuilder = async (
     position: Vector3.fromZero(),
     radius: 0,
   }));
-  const projectionMatrix = Matrix4.fromIdentity();
+  const projection = Matrix4.fromIdentity();
 
   let debugRenderer: DebugTextureRenderer | undefined = undefined;
   let debugTexture: GlTexture | undefined = undefined;
@@ -339,8 +339,8 @@ const applicationBuilder = async (
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
         directionalLights,
         pointLights,
-        projectionMatrix,
-        viewMatrix: camera.viewMatrix,
+        projection,
+        view: camera.viewMatrix,
       };
 
       sceneRenderer?.render(scene);
@@ -352,12 +352,7 @@ const applicationBuilder = async (
     },
 
     resize(size) {
-      projectionMatrix.setFromPerspective(
-        Math.PI / 4,
-        size.x / size.y,
-        0.1,
-        100
-      );
+      projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
       debugRenderer?.resize(size);
       sceneRenderer?.resize(size);
 

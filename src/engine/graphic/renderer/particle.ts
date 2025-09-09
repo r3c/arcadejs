@@ -70,8 +70,8 @@ type ParticleSpark = {
 };
 
 type ParticleScene = {
-  projectionMatrix: Matrix4;
-  viewMatrix: Matrix4;
+  projection: Matrix4;
+  view: Matrix4;
 };
 
 type ParticleSubject<TSeed> = {
@@ -88,7 +88,7 @@ type ParticleUpdater = (
 ) => void;
 
 type SceneState = ParticleScene & {
-  billboardMatrix: MutableMatrix4;
+  billboard: MutableMatrix4;
 };
 
 const particleVertexShader = `
@@ -286,25 +286,25 @@ const createParticleRenderer = <TSeed>(
 
   sceneBinding.setUniform(
     "billboardMatrix",
-    shaderUniform.matrix4f(({ billboardMatrix }) => billboardMatrix)
+    shaderUniform.matrix4f(({ billboard }) => billboard)
   );
 
   sceneBinding.setUniform(
     "projectionMatrix",
-    shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+    shaderUniform.matrix4f(({ projection }) => projection)
   );
 
   sceneBinding.setUniform(
     "viewMatrix",
-    shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+    shaderUniform.matrix4f(({ view }) => view)
   );
 
   const billboards: ParticleBillboard[] = [];
   const painter = new SinglePainter(billboardBinding, ({ index }) => index);
   const sceneState = {
-    billboardMatrix: Matrix4.fromIdentity(),
-    projectionMatrix: Matrix4.identity,
-    viewMatrix: Matrix4.identity,
+    billboard: Matrix4.fromIdentity(),
+    projection: Matrix4.identity,
+    view: Matrix4.identity,
   };
 
   return {
@@ -337,31 +337,31 @@ const createParticleRenderer = <TSeed>(
     },
 
     render(scene) {
-      const { projectionMatrix, viewMatrix } = scene;
+      const { projection, view } = scene;
       const gl = runtime.context;
 
       // Build billboard matrix from view matrix to get camera-facing quads by
       // copying view matrix and cancelling any rotation.
-      sceneState.billboardMatrix.v00 = 1;
-      sceneState.billboardMatrix.v01 = 0;
-      sceneState.billboardMatrix.v02 = 0;
-      sceneState.billboardMatrix.v03 = viewMatrix.v03;
-      sceneState.billboardMatrix.v10 = 0;
-      sceneState.billboardMatrix.v11 = 1;
-      sceneState.billboardMatrix.v12 = 0;
-      sceneState.billboardMatrix.v13 = viewMatrix.v13;
-      sceneState.billboardMatrix.v20 = 0;
-      sceneState.billboardMatrix.v21 = 0;
-      sceneState.billboardMatrix.v22 = 1;
-      sceneState.billboardMatrix.v23 = viewMatrix.v23;
-      sceneState.billboardMatrix.v30 = viewMatrix.v30;
-      sceneState.billboardMatrix.v31 = viewMatrix.v31;
-      sceneState.billboardMatrix.v32 = viewMatrix.v32;
-      sceneState.billboardMatrix.v33 = viewMatrix.v33;
+      sceneState.billboard.v00 = 1;
+      sceneState.billboard.v01 = 0;
+      sceneState.billboard.v02 = 0;
+      sceneState.billboard.v03 = view.v03;
+      sceneState.billboard.v10 = 0;
+      sceneState.billboard.v11 = 1;
+      sceneState.billboard.v12 = 0;
+      sceneState.billboard.v13 = view.v13;
+      sceneState.billboard.v20 = 0;
+      sceneState.billboard.v21 = 0;
+      sceneState.billboard.v22 = 1;
+      sceneState.billboard.v23 = view.v23;
+      sceneState.billboard.v30 = view.v30;
+      sceneState.billboard.v31 = view.v31;
+      sceneState.billboard.v32 = view.v32;
+      sceneState.billboard.v33 = view.v33;
 
       // Copy projection & view matrices from input scene
-      sceneState.projectionMatrix = projectionMatrix;
-      sceneState.viewMatrix = viewMatrix;
+      sceneState.projection = projection;
+      sceneState.view = view;
 
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
