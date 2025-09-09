@@ -12,7 +12,7 @@ import {
   DebugTextureChannel,
 } from "../../engine/graphic/webgl/renderers/debug-texture";
 import {
-  DeferredLightingAction,
+  DeferredLightingHandle,
   DeferredLightingLightModel,
   DeferredLightingSubject,
   createDeferredLightingRenderer,
@@ -29,14 +29,14 @@ import { brightColor } from "../../engine/graphic/color";
 import { createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import {
-  DeferredShadingAction,
+  DeferredShadingHandle,
   DeferredShadingLightModel,
   DeferredShadingScene,
   DeferredShadingSubject,
   createDeferredShadingRenderer,
 } from "../../engine/graphic/renderer/deferred-shading";
 import { createOrbitCamera } from "../../engine/stage/camera";
-import { Renderer, RendererHandle } from "../../engine/graphic/renderer";
+import { Renderer } from "../../engine/graphic/renderer";
 import { Disposable } from "../../engine/language/lifecycle";
 
 /*
@@ -120,10 +120,10 @@ const pointLightParameters = [
 type DeferredRenderer = Renderer<
   DeferredScene,
   DeferredSubject,
-  DeferredAction
+  DeferredHandle
 > &
   Disposable;
-type DeferredAction = DeferredLightingAction & DeferredShadingAction;
+type DeferredHandle = DeferredLightingHandle & DeferredShadingHandle;
 type DeferredScene = DeferredLightingScene & DeferredShadingScene;
 type DeferredSubject = DeferredLightingSubject & DeferredShadingSubject;
 
@@ -198,10 +198,10 @@ const applicationBuilder = async (
   let debugRenderer: DebugTextureRenderer | undefined = undefined;
   let debugTexture: GlTexture | undefined = undefined;
   let directionalLights: typeof allDirectionalLights;
-  let directionalLightHandles: RendererHandle<DeferredAction>[] = [];
+  let directionalLightHandles: DeferredHandle[] = [];
   let move = false;
   let pointLights: typeof allPointLights;
-  let pointLightHandles: RendererHandle<DeferredAction>[] = [];
+  let pointLightHandles: DeferredHandle[] = [];
   let sceneRenderer: DeferredRenderer | undefined = undefined;
   let time = 0;
 
@@ -280,7 +280,7 @@ const applicationBuilder = async (
       for (const i of range(16)) {
         const cubeHandle = newRenderer.append({ mesh: models.cube.mesh });
 
-        cubeHandle.action.transform.translate({
+        cubeHandle.transform.translate({
           x: ((i % 4) - 1.5) * 2,
           y: 0,
           z: (Math.floor(i / 4) - 1.5) * 2,
@@ -290,7 +290,7 @@ const applicationBuilder = async (
       // Register ground subject
       const groundHandle = newRenderer.append({ mesh: models.ground.mesh });
 
-      groundHandle.action.transform.translate({ x: 0, y: -1.5, z: 0 });
+      groundHandle.transform.translate({ x: 0, y: -1.5, z: 0 });
 
       // Update lights & light subjects
       const directionalLightParameter =
@@ -367,24 +367,24 @@ const applicationBuilder = async (
     update(dt) {
       for (let i = 0; i < directionalLights.length; ++i) {
         const { direction, mover } = directionalLights[i];
-        const { action } = directionalLightHandles[i];
+        const { transform } = directionalLightHandles[i];
 
         direction.set(mover(Vector3.zero, time * 0.001));
         direction.normalize();
         direction.scale(10);
 
-        action.transform.set(Matrix4.identity);
-        action.transform.translate(direction);
+        transform.set(Matrix4.identity);
+        transform.translate(direction);
       }
 
       for (let i = 0; i < pointLights.length; ++i) {
         const { mover, position } = pointLights[i];
-        const { action } = pointLightHandles[i];
+        const { transform } = pointLightHandles[i];
 
         position.set(mover(Vector3.zero, time * 0.0002));
 
-        action.transform.set(Matrix4.identity);
-        action.transform.translate(position);
+        transform.set(Matrix4.identity);
+        transform.translate(position);
       }
 
       // Move camera

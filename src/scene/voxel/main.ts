@@ -255,8 +255,8 @@ const applicationBuilder = async (
       }
 
       // Update state
-      selectHandle.action.transform.set(Matrix4.fromIdentity());
-      selectHandle.action.transform.translate(
+      selectHandle.transform.set(Matrix4.fromIdentity());
+      selectHandle.transform.translate(
         worldGraphic.findRenderPosition(lookOffset)
       );
 

@@ -355,10 +355,6 @@ void main(void) {
   fragColor = vec4(${linearToStandard.invoke("scene")}, 1.0);
 }`;
 
-type DeferredShadingAction = {
-  transform: MutableMatrix4;
-};
-
 type DeferredShadingConfiguration = {
   lightModel: DeferredShadingLightModel;
   lightModelPhongNoAmbient?: boolean;
@@ -368,11 +364,16 @@ type DeferredShadingConfiguration = {
   noNormalMap?: boolean;
 };
 
+type DeferredShadingHandle = {
+  remove: () => void;
+  transform: MutableMatrix4;
+};
+
 type DeferredShadingRenderer = Disposable &
   Renderer<
     DeferredShadingScene,
     DeferredShadingSubject,
-    DeferredShadingAction
+    DeferredShadingHandle
   > & {
     // FIXME: debug
     depthBuffer: GlTexture;
@@ -817,8 +818,8 @@ const createDeferredShadingRenderer = (
       const resource = geometryPainter.append(mesh);
 
       return {
-        action: { transform },
         remove: resource.remove,
+        transform,
       };
     },
 
@@ -945,8 +946,8 @@ const createDeferredShadingRenderer = (
 };
 
 export {
-  type DeferredShadingAction,
   type DeferredShadingConfiguration,
+  type DeferredShadingHandle,
   type DeferredShadingRenderer,
   type DeferredShadingScene,
   type DeferredShadingSubject,

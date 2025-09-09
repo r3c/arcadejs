@@ -339,14 +339,14 @@ const projectVertexToScreen = (
   };
 };
 
-type SoftwareAction = {
+type SoftwareHandle = {
   transform: MutableMatrix4;
 };
 
 type SoftwareRenderer = Renderer<
   SoftwareScene,
   SoftwareSubject,
-  SoftwareAction
+  SoftwareHandle
 >;
 
 type SoftwareScene = {
@@ -371,10 +371,7 @@ const createSoftwareRenderer = (
 
       subjects.push({ mesh, transform });
 
-      return {
-        action: { transform },
-        remove: () => {}, // FIXME: not implemented
-      };
+      return { transform };
     },
 
     render: (scene) => {
@@ -419,7 +416,7 @@ const createSoftwareRenderer = (
 };
 
 export {
-  type SoftwareAction,
+  type SoftwareHandle,
   type SoftwareRenderer,
   type SoftwareScene,
   type SoftwareSubject,

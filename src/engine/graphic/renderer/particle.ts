@@ -25,7 +25,7 @@ import {
 } from "../webgl/shader";
 import { GlTexture } from "../webgl/texture";
 
-type ParticleAction<TSeed> = {
+type ParticleHandle<TSeed> = {
   emit: (count: number, center: Vector3, seed: TSeed) => void;
 };
 
@@ -49,7 +49,7 @@ type ParticlePolygon = {
 };
 
 type ParticleRenderer<TSeed> = Disposable &
-  Renderer<ParticleScene, ParticleSubject<TSeed>, ParticleAction<TSeed>> & {
+  Renderer<ParticleScene, ParticleSubject<TSeed>, ParticleHandle<TSeed>> & {
     update: (dt: number) => void;
   };
 
@@ -316,19 +316,15 @@ const createParticleRenderer = <TSeed>(
       billboards.push(billboard);
 
       return {
-        action: {
-          emit: (count, center, seed) => {
-            billboard.sources.push({
-              center: { x: center.x, y: center.y, z: center.z },
-              count,
-              duration,
-              elapsed: 0,
-              update: define(seed),
-            });
-          },
+        emit: (count, center, seed) => {
+          billboard.sources.push({
+            center: { x: center.x, y: center.y, z: center.z },
+            count,
+            duration,
+            elapsed: 0,
+            update: define(seed),
+          });
         },
-
-        remove: () => {}, // FIXME: not implemented
       };
     },
 
@@ -429,7 +425,7 @@ const createParticleRenderer = <TSeed>(
 };
 
 export {
-  type ParticleAction,
+  type ParticleHandle,
   type ParticleRenderer,
   type ParticleScene,
   createParticleRenderer,

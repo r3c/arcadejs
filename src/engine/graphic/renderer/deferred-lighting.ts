@@ -373,10 +373,6 @@ void main(void) {
   fragColor = vec4(${linearToStandard.invoke("color")}, 1.0);
 }`;
 
-type DeferredLightingAction = {
-  transform: MutableMatrix4;
-};
-
 type DeferredLightingConfiguration = {
   lightModel: DeferredLightingLightModel;
   lightModelPhongNoAmbient?: boolean;
@@ -386,11 +382,16 @@ type DeferredLightingConfiguration = {
   noNormalMap?: boolean;
 };
 
+type DeferredLightingHandle = {
+  remove: () => void;
+  transform: MutableMatrix4;
+};
+
 type DeferredLightingRenderer = Disposable &
   Renderer<
     DeferredLightingScene,
     DeferredLightingSubject,
-    DeferredLightingAction
+    DeferredLightingHandle
   > & {
     // FIXME: debug
     depthBuffer: GlTexture;
@@ -809,11 +810,11 @@ const createDeferredLightingRenderer = (
       const materialResource = materialPainter.append(mesh);
 
       return {
-        action: { transform },
         remove: () => {
           geometryResource.remove();
           materialResource.remove();
         },
+        transform,
       };
     },
 
@@ -935,8 +936,8 @@ const createDeferredLightingRenderer = (
 };
 
 export {
-  type DeferredLightingAction,
   type DeferredLightingConfiguration,
+  type DeferredLightingHandle,
   type DeferredLightingRenderer,
   type DeferredLightingScene,
   type DeferredLightingSubject,

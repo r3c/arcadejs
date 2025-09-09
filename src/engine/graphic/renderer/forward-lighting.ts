@@ -80,7 +80,8 @@ type EnvironmentLight = {
   specular: GlTexture;
 };
 
-type ForwardLightingAction = {
+type ForwardLightingHandle = {
+  remove: () => void;
   transform: MutableMatrix4;
 };
 
@@ -88,7 +89,7 @@ type ForwardLightingRenderer = Disposable &
   Renderer<
     ForwardLightingScene,
     ForwardLightingSubject,
-    ForwardLightingAction
+    ForwardLightingHandle
   > & {
     // FIXME: debug
     directionalShadowBuffers: GlTexture[];
@@ -865,11 +866,11 @@ const createForwardLightingRenderer = (
       const lightResource = lightPainter.append(mesh);
 
       return {
-        action: { transform },
         remove: () => {
           shadowResource?.remove();
           lightResource.remove();
         },
+        transform,
       };
     },
 
@@ -971,8 +972,8 @@ const createForwardLightingRenderer = (
 };
 
 export {
-  type ForwardLightingAction,
   type ForwardLightingConfiguration,
+  type ForwardLightingHandle,
   type ForwardLightingRenderer,
   type ForwardLightingScene,
   type ForwardLightingSubject,
