@@ -14,11 +14,6 @@ import { Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { createCircleMover, createOrbitMover } from "../move";
 import { createModel } from "../../engine/graphic/webgl/model";
-import {
-  DebugTextureRenderer,
-  DebugTextureEncoding,
-  DebugTextureChannel,
-} from "../../engine/graphic/webgl/renderers/debug-texture";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
   createForwardLightingRenderer,
@@ -27,6 +22,11 @@ import {
   ForwardLightingRenderer,
   ForwardLightingScene,
 } from "../../engine/graphic/renderer";
+import {
+  createGlEncodingPainter,
+  GlEncodingChannel,
+  GlEncodingFormat,
+} from "../../engine/graphic/painter";
 
 /*
  ** What changed?
@@ -88,9 +88,9 @@ const applicationBuilder = async (
     mover: createOrbitMover(i, 2, 2, 1),
     position: Vector3.fromZero(),
   }));
-  const debugRenderer = new DebugTextureRenderer(runtime, target, {
-    encoding: DebugTextureEncoding.Monochrome,
-    channel: DebugTextureChannel.Red,
+  const encodingPainter = createGlEncodingPainter(runtime, target, {
+    channel: GlEncodingChannel.Red,
+    format: GlEncodingFormat.Monochrome,
     zNear: 0.1,
     zFar: 100,
   });
@@ -142,6 +142,7 @@ const applicationBuilder = async (
     },
 
     dispose() {
+      encodingPainter.dispose();
       models.cube.dispose();
       models.ground.dispose();
       models.light.dispose();
@@ -179,7 +180,7 @@ const applicationBuilder = async (
 
       // Draw texture debug
       if (debugMode && renderer !== undefined) {
-        debugRenderer.render(renderer.directionalShadowBuffers[0]);
+        encodingPainter.paint(renderer.directionalShadowBuffers[0]);
       }
     },
 

@@ -11,7 +11,6 @@ import {
 } from "../../math/vector";
 import { Renderer } from "./definition";
 import { GlRuntime, GlTarget } from "../webgl";
-import { SinglePainter } from "../webgl/painters/single";
 import {
   GlBuffer,
   GlContext,
@@ -24,6 +23,7 @@ import {
   shaderUniform,
 } from "../webgl/shader";
 import { GlTexture } from "../webgl/texture";
+import { createGlBindingPainter } from "../painter";
 
 type ParticleHandle<TSeed> = {
   emit: (count: number, center: Vector3, seed: TSeed) => void;
@@ -300,7 +300,11 @@ const createParticleRenderer = <TSeed>(
   );
 
   const billboards: ParticleBillboard[] = [];
-  const painter = new SinglePainter(billboardBinding, ({ index }) => index);
+  const painter = createGlBindingPainter(
+    target,
+    billboardBinding,
+    ({ index }) => index
+  );
   const sceneState = {
     billboard: Matrix4.fromIdentity(),
     projection: Matrix4.identity,
@@ -371,7 +375,7 @@ const createParticleRenderer = <TSeed>(
       sceneBinding.bind(sceneState);
 
       for (let i = 0; i < billboards.length; ++i) {
-        painter.paint(target, billboards[i]);
+        painter.paint(billboards[i]);
       }
     },
 

@@ -44,7 +44,6 @@ import {
   createTransformableMesh,
 } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
-import { SinglePainter } from "../webgl/painters/single";
 import { GlBuffer } from "../webgl/resource";
 import {
   linearToStandard,
@@ -60,6 +59,7 @@ import {
   GlMeshScene,
   createGlMeshRenderer,
 } from "./gl-mesh";
+import { createGlBindingPainter } from "../painter";
 
 const enum DeferredShadingLightModel {
   None,
@@ -676,7 +676,8 @@ const loadLightBinding = <TScene extends LightScene>(
 
 const loadDirectionalLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
+  configuration: DeferredShadingConfiguration,
+  target: GlTarget
 ) => {
   const binding = loadLightBinding<DirectionalLightScene>(
     runtime,
@@ -695,15 +696,13 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return new SinglePainter<DirectionalLightScene>(
-    binding,
-    ({ index }) => index
-  );
+  return createGlBindingPainter(target, binding, ({ index }) => index);
 };
 
 const loadPointLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
+  configuration: DeferredShadingConfiguration,
+  target: GlTarget
 ) => {
   const binding = loadLightBinding<PointLightScene>(
     runtime,
@@ -720,10 +719,10 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return new SinglePainter<PointLightScene>(binding, ({ index }) => index);
+  return createGlBindingPainter(target, binding, ({ index }) => index);
 };
 
-const loadPostPainter = (runtime: GlRuntime) => {
+const loadPostPainter = (runtime: GlRuntime, target: GlTarget) => {
   const shader = runtime.createShader(postVertexShader, postFragmentShader, {});
   const binding = shader.declare<PostScene>();
 
@@ -733,7 +732,7 @@ const loadPostPainter = (runtime: GlRuntime) => {
     shaderUniform.tex2dBlack(({ source }) => source)
   );
 
-  return new SinglePainter<PostScene>(binding, ({ index }) => index);
+  return createGlBindingPainter(target, binding, ({ index }) => index);
 };
 
 const createDeferredShadingRenderer = (
@@ -770,7 +769,8 @@ const createDeferredShadingRenderer = (
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightPainter = loadDirectionalLightPainter(
     runtime,
-    configuration
+    configuration,
+    sceneTarget
   );
   const fullscreenProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -792,12 +792,16 @@ const createDeferredShadingRenderer = (
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
-  const pointLightPainter = loadPointLightPainter(runtime, configuration);
+  const pointLightPainter = loadPointLightPainter(
+    runtime,
+    configuration,
+    sceneTarget
+  );
   const sceneBuffer = sceneTarget.setupColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
-  const scenePainter = loadPostPainter(runtime);
+  const scenePainter = loadPostPainter(runtime, target);
 
   return {
     depthBuffer,
@@ -892,7 +896,7 @@ const createDeferredShadingRenderer = (
         model.invert();
 
         for (const directionalLight of directionalLights) {
-          directionalLightPainter.paint(sceneTarget, {
+          directionalLightPainter.paint({
             diffuseAndShininessBuffer: diffuseAndShininessBuffer,
             depthBuffer: depthBuffer,
             directionalLight,
@@ -911,7 +915,7 @@ const createDeferredShadingRenderer = (
       if (pointLights !== undefined) {
         pointLightBillboard.set(pointLights);
 
-        pointLightPainter.paint(sceneTarget, {
+        pointLightPainter.paint({
           diffuseAndShininessBuffer: diffuseAndShininessBuffer,
           billboard,
           depthBuffer,
@@ -926,7 +930,7 @@ const createDeferredShadingRenderer = (
       }
 
       // Draw scene
-      scenePainter.paint(target, {
+      scenePainter.paint({
         index: directionalLightBillboard.index, // FIXME: dedicated quad
         position: directionalLightBillboard.polygon.lightPosition,
         source: sceneBuffer,
