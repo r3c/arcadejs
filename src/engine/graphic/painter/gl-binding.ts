@@ -4,12 +4,11 @@ import { GlBuffer } from "../webgl/resource";
 import { GlShaderBinding } from "../webgl/shader";
 
 const createGlBindingPainter = <TScene>(
-  target: GlTarget,
   binding: GlShaderBinding<TScene>,
   indexGetter: (scene: TScene) => GlBuffer
-): Painter<TScene> => {
+): Painter<GlTarget, TScene> => {
   return {
-    paint(scene) {
+    paint(target, scene) {
       binding.bind(scene);
       target.draw(0, WebGL2RenderingContext["TRIANGLES"], indexGetter(scene));
     },

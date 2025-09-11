@@ -106,7 +106,7 @@ const cubeFaces: WorldCubeFace[] = [
 const createWorldGraphic = (
   runtime: GlRuntime,
   renderer: Pick<
-    Renderer<unknown, ForwardLightingSubject, ForwardLightingHandle>,
+    Renderer<unknown, unknown, ForwardLightingSubject, ForwardLightingHandle>,
     "append"
   >,
   chunkCount: Vector3,

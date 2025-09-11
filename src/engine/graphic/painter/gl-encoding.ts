@@ -46,7 +46,7 @@ type GlEncodingConfiguration = {
   zNear: number;
 };
 
-type GlEncodingPainter = Disposable & Painter<GlTexture>;
+type GlEncodingPainter = Disposable & Painter<GlTarget, GlTexture>;
 
 type Scene = {
   coordinate: GlShaderAttribute;
@@ -134,7 +134,7 @@ void main(void) {
   #endif
 }`;
 
-const createPainter = (shader: GlShader, target: GlTarget) => {
+const createPainter = (shader: GlShader) => {
   const binding = shader.declare<Scene>();
 
   binding.setAttribute("coordinate", ({ coordinate }) => coordinate);
@@ -148,11 +148,7 @@ const createPainter = (shader: GlShader, target: GlTarget) => {
     shaderUniform.tex2dBlack(({ source }) => source)
   );
 
-  return createGlBindingPainter(
-    target,
-    binding,
-    ({ indexBuffer }) => indexBuffer
-  );
+  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
 };
 
 const createShader = (
@@ -169,11 +165,10 @@ const createShader = (
 
 const createGlEncodingPainter = (
   runtime: GlRuntime,
-  target: GlTarget,
   configuration: GlEncodingConfiguration
 ): GlEncodingPainter => {
   const shader = createShader(runtime, configuration);
-  const painter = createPainter(shader, target);
+  const painter = createPainter(shader);
   const quad = createModel(runtime.context, commonMesh.quad);
   const scale = configuration.scale ?? 0.4;
 
@@ -189,7 +184,7 @@ const createGlEncodingPainter = (
       shader.dispose();
     },
 
-    paint(scene) {
+    paint(target, scene) {
       const gl = runtime.context;
 
       gl.disable(gl.BLEND);
@@ -203,7 +198,7 @@ const createGlEncodingPainter = (
       const { coordinate, position } = polygon;
 
       if (coordinate !== undefined) {
-        painter.paint({
+        painter.paint(target, {
           coordinate,
           indexBuffer,
           modelMatrix,

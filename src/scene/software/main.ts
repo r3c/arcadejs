@@ -60,7 +60,6 @@ const applicationBuilder = async (
       const mesh = mode === 2 ? cubeWithTexture : cubeWithColor;
 
       renderer = createSoftwareRenderer(
-        screen,
         mode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default
       );
 
@@ -70,7 +69,7 @@ const applicationBuilder = async (
     dispose() {},
 
     render() {
-      renderer?.render({
+      renderer?.render(screen, {
         projection,
         view: camera.viewMatrix,
       });

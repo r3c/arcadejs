@@ -43,7 +43,7 @@ type GlMeshPrimitive = {
 };
 
 type GlMeshRenderer<TScene extends GlMeshScene> = Disposable &
-  Renderer<TScene, GlMesh, GlMeshHandle>;
+  Renderer<GlTarget, TScene, GlMesh, GlMeshHandle>;
 
 const enum GlMeshRendererMode {
   Triangle,
@@ -70,7 +70,6 @@ const drawModes = {
  ** Renderer > Shader feature > Material > Nested objects > Polygons
  */
 const createGlMeshRenderer = <TScene extends GlMeshScene>(
-  target: GlTarget,
   mode: GlMeshRendererMode,
   binder: GlMeshBinder<TScene>
 ): GlMeshRenderer<TScene> => {
@@ -242,7 +241,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
       disposable.dispose();
     },
 
-    render(scene) {
+    render(target, scene) {
       for (const {
         binding,
         nodesByMaterial: meshesByMaterial,

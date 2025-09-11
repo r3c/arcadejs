@@ -24,7 +24,8 @@ type WireModel = {
   tint: GlShaderAttribute;
 };
 
-type WireRenderer = Disposable & Renderer<WireScene, WireSubject, void>;
+type WireRenderer = Disposable &
+  Renderer<GlTarget, WireScene, WireSubject, void>;
 
 type WireSubject = {
   modelMatrix: Matrix4;
@@ -188,10 +189,7 @@ void main(void) {
   fragColor = vec4(lineTint, 1.0);
 }`;
 
-const createWireRenderer = (
-  runtime: GlRuntime,
-  target: GlTarget
-): WireRenderer => {
+const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
   const shader = runtime.createShader(wireVertexShader, wireFragmentShader, {});
   const { sceneBinding, subjectBinding } = createWireBinding(shader);
   const subjects = new Map<Symbol, WireSubject>();
@@ -212,7 +210,7 @@ const createWireRenderer = (
       shader.dispose();
     },
 
-    render(scene: WireScene): void {
+    render(target, scene): void {
       sceneBinding.bind(scene);
 
       for (const subject of subjects.values()) {

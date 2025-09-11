@@ -215,7 +215,7 @@ const applicationBuilder = async (
   ];
 
   // Create renderer
-  const renderer = createForwardLightingRenderer(runtime, target, {
+  const renderer = createForwardLightingRenderer(runtime, {
     maxPointLights: 3,
     noShadow: true,
   });
@@ -308,7 +308,7 @@ const applicationBuilder = async (
         view: camera.viewMatrix,
       };
 
-      renderer.render(scene);
+      renderer.render(target, scene);
     },
 
     resize(size) {

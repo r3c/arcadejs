@@ -49,7 +49,12 @@ type ParticlePolygon = {
 };
 
 type ParticleRenderer<TSeed> = Disposable &
-  Renderer<ParticleScene, ParticleSubject<TSeed>, ParticleHandle<TSeed>> & {
+  Renderer<
+    GlTarget,
+    ParticleScene,
+    ParticleSubject<TSeed>,
+    ParticleHandle<TSeed>
+  > & {
     update: (dt: number) => void;
   };
 
@@ -247,8 +252,7 @@ const createBillboard = (
 };
 
 const createParticleRenderer = <TSeed>(
-  runtime: GlRuntime,
-  target: GlTarget
+  runtime: GlRuntime
 ): ParticleRenderer<TSeed> => {
   const shader = runtime.createShader(
     particleVertexShader,
@@ -301,7 +305,6 @@ const createParticleRenderer = <TSeed>(
 
   const billboards: ParticleBillboard[] = [];
   const painter = createGlBindingPainter(
-    target,
     billboardBinding,
     ({ index }) => index
   );
@@ -340,7 +343,7 @@ const createParticleRenderer = <TSeed>(
       shader.dispose();
     },
 
-    render(scene) {
+    render(target, scene) {
       const { projection, view } = scene;
       const gl = runtime.context;
 
@@ -375,7 +378,7 @@ const createParticleRenderer = <TSeed>(
       sceneBinding.bind(sceneState);
 
       for (let i = 0; i < billboards.length; ++i) {
-        painter.paint(billboards[i]);
+        painter.paint(target, billboards[i]);
       }
     },
 

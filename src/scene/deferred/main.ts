@@ -9,12 +9,11 @@ import { Input, Pointer } from "../../engine/io/controller";
 import {
   DeferredLightingHandle,
   DeferredLightingLightModel,
+  DeferredLightingRenderer,
   DeferredLightingScene,
-  DeferredLightingSubject,
   DeferredShadingHandle,
   DeferredShadingLightModel,
-  DeferredShadingScene,
-  DeferredShadingSubject,
+  DeferredShadingRenderer,
   createDeferredLightingRenderer,
   createDeferredShadingRenderer,
 } from "../../engine/graphic/renderer";
@@ -29,8 +28,6 @@ import { brightColor } from "../../engine/graphic/color";
 import { createModel } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createOrbitCamera } from "../../engine/stage/camera";
-import { Renderer } from "../../engine/graphic/renderer";
-import { Disposable } from "../../engine/language/lifecycle";
 import {
   createGlEncodingPainter,
   GlEncodingChannel,
@@ -116,15 +113,8 @@ const pointLightParameters = [
   { count: 2000, radius: 1 },
 ];
 
-type DeferredRenderer = Renderer<
-  DeferredScene,
-  DeferredSubject,
-  DeferredHandle
-> &
-  Disposable;
 type DeferredHandle = DeferredLightingHandle & DeferredShadingHandle;
-type DeferredScene = DeferredLightingScene & DeferredShadingScene;
-type DeferredSubject = DeferredLightingSubject & DeferredShadingSubject;
+type DeferredRenderer = DeferredLightingRenderer | DeferredShadingRenderer;
 
 type Configuration = typeof configurator extends ApplicationConfigurator<
   infer T
@@ -211,7 +201,7 @@ const applicationBuilder = async (
 
       encodingPainter =
         configuration.debugMode !== 0
-          ? createGlEncodingPainter(runtime, target, {
+          ? createGlEncodingPainter(runtime, {
               channel: debugConfigurations[configuration.debugMode - 1].channel,
               format: debugConfigurations[configuration.debugMode - 1].format,
               zNear: 0.1,
@@ -225,7 +215,7 @@ const applicationBuilder = async (
         case 0:
         default:
           {
-            const renderer = createDeferredShadingRenderer(runtime, target, {
+            const renderer = createDeferredShadingRenderer(runtime, {
               lightModel: DeferredShadingLightModel.Phong,
               lightModelPhongNoAmbient: !configuration.lightAmbient,
               lightModelPhongNoDiffuse: !configuration.lightDiffuse,
@@ -249,7 +239,7 @@ const applicationBuilder = async (
 
         case 1:
           {
-            const renderer = createDeferredLightingRenderer(runtime, target, {
+            const renderer = createDeferredLightingRenderer(runtime, {
               lightModel: DeferredLightingLightModel.Phong,
               lightModelPhongNoAmbient: !configuration.lightAmbient,
               lightModelPhongNoDiffuse: !configuration.lightDiffuse,
@@ -341,11 +331,11 @@ const applicationBuilder = async (
         view: camera.viewMatrix,
       };
 
-      sceneRenderer?.render(scene);
+      sceneRenderer?.render(target, scene);
 
       // Draw debug
       if (encodingTexture !== undefined) {
-        encodingPainter?.paint(encodingTexture);
+        encodingPainter?.paint(target, encodingTexture);
       }
     },
 

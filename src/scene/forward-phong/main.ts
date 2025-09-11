@@ -88,7 +88,7 @@ const applicationBuilder = async (
     mover: createOrbitMover(i, 2, 2, 1),
     position: Vector3.fromZero(),
   }));
-  const encodingPainter = createGlEncodingPainter(runtime, target, {
+  const encodingPainter = createGlEncodingPainter(runtime, {
     channel: GlEncodingChannel.Red,
     format: GlEncodingFormat.Monochrome,
     zNear: 0.1,
@@ -112,7 +112,7 @@ const applicationBuilder = async (
     async change(configuration) {
       renderer?.dispose();
 
-      const newRenderer = createForwardLightingRenderer(runtime, target, {
+      const newRenderer = createForwardLightingRenderer(runtime, {
         maxDirectionalLights: 3,
         maxPointLights: 3,
         lightModel: ForwardLightingLightModel.Phong,
@@ -176,11 +176,11 @@ const applicationBuilder = async (
         view: camera.viewMatrix,
       };
 
-      renderer?.render(scene);
+      renderer?.render(target, scene);
 
       // Draw texture debug
       if (debugMode && renderer !== undefined) {
-        encodingPainter.paint(renderer.directionalShadowBuffers[0]);
+        encodingPainter.paint(target, renderer.directionalShadowBuffers[0]);
       }
     },
 

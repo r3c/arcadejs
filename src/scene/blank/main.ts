@@ -9,7 +9,7 @@ import { Matrix4 } from "../../engine/math/matrix";
 const applicationBuilder = async (
   screen: Context2DScreen
 ): Promise<Application<unknown>> => {
-  const renderer = createSoftwareRenderer(screen, SoftwareDrawMode.Default);
+  const renderer = createSoftwareRenderer(SoftwareDrawMode.Default);
   const scene = {
     projection: Matrix4.identity,
     view: Matrix4.identity,
@@ -21,7 +21,7 @@ const applicationBuilder = async (
     dispose() {},
 
     render() {
-      renderer.render(scene);
+      renderer.render(screen, scene);
     },
 
     resize() {},

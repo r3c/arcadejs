@@ -88,6 +88,7 @@ type ForwardLightingHandle = {
 
 type ForwardLightingRenderer = Disposable &
   Renderer<
+    GlTarget,
     ForwardLightingScene,
     ForwardLightingSubject,
     ForwardLightingHandle
@@ -790,7 +791,6 @@ const createDirectionalShadowShader = (runtime: GlRuntime): GlShader => {
 
 const createForwardLightingRenderer = (
   runtime: GlRuntime,
-  target: GlTarget,
   configuration: ForwardLightingConfiguration
 ): ForwardLightingRenderer => {
   const gl = runtime.context;
@@ -822,7 +822,6 @@ const createForwardLightingRenderer = (
   ).map(() => new GlTarget(gl, targetSize));
   const lightBinder = createLightBinder(runtime, fullConfiguration);
   const lightRenderer = createGlMeshRenderer(
-    target,
     GlMeshRendererMode.Triangle,
     lightBinder
   );
@@ -832,7 +831,6 @@ const createForwardLightingRenderer = (
   );
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
   const directionalShadowRenderer = createGlMeshRenderer(
-    target,
     GlMeshRendererMode.Triangle,
     directionalShadowBinder
   );
@@ -874,7 +872,7 @@ const createForwardLightingRenderer = (
       };
     },
 
-    render: (scene) => {
+    render: (target, scene) => {
       const {
         ambientLightColor,
         directionalLights,
@@ -892,8 +890,6 @@ const createForwardLightingRenderer = (
 
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
-
-      let bufferIndex = 0;
 
       // Create shadow maps for directional lights
       const directionalShadowLights = [];
@@ -913,7 +909,7 @@ const createForwardLightingRenderer = (
             -light.direction.z
           );
 
-          const shadowView = Matrix4.fromSource(
+          const directionalShadowView = Matrix4.fromSource(
             Matrix4.identity,
             ["translate", { x: 0, y: 0, z: -10 }],
             [
@@ -926,24 +922,22 @@ const createForwardLightingRenderer = (
             ]
           );
 
-          const target = directionalShadowTargets[bufferIndex];
+          const directionalShadowTarget = directionalShadowTargets[i];
 
-          target.clear(0);
+          directionalShadowTarget.clear(0);
 
-          directionalShadowRenderer.render({
+          directionalShadowRenderer.render(directionalShadowTarget, {
             projection: directionalShadowProjection,
-            view,
+            view: directionalShadowView,
           });
 
           directionalShadowLights.push({
             color: light.color,
             direction: light.direction,
             shadow: light.shadow,
-            shadowMap: directionalShadowBuffers[bufferIndex],
-            shadowView,
+            shadowMap: directionalShadowBuffers[i],
+            shadowView: directionalShadowView,
           });
-
-          ++bufferIndex;
         }
       }
 
@@ -951,7 +945,7 @@ const createForwardLightingRenderer = (
       gl.colorMask(true, true, true, true);
       gl.cullFace(gl.BACK);
 
-      lightRenderer.render({
+      lightRenderer.render(target, {
         ambientLightColor: ambientLightColor ?? Vector3.zero,
         directionalShadowLights,
         environmentLight,
