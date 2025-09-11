@@ -9,15 +9,17 @@ import { Input, Pointer } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
-import { Matrix4 } from "../../engine/math/matrix";
+import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { createCircleMover, createOrbitMover } from "../move";
-import { createModel } from "../../engine/graphic/webgl/model";
+import {
+  createModel,
+  createTransformableMesh,
+} from "../../engine/graphic/webgl/model";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
   createForwardLightingRenderer,
-  ForwardLightingHandle,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
@@ -102,9 +104,9 @@ const applicationBuilder = async (
   const projection = Matrix4.fromIdentity();
 
   let debugMode = false;
-  let directionalLightHandles: ForwardLightingHandle[] = [];
+  let directionalLightTransforms: MutableMatrix4[] = [];
   let move = false;
-  let pointLightHandles: ForwardLightingHandle[] = [];
+  let pointLightTransforms: MutableMatrix4[] = [];
   let renderer: ForwardLightingRenderer | undefined = undefined;
   let time = 0;
 
@@ -125,16 +127,30 @@ const applicationBuilder = async (
 
       newRenderer.append({ mesh: models.cube.mesh });
 
-      const groundHandle = newRenderer.append({ mesh: models.ground.mesh });
+      const ground = createTransformableMesh(models.ground.mesh);
 
-      groundHandle.transform.translate({ x: 0, y: -1.5, z: 0 });
+      newRenderer.append({ mesh: ground.mesh });
 
-      directionalLightHandles = range(configuration.nbDirectionalLights).map(
-        () => newRenderer.append({ mesh: models.light.mesh, noShadow: true })
+      ground.transform.translate({ x: 0, y: -1.5, z: 0 });
+
+      directionalLightTransforms = range(configuration.nbDirectionalLights).map(
+        () => {
+          const { mesh, transform } = createTransformableMesh(
+            models.light.mesh
+          );
+
+          newRenderer.append({ mesh, noShadow: true });
+
+          return transform;
+        }
       );
-      pointLightHandles = range(configuration.nbPointLights).map(() =>
-        newRenderer.append({ mesh: models.light.mesh, noShadow: true })
-      );
+      pointLightTransforms = range(configuration.nbPointLights).map(() => {
+        const { mesh, transform } = createTransformableMesh(models.light.mesh);
+
+        newRenderer.append({ mesh, noShadow: true });
+
+        return transform;
+      });
 
       debugMode = configuration.debugMode !== 0;
       move = configuration.move;
@@ -159,14 +175,14 @@ const applicationBuilder = async (
       const scene: ForwardLightingScene = {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
         directionalLights: directionalLights
-          .slice(0, directionalLightHandles.length)
+          .slice(0, directionalLightTransforms.length)
           .map(({ direction }) => ({
             color: { x: 0.8, y: 0.8, z: 0.8 },
             direction,
             shadow: true,
           })),
         pointLights: pointLights
-          .slice(0, pointLightHandles.length)
+          .slice(0, pointLightTransforms.length)
           .map(({ position }) => ({
             color: { x: 0.8, y: 0.8, z: 0.8 },
             position,
@@ -192,9 +208,9 @@ const applicationBuilder = async (
 
     update(dt) {
       // Update light positions
-      for (let i = 0; i < directionalLightHandles.length; ++i) {
+      for (let i = 0; i < directionalLightTransforms.length; ++i) {
         const { direction, mover } = directionalLights[i];
-        const { transform } = directionalLightHandles[i];
+        const transform = directionalLightTransforms[i];
 
         direction.set(mover(Vector3.zero, -time * 0.0005));
         direction.normalize();
@@ -204,9 +220,9 @@ const applicationBuilder = async (
         transform.translate(direction);
       }
 
-      for (let i = 0; i < pointLightHandles.length; ++i) {
+      for (let i = 0; i < pointLightTransforms.length; ++i) {
         const { mover, position } = pointLights[i];
-        const { transform } = pointLightHandles[i];
+        const transform = pointLightTransforms[i];
 
         position.set(mover(Vector3.zero, time * 0.0005));
 

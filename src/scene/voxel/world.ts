@@ -8,7 +8,6 @@ import {
   ForwardLightingSubject,
   Renderer,
 } from "../../engine/graphic/renderer";
-import { ForwardLightingHandle } from "../../engine/graphic/renderer";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { range } from "../../engine/language/iterable";
@@ -105,10 +104,7 @@ const cubeFaces: WorldCubeFace[] = [
 
 const createWorldGraphic = (
   runtime: GlRuntime,
-  renderer: Pick<
-    Renderer<unknown, unknown, ForwardLightingSubject, ForwardLightingHandle>,
-    "append"
-  >,
+  renderer: Pick<Renderer<unknown, unknown, ForwardLightingSubject>, "append">,
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,
@@ -286,7 +282,7 @@ const createWorldGraphic = (
 
         // FIXME: dispose previous model
 
-        chunkHandles[chunkIndex].remove();
+        chunkHandles[chunkIndex]();
         chunkHandles[chunkIndex] = renderer.append({
           mesh: model.mesh,
           noShadow: true,

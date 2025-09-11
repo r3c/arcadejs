@@ -10,7 +10,7 @@ import { WebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
 import { loadMeshFromGltf, loadMeshFromJson } from "../../engine/graphic/mesh";
-import { Matrix4 } from "../../engine/math/matrix";
+import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
 import {
   GlTarget,
@@ -19,11 +19,13 @@ import {
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import { createOrbitMover } from "../move";
-import { createModel } from "../../engine/graphic/webgl/model";
+import {
+  createModel,
+  createTransformableMesh,
+} from "../../engine/graphic/webgl/model";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
   createForwardLightingRenderer,
-  ForwardLightingHandle,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
@@ -135,7 +137,7 @@ const applicationBuilder = async (
     specular,
   };
 
-  let lightHandles: ForwardLightingHandle[] = [];
+  let lightTransforms: MutableMatrix4[] = [];
   let move = false;
   let renderer: ForwardLightingRenderer | undefined = undefined;
   let time = 0;
@@ -158,13 +160,19 @@ const applicationBuilder = async (
 
       newRenderer.append({ mesh: models.helmet.mesh });
 
-      const groundHandle = newRenderer.append({ mesh: models.ground.mesh });
+      const ground = createTransformableMesh(models.ground.mesh);
 
-      groundHandle.transform.translate({ x: 0, y: -1.5, z: 0 });
+      newRenderer.append({ mesh: ground.mesh });
 
-      lightHandles = range(configuration.nbLights).map(() =>
-        newRenderer.append({ mesh: models.light.mesh, noShadow: true })
-      );
+      ground.transform.translate({ x: 0, y: -1.5, z: 0 });
+
+      lightTransforms = range(configuration.nbLights).map(() => {
+        const { mesh, transform } = createTransformableMesh(models.light.mesh);
+
+        newRenderer.append({ mesh, noShadow: true });
+
+        return transform;
+      });
 
       move = configuration.move;
       renderer = newRenderer;
@@ -192,7 +200,7 @@ const applicationBuilder = async (
           specular: textures.specular,
         },
         pointLights: lights
-          .slice(0, lightHandles.length)
+          .slice(0, lightTransforms.length)
           .map(({ position }) => ({
             color: { x: 1, y: 1, z: 1 },
             position,
@@ -213,9 +221,9 @@ const applicationBuilder = async (
 
     update(dt) {
       // Update light positions
-      for (let i = 0; i < lightHandles.length; ++i) {
+      for (let i = 0; i < lightTransforms.length; ++i) {
         const { mover, position } = lights[i];
-        const { transform } = lightHandles[i];
+        const transform = lightTransforms[i];
 
         position.set(mover(Vector3.zero, time * 0.0005));
 

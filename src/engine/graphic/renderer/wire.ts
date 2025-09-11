@@ -24,8 +24,7 @@ type WireModel = {
   tint: GlShaderAttribute;
 };
 
-type WireRenderer = Disposable &
-  Renderer<GlTarget, WireScene, WireSubject, void>;
+type WireRenderer = Disposable & Renderer<GlTarget, WireScene, WireSubject>;
 
 type WireSubject = {
   modelMatrix: Matrix4;
@@ -200,10 +199,7 @@ const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
 
       subjects.set(symbol, subject);
 
-      return {
-        action: undefined,
-        remove: () => subjects.delete(symbol),
-      };
+      return () => subjects.delete(symbol);
     },
 
     dispose() {

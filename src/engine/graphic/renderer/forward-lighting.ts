@@ -10,7 +10,7 @@ import {
   resultLightType,
 } from "../webgl/shaders/light";
 import { materialSample, materialType } from "../webgl/shaders/material";
-import { Matrix4, MutableMatrix4 } from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import { normalPerturb } from "../webgl/shaders/normal";
 import { parallaxPerturb } from "../webgl/shaders/parallax";
 import { pbrEnvironment, pbrLight } from "../webgl/shaders/pbr";
@@ -28,12 +28,7 @@ import {
   shaderDirective,
   shaderUniform,
 } from "../webgl/shader";
-import {
-  createTransformableMesh,
-  GlMaterial,
-  GlMesh,
-  GlPolygon,
-} from "../webgl/model";
+import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
 import {
   GlMeshBinder,
@@ -81,18 +76,8 @@ type EnvironmentLight = {
   specular: GlTexture;
 };
 
-type ForwardLightingHandle = {
-  remove: () => void;
-  transform: MutableMatrix4;
-};
-
 type ForwardLightingRenderer = Disposable &
-  Renderer<
-    GlTarget,
-    ForwardLightingScene,
-    ForwardLightingSubject,
-    ForwardLightingHandle
-  > & {
+  Renderer<GlTarget, ForwardLightingScene, ForwardLightingSubject> & {
     // FIXME: debug
     directionalShadowBuffers: GlTexture[];
   };
@@ -856,19 +841,15 @@ const createForwardLightingRenderer = (
     },
 
     append: (subject) => {
-      const { mesh: originalMesh, noShadow } = subject;
-      const { mesh, transform } = createTransformableMesh(originalMesh);
+      const { mesh, noShadow } = subject;
 
       const shadowResource =
         noShadow !== true ? directionalShadowRenderer.append(mesh) : undefined;
       const lightResource = lightRenderer.append(mesh);
 
-      return {
-        remove: () => {
-          shadowResource?.remove();
-          lightResource.remove();
-        },
-        transform,
+      return () => {
+        shadowResource?.();
+        lightResource();
       };
     },
 
@@ -962,7 +943,6 @@ const createForwardLightingRenderer = (
 
 export {
   type ForwardLightingConfiguration,
-  type ForwardLightingHandle,
   type ForwardLightingRenderer,
   type ForwardLightingScene,
   type ForwardLightingSubject,

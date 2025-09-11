@@ -9,7 +9,10 @@ import { createWorldGraphic, createWorldPhysic } from "./world";
 import { noise } from "./perlin";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { createOrbitMover } from "../move";
-import { createModel } from "../../engine/graphic/webgl/model";
+import {
+  createModel,
+  createTransformableMesh,
+} from "../../engine/graphic/webgl/model";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
   createForwardLightingRenderer,
@@ -57,15 +60,6 @@ const applicationBuilder = async (
 
   worldScaleVector.set(worldScale);
   worldScaleVector.scale(0.55);
-
-  const selectModel = await loadMeshFromJson("model/select/mesh.json", {
-    transform: Matrix4.fromSource(Matrix4.identity, [
-      "scale",
-      worldScaleVector,
-    ]),
-  });
-
-  const select = createModel(gl, selectModel);
 
   const getModelIndex = (height: number): number => {
     const value = Math.pow(height, 0.5) / (1 / levelModels.length);
@@ -119,7 +113,19 @@ const applicationBuilder = async (
   });
 
   // Create select box
-  const selectHandle = renderer.append({
+
+  const selectMesh = await loadMeshFromJson("model/select/mesh.json", {
+    transform: Matrix4.fromSource(Matrix4.identity, [
+      "scale",
+      worldScaleVector,
+    ]),
+  });
+
+  const selectModel = createModel(gl, selectMesh);
+  const select = createTransformableMesh(selectModel.mesh);
+  const selectTransform = select.transform;
+
+  renderer.append({
     mesh: select.mesh,
     noShadow: false,
   });
@@ -255,10 +261,8 @@ const applicationBuilder = async (
       }
 
       // Update state
-      selectHandle.transform.set(Matrix4.fromIdentity());
-      selectHandle.transform.translate(
-        worldGraphic.findRenderPosition(lookOffset)
-      );
+      selectTransform.set(Matrix4.fromIdentity());
+      selectTransform.translate(worldGraphic.findRenderPosition(lookOffset));
 
       for (time += dt; time >= timeFactor; time -= timeFactor) {
         worldPhysic.tick();

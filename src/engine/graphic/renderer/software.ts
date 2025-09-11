@@ -1,5 +1,5 @@
 import { Context2DScreen } from "../screen";
-import { Matrix4, MutableMatrix4 } from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import { Material, Mesh, defaultColor } from "../mesh";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { Renderer } from "./definition";
@@ -339,15 +339,10 @@ const projectVertexToScreen = (
   };
 };
 
-type SoftwareHandle = {
-  transform: MutableMatrix4;
-};
-
 type SoftwareRenderer = Renderer<
   Context2DScreen,
   SoftwareScene,
-  SoftwareSubject,
-  SoftwareHandle
+  SoftwareSubject
 >;
 
 type SoftwareScene = {
@@ -362,16 +357,17 @@ type SoftwareSubject = {
 const createSoftwareRenderer = (
   drawMode: SoftwareDrawMode
 ): SoftwareRenderer => {
-  const subjects: { mesh: Mesh; transform: MutableMatrix4 }[] = [];
+  const meshes = new Map<Symbol, Mesh>();
+  const viewProjection = Matrix4.fromIdentity();
 
   return {
     append: (subject) => {
       const { mesh } = subject;
-      const transform = Matrix4.fromIdentity();
+      const symbol = Symbol();
 
-      subjects.push({ mesh, transform });
+      meshes.set(symbol, mesh);
 
-      return { transform };
+      return () => meshes.delete(symbol);
     },
 
     render: (target, scene) => {
@@ -390,16 +386,11 @@ const createSoftwareRenderer = (
 
       image.depths.fill(Math.pow(2, 127));
 
-      const modelViewProjection = Matrix4.fromIdentity();
-      const viewProjection = Matrix4.fromSource(projection);
-
+      viewProjection.set(projection);
       viewProjection.multiply(view);
 
-      for (const { mesh, transform } of subjects) {
-        modelViewProjection.set(viewProjection);
-        modelViewProjection.multiply(transform);
-
-        drawMesh(image, mesh, modelViewProjection, drawMode);
+      for (const mesh of meshes.values()) {
+        drawMesh(image, mesh, viewProjection, drawMode);
       }
 
       target.context.putImageData(
@@ -416,7 +407,6 @@ const createSoftwareRenderer = (
 };
 
 export {
-  type SoftwareHandle,
   type SoftwareRenderer,
   type SoftwareScene,
   type SoftwareSubject,
