@@ -255,7 +255,7 @@ const applicationBuilder = async (
   const sprite = loadTextureQuad(gl, spriteImage);
 
   // Particle effects
-  const particleRenderer = createParticleRenderer<number>(runtime, target);
+  const particleRenderer = createParticleRenderer<number>(runtime);
 
   const particleEasing0 = getEasing(EasingType.QuadraticOut);
   const particleHandle0 = particleRenderer.append({
@@ -302,7 +302,7 @@ const applicationBuilder = async (
     getZoom: () => input.fetchZoom(),
   });
 
-  const sceneRenderer = createForwardLightingRenderer(runtime, target, {
+  const sceneRenderer = createForwardLightingRenderer(runtime, {
     maxPointLights: 3,
     noShadow: true,
   });
@@ -401,8 +401,8 @@ const applicationBuilder = async (
         view: camera.viewMatrix,
       };
 
-      sceneRenderer.render(scene);
-      particleRenderer.render(scene);
+      sceneRenderer.render(target, scene);
+      particleRenderer.render(target, scene);
     },
 
     resize(size) {

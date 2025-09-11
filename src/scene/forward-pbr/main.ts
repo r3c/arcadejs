@@ -144,7 +144,7 @@ const applicationBuilder = async (
     async change(configuration) {
       renderer?.dispose();
 
-      const newRenderer = createForwardLightingRenderer(runtime, target, {
+      const newRenderer = createForwardLightingRenderer(runtime, {
         maxPointLights: 3,
         lightModel: ForwardLightingLightModel.Physical,
         lightModelPhysicalNoAmbient: !configuration.lightAmbient,
@@ -202,7 +202,7 @@ const applicationBuilder = async (
         view: camera.viewMatrix,
       };
 
-      renderer?.render(scene);
+      renderer?.render(target, scene);
     },
 
     resize(size) {

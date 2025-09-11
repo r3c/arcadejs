@@ -1,6 +1,6 @@
 import { Vector2 } from "../../math/vector";
 
-type Renderer<TScene, TSubject, THandle> = {
+type Renderer<TTarget, TScene, TSubject, THandle> = {
   /**
    * Append subject to renderer.
    */
@@ -9,7 +9,7 @@ type Renderer<TScene, TSubject, THandle> = {
   /**
    * Render scene.
    */
-  render: (scene: TScene) => void;
+  render: (target: TTarget, scene: TScene) => void;
 
   /**
    * Resize rendering target.

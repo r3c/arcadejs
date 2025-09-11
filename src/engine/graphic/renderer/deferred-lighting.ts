@@ -384,6 +384,7 @@ type DeferredLightingHandle = {
 
 type DeferredLightingRenderer = Disposable &
   Renderer<
+    GlTarget,
     DeferredLightingScene,
     DeferredLightingSubject,
     DeferredLightingHandle
@@ -564,9 +565,8 @@ const loadLightBinding = <TScene extends LightScene>(
 
 const loadDirectionalLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredLightingConfiguration,
-  target: GlTarget
-): Painter<DirectionalLightScene> => {
+  configuration: DeferredLightingConfiguration
+): Painter<GlTarget, DirectionalLightScene> => {
   const binding = loadLightBinding<DirectionalLightScene>(
     runtime,
     configuration,
@@ -584,14 +584,13 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return createGlBindingPainter(target, binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ index }) => index);
 };
 
 const loadPointLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredLightingConfiguration,
-  target: GlTarget
-): Painter<PointLightScene> => {
+  configuration: DeferredLightingConfiguration
+): Painter<GlTarget, PointLightScene> => {
   const binding = loadLightBinding<PointLightScene>(
     runtime,
     configuration,
@@ -607,7 +606,7 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return createGlBindingPainter(target, binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ index }) => index);
 };
 
 const createMaterialBinder = (
@@ -733,7 +732,6 @@ const createMaterialShader = (
 
 const createDeferredLightingRenderer = (
   runtime: GlRuntime,
-  target: GlTarget,
   configuration: DeferredLightingConfiguration
 ): DeferredLightingRenderer => {
   const gl = runtime.context;
@@ -753,8 +751,7 @@ const createDeferredLightingRenderer = (
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightPainter = loadDirectionalLightPainter(
     runtime,
-    configuration,
-    lightTarget
+    configuration
   );
   const fullscreenProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -767,7 +764,6 @@ const createDeferredLightingRenderer = (
   ]);
   const geometryBinder = createGeometryBinder(runtime, configuration);
   const geometryRenderer = createGlMeshRenderer(
-    geometryTarget,
     GlMeshRendererMode.Triangle,
     geometryBinder
   );
@@ -777,16 +773,11 @@ const createDeferredLightingRenderer = (
   );
   const materialBinder = createMaterialBinder(runtime, configuration);
   const materialRenderer = createGlMeshRenderer(
-    target,
     GlMeshRendererMode.Triangle,
     materialBinder
   );
   const pointLightBillboard = createPointLightBillboard(gl);
-  const pointLightPainter = loadPointLightPainter(
-    runtime,
-    configuration,
-    lightTarget
-  );
+  const pointLightPainter = loadPointLightPainter(runtime, configuration);
   const normalAndGlossBuffer = geometryTarget.setupColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
@@ -817,7 +808,7 @@ const createDeferredLightingRenderer = (
       };
     },
 
-    render(scene: DeferredLightingScene) {
+    render(target, scene) {
       const {
         ambientLightColor,
         directionalLights,
@@ -855,7 +846,7 @@ const createDeferredLightingRenderer = (
       gl.depthMask(true);
 
       geometryTarget.clear(0);
-      geometryRenderer.render(scene);
+      geometryRenderer.render(geometryTarget, scene);
 
       // Render lights to light buffer
       gl.disable(gl.DEPTH_TEST);
@@ -878,7 +869,7 @@ const createDeferredLightingRenderer = (
         model.invert();
 
         for (const directionalLight of directionalLights) {
-          directionalLightPainter.paint({
+          directionalLightPainter.paint(lightTarget, {
             depthBuffer: depthBuffer,
             directionalLight,
             index: directionalLightBillboard.index,
@@ -895,7 +886,7 @@ const createDeferredLightingRenderer = (
       // Draw point lights using quads
       if (pointLights !== undefined) {
         pointLightBillboard.set(pointLights);
-        pointLightPainter.paint({
+        pointLightPainter.paint(lightTarget, {
           billboard,
           depthBuffer: depthBuffer,
           index: pointLightBillboard.index,
@@ -914,7 +905,7 @@ const createDeferredLightingRenderer = (
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
 
-      materialRenderer.render({
+      materialRenderer.render(target, {
         ambientLightColor: ambientLightColor ?? Vector3.zero,
         lightBuffer,
         projection,

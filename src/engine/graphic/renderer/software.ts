@@ -344,6 +344,7 @@ type SoftwareHandle = {
 };
 
 type SoftwareRenderer = Renderer<
+  Context2DScreen,
   SoftwareScene,
   SoftwareSubject,
   SoftwareHandle
@@ -359,7 +360,6 @@ type SoftwareSubject = {
 };
 
 const createSoftwareRenderer = (
-  screen: Context2DScreen,
   drawMode: SoftwareDrawMode
 ): SoftwareRenderer => {
   const subjects: { mesh: Mesh; transform: MutableMatrix4 }[] = [];
@@ -374,9 +374,9 @@ const createSoftwareRenderer = (
       return { transform };
     },
 
-    render: (scene) => {
+    render: (target, scene) => {
       const { projection, view } = scene;
-      const size = screen.getSize();
+      const size = target.getSize();
 
       if (size.x === 0 || size.y === 0) {
         return;
@@ -402,7 +402,7 @@ const createSoftwareRenderer = (
         drawMesh(image, mesh, modelViewProjection, drawMode);
       }
 
-      screen.context.putImageData(
+      target.context.putImageData(
         new ImageData(image.colors, image.size.x, image.size.y),
         0,
         0

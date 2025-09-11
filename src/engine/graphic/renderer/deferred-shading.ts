@@ -372,6 +372,7 @@ type DeferredShadingHandle = {
 
 type DeferredShadingRenderer = Disposable &
   Renderer<
+    GlTarget,
     DeferredShadingScene,
     DeferredShadingSubject,
     DeferredShadingHandle
@@ -676,8 +677,7 @@ const loadLightBinding = <TScene extends LightScene>(
 
 const loadDirectionalLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration,
-  target: GlTarget
+  configuration: DeferredShadingConfiguration
 ) => {
   const binding = loadLightBinding<DirectionalLightScene>(
     runtime,
@@ -696,13 +696,12 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return createGlBindingPainter(target, binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ index }) => index);
 };
 
 const loadPointLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration,
-  target: GlTarget
+  configuration: DeferredShadingConfiguration
 ) => {
   const binding = loadLightBinding<PointLightScene>(
     runtime,
@@ -719,10 +718,10 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return createGlBindingPainter(target, binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ index }) => index);
 };
 
-const loadPostPainter = (runtime: GlRuntime, target: GlTarget) => {
+const loadPostPainter = (runtime: GlRuntime) => {
   const shader = runtime.createShader(postVertexShader, postFragmentShader, {});
   const binding = shader.declare<PostScene>();
 
@@ -732,12 +731,11 @@ const loadPostPainter = (runtime: GlRuntime, target: GlTarget) => {
     shaderUniform.tex2dBlack(({ source }) => source)
   );
 
-  return createGlBindingPainter(target, binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ index }) => index);
 };
 
 const createDeferredShadingRenderer = (
   runtime: GlRuntime,
-  target: GlTarget,
   configuration: DeferredShadingConfiguration
 ): DeferredShadingRenderer => {
   const gl = runtime.context;
@@ -757,7 +755,6 @@ const createDeferredShadingRenderer = (
   );
   const ambientLightBinder = createAmbientLightBinder(runtime, configuration);
   const ambientLightRenderer = createGlMeshRenderer(
-    sceneTarget,
     GlMeshRendererMode.Triangle,
     ambientLightBinder
   );
@@ -769,8 +766,7 @@ const createDeferredShadingRenderer = (
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightPainter = loadDirectionalLightPainter(
     runtime,
-    configuration,
-    sceneTarget
+    configuration
   );
   const fullscreenProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -783,7 +779,6 @@ const createDeferredShadingRenderer = (
   ]);
   const geometryBinder = createGeometryBinder(runtime, configuration);
   const geometryRenderer = createGlMeshRenderer(
-    geometryTarget,
     GlMeshRendererMode.Triangle,
     geometryBinder
   );
@@ -792,16 +787,12 @@ const createDeferredShadingRenderer = (
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
-  const pointLightPainter = loadPointLightPainter(
-    runtime,
-    configuration,
-    sceneTarget
-  );
+  const pointLightPainter = loadPointLightPainter(runtime, configuration);
   const sceneBuffer = sceneTarget.setupColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
-  const scenePainter = loadPostPainter(runtime, target);
+  const scenePainter = loadPostPainter(runtime);
 
   return {
     depthBuffer,
@@ -826,7 +817,7 @@ const createDeferredShadingRenderer = (
       };
     },
 
-    render(scene: DeferredShadingScene) {
+    render(target, scene) {
       const {
         ambientLightColor,
         directionalLights,
@@ -864,7 +855,7 @@ const createDeferredShadingRenderer = (
       gl.depthMask(true);
 
       geometryTarget.clear(0);
-      geometryRenderer.render(scene);
+      geometryRenderer.render(geometryTarget, scene);
 
       // Draw scene lights
       gl.disable(gl.DEPTH_TEST);
@@ -877,7 +868,7 @@ const createDeferredShadingRenderer = (
 
       // Draw ambient light using fullscreen quad
       if (ambientLightColor !== undefined) {
-        ambientLightRenderer.render({
+        ambientLightRenderer.render(sceneTarget, {
           diffuseAndShininessBuffer: diffuseAndShininessBuffer,
           ambientLightColor,
           projection: fullscreenProjection,
@@ -896,7 +887,7 @@ const createDeferredShadingRenderer = (
         model.invert();
 
         for (const directionalLight of directionalLights) {
-          directionalLightPainter.paint({
+          directionalLightPainter.paint(sceneTarget, {
             diffuseAndShininessBuffer: diffuseAndShininessBuffer,
             depthBuffer: depthBuffer,
             directionalLight,
@@ -915,7 +906,7 @@ const createDeferredShadingRenderer = (
       if (pointLights !== undefined) {
         pointLightBillboard.set(pointLights);
 
-        pointLightPainter.paint({
+        pointLightPainter.paint(sceneTarget, {
           diffuseAndShininessBuffer: diffuseAndShininessBuffer,
           billboard,
           depthBuffer,
@@ -930,7 +921,7 @@ const createDeferredShadingRenderer = (
       }
 
       // Draw scene
-      scenePainter.paint({
+      scenePainter.paint(target, {
         index: directionalLightBillboard.index, // FIXME: dedicated quad
         position: directionalLightBillboard.polygon.lightPosition,
         source: sceneBuffer,
