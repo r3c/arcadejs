@@ -7,11 +7,6 @@ import {
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
 import {
-  DebugTextureEncoding,
-  DebugTextureRenderer,
-  DebugTextureChannel,
-} from "../../engine/graphic/webgl/renderers/debug-texture";
-import {
   DeferredLightingHandle,
   DeferredLightingLightModel,
   DeferredLightingScene,
@@ -36,6 +31,12 @@ import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import { Renderer } from "../../engine/graphic/renderer";
 import { Disposable } from "../../engine/language/lifecycle";
+import {
+  createGlEncodingPainter,
+  GlEncodingChannel,
+  GlEncodingFormat,
+  GlEncodingPainter,
+} from "../../engine/graphic/painter";
 
 /*
  ** What changed?
@@ -71,32 +72,32 @@ const configurator = {
 
 const debugConfigurations = [
   {
-    channel: DebugTextureChannel.Red,
-    encoding: DebugTextureEncoding.Depth,
+    channel: GlEncodingChannel.Red,
+    format: GlEncodingFormat.Depth,
   },
   {
-    channel: DebugTextureChannel.RedGreenBlue,
-    encoding: DebugTextureEncoding.LinearRGB,
+    channel: GlEncodingChannel.RedGreenBlue,
+    format: GlEncodingFormat.LinearRGB,
   },
   {
-    channel: DebugTextureChannel.RedGreen,
-    encoding: DebugTextureEncoding.Spheremap,
+    channel: GlEncodingChannel.RedGreen,
+    format: GlEncodingFormat.Spheremap,
   },
   {
-    channel: DebugTextureChannel.Blue,
-    encoding: DebugTextureEncoding.Monochrome,
+    channel: GlEncodingChannel.Blue,
+    format: GlEncodingFormat.Monochrome,
   },
   {
-    channel: DebugTextureChannel.Blue,
-    encoding: DebugTextureEncoding.Monochrome,
+    channel: GlEncodingChannel.Blue,
+    format: GlEncodingFormat.Monochrome,
   },
   {
-    channel: DebugTextureChannel.RedGreenBlue,
-    encoding: DebugTextureEncoding.Log2RGB,
+    channel: GlEncodingChannel.RedGreenBlue,
+    format: GlEncodingFormat.Log2RGB,
   },
   {
-    channel: DebugTextureChannel.Alpha,
-    encoding: DebugTextureEncoding.Log2RGB,
+    channel: GlEncodingChannel.Alpha,
+    format: GlEncodingFormat.Log2RGB,
   },
 ];
 
@@ -193,8 +194,8 @@ const applicationBuilder = async (
   }));
   const projection = Matrix4.fromIdentity();
 
-  let debugRenderer: DebugTextureRenderer | undefined = undefined;
-  let debugTexture: GlTexture | undefined = undefined;
+  let encodingPainter: GlEncodingPainter | undefined = undefined;
+  let encodingTexture: GlTexture | undefined = undefined;
   let directionalLights: typeof allDirectionalLights;
   let directionalLightHandles: DeferredHandle[] = [];
   let move = false;
@@ -205,15 +206,14 @@ const applicationBuilder = async (
 
   return {
     async change(configuration) {
-      debugRenderer?.dispose();
+      encodingPainter?.dispose();
       sceneRenderer?.dispose();
 
-      debugRenderer =
+      encodingPainter =
         configuration.debugMode !== 0
-          ? new DebugTextureRenderer(runtime, target, {
+          ? createGlEncodingPainter(runtime, target, {
               channel: debugConfigurations[configuration.debugMode - 1].channel,
-              encoding:
-                debugConfigurations[configuration.debugMode - 1].encoding,
+              format: debugConfigurations[configuration.debugMode - 1].format,
               zNear: 0.1,
               zFar: 100,
             })
@@ -232,7 +232,7 @@ const applicationBuilder = async (
               lightModelPhongNoSpecular: !configuration.lightSpecular,
             });
 
-            debugTexture =
+            encodingTexture =
               configuration.debugMode !== 0
                 ? [
                     renderer.depthBuffer,
@@ -256,7 +256,7 @@ const applicationBuilder = async (
               lightModelPhongNoSpecular: !configuration.lightSpecular,
             });
 
-            debugTexture =
+            encodingTexture =
               configuration.debugMode !== 0
                 ? [
                     renderer.depthBuffer,
@@ -317,8 +317,8 @@ const applicationBuilder = async (
     },
 
     dispose() {
-      debugRenderer?.dispose();
-      debugTexture?.dispose();
+      encodingPainter?.dispose();
+      encodingTexture?.dispose();
       models.cube.dispose();
       models.directionalLight.dispose();
       models.ground.dispose();
@@ -344,16 +344,14 @@ const applicationBuilder = async (
       sceneRenderer?.render(scene);
 
       // Draw debug
-      if (debugTexture !== undefined) {
-        debugRenderer?.render(debugTexture);
+      if (encodingTexture !== undefined) {
+        encodingPainter?.paint(encodingTexture);
       }
     },
 
     resize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      debugRenderer?.resize(size);
       sceneRenderer?.resize(size);
-
       target.resize(size);
     },
 

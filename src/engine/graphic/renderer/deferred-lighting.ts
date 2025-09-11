@@ -48,7 +48,6 @@ import {
   createTransformableMesh,
 } from "../webgl/model";
 import { GlBuffer } from "../webgl/resource";
-import { GlPainter, SinglePainter } from "../webgl/painters/single";
 import { Renderer } from "./definition";
 import {
   GlMeshBinder,
@@ -57,6 +56,7 @@ import {
   GlMeshScene,
   createGlMeshRenderer,
 } from "./gl-mesh";
+import { createGlBindingPainter, Painter } from "../painter";
 
 const enum DeferredLightingLightModel {
   None,
@@ -564,8 +564,9 @@ const loadLightBinding = <TScene extends LightScene>(
 
 const loadDirectionalLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredLightingConfiguration
-): GlPainter<DirectionalLightScene> => {
+  configuration: DeferredLightingConfiguration,
+  target: GlTarget
+): Painter<DirectionalLightScene> => {
   const binding = loadLightBinding<DirectionalLightScene>(
     runtime,
     configuration,
@@ -583,13 +584,14 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return new SinglePainter(binding, ({ index }) => index);
+  return createGlBindingPainter(target, binding, ({ index }) => index);
 };
 
 const loadPointLightPainter = (
   runtime: GlRuntime,
-  configuration: DeferredLightingConfiguration
-): GlPainter<PointLightScene> => {
+  configuration: DeferredLightingConfiguration,
+  target: GlTarget
+): Painter<PointLightScene> => {
   const binding = loadLightBinding<PointLightScene>(
     runtime,
     configuration,
@@ -605,7 +607,7 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return new SinglePainter(binding, ({ index }) => index);
+  return createGlBindingPainter(target, binding, ({ index }) => index);
 };
 
 const createMaterialBinder = (
@@ -751,7 +753,8 @@ const createDeferredLightingRenderer = (
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightPainter = loadDirectionalLightPainter(
     runtime,
-    configuration
+    configuration,
+    lightTarget
   );
   const fullscreenProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -779,7 +782,11 @@ const createDeferredLightingRenderer = (
     materialBinder
   );
   const pointLightBillboard = createPointLightBillboard(gl);
-  const pointLightPainter = loadPointLightPainter(runtime, configuration);
+  const pointLightPainter = loadPointLightPainter(
+    runtime,
+    configuration,
+    lightTarget
+  );
   const normalAndGlossBuffer = geometryTarget.setupColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
@@ -871,7 +878,7 @@ const createDeferredLightingRenderer = (
         model.invert();
 
         for (const directionalLight of directionalLights) {
-          directionalLightPainter.paint(lightTarget, {
+          directionalLightPainter.paint({
             depthBuffer: depthBuffer,
             directionalLight,
             index: directionalLightBillboard.index,
@@ -888,7 +895,7 @@ const createDeferredLightingRenderer = (
       // Draw point lights using quads
       if (pointLights !== undefined) {
         pointLightBillboard.set(pointLights);
-        pointLightPainter.paint(lightTarget, {
+        pointLightPainter.paint({
           billboard,
           depthBuffer: depthBuffer,
           index: pointLightBillboard.index,
