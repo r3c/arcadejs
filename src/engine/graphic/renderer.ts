@@ -27,12 +27,6 @@ import {
   ForwardLightingSubject,
 } from "./renderer/forward-lighting";
 import {
-  ParticleHandle,
-  ParticleRenderer,
-  ParticleScene,
-  createParticleRenderer,
-} from "./renderer/particle";
-import {
   SoftwareDrawMode,
   SoftwareRenderer,
   SoftwareScene,
@@ -56,9 +50,6 @@ export {
   type ForwardLightingRenderer,
   type ForwardLightingScene,
   type ForwardLightingSubject,
-  type ParticleHandle,
-  type ParticleRenderer,
-  type ParticleScene,
   type Renderer,
   type SoftwareRenderer,
   type SoftwareScene,
@@ -70,6 +61,5 @@ export {
   createDeferredLightingRenderer,
   createDeferredShadingRenderer,
   createForwardLightingRenderer,
-  createParticleRenderer,
   createSoftwareRenderer,
 };
