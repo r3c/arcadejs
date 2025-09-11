@@ -9,28 +9,22 @@ import {
   Vector3,
   Vector4,
 } from "../../math/vector";
-import { Renderer } from "./definition";
 import { GlRuntime, GlTarget } from "../webgl";
 import {
   GlBuffer,
   GlContext,
   createDynamicArrayBuffer,
   createDynamicIndexBuffer,
-} from "../webgl/resource";
+} from "./resource";
 import {
   GlShaderAttribute,
   createAttribute,
   shaderUniform,
-} from "../webgl/shader";
-import { GlTexture } from "../webgl/texture";
+} from "./shader";
+import { GlTexture } from "./texture";
 import { createGlBindingPainter } from "../painter";
 
-type ParticleHandle<TSeed> = {
-  emit: (count: number, center: Vector3, seed: TSeed) => void;
-};
-
-type ParticleBillboard = {
-  dispose: () => void;
+type ParticleBillboard = Disposable & {
   flush: () => void;
   reserve: (nbSources: number) => void;
   write: (sparkIndex: number) => void;
@@ -41,6 +35,12 @@ type ParticleBillboard = {
   sprite: GlTexture | undefined;
 };
 
+type ParticleEmitter = Disposable & {
+  define: <TSeed>(shape: ParticleShape<TSeed>) => ParticleSpawn<TSeed>;
+  render: (target: GlTarget, scene: ParticleScene) => void;
+  update: (dt: number) => void;
+};
+
 type ParticlePolygon = {
   coordinate: GlShaderAttribute;
   corner: GlShaderAttribute;
@@ -48,15 +48,17 @@ type ParticlePolygon = {
   tint: GlShaderAttribute;
 };
 
-type ParticleRenderer<TSeed> = Disposable &
-  Renderer<
-    GlTarget,
-    ParticleScene,
-    ParticleSubject<TSeed>,
-    ParticleHandle<TSeed>
-  > & {
-    update: (dt: number) => void;
-  };
+type ParticleScene = {
+  projection: Matrix4;
+  view: Matrix4;
+};
+
+type ParticleShape<TSeed> = {
+  initialize: (seed: TSeed) => ParticleUpdater;
+  duration: number;
+  sprite: GlTexture | undefined;
+  variants: number;
+};
 
 type ParticleSource = {
   update: ParticleUpdater;
@@ -74,17 +76,11 @@ type ParticleSpark = {
   variant: number;
 };
 
-type ParticleScene = {
-  projection: Matrix4;
-  view: Matrix4;
-};
-
-type ParticleSubject<TSeed> = {
-  duration: number;
-  sprite: GlTexture | undefined;
-  variants: number;
-  define: (seed: TSeed) => ParticleUpdater;
-};
+type ParticleSpawn<TSeed> = (
+  count: number,
+  center: Vector3,
+  seed: TSeed
+) => void;
 
 type ParticleUpdater = (
   spark: ParticleSpark,
@@ -251,9 +247,7 @@ const createBillboard = (
   };
 };
 
-const createParticleRenderer = <TSeed>(
-  runtime: GlRuntime
-): ParticleRenderer<TSeed> => {
+const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
   const shader = runtime.createShader(
     particleVertexShader,
     particleFragmentShader,
@@ -315,23 +309,21 @@ const createParticleRenderer = <TSeed>(
   };
 
   return {
-    append(subject) {
-      const { define, duration, sprite, variants } = subject;
+    define(shape) {
+      const { initialize, duration, sprite, variants } = shape;
 
       const billboard = createBillboard(runtime.context, sprite, variants);
 
       billboards.push(billboard);
 
-      return {
-        emit: (count, center, seed) => {
-          billboard.sources.push({
-            center: { x: center.x, y: center.y, z: center.z },
-            count,
-            duration,
-            elapsed: 0,
-            update: define(seed),
-          });
-        },
+      return (count, center, seed) => {
+        billboard.sources.push({
+          center: { x: center.x, y: center.y, z: center.z },
+          count,
+          duration,
+          elapsed: 0,
+          update: initialize(seed),
+        });
       };
     },
 
@@ -382,8 +374,6 @@ const createParticleRenderer = <TSeed>(
       }
     },
 
-    resize() {},
-
     update(dt) {
       for (const billboard of billboards) {
         const { flush, reserve, sources, spark, write } = billboard;
@@ -432,8 +422,8 @@ const createParticleRenderer = <TSeed>(
 };
 
 export {
-  type ParticleHandle,
-  type ParticleRenderer,
+  type ParticleEmitter,
   type ParticleScene,
-  createParticleRenderer,
+  type ParticleSpawn,
+  createParticleEmitter,
 };

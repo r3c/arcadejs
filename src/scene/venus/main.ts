@@ -19,10 +19,7 @@ import {
 import {
   ForwardLightingHandle,
   ForwardLightingScene,
-  ParticleHandle,
-  ParticleRenderer,
   createForwardLightingRenderer,
-  createParticleRenderer,
 } from "../../engine/graphic/renderer";
 import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
@@ -32,6 +29,11 @@ import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 import { Camera, createBehindCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
+import {
+  createParticleEmitter,
+  ParticleEmitter,
+  ParticleSpawn,
+} from "../../engine/graphic/webgl/particle";
 
 type Player = {
   rotation: MutableQuaternion;
@@ -58,8 +60,8 @@ type ApplicationState = {
   lights: Light[];
   lightHandles: ForwardLightingHandle[];
   player: Player;
-  particleRenderer: ParticleRenderer<number>;
-  particleHandle0: ParticleHandle<number>;
+  particleEmitter: ParticleEmitter;
+  particleSpawn0: ParticleSpawn<number>;
   shipHandle: ForwardLightingHandle;
   stars: Star[];
   starHandles: ForwardLightingHandle[];
@@ -111,11 +113,7 @@ const createParticleUpdater = (): Updater => {
   let smoke = 0;
 
   return (state, dt) => {
-    const {
-      particleHandle0: particleAction0,
-      particleRenderer,
-      player,
-    } = state;
+    const { particleSpawn0, particleEmitter, player } = state;
 
     smoke += dt;
 
@@ -125,13 +123,13 @@ const createParticleUpdater = (): Updater => {
         smokeOrigin.rotate(player.rotation);
         smokeOrigin.add(player.position);
 
-        particleAction0.emit(10, smokeOrigin, Math.random());
+        particleSpawn0(10, smokeOrigin, Math.random());
       }
 
       smoke -= 20;
     }
 
-    particleRenderer.update(dt);
+    particleEmitter.update(dt);
   };
 };
 
@@ -255,11 +253,11 @@ const applicationBuilder = async (
   const sprite = loadTextureQuad(gl, spriteImage);
 
   // Particle effects
-  const particleRenderer = createParticleRenderer<number>(runtime);
+  const particleEmitter = createParticleEmitter(runtime);
 
   const particleEasing0 = getEasing(EasingType.QuadraticOut);
-  const particleHandle0 = particleRenderer.append({
-    define: (seed) => {
+  const particleSpawn0 = particleEmitter.define<number>({
+    initialize: (seed) => {
       const sequence = createFloatSequence(seed);
 
       return (spark, rankSpan, timeSpan) => {
@@ -355,8 +353,8 @@ const applicationBuilder = async (
     lights,
     lightHandles,
     player,
-    particleHandle0,
-    particleRenderer,
+    particleEmitter,
+    particleSpawn0,
     shipHandle,
     stars,
     starHandles,
@@ -378,7 +376,7 @@ const applicationBuilder = async (
       }
 
       lightModel.dispose();
-      particleRenderer.dispose();
+      particleEmitter.dispose();
       runtime.dispose();
       sceneRenderer.dispose();
       shipModel.dispose();
@@ -401,12 +399,11 @@ const applicationBuilder = async (
         view: camera.viewMatrix,
       };
 
+      particleEmitter.render(target, scene);
       sceneRenderer.render(target, scene);
-      particleRenderer.render(target, scene);
     },
 
     resize(size) {
-      particleRenderer.resize(size);
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
       sceneRenderer.resize(size);
       target.resize(size);
