@@ -8,7 +8,7 @@ import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import {
   createModel,
-  createTransformableMesh,
+  createDynamicMesh,
 } from "../../engine/graphic/webgl/model";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
@@ -223,7 +223,7 @@ const applicationBuilder = async (
   });
 
   const sphereModel = createModel(gl, sphere);
-  const { mesh, transform: sphereTransform } = createTransformableMesh(
+  const { mesh, transform: sphereTransform } = createDynamicMesh(
     sphereModel.mesh
   );
   renderer.append({ mesh });
@@ -246,7 +246,7 @@ const applicationBuilder = async (
       t2,
     ]);
 
-    const { mesh, transform } = createTransformableMesh(floor0Model.mesh);
+    const { mesh, transform } = createDynamicMesh(floor0Model.mesh);
 
     renderer.append({ mesh });
 

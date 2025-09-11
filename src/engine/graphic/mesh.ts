@@ -161,10 +161,10 @@ const computeTangents = (
   return tangents;
 };
 
-const createFlattenedMesh = (mesh: Mesh): Mesh => {
+const createFlatMesh = (mesh: Mesh): Mesh => {
   const flatPolygons = new Map<Material | undefined, Polygon>();
 
-  createFlattenedPolygons(flatPolygons, mesh, Matrix4.identity);
+  createFlatPolygons(flatPolygons, mesh, Matrix4.identity);
 
   return {
     children: [],
@@ -173,7 +173,7 @@ const createFlattenedMesh = (mesh: Mesh): Mesh => {
   };
 };
 
-const createFlattenedPolygons = (
+const createFlatPolygons = (
   flatPolygons: Map<Material | undefined, Polygon>,
   mesh: Mesh,
   parentTransform: Matrix4
@@ -250,7 +250,7 @@ const createFlattenedPolygons = (
   }
 
   for (const child of mesh.children) {
-    createFlattenedPolygons(flatPolygons, child, transform);
+    createFlatPolygons(flatPolygons, child, transform);
   }
 };
 
@@ -540,7 +540,7 @@ export {
   changeMeshCenter,
   computeBoundingBox,
   computeCenter,
-  createFlattenedMesh,
+  createFlatMesh,
   createLibrary,
   createMergedMesh,
   loadMeshFrom3ds,

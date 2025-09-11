@@ -17,6 +17,11 @@ import {
   createTexture,
 } from "./texture";
 
+type GlDynamicMesh = {
+  mesh: GlMesh;
+  transform: MutableMatrix4;
+};
+
 type GlLibrary = Disposable & {
   materials: Map<Material, GlMaterial>;
 };
@@ -68,11 +73,6 @@ type GlPrimitive = Disposable & {
   indexBuffer: GlBuffer;
   material: GlMaterial;
   polygon: GlPolygon;
-};
-
-type GlTransformableMesh = {
-  mesh: GlMesh;
-  transform: MutableMatrix4;
 };
 
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
@@ -227,6 +227,20 @@ const loadMesh = (gl: GlContext, mesh: Mesh, library: GlLibrary): GlMesh => {
   };
 };
 
+const createDynamicMesh = (mesh: GlMesh): GlDynamicMesh => {
+  const transform = Matrix4.fromIdentity();
+
+  return {
+    mesh: {
+      children: [mesh],
+      dispose: mesh.dispose,
+      primitives: [],
+      transform,
+    },
+    transform,
+  };
+};
+
 /**
  * Load model into given WebGL context. If a previously loaded "recycle" model
  * is passed, every compatible material it contains will be recycled to avoid
@@ -262,20 +276,6 @@ const createModel = (
     },
     library: ownedLibrary,
     mesh: ownedMesh,
-  };
-};
-
-const createTransformableMesh = (mesh: GlMesh): GlTransformableMesh => {
-  const transform = Matrix4.fromIdentity();
-
-  return {
-    mesh: {
-      children: [mesh],
-      dispose: mesh.dispose,
-      primitives: [],
-      transform,
-    },
-    transform,
   };
 };
 
@@ -377,13 +377,13 @@ const loadPrimitive = (
 };
 
 export {
+  type GlDynamicMesh,
   type GlLibrary,
   type GlMaterial,
   type GlMesh,
   type GlModel,
   type GlPolygon,
-  type GlTransformableMesh,
+  createDynamicMesh,
   createLibrary,
   createModel,
-  createTransformableMesh,
 };

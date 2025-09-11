@@ -25,7 +25,7 @@ import { createCircleMover, createOrbitMover } from "../move";
 import { brightColor } from "../../engine/graphic/color";
 import {
   createModel,
-  createTransformableMesh,
+  createDynamicMesh,
 } from "../../engine/graphic/webgl/model";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createOrbitCamera } from "../../engine/stage/camera";
@@ -266,7 +266,7 @@ const applicationBuilder = async (
 
       // Register cube subjects
       for (const i of range(16)) {
-        const cube = createTransformableMesh(models.cube.mesh);
+        const cube = createDynamicMesh(models.cube.mesh);
 
         newRenderer.append({ mesh: cube.mesh });
 
@@ -278,7 +278,7 @@ const applicationBuilder = async (
       }
 
       // Register ground subject
-      const ground = createTransformableMesh(models.ground.mesh);
+      const ground = createDynamicMesh(models.ground.mesh);
 
       newRenderer.append({ mesh: ground.mesh });
 
@@ -299,7 +299,7 @@ const applicationBuilder = async (
         directionalLightParameter.count
       );
       directionalLightTransforms = range(directionalLights.length).map(() => {
-        const { mesh, transform } = createTransformableMesh(
+        const { mesh, transform } = createDynamicMesh(
           models.directionalLight.mesh
         );
 
@@ -309,9 +309,7 @@ const applicationBuilder = async (
       });
       pointLights = allPointLights.slice(0, pointLightParameter.count);
       pointLightTransforms = range(pointLights.length).map(() => {
-        const { mesh, transform } = createTransformableMesh(
-          models.pointLight.mesh
-        );
+        const { mesh, transform } = createDynamicMesh(models.pointLight.mesh);
 
         newRenderer.append({ mesh });
 

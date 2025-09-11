@@ -1,7 +1,7 @@
 import {
   Mesh,
   MeshInstance,
-  createFlattenedMesh,
+  createFlatMesh,
   createMergedMesh,
 } from "../../engine/graphic/mesh";
 import {
@@ -275,7 +275,7 @@ const createWorldGraphic = (
         }
 
         const mergedModel = createMergedMesh(instances);
-        const flattenedModel = createFlattenedMesh(mergedModel);
+        const flattenedModel = createFlatMesh(mergedModel);
         const model = createModel(runtime.context, flattenedModel, {
           library,
         });

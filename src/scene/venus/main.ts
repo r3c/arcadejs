@@ -24,7 +24,7 @@ import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
 import {
   createModel,
-  createTransformableMesh,
+  createDynamicMesh,
 } from "../../engine/graphic/webgl/model";
 import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
@@ -309,7 +309,7 @@ const applicationBuilder = async (
 
   // Ship
   const shipModel = createModel(gl, shipMesh);
-  const ship = createTransformableMesh(shipModel.mesh);
+  const ship = createDynamicMesh(shipModel.mesh);
   const shipTransform = ship.transform;
 
   sceneRenderer.append({ mesh: ship.mesh });
@@ -322,7 +322,7 @@ const applicationBuilder = async (
 
   const lightModel = createModel(gl, lightMesh);
   const lightTransforms = lights.map(() => {
-    const { mesh, transform } = createTransformableMesh(lightModel.mesh);
+    const { mesh, transform } = createDynamicMesh(lightModel.mesh);
 
     sceneRenderer.append({ mesh, noShadow: true });
 
@@ -350,9 +350,7 @@ const applicationBuilder = async (
 
   const starModels = starMeshes.map((mesh) => createModel(gl, mesh));
   const starTransforms = stars.map(({ variant }) => {
-    const { mesh, transform } = createTransformableMesh(
-      starModels[variant].mesh
-    );
+    const { mesh, transform } = createDynamicMesh(starModels[variant].mesh);
 
     sceneRenderer.append({ mesh });
 

@@ -2,7 +2,7 @@ import { Disposable } from "../../language/lifecycle";
 import { range } from "../../language/iterable";
 import { Matrix4 } from "../../math/matrix";
 import { Vector3 } from "../../math/vector";
-import { Mesh, Polygon, createFlattenedMesh } from "../mesh";
+import { Mesh, Polygon, createFlatMesh } from "../mesh";
 import { GlRuntime, GlTarget } from "../webgl";
 import {
   GlBuffer,
@@ -109,7 +109,7 @@ const extractLines = (
   const tintBuffer = createStaticArrayBuffer(gl, Float32Array);
   const tint = createAttribute(tintBuffer, 3);
 
-  const flat = createFlattenedMesh(mesh);
+  const flat = createFlatMesh(mesh);
   const positionArray = [];
   const tintArray = [];
 
