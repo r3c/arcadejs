@@ -11,7 +11,7 @@ import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { createOrbitMover } from "../move";
 import {
   createModel,
-  createTransformableMesh,
+  createDynamicMesh,
 } from "../../engine/graphic/webgl/model";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
@@ -122,7 +122,7 @@ const applicationBuilder = async (
   });
 
   const selectModel = createModel(gl, selectMesh);
-  const select = createTransformableMesh(selectModel.mesh);
+  const select = createDynamicMesh(selectModel.mesh);
   const selectTransform = select.transform;
 
   renderer.append({

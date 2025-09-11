@@ -15,7 +15,7 @@ import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
 import { createCircleMover, createOrbitMover } from "../move";
 import {
   createModel,
-  createTransformableMesh,
+  createDynamicMesh,
 } from "../../engine/graphic/webgl/model";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
@@ -127,7 +127,7 @@ const applicationBuilder = async (
 
       newRenderer.append({ mesh: models.cube.mesh });
 
-      const ground = createTransformableMesh(models.ground.mesh);
+      const ground = createDynamicMesh(models.ground.mesh);
 
       newRenderer.append({ mesh: ground.mesh });
 
@@ -135,9 +135,7 @@ const applicationBuilder = async (
 
       directionalLightTransforms = range(configuration.nbDirectionalLights).map(
         () => {
-          const { mesh, transform } = createTransformableMesh(
-            models.light.mesh
-          );
+          const { mesh, transform } = createDynamicMesh(models.light.mesh);
 
           newRenderer.append({ mesh, noShadow: true });
 
@@ -145,7 +143,7 @@ const applicationBuilder = async (
         }
       );
       pointLightTransforms = range(configuration.nbPointLights).map(() => {
-        const { mesh, transform } = createTransformableMesh(models.light.mesh);
+        const { mesh, transform } = createDynamicMesh(models.light.mesh);
 
         newRenderer.append({ mesh, noShadow: true });
 

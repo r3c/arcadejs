@@ -21,7 +21,7 @@ import {
 import { createOrbitMover } from "../move";
 import {
   createModel,
-  createTransformableMesh,
+  createDynamicMesh,
 } from "../../engine/graphic/webgl/model";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
@@ -160,14 +160,14 @@ const applicationBuilder = async (
 
       newRenderer.append({ mesh: models.helmet.mesh });
 
-      const ground = createTransformableMesh(models.ground.mesh);
+      const ground = createDynamicMesh(models.ground.mesh);
 
       newRenderer.append({ mesh: ground.mesh });
 
       ground.transform.translate({ x: 0, y: -1.5, z: 0 });
 
       lightTransforms = range(configuration.nbLights).map(() => {
-        const { mesh, transform } = createTransformableMesh(models.light.mesh);
+        const { mesh, transform } = createDynamicMesh(models.light.mesh);
 
         newRenderer.append({ mesh, noShadow: true });
 
