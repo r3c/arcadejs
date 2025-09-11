@@ -3,17 +3,19 @@ import { Input, Pointer } from "../../engine/io/controller";
 import { WebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
-import { Matrix3, Matrix4 } from "../../engine/math/matrix";
+import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
 import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
-import { createModel } from "../../engine/graphic/webgl/model";
+import {
+  createModel,
+  createTransformableMesh,
+} from "../../engine/graphic/webgl/model";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
 import { Camera, createOrbitCamera } from "../../engine/stage/camera";
 import { createSemiImplicitEulerMovement } from "../../engine/motion/movement";
 import {
   createForwardLightingRenderer,
-  ForwardLightingHandle,
   ForwardLightingScene,
 } from "../../engine/graphic/renderer";
 
@@ -40,7 +42,7 @@ type ApplicationState = {
   lights: Light[];
   surfaces: { collision: boolean; plane: Plane }[];
   player: Player;
-  sphereHandle: ForwardLightingHandle;
+  sphereTransform: MutableMatrix4;
 };
 
 // Move camera
@@ -82,7 +84,7 @@ const createPlayerUpdater = (): Updater => {
   const yMovement = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player, sphereHandle, surfaces } = state;
+    const { input, player, sphereTransform, surfaces } = state;
 
     const xDelta =
       (input.isPressed("arrowleft") ? -thrust : 0) +
@@ -138,7 +140,7 @@ const createPlayerUpdater = (): Updater => {
     player.position.add(velocity);
 
     // Reflect into subject
-    sphereHandle.transform.setFromRotationPosition(
+    sphereTransform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
       player.position
     );
@@ -221,7 +223,10 @@ const applicationBuilder = async (
   });
 
   const sphereModel = createModel(gl, sphere);
-  const sphereSubject = renderer.append({ mesh: sphereModel.mesh });
+  const { mesh, transform: sphereTransform } = createTransformableMesh(
+    sphereModel.mesh
+  );
+  renderer.append({ mesh });
 
   const floor0Model = createModel(gl, floor0);
 
@@ -241,7 +246,9 @@ const applicationBuilder = async (
       t2,
     ]);
 
-    const { transform } = renderer.append({ mesh: floor0Model.mesh });
+    const { mesh, transform } = createTransformableMesh(floor0Model.mesh);
+
+    renderer.append({ mesh });
 
     transform.setFromRotationPosition(rotation, Vector3.zero);
     transform.translate({ x: 0, y: plane.distance, z: 0 });
@@ -273,7 +280,7 @@ const applicationBuilder = async (
       ]),
       position: Vector3.fromZero(),
     },
-    sphereHandle: sphereSubject,
+    sphereTransform,
     surfaces,
   };
   const updaters = [

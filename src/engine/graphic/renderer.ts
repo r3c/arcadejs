@@ -1,7 +1,6 @@
 import { Renderer } from "./renderer/definition";
 import {
   DeferredLightingConfiguration,
-  DeferredLightingHandle,
   DeferredLightingLightModel,
   DeferredLightingRenderer,
   DeferredLightingScene,
@@ -10,7 +9,6 @@ import {
 } from "./renderer/deferred-lighting";
 import {
   DeferredShadingConfiguration,
-  DeferredShadingHandle,
   DeferredShadingLightModel,
   DeferredShadingRenderer,
   DeferredShadingScene,
@@ -20,7 +18,6 @@ import {
 import {
   createForwardLightingRenderer,
   ForwardLightingConfiguration,
-  ForwardLightingHandle,
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
@@ -36,17 +33,14 @@ import {
 
 export {
   type DeferredLightingConfiguration,
-  type DeferredLightingHandle,
   type DeferredLightingRenderer,
   type DeferredLightingScene,
   type DeferredLightingSubject,
   type DeferredShadingConfiguration,
-  type DeferredShadingHandle,
   type DeferredShadingRenderer,
   type DeferredShadingScene,
   type DeferredShadingSubject,
   type ForwardLightingConfiguration,
-  type ForwardLightingHandle,
   type ForwardLightingRenderer,
   type ForwardLightingScene,
   type ForwardLightingSubject,

@@ -33,17 +33,13 @@ type GlMeshNode = {
   transform: Matrix4;
 };
 
-type GlMeshHandle = {
-  remove: () => void;
-};
-
 type GlMeshPrimitive = {
   indexBuffer: GlBuffer;
   polygon: GlPolygon;
 };
 
 type GlMeshRenderer<TScene extends GlMeshScene> = Disposable &
-  Renderer<GlTarget, TScene, GlMesh, GlMeshHandle>;
+  Renderer<GlTarget, TScene, GlMesh>;
 
 const enum GlMeshRendererMode {
   Triangle,
@@ -202,38 +198,36 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
         removals.push({ featureKey, materials });
       }
 
-      return {
-        remove() {
-          for (const { featureKey, materials } of removals) {
-            const shader = shaders.get(featureKey);
+      return () => {
+        for (const { featureKey, materials } of removals) {
+          const shader = shaders.get(featureKey);
 
-            if (shader === undefined) {
+          if (shader === undefined) {
+            continue;
+          }
+
+          const { binding, nodesByMaterial } = shader;
+
+          for (const material of materials) {
+            const nodes = nodesByMaterial.get(material);
+
+            if (nodes === undefined) {
               continue;
             }
 
-            const { binding, nodesByMaterial } = shader;
+            nodes.delete(symbol);
 
-            for (const material of materials) {
-              const nodes = nodesByMaterial.get(material);
-
-              if (nodes === undefined) {
-                continue;
-              }
-
-              nodes.delete(symbol);
-
-              if (nodes.size === 0) {
-                nodesByMaterial.delete(material);
-              }
-            }
-
-            if (nodesByMaterial.size === 0) {
-              binding.dispose();
-              disposable.remove(binding);
-              shaders.delete(featureKey);
+            if (nodes.size === 0) {
+              nodesByMaterial.delete(material);
             }
           }
-        },
+
+          if (nodesByMaterial.size === 0) {
+            binding.dispose();
+            disposable.remove(binding);
+            shaders.delete(featureKey);
+          }
+        }
       };
     },
 

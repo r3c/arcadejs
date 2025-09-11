@@ -8,7 +8,7 @@ import {
   pointLightType,
   resultLightType,
 } from "../webgl/shaders/light";
-import { Matrix4, MutableMatrix4 } from "../../math/matrix";
+import { Matrix4 } from "../../math/matrix";
 import {
   normalEncode,
   normalPerturb,
@@ -41,12 +41,7 @@ import {
   GlShader,
 } from "../webgl/shader";
 import { GlTexture } from "../webgl/texture";
-import {
-  GlMaterial,
-  GlMesh,
-  GlPolygon,
-  createTransformableMesh,
-} from "../webgl/model";
+import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlBuffer } from "../webgl/resource";
 import { Renderer } from "./definition";
 import {
@@ -377,18 +372,8 @@ type DeferredLightingConfiguration = {
   noNormalMap?: boolean;
 };
 
-type DeferredLightingHandle = {
-  remove: () => void;
-  transform: MutableMatrix4;
-};
-
 type DeferredLightingRenderer = Disposable &
-  Renderer<
-    GlTarget,
-    DeferredLightingScene,
-    DeferredLightingSubject,
-    DeferredLightingHandle
-  > & {
+  Renderer<GlTarget, DeferredLightingScene, DeferredLightingSubject> & {
     // FIXME: debug
     depthBuffer: GlTexture;
     lightBuffer: GlTexture;
@@ -793,18 +778,14 @@ const createDeferredLightingRenderer = (
     },
 
     append(subject) {
-      const { mesh: originalMesh } = subject;
-      const { mesh, transform } = createTransformableMesh(originalMesh);
+      const { mesh } = subject;
 
       const geometryResource = geometryRenderer.append(mesh);
       const materialResource = materialRenderer.append(mesh);
 
-      return {
-        remove: () => {
-          geometryResource.remove();
-          materialResource.remove();
-        },
-        transform,
+      return () => {
+        geometryResource();
+        materialResource();
       };
     },
 
@@ -922,7 +903,6 @@ const createDeferredLightingRenderer = (
 
 export {
   type DeferredLightingConfiguration,
-  type DeferredLightingHandle,
   type DeferredLightingRenderer,
   type DeferredLightingScene,
   type DeferredLightingSubject,

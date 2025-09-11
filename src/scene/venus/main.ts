@@ -9,7 +9,7 @@ import {
   loadMeshFromJson,
   loadMeshFromObj,
 } from "../../engine/graphic/mesh";
-import { Matrix3, Matrix4 } from "../../engine/math/matrix";
+import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
   GlTarget,
@@ -17,13 +17,15 @@ import {
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import {
-  ForwardLightingHandle,
   ForwardLightingScene,
   createForwardLightingRenderer,
 } from "../../engine/graphic/renderer";
 import { loadFromURL } from "../../engine/graphic/image";
 import { EasingType, getEasing } from "../../engine/math/easing";
-import { createModel } from "../../engine/graphic/webgl/model";
+import {
+  createModel,
+  createTransformableMesh,
+} from "../../engine/graphic/webgl/model";
 import { createFloatSequence } from "../../engine/math/random";
 import { Mover, createOrbitMover } from "../move";
 import { MutableQuaternion, Quaternion } from "../../engine/math/quaternion";
@@ -58,13 +60,13 @@ type Updater = (state: ApplicationState, dt: number) => void;
 type ApplicationState = {
   input: Input;
   lights: Light[];
-  lightHandles: ForwardLightingHandle[];
+  lightTransforms: MutableMatrix4[];
   player: Player;
   particleEmitter: ParticleEmitter;
   particleSpawn0: ParticleSpawn<number>;
-  shipHandle: ForwardLightingHandle;
+  shipTransform: MutableMatrix4;
   stars: Star[];
-  starHandles: ForwardLightingHandle[];
+  starTransforms: MutableMatrix4[];
 };
 
 const pi2 = Math.PI * 2;
@@ -90,11 +92,11 @@ const createLightUpdater = (): Updater => {
   let time = 0;
 
   return (state, dt) => {
-    const { lights, lightHandles, player } = state;
+    const { lights, lightTransforms, player } = state;
 
     for (let i = lights.length; i-- > 0; ) {
       const { mover, position } = lights[i];
-      const { transform } = lightHandles[i];
+      const transform = lightTransforms[i];
 
       position.set(mover(player.position, time * 0.001));
 
@@ -150,7 +152,7 @@ const createPlayerUpdater = (): Updater => {
   const v = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player, shipHandle } = state;
+    const { input, player, shipTransform } = state;
 
     const horizontalDelta =
       (input.isPressed("arrowleft") ? rThrust : 0) +
@@ -179,7 +181,7 @@ const createPlayerUpdater = (): Updater => {
     player.position.y = warp(player.position.y, 0, 10000);
     player.position.z = warp(player.position.z, 0, 10000);
 
-    shipHandle.transform.setFromRotationPosition(
+    shipTransform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
       player.position
     );
@@ -189,12 +191,12 @@ const createPlayerUpdater = (): Updater => {
 // Update star positions
 const createStarUpdater = (): Updater => {
   return (state, dt) => {
-    const { player, stars, starHandles } = state;
+    const { player, stars, starTransforms } = state;
 
     for (let i = stars.length; i-- > 0; ) {
       const star = stars[i];
       const { position, rotationAxis } = star;
-      const { transform } = starHandles[i];
+      const transform = starTransforms[i];
 
       position.x = warp(position.x, player.position.x, 100);
       position.y = warp(position.y, player.position.y, 100);
@@ -307,9 +309,10 @@ const applicationBuilder = async (
 
   // Ship
   const shipModel = createModel(gl, shipMesh);
-  const shipHandle = sceneRenderer.append({
-    mesh: shipModel.mesh,
-  });
+  const ship = createTransformableMesh(shipModel.mesh);
+  const shipTransform = ship.transform;
+
+  sceneRenderer.append({ mesh: ship.mesh });
 
   // Lights
   const lights = range(2).map((i) => ({
@@ -318,9 +321,13 @@ const applicationBuilder = async (
   }));
 
   const lightModel = createModel(gl, lightMesh);
-  const lightHandles = lights.map(() =>
-    sceneRenderer.append({ mesh: lightModel.mesh, noShadow: true })
-  );
+  const lightTransforms = lights.map(() => {
+    const { mesh, transform } = createTransformableMesh(lightModel.mesh);
+
+    sceneRenderer.append({ mesh, noShadow: true });
+
+    return transform;
+  });
 
   // Stars
   const stars = range(starFieldCount).map(() => {
@@ -342,22 +349,28 @@ const applicationBuilder = async (
   });
 
   const starModels = starMeshes.map((mesh) => createModel(gl, mesh));
-  const starHandles = stars.map(({ variant }) =>
-    sceneRenderer.append({ mesh: starModels[variant].mesh })
-  );
+  const starTransforms = stars.map(({ variant }) => {
+    const { mesh, transform } = createTransformableMesh(
+      starModels[variant].mesh
+    );
+
+    sceneRenderer.append({ mesh });
+
+    return transform;
+  });
 
   // Create state
   const projection = Matrix4.fromIdentity();
   const state: ApplicationState = {
     input,
     lights,
-    lightHandles,
+    lightTransforms,
     player,
     particleEmitter,
     particleSpawn0,
-    shipHandle,
+    shipTransform,
     stars,
-    starHandles,
+    starTransforms,
   };
   const updaters = [
     createCameraUpdater(camera),
@@ -399,8 +412,8 @@ const applicationBuilder = async (
         view: camera.viewMatrix,
       };
 
-      particleEmitter.render(target, scene);
       sceneRenderer.render(target, scene);
+      particleEmitter.render(target, scene);
     },
 
     resize(size) {
