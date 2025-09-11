@@ -6,13 +6,11 @@ import { GlShaderBinding } from "../webgl/shader";
 const createGlBindingPainter = <TScene>(
   binding: GlShaderBinding<TScene>,
   indexGetter: (scene: TScene) => GlBuffer
-): Painter<GlTarget, TScene> => {
-  return {
-    paint(target, scene) {
-      binding.bind(scene);
-      target.draw(0, WebGL2RenderingContext["TRIANGLES"], indexGetter(scene));
-    },
-  };
-};
+): Painter<GlTarget, TScene> => ({
+  paint(target, scene) {
+    binding.bind(scene);
+    target.draw(0, WebGL2RenderingContext["TRIANGLES"], indexGetter(scene));
+  },
+});
 
 export { createGlBindingPainter };

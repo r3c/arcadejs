@@ -34,7 +34,7 @@ type ParticleBillboard = {
   flush: () => void;
   reserve: (nbSources: number) => void;
   write: (sparkIndex: number) => void;
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   polygon: ParticlePolygon;
   sources: ParticleSource[];
   spark: ParticleSpark;
@@ -238,7 +238,7 @@ const createBillboard = (
       indices.buffer[indexStart + 4] = vertexStart + 2;
       indices.buffer[indexStart + 5] = vertexStart + 3;
     },
-    index: indexBuffer,
+    indexBuffer,
     polygon: {
       coordinate: createAttribute(coordinateBuffer, 2),
       corner: createAttribute(cornerBuffer, 2),
@@ -306,7 +306,7 @@ const createParticleRenderer = <TSeed>(
   const billboards: ParticleBillboard[] = [];
   const painter = createGlBindingPainter(
     billboardBinding,
-    ({ index }) => index
+    ({ indexBuffer }) => indexBuffer
   );
   const sceneState = {
     billboard: Matrix4.fromIdentity(),

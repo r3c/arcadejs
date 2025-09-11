@@ -11,7 +11,7 @@ import { GlShaderAttribute, createAttribute } from "./shader";
 import { PointLight } from "./shaders/light";
 
 type GlDirectionalLightBillboard = Disposable & {
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   polygon: GlDirectionalLightPolygon;
 };
 
@@ -21,7 +21,7 @@ type GlDirectionalLightPolygon = {
 
 type GlPointLightBillboard = Disposable & {
   set: (lights: ArrayLike<PointLight>) => void;
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   polygon: GlPointLightPolygon;
 };
 
@@ -57,9 +57,9 @@ const nbCubeVertices = 8;
 const createDirectionalLightBillboard = (
   gl: GlContext
 ): GlDirectionalLightBillboard => {
-  const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
+  const indexBuffer = createDynamicIndexBuffer(gl, Uint32Array, 10);
 
-  index.set(new Uint32Array([0, 1, 2, 0, 2, 3]), 6);
+  indexBuffer.set(new Uint32Array([0, 1, 2, 0, 2, 3]), 6);
 
   const lightPositionBuffer = createStaticArrayBuffer(gl, Float32Array);
   const lightPosition = createAttribute(lightPositionBuffer, 3);
@@ -73,10 +73,10 @@ const createDirectionalLightBillboard = (
 
   return {
     dispose: () => {
-      index.dispose();
+      indexBuffer.dispose();
       lightPositionBuffer.dispose();
     },
-    index,
+    indexBuffer,
     polygon: {
       lightPosition,
     },
@@ -90,34 +90,34 @@ const createDirectionalLightBillboard = (
  * with no rotation.
  */
 const createPointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
-  const color = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const colorBuffer = createFlexibleArray(Float32Array, 10);
-  const index = createDynamicIndexBuffer(gl, Uint32Array, 10);
-  const indexBuffer = createFlexibleArray(Uint32Array, 10);
-  const position = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const positionBuffer = createFlexibleArray(Float32Array, 10);
-  const radius = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const radiusBuffer = createFlexibleArray(Float32Array, 10);
-  const shift = createDynamicArrayBuffer(gl, Float32Array, 10);
-  const shiftBuffer = createFlexibleArray(Float32Array, 10);
+  const colorArray = createFlexibleArray(Float32Array, 10);
+  const colorBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const indexArray = createFlexibleArray(Uint32Array, 10);
+  const indexBuffer = createDynamicIndexBuffer(gl, Uint32Array, 10);
+  const positionArray = createFlexibleArray(Float32Array, 10);
+  const positionBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const radiusArray = createFlexibleArray(Float32Array, 10);
+  const radiusBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
+  const shiftArray = createFlexibleArray(Float32Array, 10);
+  const shiftBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
 
   return {
     dispose: () => {
-      color.dispose();
-      index.dispose();
-      position.dispose();
-      radius.dispose();
-      shift.dispose();
+      colorBuffer.dispose();
+      indexBuffer.dispose();
+      positionBuffer.dispose();
+      radiusBuffer.dispose();
+      shiftBuffer.dispose();
     },
     set: (lights) => {
       const nbIndices = lights.length * nbCubeIndices;
       const nbVertices = lights.length * nbCubeVertices;
 
-      colorBuffer.resize(nbVertices * 3);
-      indexBuffer.resize(nbIndices);
-      positionBuffer.resize(nbVertices * 3);
-      radiusBuffer.resize(nbVertices * 1);
-      shiftBuffer.resize(nbVertices * 3);
+      colorArray.resize(nbVertices * 3);
+      indexArray.resize(nbIndices);
+      positionArray.resize(nbVertices * 3);
+      radiusArray.resize(nbVertices * 1);
+      shiftArray.resize(nbVertices * 3);
 
       for (let i = 0; i < lights.length; ++i) {
         const { color, position, radius } = lights[i];
@@ -128,43 +128,43 @@ const createPointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
           const start1 = (vertexStart + vertexIndex) * 1;
           const start3 = (vertexStart + vertexIndex) * 3;
 
-          colorBuffer.buffer[start3 + 0] = color.x;
-          colorBuffer.buffer[start3 + 1] = color.y;
-          colorBuffer.buffer[start3 + 2] = color.z;
-          positionBuffer.buffer[start3 + 0] = position.x;
-          positionBuffer.buffer[start3 + 1] = position.y;
-          positionBuffer.buffer[start3 + 2] = position.z;
-          radiusBuffer.buffer[start1] = radius;
+          colorArray.buffer[start3 + 0] = color.x;
+          colorArray.buffer[start3 + 1] = color.y;
+          colorArray.buffer[start3 + 2] = color.z;
+          positionArray.buffer[start3 + 0] = position.x;
+          positionArray.buffer[start3 + 1] = position.y;
+          positionArray.buffer[start3 + 2] = position.z;
+          radiusArray.buffer[start1] = radius;
         }
 
         for (let j = indexOffsets.length; j-- > 0; ) {
-          indexBuffer.buffer[indexStart + j] = vertexStart + indexOffsets[j];
+          indexArray.buffer[indexStart + j] = vertexStart + indexOffsets[j];
         }
 
         const start3 = vertexStart * 3;
 
         for (let j = shiftFactors.length; j-- > 0; ) {
-          shiftBuffer.buffer[start3 + j] = shiftFactors[j] * radius;
+          shiftArray.buffer[start3 + j] = shiftFactors[j] * radius;
         }
       }
 
-      color.resize(colorBuffer.length);
-      color.update(0, colorBuffer.buffer, colorBuffer.length);
-      index.resize(indexBuffer.length);
-      index.update(0, indexBuffer.buffer, indexBuffer.length);
-      position.resize(positionBuffer.length);
-      position.update(0, positionBuffer.buffer, positionBuffer.length);
-      radius.resize(radiusBuffer.length);
-      radius.update(0, radiusBuffer.buffer, radiusBuffer.length);
-      shift.resize(shiftBuffer.length);
-      shift.update(0, shiftBuffer.buffer, shiftBuffer.length);
+      colorBuffer.resize(colorArray.length);
+      colorBuffer.update(0, colorArray.buffer, colorArray.length);
+      indexBuffer.resize(indexArray.length);
+      indexBuffer.update(0, indexArray.buffer, indexArray.length);
+      positionBuffer.resize(positionArray.length);
+      positionBuffer.update(0, positionArray.buffer, positionArray.length);
+      radiusBuffer.resize(radiusArray.length);
+      radiusBuffer.update(0, radiusArray.buffer, radiusArray.length);
+      shiftBuffer.resize(shiftArray.length);
+      shiftBuffer.update(0, shiftArray.buffer, shiftArray.length);
     },
-    index,
+    indexBuffer,
     polygon: {
-      lightColor: createAttribute(color, 3),
-      lightPosition: createAttribute(position, 3),
-      lightRadius: createAttribute(radius, 1),
-      lightShift: createAttribute(shift, 3),
+      lightColor: createAttribute(colorBuffer, 3),
+      lightPosition: createAttribute(positionBuffer, 3),
+      lightRadius: createAttribute(radiusBuffer, 1),
+      lightShift: createAttribute(shiftBuffer, 3),
     },
   };
 };

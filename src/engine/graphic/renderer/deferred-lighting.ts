@@ -408,7 +408,7 @@ type DeferredLightingSubject = {
 
 type LightScene = GlMeshScene & {
   depthBuffer: GlTexture;
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   model: Matrix4;
   normalAndGlossBuffer: GlTexture;
   projection: Matrix4;
@@ -584,7 +584,7 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return createGlBindingPainter(binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
 };
 
 const loadPointLightPainter = (
@@ -606,7 +606,7 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return createGlBindingPainter(binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
 };
 
 const createMaterialBinder = (
@@ -872,7 +872,7 @@ const createDeferredLightingRenderer = (
           directionalLightPainter.paint(lightTarget, {
             depthBuffer: depthBuffer,
             directionalLight,
-            index: directionalLightBillboard.index,
+            indexBuffer: directionalLightBillboard.indexBuffer,
             model,
             normalAndGlossBuffer: normalAndGlossBuffer,
             polygon: directionalLightBillboard.polygon,
@@ -889,7 +889,7 @@ const createDeferredLightingRenderer = (
         pointLightPainter.paint(lightTarget, {
           billboard,
           depthBuffer: depthBuffer,
-          index: pointLightBillboard.index,
+          indexBuffer: pointLightBillboard.indexBuffer,
           model: Matrix4.identity, // FIXME: remove from shader
           normalAndGlossBuffer: normalAndGlossBuffer,
           polygon: pointLightBillboard.polygon,

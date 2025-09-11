@@ -407,7 +407,7 @@ type GeometryScene = GlMeshScene & {
 type LightScene = GlMeshScene & {
   diffuseAndShininessBuffer: GlTexture;
   depthBuffer: GlTexture;
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   model: Matrix4;
   normalAndSpecularBuffer: GlTexture;
   projection: Matrix4;
@@ -425,7 +425,7 @@ type PointLightScene = LightScene & {
 };
 
 type PostScene = {
-  index: GlBuffer;
+  indexBuffer: GlBuffer;
   position: GlShaderAttribute;
   source: GlTexture;
 };
@@ -696,7 +696,7 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return createGlBindingPainter(binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
 };
 
 const loadPointLightPainter = (
@@ -718,7 +718,7 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return createGlBindingPainter(binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
 };
 
 const loadPostPainter = (runtime: GlRuntime) => {
@@ -731,7 +731,7 @@ const loadPostPainter = (runtime: GlRuntime) => {
     shaderUniform.tex2dBlack(({ source }) => source)
   );
 
-  return createGlBindingPainter(binding, ({ index }) => index);
+  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
 };
 
 const createDeferredShadingRenderer = (
@@ -891,7 +891,7 @@ const createDeferredShadingRenderer = (
             diffuseAndShininessBuffer: diffuseAndShininessBuffer,
             depthBuffer: depthBuffer,
             directionalLight,
-            index: directionalLightBillboard.index,
+            indexBuffer: directionalLightBillboard.indexBuffer,
             model,
             normalAndSpecularBuffer: normalAndSpecularBuffer,
             polygon: directionalLightBillboard.polygon,
@@ -910,7 +910,7 @@ const createDeferredShadingRenderer = (
           diffuseAndShininessBuffer: diffuseAndShininessBuffer,
           billboard,
           depthBuffer,
-          index: pointLightBillboard.index,
+          indexBuffer: pointLightBillboard.indexBuffer,
           model: Matrix4.identity, // FIXME: remove from shader
           normalAndSpecularBuffer: normalAndSpecularBuffer,
           polygon: pointLightBillboard.polygon,
@@ -922,7 +922,7 @@ const createDeferredShadingRenderer = (
 
       // Draw scene
       scenePainter.paint(target, {
-        index: directionalLightBillboard.index, // FIXME: dedicated quad
+        indexBuffer: directionalLightBillboard.indexBuffer, // FIXME: dedicated quad
         position: directionalLightBillboard.polygon.lightPosition,
         source: sceneBuffer,
       });
