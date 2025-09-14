@@ -31,26 +31,17 @@ type GlShaderDefault = {
   textureWhite: GlTexture;
 };
 
-type GlShaderDirectives = Record<string, GlShaderDirectiveValue>;
-
 type GlShader = Disposable & {
   declare: <TState>() => GlShaderBinding<TState>;
 };
 
-const enum GlShaderDirectiveType {
-  Boolean,
-  Number,
-}
-
-type GlShaderDirectiveValue =
-  | {
-      type: GlShaderDirectiveType.Boolean;
-      value: boolean;
-    }
-  | {
-      type: GlShaderDirectiveType.Number;
-      value: number;
-    };
+type GlShaderFunction<
+  TDeclare extends Record<string, unknown>,
+  TInvoke extends Record<string, string>
+> = {
+  declare: (parameters: TDeclare) => string;
+  invoke: (parameters: TInvoke) => string;
+};
 
 type GlShaderUniform<TState, TValue> = {
   allocateTexture: boolean;
@@ -66,19 +57,6 @@ type GlShaderUniform<TState, TValue> = {
     value: TValue,
     textureIndex: number
   ) => void;
-};
-
-const directiveFormat = (value: GlShaderDirectiveValue): string => {
-  switch (value.type) {
-    case GlShaderDirectiveType.Boolean:
-      return value.value ? "1" : "0";
-
-    case GlShaderDirectiveType.Number:
-      return value.value.toString();
-
-    default:
-      return "0";
-  }
 };
 
 const compileShader = (
@@ -141,18 +119,8 @@ const createShader = (
   useProgram: (program: WebGLProgram) => void,
   shaderDefault: GlShaderDefault,
   vertexShaderSource: string,
-  fragmentShaderSource: string,
-  directives: GlShaderDirectives
+  fragmentShaderSource: string
 ): GlShader => {
-  const header =
-    "#version 300 es\n" +
-    "#ifdef GL_ES\n" +
-    "precision highp float;\n" +
-    "#endif\n" +
-    Object.entries(directives)
-      .map(([name, value]) => `#define ${name} ${directiveFormat(value)}\n`)
-      .join("");
-
   const program = gl.createProgram();
 
   if (program === null) {
@@ -163,13 +131,13 @@ const createShader = (
     const vertexShader = compileShader(
       gl,
       gl.VERTEX_SHADER,
-      header + vertexShaderSource
+      shaderHeader + vertexShaderSource
     );
 
     const fragmentShader = compileShader(
       gl,
       gl.FRAGMENT_SHADER,
-      header + fragmentShaderSource
+      shaderHeader + fragmentShaderSource
     );
 
     gl.attachShader(program, vertexShader);
@@ -292,15 +260,20 @@ const textureUniform = <TState>(
   },
 });
 
-const shaderDirective = {
-  boolean: (value: boolean): GlShaderDirectiveValue => ({
-    type: GlShaderDirectiveType.Boolean,
-    value,
-  }),
-  number: (value: number): GlShaderDirectiveValue => ({
-    type: GlShaderDirectiveType.Number,
-    value,
-  }),
+const shaderCondition = (
+  condition: boolean,
+  whenTrue: string,
+  whenFalse?: string
+): string => (condition ? whenTrue : whenFalse ?? "");
+
+const shaderSwitch = <T>(value: T, ...pairs: [T, string][]): string => {
+  const pair = pairs.find(([comparand]) => comparand === value);
+
+  if (pair !== undefined) {
+    return pair[1];
+  }
+
+  throw new Error(`no pair found matching ${value}`);
 };
 
 const shaderUniform = {
@@ -459,13 +432,20 @@ const shaderUniform = {
   }),
 };
 
+const shaderHeader =
+  "#version 300 es\n" +
+  "#ifdef GL_ES\n" +
+  "precision highp float;\n" +
+  "#endif\n";
+
 export {
   type GlShader,
   type GlShaderAttribute,
   type GlShaderBinding,
-  type GlShaderDirectives,
+  type GlShaderFunction,
   createAttribute,
   createShader,
-  shaderDirective,
+  shaderCondition,
+  shaderSwitch,
   shaderUniform,
 };

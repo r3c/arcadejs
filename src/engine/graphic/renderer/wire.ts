@@ -189,7 +189,7 @@ void main(void) {
 }`;
 
 const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
-  const shader = runtime.createShader(wireVertexShader, wireFragmentShader, {});
+  const shader = runtime.createShader(wireVertexShader, wireFragmentShader);
   const { sceneBinding, subjectBinding } = createWireBinding(shader);
   const subjects = new Map<Symbol, WireSubject>();
 

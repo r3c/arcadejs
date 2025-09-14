@@ -2,9 +2,9 @@ import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { GlRuntime, GlTarget } from "../webgl";
 import {
+  shaderSwitch,
   GlShader,
   GlShaderAttribute,
-  shaderDirective,
   shaderUniform,
 } from "../webgl/shader";
 import { GlBuffer } from "../webgl/resource";
@@ -56,7 +56,7 @@ type Scene = {
   source: GlTexture;
 };
 
-const vertexSource = `
+const createVertexSource = () => `
 uniform mat4 modelMatrix;
 
 in vec2 coordinate;
@@ -70,10 +70,10 @@ void main(void) {
   gl_Position = modelMatrix * vec4(position, 1.0);
 }`;
 
-const fragmentSource = `
-${linearDepth.declare()}
-${linearToStandard.declare()}
-${normalDecode.declare()}
+const createFragmentSource = (directive: GlEncodingConfiguration) => `
+${linearDepth.declare({})}
+${linearToStandard.declare({})}
+${normalDecode.declare({})}
 
 uniform sampler2D source;
 
@@ -85,53 +85,50 @@ void main(void) {
   vec4 encoded;
   vec4 raw = texture(source, coord);
 
-  // Read 4 bytes, 1 possible configuration
-  #if CHANNEL == ${GlEncodingChannel.Identity}
-    encoded = raw;
+  encoded = ${shaderSwitch(
+    directive.channel,
 
-  // Read 3 bytes, 2 possible configurations
-  #elif CHANNEL == ${GlEncodingChannel.RedGreenBlue}
-    encoded = vec4(raw.rgb, 1.0);
-  #elif CHANNEL == ${GlEncodingChannel.GreenBlueAlpha}
-    encoded = vec4(raw.gba, 1.0);
+    // Read 4 bytes, 1 possible configuration
+    [GlEncodingChannel.Identity, `raw`],
 
-  // Read 2 bytes, 3 possible configurations
-  #elif CHANNEL == ${GlEncodingChannel.RedGreen}
-    encoded = vec4(raw.rg, raw.rg);
-  #elif CHANNEL == ${GlEncodingChannel.GreenBlue}
-    encoded = vec4(raw.gb, raw.gb);
-  #elif CHANNEL == ${GlEncodingChannel.BlueAlpha}
-    encoded = vec4(raw.ba, raw.ba);
+    // Read 3 bytes, 2 possible configurations
+    [GlEncodingChannel.RedGreenBlue, `vec4(raw.rgb, 1.0)`],
+    [GlEncodingChannel.GreenBlueAlpha, `vec4(raw.gba, 1.0)`],
 
-  // Read 1 byte, 4 possible configurations
-  #elif CHANNEL == ${GlEncodingChannel.Red}
-    encoded = vec4(raw.r);
-  #elif CHANNEL == ${GlEncodingChannel.Green}
-    encoded = vec4(raw.g);
-  #elif CHANNEL == ${GlEncodingChannel.Blue}
-    encoded = vec4(raw.b);
-  #elif CHANNEL == ${GlEncodingChannel.Alpha}
-    encoded = vec4(raw.a);
-  #endif
+    // Read 2 bytes, 3 possible configurations
+    [GlEncodingChannel.RedGreen, `vec4(raw.rg, raw.rg)`],
+    [GlEncodingChannel.GreenBlue, `vec4(raw.gb, raw.gb)`],
+    [GlEncodingChannel.BlueAlpha, `vec4(raw.ba, raw.ba)`],
 
-  // Format output
-  #if FORMAT == ${GlEncodingFormat.Identity}
-    fragColor = encoded;
-  #elif FORMAT == ${GlEncodingFormat.LinearRGB}
-    fragColor = vec4(${linearToStandard.invoke("encoded.rgb")}, 1.0);
-  #elif FORMAT == ${GlEncodingFormat.Monochrome}
-    fragColor = vec4(encoded.rrr, 1.0);
-  #elif FORMAT == ${GlEncodingFormat.Depth}
-    fragColor = vec4(${linearDepth.invoke(
-      "encoded.r",
-      "float(ZNEAR)",
-      "float(ZFAR)"
-    )}, 1.0);
-  #elif FORMAT == ${GlEncodingFormat.Spheremap}
-    fragColor = vec4(${normalDecode.invoke("encoded.rg")}, 1.0);
-  #elif FORMAT == ${GlEncodingFormat.Log2RGB}
-    fragColor = vec4(-log2(encoded.rgb), 1.0);
-  #endif
+    // Read 1 byte, 4 possible configurations
+    [GlEncodingChannel.Red, `vec4(raw.r)`],
+    [GlEncodingChannel.Green, `vec4(raw.g)`],
+    [GlEncodingChannel.Blue, `vec4(raw.b)`],
+    [GlEncodingChannel.Alpha, `vec4(raw.a)`]
+  )};
+
+  fragColor = ${shaderSwitch(
+    directive.format,
+    [GlEncodingFormat.Identity, `encoded`],
+    [
+      GlEncodingFormat.LinearRGB,
+      `vec4(${linearToStandard.invoke({ linear: "encoded.rgb" })}, 1.0)`,
+    ],
+    [GlEncodingFormat.Monochrome, `vec4(encoded.rrr, 1.0)`],
+    [
+      GlEncodingFormat.Depth,
+      `vec4(${linearDepth.invoke({
+        depth: "encoded.r",
+        zFar: `float(${directive.zFar})`,
+        zNear: `float(${directive.zNear})`,
+      })}, 1.0)`,
+    ],
+    [
+      GlEncodingFormat.Spheremap,
+      `vec4(${normalDecode.invoke({ encoded: "encoded.rg" })}, 1.0)`,
+    ],
+    [GlEncodingFormat.Log2RGB, `vec4(-log2(encoded.rgb), 1.0)`]
+  )};
 }`;
 
 const createPainter = (shader: GlShader) => {
@@ -155,12 +152,10 @@ const createShader = (
   runtime: GlRuntime,
   configuration: GlEncodingConfiguration
 ): GlShader => {
-  return runtime.createShader(vertexSource, fragmentSource, {
-    CHANNEL: shaderDirective.number(configuration.channel),
-    FORMAT: shaderDirective.number(configuration.format),
-    ZFAR: shaderDirective.number(configuration.zFar),
-    ZNEAR: shaderDirective.number(configuration.zNear),
-  });
+  return runtime.createShader(
+    createVertexSource(),
+    createFragmentSource(configuration)
+  );
 };
 
 const createGlEncodingPainter = (
