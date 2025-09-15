@@ -26,8 +26,8 @@ import { GlRuntime, GlTarget, GlTextureFormat, GlTextureType } from "../webgl";
 import {
   shaderCondition,
   shaderSwitch,
-  GlShader,
   shaderUniform,
+  GlShaderSource,
 } from "../webgl/shader";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
@@ -127,7 +127,11 @@ type Directive = {
   maxPointLights: number;
 };
 
-const lightHeaderShader = (directive: Directive) => `
+const createLightSource = (
+  directive: Directive,
+  feature: GlMeshFeature
+): GlShaderSource => {
+  const header = `
 ${directionalLight.declare(directive)}
 ${pointLight.declare(directive)}
 
@@ -142,27 +146,28 @@ uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
 uniform ${directionalLightType} directionalLights[${Math.max(
-  directive.maxDirectionalLights,
-  1
-)}];
+    directive.maxDirectionalLights,
+    1
+  )}];
 uniform ${pointLightType} pointLights[max(${Math.max(
-  directive.maxPointLights,
-  1
-)}, 1)];
+    directive.maxPointLights,
+    1
+  )}, 1)];
 
 // FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
 uniform sampler2D directionalLightShadowMaps[${Math.max(
-  directive.maxDirectionalLights,
-  1
-)}];
+    directive.maxDirectionalLights,
+    1
+  )}];
 uniform sampler2D pointLightShadowMaps[${Math.max(
-  directive.maxPointLights,
-  1
-)}];
+    directive.maxPointLights,
+    1
+  )}];
 `;
 
-const lightVertexShader = (directive: Directive, feature: GlMeshFeature) => `
-${lightHeaderShader(directive)}
+  return {
+    vertex: `
+${header}
 
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
@@ -184,13 +189,13 @@ out vec3 tangent; // Tangent at point in camera space
 out vec4 tint; // Tint at point
 
 out vec3 directionalLightDistances[${Math.max(
-  directive.maxDirectionalLights,
-  1
-)}];
+      directive.maxDirectionalLights,
+      1
+    )}];
 out vec3 directionalLightShadows[${Math.max(
-  directive.maxDirectionalLights,
-  1
-)}];
+      directive.maxDirectionalLights,
+      1
+    )}];
 
 out vec3 pointLightDistances[${Math.max(directive.maxPointLights, 1)}];
 out vec3 pointLightShadows[${Math.max(directive.maxPointLights, 1)}];
@@ -241,10 +246,10 @@ void main(void) {
   bitangent = cross(normal, tangent);
 
   gl_Position = projectionMatrix * pointCamera;
-}`;
+}`,
 
-const lightFragmentShader = (directive: Directive) => `
-${lightHeaderShader(directive)}
+    fragment: `
+${header}
 
 uniform vec4 diffuseColor;
 uniform sampler2D diffuseMap;
@@ -303,9 +308,9 @@ in vec3 tangent;
 in vec4 tint;
 
 in vec3 directionalLightDistances[${Math.max(
-  directive.maxDirectionalLights,
-  1
-)}];
+      directive.maxDirectionalLights,
+      1
+    )}];
 in vec3 directionalLightShadows[${Math.max(directive.maxDirectionalLights, 1)}];
 
 in vec3 pointLightDistances[${Math.max(directive.maxPointLights, 1)}];
@@ -365,17 +370,17 @@ void main(void) {
   })};
 
   ${materialType} material = ${materialSample.invoke({
-  coordinate: "coordinateParallax",
-  diffuseColor: "diffuseColor * tint",
-  diffuseMap: "diffuseMap",
-  specularColor: "specularColor",
-  specularMap: "specularMap",
-  metalnessMap: "metalnessMap",
-  metalnessStrength: "metalnessStrength",
-  roughnessMap: "roughnessMap",
-  roughnessStrength: "roughnessStrength",
-  shininess: "shininess",
-})};
+      coordinate: "coordinateParallax",
+      diffuseColor: "diffuseColor * tint",
+      diffuseMap: "diffuseMap",
+      specularColor: "specularColor",
+      specularMap: "specularMap",
+      metalnessMap: "metalnessMap",
+      metalnessStrength: "metalnessStrength",
+      roughnessMap: "roughnessMap",
+      roughnessStrength: "roughnessStrength",
+      shininess: "shininess",
+    })};
 
   // Apply environment (ambient or influence-based) lighting
   vec3 color = ${shaderSwitch(
@@ -464,9 +469,12 @@ void main(void) {
   })};
 
   fragColor = vec4(${linearToStandard.invoke({ linear: "color" })}, 1.0);
-}`;
+}`,
+  };
+};
 
-const shadowDirectionalVertexShader = `
+const createShadowDirectionalSource = (): GlShaderSource => ({
+  vertex: `
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -475,14 +483,15 @@ in vec4 positions;
 
 void main(void) {
   gl_Position = projectionMatrix * viewMatrix * modelMatrix * positions;
-}`;
+}`,
 
-const shadowDirectionalFragmentShader = `
+  fragment: `
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
   fragColor = vec4(1, 1, 1, 1);
-}`;
+}`,
+});
 
 const createLightBinder = (
   runtime: GlRuntime,
@@ -501,7 +510,7 @@ const createLightBinder = (
 ): GlMeshBinder<LightScene> => {
   // [forward-lighting-feature]
   return (feature) => {
-    const shader = createLightShader(runtime, directive, feature);
+    const shader = runtime.createShader(createLightSource(directive, feature));
 
     // Bind geometry attributes
     const polygonBinding = shader.declare<GlPolygon>();
@@ -775,22 +784,11 @@ const createLightBinder = (
   };
 };
 
-const createLightShader = (
-  runtime: GlRuntime,
-  directive: Directive,
-  feature: GlMeshFeature
-): GlShader => {
-  return runtime.createShader(
-    lightVertexShader(directive, feature),
-    lightFragmentShader(directive)
-  );
-};
-
 const createDirectionalShadowBinder = (
   runtime: GlRuntime
 ): GlMeshBinder<ShadowScene> => {
   return () => {
-    const shader = createDirectionalShadowShader(runtime);
+    const shader = runtime.createShader(createShadowDirectionalSource());
 
     const polygonBinding = shader.declare<GlPolygon>();
 
@@ -824,13 +822,6 @@ const createDirectionalShadowBinder = (
       scene: sceneBinding,
     };
   };
-};
-
-const createDirectionalShadowShader = (runtime: GlRuntime): GlShader => {
-  return runtime.createShader(
-    shadowDirectionalVertexShader,
-    shadowDirectionalFragmentShader
-  );
 };
 
 const createForwardLightingRenderer = (

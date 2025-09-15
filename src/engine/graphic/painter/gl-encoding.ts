@@ -6,6 +6,7 @@ import {
   GlShader,
   GlShaderAttribute,
   shaderUniform,
+  GlShaderSource,
 } from "../webgl/shader";
 import { GlBuffer } from "../webgl/resource";
 import { GlTexture } from "../webgl/texture";
@@ -56,7 +57,8 @@ type Scene = {
   source: GlTexture;
 };
 
-const createVertexSource = () => `
+const createSource = (directive: GlEncodingConfiguration): GlShaderSource => ({
+  vertex: `
 uniform mat4 modelMatrix;
 
 in vec2 coordinate;
@@ -68,9 +70,9 @@ void main(void) {
   coord = coordinate;
 
   gl_Position = modelMatrix * vec4(position, 1.0);
-}`;
+}`,
 
-const createFragmentSource = (directive: GlEncodingConfiguration) => `
+  fragment: `
 ${linearDepth.declare({})}
 ${linearToStandard.declare({})}
 ${normalDecode.declare({})}
@@ -129,7 +131,8 @@ void main(void) {
     ],
     [GlEncodingFormat.Log2RGB, `vec4(-log2(encoded.rgb), 1.0)`]
   )};
-}`;
+}`,
+});
 
 const createPainter = (shader: GlShader) => {
   const binding = shader.declare<Scene>();
@@ -148,21 +151,11 @@ const createPainter = (shader: GlShader) => {
   return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
 };
 
-const createShader = (
-  runtime: GlRuntime,
-  configuration: GlEncodingConfiguration
-): GlShader => {
-  return runtime.createShader(
-    createVertexSource(),
-    createFragmentSource(configuration)
-  );
-};
-
 const createGlEncodingPainter = (
   runtime: GlRuntime,
   configuration: GlEncodingConfiguration
 ): GlEncodingPainter => {
-  const shader = createShader(runtime, configuration);
+  const shader = runtime.createShader(createSource(configuration));
   const painter = createPainter(shader);
   const quad = createModel(runtime.context, commonMesh.quad);
   const scale = configuration.scale ?? 0.4;

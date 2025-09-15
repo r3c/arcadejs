@@ -13,6 +13,7 @@ import {
   GlShader,
   GlShaderAttribute,
   GlShaderBinding,
+  GlShaderSource,
   createAttribute,
   shaderUniform,
 } from "../webgl/shader";
@@ -160,7 +161,8 @@ const extractLines = (
   };
 };
 
-const wireVertexShader = `
+const wireSource: GlShaderSource = {
+  vertex: `
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -177,19 +179,20 @@ void main(void) {
   lineTint = tint;
 
   gl_Position = projectionMatrix * pointCamera;
-}`;
+}`,
 
-const wireFragmentShader = `
+  fragment: `
 in vec3 lineTint;
 
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
   fragColor = vec4(lineTint, 1.0);
-}`;
+}`,
+};
 
 const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
-  const shader = runtime.createShader(wireVertexShader, wireFragmentShader);
+  const shader = runtime.createShader(wireSource);
   const { sceneBinding, subjectBinding } = createWireBinding(shader);
   const subjects = new Map<Symbol, WireSubject>();
 
