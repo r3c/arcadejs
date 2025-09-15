@@ -36,9 +36,9 @@ import {
   createPointLightBillboard,
 } from "../webgl/billboard";
 import {
-  shaderUniform,
-  shaderCondition,
-  shaderSwitch,
+  uniform,
+  shaderWhen,
+  shaderCase,
   GlShaderSource,
 } from "../webgl/shader";
 import { GlTexture } from "../webgl/texture";
@@ -174,7 +174,7 @@ in vec3 lightPosition;
 in float lightRadius;
 in vec3 lightShift;
 
-${shaderSwitch(
+${shaderCase(
   directive.type,
   [
     DeferredLightingLightType.Directional,
@@ -200,7 +200,7 @@ vec3 toCameraPosition(in vec3 worldPosition) {
 }
 
 void main(void) {
-${shaderSwitch(
+${shaderCase(
   directive.type,
   [
     DeferredLightingLightType.Directional,
@@ -237,7 +237,7 @@ ${phongLightApply.declare({ diffuse: true, specular: true })}
 ${phongLightCast.declare({ variant: PhongLightVariant.Standard })}
 ${shininessDecode.declare({})}
 
-${shaderSwitch(
+${shaderCase(
   directive.type,
   [
     DeferredLightingLightType.Directional,
@@ -283,7 +283,7 @@ void main(void) {
   vec3 eye = normalize(-point);
 
   // Compute lightning parameters
-${shaderSwitch(
+${shaderCase(
   directive.type,
   [
     DeferredLightingLightType.Directional,
@@ -416,17 +416,17 @@ void main(void) {
   vec3 specularLightColor = lightSample.aaa;
 
   vec3 color =
-    diffuse * ambientLightColor * ${shaderCondition(
+    diffuse * ambientLightColor * ${shaderWhen(
       directive.lightModelPhongAmbient,
       "1.0",
       "0.0"
     )} +
-    diffuse * diffuseLightColor * ${shaderCondition(
+    diffuse * diffuseLightColor * ${shaderWhen(
       directive.lightModelPhongDiffuse,
       "1.0",
       "0.0"
     )} +
-    specular * specularLightColor * ${shaderCondition(
+    specular * specularLightColor * ${shaderWhen(
       directive.lightModelPhongSpecular,
       "1.0",
       "0.0"
@@ -523,22 +523,22 @@ const createGeometryBinder = (
 
     matrixBinding.setUniform(
       "modelMatrix",
-      shaderUniform.matrix4f(({ model }) => model)
+      uniform.matrix4f(({ model }) => model)
     );
     matrixBinding.setUniform(
       "normalMatrix",
-      shaderUniform.matrix3f(({ normal }) => normal)
+      uniform.matrix3f(({ normal }) => normal)
     );
 
     const sceneBinding = shader.declare<DeferredLightingScene>();
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      shaderUniform.matrix4f(({ projection }) => projection)
+      uniform.matrix4f(({ projection }) => projection)
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      shaderUniform.matrix4f(({ view }) => view)
+      uniform.matrix4f(({ view }) => view)
     );
 
     const materialBinding = shader.declare<GlMaterial>();
@@ -546,29 +546,29 @@ const createGeometryBinder = (
     if (configuration.lightModel === DeferredLightingLightModel.Phong) {
       materialBinding.setUniform(
         "shininess",
-        shaderUniform.number(({ shininess }) => shininess)
+        uniform.number(({ shininess }) => shininess)
       );
     }
 
     materialBinding.setUniform(
       "heightMap",
       !configuration.noHeightMap
-        ? shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
-        : shaderUniform.tex2dBlack(() => undefined)
+        ? uniform.tex2dBlack(({ heightMap }) => heightMap)
+        : uniform.tex2dBlack(() => undefined)
     );
     materialBinding.setUniform(
       "heightParallaxBias",
-      shaderUniform.number(({ heightParallaxBias }) => heightParallaxBias)
+      uniform.number(({ heightParallaxBias }) => heightParallaxBias)
     );
     materialBinding.setUniform(
       "heightParallaxScale",
-      shaderUniform.number(({ heightParallaxScale }) => heightParallaxScale)
+      uniform.number(({ heightParallaxScale }) => heightParallaxScale)
     );
     materialBinding.setUniform(
       "normalMap",
       !configuration.noNormalMap
-        ? shaderUniform.tex2dNormal(({ normalMap }) => normalMap)
-        : shaderUniform.tex2dNormal(() => undefined)
+        ? uniform.tex2dNormal(({ normalMap }) => normalMap)
+        : uniform.tex2dNormal(() => undefined)
     );
 
     return {
@@ -596,11 +596,11 @@ const loadLightBinding = <TScene extends LightScene>(
 
   binding.setUniform(
     "modelMatrix",
-    shaderUniform.matrix4f(({ model }) => model)
+    uniform.matrix4f(({ model }) => model)
   );
   binding.setUniform(
     "inverseProjectionMatrix",
-    shaderUniform.matrix4f(({ projection }) => {
+    uniform.matrix4f(({ projection }) => {
       const inverseProjectionMatrix = Matrix4.fromSource(projection);
 
       inverseProjectionMatrix.invert();
@@ -610,24 +610,24 @@ const loadLightBinding = <TScene extends LightScene>(
   );
   binding.setUniform(
     "projectionMatrix",
-    shaderUniform.matrix4f(({ projection }) => projection)
+    uniform.matrix4f(({ projection }) => projection)
   );
   binding.setUniform(
     "viewMatrix",
-    shaderUniform.matrix4f(({ view }) => view)
+    uniform.matrix4f(({ view }) => view)
   );
 
   binding.setUniform(
     "viewportSize",
-    shaderUniform.vector2f(({ viewport }) => viewport)
+    uniform.vector2f(({ viewport }) => viewport)
   );
   binding.setUniform(
     "depthBuffer",
-    shaderUniform.tex2dBlack(({ depthBuffer }) => depthBuffer)
+    uniform.tex2dBlack(({ depthBuffer }) => depthBuffer)
   );
   binding.setUniform(
     "normalAndGlossBuffer",
-    shaderUniform.tex2dBlack((state) => state.normalAndGlossBuffer)
+    uniform.tex2dBlack((state) => state.normalAndGlossBuffer)
   );
 
   return binding;
@@ -646,11 +646,11 @@ const loadDirectionalLightPainter = (
   // FIXME: use attributes for all
   binding.setUniform(
     "directionalLight.color",
-    shaderUniform.vector3f(({ directionalLight }) => directionalLight.color)
+    uniform.vector3f(({ directionalLight }) => directionalLight.color)
   );
   binding.setUniform(
     "directionalLight.direction",
-    shaderUniform.vector3f(({ directionalLight }) => directionalLight.direction)
+    uniform.vector3f(({ directionalLight }) => directionalLight.direction)
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
@@ -669,7 +669,7 @@ const loadPointLightPainter = (
 
   binding.setUniform(
     "billboardMatrix",
-    shaderUniform.matrix4f(({ billboard }) => billboard)
+    uniform.matrix4f(({ billboard }) => billboard)
   );
   binding.setAttribute("lightColor", ({ polygon: p }) => p.lightColor);
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
@@ -719,68 +719,68 @@ const createMaterialBinder = (
 
     matrixBinding.setUniform(
       "modelMatrix",
-      shaderUniform.matrix4f(({ model }) => model)
+      uniform.matrix4f(({ model }) => model)
     );
     matrixBinding.setUniform(
       "normalMatrix",
-      shaderUniform.matrix3f(({ normal }) => normal)
+      uniform.matrix3f(({ normal }) => normal)
     );
 
     const sceneBinding = shader.declare<MaterialScene>();
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      shaderUniform.matrix4f(({ projection }) => projection)
+      uniform.matrix4f(({ projection }) => projection)
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      shaderUniform.matrix4f(({ view }) => view)
+      uniform.matrix4f(({ view }) => view)
     );
 
     sceneBinding.setUniform(
       "ambientLightColor",
-      shaderUniform.vector3f(({ ambientLightColor }) => ambientLightColor)
+      uniform.vector3f(({ ambientLightColor }) => ambientLightColor)
     );
     sceneBinding.setUniform(
       "lightBuffer",
-      shaderUniform.tex2dBlack(({ lightBuffer }) => lightBuffer)
+      uniform.tex2dBlack(({ lightBuffer }) => lightBuffer)
     );
 
     const materialBinding = shader.declare<GlMaterial>();
 
     materialBinding.setUniform(
       "diffuseColor",
-      shaderUniform.vector4f(({ diffuseColor }) => diffuseColor)
+      uniform.vector4f(({ diffuseColor }) => diffuseColor)
     );
     materialBinding.setUniform(
       "diffuseMap",
-      shaderUniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
+      uniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
     );
 
     if (configuration.lightModel >= DeferredLightingLightModel.Phong) {
       materialBinding.setUniform(
         "specularColor",
-        shaderUniform.vector4f(({ specularColor }) => specularColor)
+        uniform.vector4f(({ specularColor }) => specularColor)
       );
       materialBinding.setUniform(
         "specularMap",
-        shaderUniform.tex2dBlack(({ specularMap }) => specularMap)
+        uniform.tex2dBlack(({ specularMap }) => specularMap)
       );
     }
 
     materialBinding.setUniform(
       "heightMap",
       !configuration.noHeightMap
-        ? shaderUniform.tex2dBlack(({ heightMap }) => heightMap)
-        : shaderUniform.tex2dBlack(() => undefined)
+        ? uniform.tex2dBlack(({ heightMap }) => heightMap)
+        : uniform.tex2dBlack(() => undefined)
     );
     materialBinding.setUniform(
       "heightParallaxBias",
-      shaderUniform.number(({ heightParallaxBias }) => heightParallaxBias)
+      uniform.number(({ heightParallaxBias }) => heightParallaxBias)
     );
     materialBinding.setUniform(
       "heightParallaxScale",
-      shaderUniform.number(({ heightParallaxScale }) => heightParallaxScale)
+      uniform.number(({ heightParallaxScale }) => heightParallaxScale)
     );
 
     return {

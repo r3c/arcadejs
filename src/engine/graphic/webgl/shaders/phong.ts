@@ -1,5 +1,5 @@
 import { resultLightType } from "./light";
-import { shaderCondition, shaderSwitch, GlShaderFunction } from "../shader";
+import { shaderWhen, shaderCase, GlShaderFunction } from "../shader";
 
 const enum PhongLightVariant {
   Standard,
@@ -20,8 +20,8 @@ struct ${phongLightType} {
 };
 
 vec3 phongLightApply(in ${phongLightType} lightCast, in vec3 diffuseColor, in vec3 specularColor) {
-  float diffuse = ${shaderCondition(diffuse, "1.0", "0.0")};
-  float specular = ${shaderCondition(specular, "1.0", "0.0")};
+  float diffuse = ${shaderWhen(diffuse, "1.0", "0.0")};
+  float specular = ${shaderWhen(specular, "1.0", "0.0")};
 
   return
     lightCast.diffuseStrength * lightCast.color * diffuseColor * diffuse +
@@ -47,7 +47,7 @@ float phongLightSpecularStrength(in ${resultLightType} light, in float shininess
   float lightNormalCosine = dot(normal, light.direction);
   float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
-  ${shaderSwitch(
+  ${shaderCase(
     variant,
     [
       PhongLightVariant.BlinnPhong, // Blinn-Phong model

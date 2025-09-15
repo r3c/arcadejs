@@ -1,5 +1,5 @@
 import { Vector3 } from "../../../math/vector";
-import { shaderCondition, GlShaderFunction } from "../shader";
+import { shaderWhen, GlShaderFunction } from "../shader";
 
 type DirectionalLight = {
   color: Vector3;
@@ -35,7 +35,7 @@ const directionalLight: GlShaderFunction<
 struct ${directionalLightType} {
   vec3 color;
   vec3 direction;
-${shaderCondition(
+${shaderWhen(
   hasShadow,
   `
   bool castShadow;

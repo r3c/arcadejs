@@ -258,23 +258,23 @@ const textureUniform = <TState>(
   },
 });
 
-const shaderCondition = (
+const shaderCase = <T>(value: T, ...cases: [T, string][]): string => {
+  const match = cases.find(([comparand]) => comparand === value);
+
+  if (match !== undefined) {
+    return match[1];
+  }
+
+  throw new Error(`no case found matching ${value}`);
+};
+
+const shaderWhen = (
   condition: boolean,
   whenTrue: string,
   whenFalse?: string
 ): string => (condition ? whenTrue : whenFalse ?? "");
 
-const shaderSwitch = <T>(value: T, ...pairs: [T, string][]): string => {
-  const pair = pairs.find(([comparand]) => comparand === value);
-
-  if (pair !== undefined) {
-    return pair[1];
-  }
-
-  throw new Error(`no pair found matching ${value}`);
-};
-
-const shaderUniform = {
+const uniform = {
   boolean: <TState>(
     getter: (state: TState) => boolean
   ): GlShaderUniform<TState, number> => ({
@@ -444,7 +444,7 @@ export {
   type GlShaderSource,
   createAttribute,
   createShader,
-  shaderCondition,
-  shaderSwitch,
-  shaderUniform,
+  shaderCase,
+  shaderWhen,
+  uniform,
 };

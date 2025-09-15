@@ -1,7 +1,7 @@
 import { resultLightType } from "./light";
 import { materialType } from "./material";
 import { standardToLinear } from "./rgb";
-import { shaderCondition, GlShaderFunction } from "../shader";
+import { shaderWhen, GlShaderFunction } from "../shader";
 
 // Heavily based on Khronos PBR in glTF 2.0 using WebGL:
 // https://github.com/KhronosGroup/glTF-WebGL-PBR
@@ -24,7 +24,7 @@ const vec3 PBR_ENVIRONMENT_F0 = vec3(0.04);
 // Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
 // See our README.md on Environment Maps [3] for additional discussion.
 vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentDiffuseMap, in samplerCube environmentSpecularMap, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
-  ${shaderCondition(
+  ${shaderWhen(
     environment,
     `
   vec3 diffuseColor = material.diffuseColor.rgb * (vec3(1.0) - PBR_ENVIRONMENT_F0) * (1.0 - material.metalness);

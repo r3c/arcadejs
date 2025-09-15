@@ -20,7 +20,7 @@ import {
   GlShaderAttribute,
   GlShaderSource,
   createAttribute,
-  shaderUniform,
+  uniform,
 } from "./shader";
 import { GlTexture } from "./texture";
 import { createGlBindingPainter } from "../painter";
@@ -275,7 +275,7 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
 
   billboardBinding.setUniform(
     "sprite",
-    shaderUniform.tex2dWhite(({ sprite }) => sprite)
+    uniform.tex2dWhite(({ sprite }) => sprite)
   );
 
   // Declare scene binding (shared by all particle sources)
@@ -283,17 +283,17 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
 
   sceneBinding.setUniform(
     "billboardMatrix",
-    shaderUniform.matrix4f(({ billboard }) => billboard)
+    uniform.matrix4f(({ billboard }) => billboard)
   );
 
   sceneBinding.setUniform(
     "projectionMatrix",
-    shaderUniform.matrix4f(({ projection }) => projection)
+    uniform.matrix4f(({ projection }) => projection)
   );
 
   sceneBinding.setUniform(
     "viewMatrix",
-    shaderUniform.matrix4f(({ view }) => view)
+    uniform.matrix4f(({ view }) => view)
   );
 
   const billboards: ParticleBillboard[] = [];

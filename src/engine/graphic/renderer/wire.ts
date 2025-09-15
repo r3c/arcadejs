@@ -15,7 +15,7 @@ import {
   GlShaderBinding,
   GlShaderSource,
   createAttribute,
-  shaderUniform,
+  uniform,
 } from "../webgl/shader";
 import { Renderer } from "./definition";
 
@@ -47,19 +47,19 @@ const createWireBinding = (
 
   sceneBinding.setUniform(
     "projectionMatrix",
-    shaderUniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+    uniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
   );
 
   sceneBinding.setUniform(
     "viewMatrix",
-    shaderUniform.matrix4f(({ viewMatrix }) => viewMatrix)
+    uniform.matrix4f(({ viewMatrix }) => viewMatrix)
   );
 
   const subjectBinding = shader.declare<WireSubject>();
 
   subjectBinding.setUniform(
     "modelMatrix",
-    shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
+    uniform.matrix4f(({ modelMatrix }) => modelMatrix)
   );
 
   subjectBinding.setAttribute(
