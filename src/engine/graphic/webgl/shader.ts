@@ -4,6 +4,10 @@ import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { GlBuffer, GlContext } from "./resource";
 import { GlTexture } from "./texture";
 
+type GlShader = Disposable & {
+  declare: <TState>() => GlShaderBinding<TState>;
+};
+
 type GlShaderAttribute = {
   buffer: GlBuffer;
   stride: number;
@@ -31,16 +35,17 @@ type GlShaderDefault = {
   textureWhite: GlTexture;
 };
 
-type GlShader = Disposable & {
-  declare: <TState>() => GlShaderBinding<TState>;
-};
-
 type GlShaderFunction<
   TDeclare extends Record<string, unknown>,
   TInvoke extends Record<string, string>
 > = {
   declare: (parameters: TDeclare) => string;
   invoke: (parameters: TInvoke) => string;
+};
+
+type GlShaderSource = {
+  fragment: string;
+  vertex: string;
 };
 
 type GlShaderUniform<TState, TValue> = {
@@ -118,8 +123,7 @@ const createShader = (
   gl: GlContext,
   useProgram: (program: WebGLProgram) => void,
   shaderDefault: GlShaderDefault,
-  vertexShaderSource: string,
-  fragmentShaderSource: string
+  source: GlShaderSource
 ): GlShader => {
   const program = gl.createProgram();
 
@@ -128,20 +132,14 @@ const createShader = (
   }
 
   try {
-    const vertexShader = compileShader(
-      gl,
-      gl.VERTEX_SHADER,
-      shaderHeader + vertexShaderSource
-    );
+    const fragmentSource = shaderHeader + source.fragment;
+    const fragment = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
 
-    const fragmentShader = compileShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      shaderHeader + fragmentShaderSource
-    );
+    const vertexSource = shaderHeader + source.vertex;
+    const vertex = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
 
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
+    gl.attachShader(program, fragment);
+    gl.attachShader(program, vertex);
   } catch (e) {
     gl.deleteProgram(program);
 
@@ -443,6 +441,7 @@ export {
   type GlShaderAttribute,
   type GlShaderBinding,
   type GlShaderFunction,
+  type GlShaderSource,
   createAttribute,
   createShader,
   shaderCondition,

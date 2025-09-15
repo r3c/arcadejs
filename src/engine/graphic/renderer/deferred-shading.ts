@@ -33,9 +33,9 @@ import {
 import {
   shaderCondition,
   shaderSwitch,
-  GlShader,
   GlShaderAttribute,
   shaderUniform,
+  GlShaderSource,
 } from "../webgl/shader";
 import { GlMaterial, GlMesh, GlPolygon, createModel } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
@@ -77,7 +77,8 @@ type LocalLightDirective = {
   type: DeferredShadingLightType;
 };
 
-const geometryVertexShader = `
+const createGeometrySource = (): GlShaderSource => ({
+  vertex: `
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
@@ -105,9 +106,9 @@ void main(void) {
   bitangent = cross(normal, tangent);
 
   gl_Position = projectionMatrix * pointCamera;
-}`;
+}`,
 
-const geometryFragmentShader = `
+  fragment: `
 uniform vec4 diffuseColor;
 uniform sampler2D diffuseMap;
 uniform sampler2D heightMap;
@@ -174,13 +175,18 @@ void main(void) {
   })};
 
   normalAndSpecular = vec4(normalPack, specular, 0.0);
-}`;
+}`,
+});
 
-const createAmbientLightHeaderShader = () => `
+const createAmbientLightSource = (
+  directive: AmbientLightDirective
+): GlShaderSource => {
+  const header = `
 uniform vec3 ambientLightColor;`;
 
-const createAmbientLightVertexShader = () => `
-${createAmbientLightHeaderShader()}
+  return {
+    vertex: `
+${header}
 
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
@@ -190,10 +196,10 @@ in vec4 positions;
 
 void main(void) {
   gl_Position = projectionMatrix * viewMatrix * modelMatrix * positions;
-}`;
+}`,
 
-const createAmbientLightFragmentShader = (directive: AmbientLightDirective) => `
-${createAmbientLightHeaderShader()}
+    fragment: `
+${header}
 
 uniform sampler2D diffuseAndShininess;
 
@@ -214,16 +220,20 @@ void main(void) {
     "1.0",
     "0.0"
   )}, 1.0);
-}`;
+}`,
+  };
+};
 
-const createLocalLightHeaderShader = (directive: LocalLightDirective) => `
+const createLocalLightSource = (directive: LocalLightDirective) => {
+  const header = `
 ${directionalLight.declare(directive)}
 ${pointLight.declare(directive)}
 
 uniform ${directionalLightType} directionalLight;`;
 
-const createLocalLightVertexShader = (directive: LocalLightDirective) => `
-${createLocalLightHeaderShader(directive)}
+  return {
+    vertex: `
+${header}
 
 uniform mat4 billboardMatrix;
 uniform mat4 modelMatrix;
@@ -281,10 +291,10 @@ ${shaderSwitch(
   gl_Position =
     projectionMatrix * viewMatrix * modelMatrix * vec4(lightPosition, 1.0) +
     projectionMatrix * billboardMatrix * modelMatrix * vec4(lightShift, 0.0);
-}`;
+}`,
 
-const createLocalLightFragmentShader = (directive: LocalLightDirective) => `
-${createLocalLightHeaderShader(directive)}
+    fragment: `
+${header}
 
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
@@ -374,11 +384,11 @@ ${shaderSwitch(
 )}
 
   ${phongLightType} phongLight = ${phongLightCast.invoke({
-  eye: "eye",
-  light: "light",
-  normal: "normal",
-  shininess: "shininess",
-})};
+      eye: "eye",
+      light: "light",
+      normal: "normal",
+      shininess: "shininess",
+    })};
 
   vec3 color = ${phongLightApply.invoke({
     lightCast: "phongLight",
@@ -387,16 +397,19 @@ ${shaderSwitch(
   })};
 
   fragColor = vec4(color, 1.0);
-}`;
+}`,
+  };
+};
 
-const postVertexShader = `
+const createPostSource = (): GlShaderSource => ({
+  vertex: `
 in vec3 positions;
 
 void main(void) {
   gl_Position = vec4(positions, 1.0);
-}`;
+}`,
 
-const postFragmentShader = `
+  fragment: `
 ${linearToStandard.declare({})}
   
 uniform sampler2D source;
@@ -408,7 +421,8 @@ void main(void) {
   vec3 scene = texelFetch(source, bufferCoordinate, 0).rgb;
 
   fragColor = vec4(${linearToStandard.invoke({ linear: "scene" })}, 1.0);
-}`;
+}`,
+});
 
 type DeferredShadingConfiguration = {
   lightModel: DeferredShadingLightModel;
@@ -479,7 +493,11 @@ const createAmbientLightBinder = (
   configuration: DeferredShadingConfiguration
 ): GlMeshBinder<AmbientLightScene> => {
   return () => {
-    const shader = createAmbientLightShader(runtime, configuration);
+    const shader = runtime.createShader(
+      createAmbientLightSource({
+        lightModelPhongAmbient: !configuration.lightModelPhongNoAmbient,
+      })
+    );
 
     const polygonBinding = shader.declare<GlPolygon>();
 
@@ -523,28 +541,12 @@ const createAmbientLightBinder = (
   };
 };
 
-const createAmbientLightShader = (
-  runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
-): GlShader => {
-  // Build directives from configuration
-  const directive: AmbientLightDirective = {
-    lightModelPhongAmbient: !configuration.lightModelPhongNoAmbient,
-  };
-
-  // Setup light shader
-  return runtime.createShader(
-    createAmbientLightVertexShader(),
-    createAmbientLightFragmentShader(directive)
-  );
-};
-
 const createGeometryBinder = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration
 ): GlMeshBinder<GeometryScene> => {
   return (feature) => {
-    const shader = createGeometryShader(runtime);
+    const shader = runtime.createShader(createGeometrySource());
 
     // Setup geometry shader
     const polygonBinding = shader.declare<GlPolygon>();
@@ -649,28 +651,20 @@ const createGeometryBinder = (
   };
 };
 
-const createGeometryShader = (runtime: GlRuntime): GlShader => {
-  return runtime.createShader(geometryVertexShader, geometryFragmentShader);
-};
-
 const loadLightBinding = <TScene extends LightScene>(
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration,
   type: DeferredShadingLightType
 ) => {
-  // Build directive from configuration
-  const directive: LocalLightDirective = {
-    hasShadow: false, // FIXME: no shadow support
-    lightModelPhongDiffuse: !configuration.lightModelPhongNoDiffuse,
-    lightModelPhongSpecular: !configuration.lightModelPhongNoSpecular,
-    type,
-  };
-
   // Setup light shader
   // FIXME: should be disposed
   const shader = runtime.createShader(
-    createLocalLightVertexShader(directive),
-    createLocalLightFragmentShader(directive)
+    createLocalLightSource({
+      hasShadow: false, // FIXME: no shadow support
+      lightModelPhongDiffuse: !configuration.lightModelPhongNoDiffuse,
+      lightModelPhongSpecular: !configuration.lightModelPhongNoSpecular,
+      type,
+    })
   );
 
   const binding = shader.declare<TScene>();
@@ -764,7 +758,7 @@ const loadPointLightPainter = (
 };
 
 const loadPostPainter = (runtime: GlRuntime) => {
-  const shader = runtime.createShader(postVertexShader, postFragmentShader);
+  const shader = runtime.createShader(createPostSource());
   const binding = shader.declare<PostScene>();
 
   binding.setAttribute("positions", ({ position }) => position);

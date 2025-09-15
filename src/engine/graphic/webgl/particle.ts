@@ -16,7 +16,12 @@ import {
   createDynamicArrayBuffer,
   createDynamicIndexBuffer,
 } from "./resource";
-import { GlShaderAttribute, createAttribute, shaderUniform } from "./shader";
+import {
+  GlShaderAttribute,
+  GlShaderSource,
+  createAttribute,
+  shaderUniform,
+} from "./shader";
 import { GlTexture } from "./texture";
 import { createGlBindingPainter } from "../painter";
 
@@ -88,7 +93,8 @@ type SceneState = ParticleScene & {
   billboard: MutableMatrix4;
 };
 
-const particleVertexShader = `
+const particleSource: GlShaderSource = {
+  vertex: `
 uniform mat4 billboardMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -108,9 +114,9 @@ void main(void) {
     gl_Position =
       projectionMatrix * billboardMatrix * vec4(particleCorner, 0.0, 0.0) +
       projectionMatrix * viewMatrix * vec4(particlePosition, 1.0);
-}`;
+}`,
 
-const particleFragmentShader = `
+  fragment: `
 uniform sampler2D sprite;
 
 in vec2 coordinate;
@@ -122,7 +128,8 @@ void main(void) {
   vec4 emissiveColor = texture(sprite, coordinate);
 
   fragColor = emissiveColor * tint;
-}`;
+}`,
+};
 
 const createBillboard = (
   gl: GlContext,
@@ -244,10 +251,7 @@ const createBillboard = (
 };
 
 const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
-  const shader = runtime.createShader(
-    particleVertexShader,
-    particleFragmentShader
-  );
+  const shader = runtime.createShader(particleSource);
 
   // Declare billboard binding (unique to each particle source)
   const billboardBinding = shader.declare<ParticleBillboard>();
