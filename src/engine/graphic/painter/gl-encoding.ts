@@ -2,10 +2,10 @@ import { Disposable } from "../../language/lifecycle";
 import { Matrix4 } from "../../math/matrix";
 import { GlRuntime, GlTarget } from "../webgl";
 import {
-  shaderSwitch,
+  shaderCase,
   GlShader,
   GlShaderAttribute,
-  shaderUniform,
+  uniform,
   GlShaderSource,
 } from "../webgl/shader";
 import { GlBuffer } from "../webgl/resource";
@@ -87,7 +87,7 @@ void main(void) {
   vec4 encoded;
   vec4 raw = texture(source, coord);
 
-  encoded = ${shaderSwitch(
+  encoded = ${shaderCase(
     directive.channel,
 
     // Read 4 bytes, 1 possible configuration
@@ -109,7 +109,7 @@ void main(void) {
     [GlEncodingChannel.Alpha, `vec4(raw.a)`]
   )};
 
-  fragColor = ${shaderSwitch(
+  fragColor = ${shaderCase(
     directive.format,
     [GlEncodingFormat.Identity, `encoded`],
     [
@@ -141,11 +141,11 @@ const createPainter = (shader: GlShader) => {
   binding.setAttribute("position", ({ position }) => position);
   binding.setUniform(
     "modelMatrix",
-    shaderUniform.matrix4f(({ modelMatrix }) => modelMatrix)
+    uniform.matrix4f(({ modelMatrix }) => modelMatrix)
   );
   binding.setUniform(
     "source",
-    shaderUniform.tex2dBlack(({ source }) => source)
+    uniform.tex2dBlack(({ source }) => source)
   );
 
   return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
