@@ -1,4 +1,4 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import { createFlexibleArray } from "../../io/memory";
 import { range } from "../../language/iterable";
 import { Matrix4, MutableMatrix4 } from "../../math/matrix";
@@ -25,7 +25,7 @@ import {
 import { GlTexture } from "./texture";
 import { createGlBindingPainter } from "../painter";
 
-type ParticleBillboard = Disposable & {
+type ParticleBillboard = Releasable & {
   flush: () => void;
   reserve: (nbSources: number) => void;
   write: (sparkIndex: number) => void;
@@ -36,7 +36,7 @@ type ParticleBillboard = Disposable & {
   sprite: GlTexture | undefined;
 };
 
-type ParticleEmitter = Disposable & {
+type ParticleEmitter = Releasable & {
   define: <TSeed>(shape: ParticleShape<TSeed>) => ParticleSpawn<TSeed>;
   render: (target: GlTarget, scene: ParticleScene) => void;
   update: (dt: number) => void;
@@ -172,12 +172,12 @@ const createBillboard = (
   };
 
   return {
-    dispose: () => {
-      coordinateBuffer.dispose();
-      cornerBuffer.dispose();
-      indexBuffer.dispose();
-      positionBuffer.dispose();
-      tintBuffer.dispose();
+    release: () => {
+      coordinateBuffer.release();
+      cornerBuffer.release();
+      indexBuffer.release();
+      positionBuffer.release();
+      tintBuffer.release();
     },
     flush: () => {
       coordinateBuffer.update(0, coordinates.buffer, coordinates.length);
@@ -326,12 +326,12 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
       };
     },
 
-    dispose() {
+    release() {
       for (const billboard of billboards) {
-        billboard.dispose();
+        billboard.release();
       }
 
-      shader.dispose();
+      shader.release();
     },
 
     render(target, scene) {

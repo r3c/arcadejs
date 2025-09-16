@@ -18,7 +18,7 @@ const applicationBuilder = async (
   return {
     async change() {},
 
-    dispose() {},
+    release() {},
 
     render() {
       renderer.render(screen, scene);

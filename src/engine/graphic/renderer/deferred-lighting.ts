@@ -1,4 +1,4 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import {
   DirectionalLight,
   PointLight,
@@ -445,7 +445,7 @@ type DeferredLightingConfiguration = {
   noNormalMap?: boolean;
 };
 
-type DeferredLightingRenderer = Disposable &
+type DeferredLightingRenderer = Releasable &
   Renderer<GlTarget, DeferredLightingScene, DeferredLightingSubject> & {
     // FIXME: debug
     depthBuffer: GlTexture;
@@ -572,7 +572,7 @@ const createGeometryBinder = (
     );
 
     return {
-      dispose: shader.dispose,
+      release: shader.release,
       material: materialBinding,
       matrix: matrixBinding,
       polygon: polygonBinding,
@@ -587,7 +587,7 @@ const loadLightBinding = <TScene extends LightScene>(
   type: DeferredLightingLightType
 ) => {
   // Setup light shader
-  // FIXME: should be disposed
+  // FIXME: should be released
   const shader = runtime.createShader(
     createLightSource({ hasShadow: false, type })
   );
@@ -784,7 +784,7 @@ const createMaterialBinder = (
     );
 
     return {
-      dispose: shader.dispose,
+      release: shader.release,
       material: materialBinding,
       matrix: matrixBinding,
       polygon: polygonBinding,
@@ -851,8 +851,8 @@ const createDeferredLightingRenderer = (
     lightBuffer,
     normalAndGlossBuffer,
 
-    dispose() {
-      materialRenderer.dispose();
+    release() {
+      materialRenderer.release();
     },
 
     append(subject) {

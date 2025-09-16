@@ -2,7 +2,7 @@ import { range } from "../language/iterable";
 import { TextureSampler, Interpolation, Wrap, defaultSampler } from "./mesh";
 import { MutableVector2, Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
-import { Disposable } from "../language/lifecycle";
+import { Releasable } from "../io/resource";
 import {
   GlTexture,
   GlTextureFormat,
@@ -37,7 +37,7 @@ type GlDrawMode =
   | WebGL2RenderingContext["TRIANGLES"]
   | WebGL2RenderingContext["LINES"];
 
-type GlRuntime = Disposable & {
+type GlRuntime = Releasable & {
   createShader: (source: GlShaderSource) => GlShader;
   context: GlContext;
 };
@@ -79,10 +79,10 @@ const createRuntime = (context: GlContext): GlRuntime => {
   };
 
   return {
-    dispose: () => {
-      textureBlack.dispose();
-      textureNormal.dispose();
-      textureWhite.dispose();
+    release: () => {
+      textureBlack.release();
+      textureNormal.release();
+      textureWhite.release();
     },
     createShader: (source) =>
       createShader(context, useProgram, shaderDefault, source),
@@ -136,7 +136,7 @@ const loadTextureQuad = (
   );
 };
 
-class GlTarget {
+class GlTarget implements Releasable {
   private readonly gl: GlContext;
 
   private colorAttachment: GlAttachment;
@@ -177,13 +177,6 @@ class GlTarget {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   }
 
-  public dispose() {
-    const gl = this.gl;
-
-    GlTarget.clearRenderbufferAttachments(gl, this.colorAttachment);
-    GlTarget.clearTextureAttachments(gl, this.depthAttachment);
-  }
-
   public draw(
     framebufferIndex: number,
     mode: GlDrawMode,
@@ -201,6 +194,13 @@ class GlTarget {
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
     gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
+  }
+
+  public release() {
+    const gl = this.gl;
+
+    GlTarget.clearRenderbufferAttachments(gl, this.colorAttachment);
+    GlTarget.clearTextureAttachments(gl, this.depthAttachment);
   }
 
   public resize(size: Vector2) {

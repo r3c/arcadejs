@@ -1,5 +1,5 @@
 import { mapOptional } from "../../language/optional";
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import { Matrix4, MutableMatrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { Material, Mesh, Polygon, Texture } from "../mesh";
@@ -22,11 +22,11 @@ type GlDynamicMesh = {
   transform: MutableMatrix4;
 };
 
-type GlLibrary = Disposable & {
+type GlLibrary = Releasable & {
   materials: Map<Material, GlMaterial>;
 };
 
-type GlMaterial = Disposable & {
+type GlMaterial = Releasable & {
   diffuseColor: Vector4;
   diffuseMap: GlTexture | undefined;
   emissiveColor: Vector4;
@@ -46,13 +46,13 @@ type GlMaterial = Disposable & {
   specularMap: GlTexture | undefined;
 };
 
-type GlMesh = Disposable & {
+type GlMesh = Releasable & {
   children: GlMesh[];
   primitives: GlPrimitive[];
   transform: Matrix4;
 };
 
-type GlModel = Disposable & {
+type GlModel = Releasable & {
   library: GlLibrary | undefined;
   mesh: GlMesh;
 };
@@ -61,7 +61,7 @@ type GlModelConfiguration = {
   library?: GlLibrary;
 };
 
-type GlPolygon = Disposable & {
+type GlPolygon = Releasable & {
   coordinate: GlShaderAttribute | undefined;
   normal: GlShaderAttribute | undefined;
   position: GlShaderAttribute;
@@ -69,7 +69,7 @@ type GlPolygon = Disposable & {
   tint: GlShaderAttribute | undefined;
 };
 
-type GlPrimitive = Disposable & {
+type GlPrimitive = Releasable & {
   indexBuffer: GlBuffer;
   material: GlMaterial;
   polygon: GlPolygon;
@@ -78,7 +78,7 @@ type GlPrimitive = Disposable & {
 const colorWhite = { x: 1, y: 1, z: 1, w: 1 };
 
 const defaultMaterial: GlMaterial = {
-  dispose: () => {},
+  release: () => {},
   diffuseColor: colorWhite,
   diffuseMap: undefined,
   emissiveColor: colorWhite,
@@ -119,9 +119,9 @@ const createLibrary = (gl: GlContext, mesh: Mesh): GlLibrary => {
   loadMesh(mesh);
 
   return {
-    dispose: () => {
+    release: () => {
       for (const material of materials.values()) {
-        material.dispose();
+        material.release();
       }
     },
     materials,
@@ -164,15 +164,15 @@ const loadMaterial = (
   const specularMap = mapOptional(material.specularMap, toColorMap);
 
   return {
-    dispose: () => {
-      diffuseMap?.dispose();
-      emissiveMap?.dispose();
-      heightMap?.dispose();
-      metalnessMap?.dispose();
-      normalMap?.dispose();
-      occlusionMap?.dispose();
-      roughnessMap?.dispose();
-      specularMap?.dispose();
+    release: () => {
+      diffuseMap?.release();
+      emissiveMap?.release();
+      heightMap?.release();
+      metalnessMap?.release();
+      normalMap?.release();
+      occlusionMap?.release();
+      roughnessMap?.release();
+      specularMap?.release();
     },
     diffuseColor: material.diffuseColor ?? defaultMaterial.diffuseColor,
     diffuseMap,
@@ -207,18 +207,18 @@ const loadMesh = (gl: GlContext, mesh: Mesh, library: GlLibrary): GlMesh => {
   );
 
   return {
-    dispose: () => {
+    release: () => {
       for (const child of children) {
-        child.dispose();
+        child.release();
       }
 
       for (const { indexBuffer, polygon } of primitives) {
-        indexBuffer.dispose();
-        polygon.coordinate?.buffer.dispose();
-        polygon.normal?.buffer.dispose();
-        polygon.position.buffer.dispose();
-        polygon.tangent?.buffer.dispose();
-        polygon.tint?.buffer.dispose();
+        indexBuffer.release();
+        polygon.coordinate?.buffer.release();
+        polygon.normal?.buffer.release();
+        polygon.position.buffer.release();
+        polygon.tangent?.buffer.release();
+        polygon.tint?.buffer.release();
       }
     },
     children,
@@ -233,7 +233,7 @@ const createDynamicMesh = (mesh: GlMesh): GlDynamicMesh => {
   return {
     mesh: {
       children: [mesh],
-      dispose: mesh.dispose,
+      release: mesh.release,
       primitives: [],
       transform,
     },
@@ -265,14 +265,14 @@ const createModel = (
   const ownedMesh = loadMesh(gl, mesh, usedLibrary);
 
   return {
-    dispose: () => {
+    release: () => {
       if (ownedLibrary !== undefined) {
         for (const material of ownedLibrary.materials.values()) {
-          material.dispose();
+          material.release();
         }
       }
 
-      ownedMesh.dispose();
+      ownedMesh.release();
     },
     library: ownedLibrary,
     mesh: ownedMesh,
@@ -350,12 +350,12 @@ const loadPrimitive = (
     source.material !== undefined ? materials.get(source.material) : undefined;
 
   const polygon: GlPolygon = {
-    dispose: () => {
-      coordinate?.buffer.dispose();
-      normal?.buffer.dispose();
-      position.buffer.dispose();
-      tangent?.buffer.dispose();
-      tint?.buffer.dispose();
+    release: () => {
+      coordinate?.buffer.release();
+      normal?.buffer.release();
+      position.buffer.release();
+      tangent?.buffer.release();
+      tint?.buffer.release();
     },
     coordinate,
     normal,
@@ -365,10 +365,10 @@ const loadPrimitive = (
   };
 
   return {
-    dispose: () => {
-      index.dispose();
-      material?.dispose();
-      polygon.dispose();
+    release: () => {
+      index.release();
+      material?.release();
+      polygon.release();
     },
     indexBuffer: index,
     material: material ?? defaultMaterial,

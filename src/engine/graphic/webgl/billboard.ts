@@ -1,5 +1,5 @@
 import { createFlexibleArray } from "../../io/memory";
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import {
   GlBuffer,
   GlContext,
@@ -10,7 +10,7 @@ import {
 import { GlShaderAttribute, createAttribute } from "./shader";
 import { PointLight } from "./shaders/light";
 
-type GlDirectionalLightBillboard = Disposable & {
+type GlDirectionalLightBillboard = Releasable & {
   indexBuffer: GlBuffer;
   polygon: GlDirectionalLightPolygon;
 };
@@ -19,7 +19,7 @@ type GlDirectionalLightPolygon = {
   lightPosition: GlShaderAttribute;
 };
 
-type GlPointLightBillboard = Disposable & {
+type GlPointLightBillboard = Releasable & {
   set: (lights: ArrayLike<PointLight>) => void;
   indexBuffer: GlBuffer;
   polygon: GlPointLightPolygon;
@@ -72,9 +72,9 @@ const createDirectionalLightBillboard = (
   );
 
   return {
-    dispose: () => {
-      indexBuffer.dispose();
-      lightPositionBuffer.dispose();
+    release: () => {
+      indexBuffer.release();
+      lightPositionBuffer.release();
     },
     indexBuffer,
     polygon: {
@@ -102,12 +102,12 @@ const createPointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
   const shiftBuffer = createDynamicArrayBuffer(gl, Float32Array, 10);
 
   return {
-    dispose: () => {
-      colorBuffer.dispose();
-      indexBuffer.dispose();
-      positionBuffer.dispose();
-      radiusBuffer.dispose();
-      shiftBuffer.dispose();
+    release: () => {
+      colorBuffer.release();
+      indexBuffer.release();
+      positionBuffer.release();
+      radiusBuffer.release();
+      shiftBuffer.release();
     },
     set: (lights) => {
       const nbIndices = lights.length * nbCubeIndices;

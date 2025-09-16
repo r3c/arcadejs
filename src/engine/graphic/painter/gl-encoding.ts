@@ -1,4 +1,4 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import { Matrix4 } from "../../math/matrix";
 import { GlRuntime, GlTarget } from "../webgl";
 import {
@@ -47,7 +47,7 @@ type GlEncodingConfiguration = {
   zNear: number;
 };
 
-type GlEncodingPainter = Disposable & Painter<GlTarget, GlTexture>;
+type GlEncodingPainter = Releasable & Painter<GlTarget, GlTexture>;
 
 type Scene = {
   coordinate: GlShaderAttribute;
@@ -167,9 +167,9 @@ const createGlEncodingPainter = (
   );
 
   return {
-    dispose() {
-      quad.dispose();
-      shader.dispose();
+    release() {
+      quad.release();
+      shader.release();
     },
 
     paint(target, scene) {

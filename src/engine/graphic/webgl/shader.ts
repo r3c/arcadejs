@@ -1,10 +1,10 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { GlBuffer, GlContext } from "./resource";
 import { GlTexture } from "./texture";
 
-type GlShader = Disposable & {
+type GlShader = Releasable & {
   declare: <TState>() => GlShaderBinding<TState>;
 };
 
@@ -234,7 +234,7 @@ const createShader = (
         },
       };
     },
-    dispose: () => {
+    release: () => {
       gl.deleteProgram(program);
     },
   };
@@ -246,7 +246,7 @@ const textureUniform = <TState>(
   target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"]
 ): GlShaderUniform<TState, { target: number; texture: GlTexture }> => ({
   allocateTexture: true,
-  createValue: () => ({ target, texture: { dispose: () => {}, handle: {} } }),
+  createValue: () => ({ target, texture: { release: () => {}, handle: {} } }),
   readValue: (state, { target }, defaultValue) => ({
     target,
     texture: primaryGetter(state) ?? defaultGetter(defaultValue),

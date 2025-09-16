@@ -144,7 +144,7 @@ const applicationBuilder = async (
 
   return {
     async change(configuration) {
-      renderer?.dispose();
+      renderer?.release();
 
       const newRenderer = createForwardLightingRenderer(runtime, {
         maxPointLights: 3,
@@ -178,13 +178,13 @@ const applicationBuilder = async (
       renderer = newRenderer;
     },
 
-    dispose() {
-      models.ground.dispose();
-      models.helmet.dispose();
-      models.light.dispose();
-      renderer?.dispose();
-      runtime.dispose();
-      target.dispose();
+    release() {
+      models.ground.release();
+      models.helmet.release();
+      models.light.release();
+      renderer?.release();
+      runtime.release();
+      target.release();
     },
 
     render() {

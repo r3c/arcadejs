@@ -164,7 +164,7 @@ const applicationBuilder = async (
   return {
     async change() {},
 
-    dispose() {},
+    release() {},
 
     update(dt) {
       // Move camera & define view matrix accordingly
