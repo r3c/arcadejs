@@ -1,11 +1,11 @@
-import { Disposable } from "./lifecycle";
+import { Releasable } from "../io/resource";
 
 type Indexer<TKey> = {
   bitsize: number;
   index: (key: TKey) => number;
 };
 
-type Memo<TKey, TValue> = Disposable & {
+type Memo<TKey, TValue> = Releasable & {
   get: (key: TKey) => TValue;
 };
 
@@ -41,7 +41,7 @@ const createNumberIndexer = (min: number, max: number): Indexer<number> => ({
   index: (key) => Math.max(Math.min(key, max), min) - min,
 });
 
-const memoize = <TKey, TValue extends Disposable>(
+const memoize = <TKey, TValue extends Releasable>(
   indexer: Indexer<TKey>,
   constructor: (key: TKey) => TValue
 ): Memo<TKey, TValue> => {
@@ -49,10 +49,10 @@ const memoize = <TKey, TValue extends Disposable>(
   let lastValue: TValue | undefined;
 
   return {
-    dispose: () => {
+    release: () => {
       if (lastIndex == undefined) {
         lastIndex = undefined;
-        lastValue?.dispose();
+        lastValue?.release();
         lastValue = undefined;
       }
     },
@@ -61,7 +61,7 @@ const memoize = <TKey, TValue extends Disposable>(
 
       if (currentIndex !== lastIndex) {
         if (lastValue !== undefined) {
-          lastValue.dispose();
+          lastValue.release();
         }
 
         lastIndex = currentIndex;

@@ -1,8 +1,8 @@
-import { Disposable } from "./language/lifecycle";
+import { Releasable } from "./io/resource";
 import { Screen } from "./graphic/screen";
 import { Vector2 } from "./math/vector";
 
-type Application<TConfiguration> = Disposable & {
+type Application<TConfiguration> = Releasable & {
   change: (configuration: TConfiguration) => Promise<void>;
   render: () => void;
   resize: (size: Vector2) => void;
@@ -207,7 +207,7 @@ const declare = <TScreen extends Screen, TConfiguration>(
         cancelAnimationFrame(runtime.handle);
       }
 
-      runtime.application.dispose();
+      runtime.application.release();
       runtime = undefined;
     },
     title,

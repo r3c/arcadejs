@@ -134,7 +134,7 @@ const createWorldGraphic = (
     renderer.append({
       mesh: {
         children: [],
-        dispose: () => {},
+        release: () => {},
         primitives: [],
         transform: Matrix4.identity,
       },
@@ -280,7 +280,7 @@ const createWorldGraphic = (
           library,
         });
 
-        // FIXME: dispose previous model
+        // FIXME: release previous model
 
         chunkHandles[chunkIndex]();
         chunkHandles[chunkIndex] = renderer.append({

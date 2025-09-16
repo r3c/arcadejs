@@ -196,8 +196,8 @@ const applicationBuilder = async (
 
   return {
     async change(configuration) {
-      encodingPainter?.dispose();
-      sceneRenderer?.dispose();
+      encodingPainter?.release();
+      sceneRenderer?.release();
 
       encodingPainter =
         configuration.debugMode !== 0
@@ -320,16 +320,16 @@ const applicationBuilder = async (
       sceneRenderer = newRenderer;
     },
 
-    dispose() {
-      encodingPainter?.dispose();
-      encodingTexture?.dispose();
-      models.cube.dispose();
-      models.directionalLight.dispose();
-      models.ground.dispose();
-      models.pointLight.dispose();
-      runtime.dispose();
-      sceneRenderer?.dispose();
-      target.dispose();
+    release() {
+      encodingPainter?.release();
+      encodingTexture?.release();
+      models.cube.release();
+      models.directionalLight.release();
+      models.ground.release();
+      models.pointLight.release();
+      runtime.release();
+      sceneRenderer?.release();
+      target.release();
     },
 
     render() {

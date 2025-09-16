@@ -1,4 +1,7 @@
-import { createDelegateDisposable, Disposable } from "../../language/lifecycle";
+import {
+  createCompositeReleasable,
+  Releasable,
+} from "../../io/resource";
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import { GlTarget } from "../webgl";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
@@ -8,7 +11,7 @@ import { Renderer } from "../renderer";
 
 type GlMeshBinder<TScene> = (feature: GlMeshFeature) => GlMeshBinding<TScene>;
 
-type GlMeshBinding<TScene> = Disposable & {
+type GlMeshBinding<TScene> = Releasable & {
   material: GlShaderBinding<GlMaterial>;
   matrix: GlShaderBinding<GlMeshMatrix>;
   polygon: GlShaderBinding<GlPolygon>;
@@ -38,7 +41,7 @@ type GlMeshPrimitive = {
   polygon: GlPolygon;
 };
 
-type GlMeshRenderer<TScene extends GlMeshScene> = Disposable &
+type GlMeshRenderer<TScene extends GlMeshScene> = Releasable &
   Renderer<GlTarget, TScene, GlMesh>;
 
 const enum GlMeshRendererMode {
@@ -69,7 +72,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
   mode: GlMeshRendererMode,
   binder: GlMeshBinder<TScene>
 ): GlMeshRenderer<TScene> => {
-  const disposable = createDelegateDisposable();
+  const releasable = createCompositeReleasable();
   const drawMode = drawModes[mode];
   const shaders = new Map<number, GlMeshShader<TScene>>();
 
@@ -175,7 +178,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
         if (shader === undefined) {
           const binding = binder(keyToFeature(featureKey));
 
-          disposable.register(binding);
+          releasable.register(binding);
 
           nodesByMaterial = new Map();
 
@@ -223,16 +226,16 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
           }
 
           if (nodesByMaterial.size === 0) {
-            binding.dispose();
-            disposable.remove(binding);
+            binding.release();
+            releasable.remove(binding);
             shaders.delete(featureKey);
           }
         }
       };
     },
 
-    dispose() {
-      disposable.dispose();
+    release() {
+      releasable.release();
     },
 
     render(target, scene) {

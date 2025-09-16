@@ -66,7 +66,7 @@ const applicationBuilder = async (
       renderer.append({ mesh });
     },
 
-    dispose() {},
+    release() {},
 
     render() {
       renderer?.render(screen, {

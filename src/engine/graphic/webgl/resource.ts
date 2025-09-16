@@ -1,4 +1,4 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 
 type GlArray = Omit<
   | Float32Array
@@ -20,7 +20,7 @@ type GlArrayConstructor =
   | Uint16ArrayConstructor
   | Uint32ArrayConstructor;
 
-type GlBuffer = Disposable & {
+type GlBuffer = Releasable & {
   resize: (length: number) => void;
   set: (data: GlArray, length: number) => void;
   update: (offset: number, data: GlArray, length: number) => void;
@@ -64,7 +64,7 @@ const createBuffer = (
   }
 
   const self: GlBuffer = {
-    dispose: () => {
+    release: () => {
       gl.deleteBuffer(buffer);
     },
     resize: (length: number) => {

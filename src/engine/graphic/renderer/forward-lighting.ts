@@ -1,4 +1,4 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import { range } from "../../language/iterable";
 import {
   DirectionalLight,
@@ -78,7 +78,7 @@ type EnvironmentLight = {
   specular: GlTexture;
 };
 
-type ForwardLightingRenderer = Disposable &
+type ForwardLightingRenderer = Releasable &
   Renderer<GlTarget, ForwardLightingScene, ForwardLightingSubject> & {
     // FIXME: debug
     directionalShadowBuffers: GlTexture[];
@@ -767,7 +767,7 @@ const createLightBinder = (
     }
 
     return {
-      dispose: shader.dispose,
+      release: shader.release,
       material: materialBinding,
       matrix: matrixBinding,
       polygon: polygonBinding,
@@ -807,7 +807,7 @@ const createDirectionalShadowBinder = (
     const materialBinding = shader.declare<GlMaterial>();
 
     return {
-      dispose: shader.dispose,
+      release: shader.release,
       material: materialBinding,
       matrix: matrixBinding,
       polygon: polygonBinding,
@@ -868,9 +868,9 @@ const createForwardLightingRenderer = (
     // FIXME: debug
     directionalShadowBuffers,
 
-    dispose: () => {
-      directionalShadowRenderer.dispose();
-      lightRenderer.dispose();
+    release: () => {
+      directionalShadowRenderer.release();
+      lightRenderer.release();
     },
 
     append: (subject) => {

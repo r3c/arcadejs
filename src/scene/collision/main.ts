@@ -292,12 +292,12 @@ const applicationBuilder = async (
   return {
     async change() {},
 
-    dispose() {
-      renderer.dispose();
-      runtime.dispose();
-      floor0Model.dispose();
-      sphereModel.dispose();
-      target.dispose();
+    release() {
+      renderer.release();
+      runtime.release();
+      floor0Model.release();
+      sphereModel.release();
+      target.release();
     },
 
     render() {

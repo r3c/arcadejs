@@ -381,18 +381,18 @@ const applicationBuilder = async (
   return {
     async change() {},
 
-    dispose() {
+    release() {
       for (const starModel of starModels) {
-        starModel.dispose();
+        starModel.release();
       }
 
-      lightModel.dispose();
-      particleEmitter.dispose();
-      runtime.dispose();
-      sceneRenderer.dispose();
-      shipModel.dispose();
-      sprite.dispose();
-      target.dispose();
+      lightModel.release();
+      particleEmitter.release();
+      runtime.release();
+      sceneRenderer.release();
+      shipModel.release();
+      sprite.release();
+      target.release();
     },
 
     render() {

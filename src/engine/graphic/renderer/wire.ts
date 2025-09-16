@@ -1,4 +1,4 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import { range } from "../../language/iterable";
 import { Matrix4 } from "../../math/matrix";
 import { Vector3 } from "../../math/vector";
@@ -25,7 +25,7 @@ type WireModel = {
   tint: GlShaderAttribute;
 };
 
-type WireRenderer = Disposable & Renderer<GlTarget, WireScene, WireSubject>;
+type WireRenderer = Releasable & Renderer<GlTarget, WireScene, WireSubject>;
 
 type WireSubject = {
   modelMatrix: Matrix4;
@@ -205,8 +205,8 @@ const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
       return () => subjects.delete(symbol);
     },
 
-    dispose() {
-      shader.dispose();
+    release() {
+      shader.release();
     },
 
     render(target, scene): void {

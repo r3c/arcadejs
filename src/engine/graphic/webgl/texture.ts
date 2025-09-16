@@ -1,13 +1,13 @@
-import { Disposable } from "../../language/lifecycle";
+import { Releasable } from "../../io/resource";
 import { TextureSampler, Interpolation, Wrap } from "../mesh";
 import { GlContext } from "./resource";
 
 /**
- * Disposable WebGL texture, also circumvent native `WebGLTexture` type being
+ * Releasable WebGL texture, also circumvent native `WebGLTexture` type being
  * defined as an opaque empty object and therefore being compatible with any
  * unrelated object.
  */
-type GlTexture = Disposable & {
+type GlTexture = Releasable & {
   handle: WebGLTexture;
 };
 
@@ -227,7 +227,7 @@ const createTexture = (
   gl.bindTexture(target, null);
 
   return {
-    dispose: () => {
+    release: () => {
       gl.deleteTexture(handle);
     },
     handle,
