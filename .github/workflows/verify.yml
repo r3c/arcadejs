@@ -21,3 +21,13 @@ jobs:
       - run: npm install
       - run: npm run check
       - run: npm run test
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+
+    needs:
+      - test
+
+    steps:
+      - run: true
