@@ -155,7 +155,7 @@ uniform ${pointLightType} pointLights[max(${Math.max(
     1
   )}, 1)];
 
-// FIXME: adding shadowMap as field to *Light structures doesn't work for some reason
+// FIXME: adding shadowMap as field to {directional,point}Light structures doesn't work for some reason
 uniform sampler2D directionalLightShadowMaps[${Math.max(
     directive.maxDirectionalLights,
     1
@@ -239,12 +239,28 @@ void main(void) {
     pointLightDistances[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
   }
 
-  coordinate = coordinates;
+  coordinate = ${shaderWhen(
+    feature.hasCoordinate,
+    "coordinates",
+    "vec2(0.0, 0.0)"
+  )};
+
+  normal = normalize(normalMatrix * ${shaderWhen(
+    feature.hasNormal,
+    "normals",
+    "vec3(0.0, 0.0, 1.0)"
+  )});
+
+  tangent = normalize(normalMatrix * ${shaderWhen(
+    feature.hasTangent,
+    "tangents",
+    "vec3(1.0, 0.0, 0.0)"
+  )});
+
   tint = ${shaderWhen(feature.hasTint, "tints", "vec4(1.0)")};
-  eye = -pointCamera.xyz;
-  normal = normalize(normalMatrix * normals);
-  tangent = normalize(normalMatrix * tangents);
+
   bitangent = cross(normal, tangent);
+  eye = -pointCamera.xyz;
 
   gl_Position = projectionMatrix * pointCamera;
 }`,
@@ -507,7 +523,6 @@ const createLightBinder = (
     | "noSpecularMap"
   >
 ): GlMeshBinder<LightScene> => {
-  // [forward-lighting-feature]
   return (feature) => {
     const shader = runtime.createShader(createLightSource(directive, feature));
 

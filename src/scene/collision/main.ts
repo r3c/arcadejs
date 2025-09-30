@@ -40,7 +40,7 @@ type ApplicationState = {
   camera: Camera;
   input: Input;
   lights: Light[];
-  surfaces: { collision: boolean; plane: Plane }[];
+  surfaces: { setCollision: (flag: boolean) => void; plane: Plane }[];
   player: Player;
   sphereTransform: MutableMatrix4;
 };
@@ -117,7 +117,7 @@ const createPlayerUpdater = (): Updater => {
         velocity.sub(undesired);
       }
 
-      surface.collision = collision !== undefined;
+      surface.setCollision(collision !== undefined);
     }
 
     // Collision step 2: prevent crossing a wall
@@ -176,43 +176,35 @@ const applicationBuilder = async (
   const target = new GlTarget(gl, screen.getSize());
 
   // Load meshes
-  const floor0 = await loadMeshFromJson("model/cube/mesh.json", {
+  const floor0Mesh = await loadMeshFromJson("model/cube/mesh.json", {
     transform: Matrix4.fromIdentity(["scale", { x: 2, y: 0.01, z: 2 }]),
   });
 
-  const sphere = await loadMeshFromJson("model/sphere/mesh.json", {
+  const floor1Mesh = await loadMeshFromJson("model/cube-color/mesh.json", {
+    transform: Matrix4.fromIdentity(["scale", { x: 2, y: 0.01, z: 2 }]),
+  });
+
+  const sphereMesh = await loadMeshFromJson("model/sphere/mesh.json", {
     transform: Matrix4.fromIdentity(["scale", { x: 0.25, y: 0.25, z: 0.25 }]),
   });
 
   // Declare collision surfaces
-  const surfaces: { collision: boolean; plane: Plane }[] = [
+  const planes: Plane[] = [
     {
-      collision: false,
-      plane: {
-        distance: 1,
-        normal: Vector3.fromSource({ x: 0, y: -1, z: 0 }, ["normalize"]),
-      },
+      distance: 1,
+      normal: Vector3.fromSource({ x: 0, y: -1, z: 0 }, ["normalize"]),
     },
     {
-      collision: false,
-      plane: {
-        distance: 1,
-        normal: Vector3.fromSource({ x: 0, y: 1, z: 0 }, ["normalize"]),
-      },
+      distance: 1,
+      normal: Vector3.fromSource({ x: 0, y: 1, z: 0 }, ["normalize"]),
     },
     {
-      collision: false,
-      plane: {
-        distance: 1,
-        normal: Vector3.fromSource({ x: 1, y: 1, z: 0 }, ["normalize"]),
-      },
+      distance: 1,
+      normal: Vector3.fromSource({ x: 1, y: 1, z: 0 }, ["normalize"]),
     },
     {
-      collision: false,
-      plane: {
-        distance: 1,
-        normal: Vector3.fromSource({ x: -1, y: -1, z: 0 }, ["normalize"]),
-      },
+      distance: 1,
+      normal: Vector3.fromSource({ x: -1, y: -1, z: 0 }, ["normalize"]),
     },
   ];
 
@@ -222,15 +214,16 @@ const applicationBuilder = async (
     noShadow: true,
   });
 
-  const sphereModel = createModel(gl, sphere);
-  const { mesh, transform: sphereTransform } = createDynamicMesh(
-    sphereModel.mesh
-  );
-  renderer.append({ mesh });
+  const sphereModel = createModel(gl, sphereMesh);
+  const sphere = createDynamicMesh(sphereModel.mesh);
 
-  const floor0Model = createModel(gl, floor0);
+  renderer.append({ mesh: sphere.mesh });
 
-  for (const { plane } of surfaces) {
+  const floor0Model = createModel(gl, floor0Mesh);
+  const floor1Model = createModel(gl, floor1Mesh);
+  const surfaces: ApplicationState["surfaces"] = [];
+
+  for (const plane of planes) {
     const t0 = Vector3.fromSource(
       plane.normal,
       ["cross", { x: 1, y: 0, z: 0 }],
@@ -246,12 +239,33 @@ const applicationBuilder = async (
       t2,
     ]);
 
-    const { mesh, transform } = createDynamicMesh(floor0Model.mesh);
+    const floor0 = createDynamicMesh(floor0Model.mesh);
 
-    renderer.append({ mesh });
+    floor0.transform.setFromRotationPosition(rotation, Vector3.zero);
+    floor0.transform.translate({ x: 0, y: plane.distance, z: 0 });
 
-    transform.setFromRotationPosition(rotation, Vector3.zero);
-    transform.translate({ x: 0, y: plane.distance, z: 0 });
+    const floor1 = createDynamicMesh(floor1Model.mesh);
+
+    floor1.transform.setFromRotationPosition(rotation, Vector3.zero);
+    floor1.transform.translate({ x: 0, y: plane.distance, z: 0 });
+
+    let collision = true;
+    let remove = () => {};
+
+    const setCollision = (flag: boolean) => {
+      if (collision === flag) {
+        return;
+      }
+
+      remove();
+
+      collision = flag;
+      remove = renderer.append({ mesh: flag ? floor1.mesh : floor0.mesh });
+    };
+
+    surfaces.push({ plane, setCollision });
+
+    setCollision(false);
   }
 
   // Create state
@@ -280,7 +294,7 @@ const applicationBuilder = async (
       ]),
       position: Vector3.fromZero(),
     },
-    sphereTransform,
+    sphereTransform: sphere.transform,
     surfaces,
   };
   const updaters = [
