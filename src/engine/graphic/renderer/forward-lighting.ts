@@ -28,6 +28,7 @@ import {
   shaderCase,
   uniform,
   GlShaderSource,
+  shaderLoop,
 } from "../webgl/shader";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
@@ -411,54 +412,52 @@ void main(void) {
   )}
 
   // Apply components from directional lights
-  ${range(directive.maxDirectionalLights)
-    .map(
-      (i) => `
-  bool directionalLightApply${i};
+  ${shaderLoop(
+    directive.maxDirectionalLights,
+    (i) => `
+  bool directionalLightApply;
 
   ${shaderWhen(
     directive.hasShadow,
     `
-  float shadowMapSample${i} = texture(directionalLightShadowMaps[${i}], directionalLightShadows[${i}].xy).r;
-  directionalLightApply${i} = !directionalLights[${i}].castShadow || shadowMapSample${i} >= directionalLightShadows[${i}].z;`,
+  float shadowMapSample = texture(directionalLightShadowMaps[${i}], directionalLightShadows[${i}].xy).r;
+  directionalLightApply = !directionalLights[${i}].castShadow || shadowMapSample >= directionalLightShadows[${i}].z;`,
     `
-  directionalLightApply${i} = true;`
+  directionalLightApply = true;`
   )}
 
-  if (directionalLightApply${i}) {
-    ${resultLightType} directionalLight${i} = ${directionalLight.invoke({
-        light: `directionalLights[${i}]`,
-        distanceCamera: `directionalLightDistances[${i}]`,
-      })};
+  if (directionalLightApply) {
+    ${resultLightType} directionalLight = ${directionalLight.invoke({
+      light: `directionalLights[${i}]`,
+      distanceCamera: `directionalLightDistances[${i}]`,
+    })};
 
-    color += getLight(directionalLight${i}, material, modifiedNormal, eyeDirection);
+    color += getLight(directionalLight, material, modifiedNormal, eyeDirection);
   }`
-    )
-    .join("\n")}
+  )}
 
   // Apply components from point lights
-  ${range(directive.maxPointLights)
-    .map(
-      (i) => `
-  bool pointLightApply${i};
+  ${shaderLoop(
+    directive.maxPointLights,
+    (i) => `
+  bool pointLightApply;
   ${shaderWhen(
     directive.hasShadow,
     `
-    pointLightApply${i} = true;`, // FIXME: point light shadows not supported yet
+    pointLightApply = true;`, // FIXME: point light shadows not supported yet
     `
-    pointLightApply${i} = true;`
+    pointLightApply = true;`
   )}
 
-  if (pointLightApply${i}) {
-    ${resultLightType} pointLight${i} = ${pointLight.invoke({
-        light: `pointLights[${i}]`,
-        distanceCamera: `pointLightDistances[${i}]`,
-      })};
+  if (pointLightApply) {
+    ${resultLightType} pointLight = ${pointLight.invoke({
+      light: `pointLights[${i}]`,
+      distanceCamera: `pointLightDistances[${i}]`,
+    })};
 
-    color += getLight(pointLight${i}, material, modifiedNormal, eyeDirection);
+    color += getLight(pointLight, material, modifiedNormal, eyeDirection);
   }`
-    )
-    .join("\n")}
+  )}
 
   // Apply occlusion component
   color = mix(color, color * texture(occlusionMap, coordinateParallax).r, occlusionStrength);

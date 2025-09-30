@@ -1,4 +1,5 @@
 import { Releasable } from "../../io/resource";
+import { range } from "../../language/iterable";
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { GlBuffer, GlContext } from "./resource";
@@ -268,6 +269,11 @@ const shaderCase = <T>(value: T, ...cases: [T, string][]): string => {
   throw new Error(`no case found matching ${value}`);
 };
 
+const shaderLoop = (count: number, body: (i: number) => string): string =>
+  range(count)
+    .map((i) => `{ ${body(i)} }`)
+    .join("\n");
+
 const shaderWhen = (
   condition: boolean,
   whenTrue: string,
@@ -445,6 +451,7 @@ export {
   createAttribute,
   createShader,
   shaderCase,
+  shaderLoop,
   shaderWhen,
   uniform,
 };
