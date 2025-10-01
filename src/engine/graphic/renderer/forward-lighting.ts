@@ -856,7 +856,8 @@ const createForwardLightingRenderer = (
   const lightBinder = createLightBinder(runtime, directive, configuration);
   const lightRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
-    lightBinder
+    lightBinder,
+    {}
   );
 
   const directionalShadowBuffers = directionalShadowTargets.map((target) =>
@@ -865,7 +866,8 @@ const createForwardLightingRenderer = (
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
   const directionalShadowRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
-    directionalShadowBinder
+    directionalShadowBinder,
+    {}
   );
   const directionalShadowProjection = Matrix4.fromIdentity([
     "setFromOrthographic",

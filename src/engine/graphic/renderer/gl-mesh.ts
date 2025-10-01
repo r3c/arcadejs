@@ -1,7 +1,4 @@
-import {
-  createCompositeReleasable,
-  Releasable,
-} from "../../io/resource";
+import { createCompositeReleasable, Releasable } from "../../io/resource";
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import { GlTarget } from "../webgl";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
@@ -16,6 +13,10 @@ type GlMeshBinding<TScene> = Releasable & {
   matrix: GlShaderBinding<GlMeshMatrix>;
   polygon: GlShaderBinding<GlPolygon>;
   scene: GlShaderBinding<TScene>;
+};
+
+type GlMeshConfiguration = {
+  autoReleaseShader?: boolean;
 };
 
 type GlMeshFeature = {
@@ -70,8 +71,10 @@ const drawModes = {
  */
 const createGlMeshRenderer = <TScene extends GlMeshScene>(
   mode: GlMeshRendererMode,
-  binder: GlMeshBinder<TScene>
+  binder: GlMeshBinder<TScene>,
+  configuration: GlMeshConfiguration
 ): GlMeshRenderer<TScene> => {
+  const autoReleaseShader = configuration.autoReleaseShader ?? false;
   const releasable = createCompositeReleasable();
   const drawMode = drawModes[mode];
   const shaders = new Map<number, GlMeshShader<TScene>>();
@@ -225,7 +228,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
             }
           }
 
-          if (nodesByMaterial.size === 0) {
+          if (autoReleaseShader && nodesByMaterial.size === 0) {
             binding.release();
             releasable.remove(binding);
             shaders.delete(featureKey);
@@ -239,13 +242,10 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
     },
 
     render(target, scene) {
-      for (const {
-        binding,
-        nodesByMaterial: meshesByMaterial,
-      } of shaders.values()) {
+      for (const { binding, nodesByMaterial } of shaders.values()) {
         binding.scene.bind(scene);
 
-        for (const [material, meshes] of meshesByMaterial.entries()) {
+        for (const [material, meshes] of nodesByMaterial.entries()) {
           binding.material.bind(material);
 
           for (const mesh of meshes.values()) {
@@ -285,6 +285,7 @@ const polygonToKey = (polygon: GlPolygon): number => {
 export {
   type GlMeshBinder,
   type GlMeshBinding,
+  type GlMeshConfiguration,
   type GlMeshFeature,
   type GlMeshMatrix,
   type GlMeshRenderer,
