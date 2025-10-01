@@ -792,7 +792,8 @@ const createDeferredShadingRenderer = (
   const ambientLightBinder = createAmbientLightBinder(runtime, configuration);
   const ambientLightRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
-    ambientLightBinder
+    ambientLightBinder,
+    {}
   );
   ambientLightRenderer.append(quad.mesh);
   const depthBuffer = geometryTarget.setupDepthTexture(
@@ -816,7 +817,8 @@ const createDeferredShadingRenderer = (
   const geometryBinder = createGeometryBinder(runtime, configuration);
   const geometryRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
-    geometryBinder
+    geometryBinder,
+    {}
   );
   const pointLightBillboard = createPointLightBillboard(gl);
   const normalAndSpecularBuffer = geometryTarget.setupColorTexture(

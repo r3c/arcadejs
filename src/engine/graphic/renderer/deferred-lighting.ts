@@ -828,7 +828,8 @@ const createDeferredLightingRenderer = (
   const geometryBinder = createGeometryBinder(runtime, configuration);
   const geometryRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
-    geometryBinder
+    geometryBinder,
+    {}
   );
   const lightBuffer = lightTarget.setupColorTexture(
     GlTextureFormat.RGBA8,
@@ -837,7 +838,8 @@ const createDeferredLightingRenderer = (
   const materialBinder = createMaterialBinder(runtime, configuration);
   const materialRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
-    materialBinder
+    materialBinder,
+    {}
   );
   const pointLightBillboard = createPointLightBillboard(gl);
   const pointLightPainter = loadPointLightPainter(runtime, configuration);
