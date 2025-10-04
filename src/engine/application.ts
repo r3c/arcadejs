@@ -10,7 +10,7 @@ type Application<TConfiguration> = Releasable & {
   update: (dt: number) => void;
 };
 
-type ApplicationBuilder<TContext, TConfiguration> = (
+type ApplicationConstructor<TContext, TConfiguration> = (
   screen: Screen<TContext>,
   input: Input
 ) => Promise<Application<TConfiguration>>;
@@ -145,7 +145,7 @@ const createSelect = (
 const declare = <TContext, TConfiguration>(
   title: string,
   screenConstructor: ScreenConstructor<TContext>,
-  applicationBuilder: ApplicationBuilder<TContext, TConfiguration>,
+  createApplication: ApplicationConstructor<TContext, TConfiguration>,
   configurator: ApplicationConfigurator<TConfiguration>
 ): Process => {
   let runtime:
@@ -180,7 +180,7 @@ const declare = <TContext, TConfiguration>(
 
       const screen = screenConstructor(canvas);
       const input = new Input(canvas);
-      const application = await applicationBuilder(screen, input);
+      const application = await createApplication(screen, input);
       const configuration = configure(configurator, application.change);
 
       await application.change(configuration);

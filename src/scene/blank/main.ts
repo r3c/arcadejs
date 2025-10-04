@@ -6,7 +6,7 @@ import {
 } from "../../engine/graphic/renderer";
 import { Matrix4 } from "../../engine/math/matrix";
 
-const applicationBuilder = async (
+const createApplication = async (
   screen: Screen<CanvasRenderingContext2D>
 ): Promise<Application<unknown>> => {
   const context = screen.getContext();
@@ -33,7 +33,7 @@ const applicationBuilder = async (
 const process = declare(
   "Blank screen",
   createCanvasScreen,
-  applicationBuilder,
+  createApplication,
   {}
 );
 

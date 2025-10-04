@@ -167,7 +167,7 @@ const intersectLineWithPlane = (
   return intersection >= 0 && intersection <= 1 ? intersection : undefined;
 };
 
-const applicationBuilder = async (
+const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   input: Input
 ): Promise<Application<unknown>> => {
@@ -346,6 +346,6 @@ const applicationBuilder = async (
   };
 };
 
-const process = declare("Collision", createWebGLScreen, applicationBuilder, {});
+const process = declare("Collision", createWebGLScreen, createApplication, {});
 
 export { process };

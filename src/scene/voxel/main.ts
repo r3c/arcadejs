@@ -24,7 +24,7 @@ const worldChunkSize = { x: 16, y: 16, z: 16 };
 const worldScale = { x: 0.1, y: 0.1, z: 0.1 };
 const timeFactor = 20;
 
-const applicationBuilder = async (
+const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   input: Input
 ): Promise<Application<unknown>> => {
@@ -303,7 +303,7 @@ const applicationBuilder = async (
 const process = declare(
   "Voxel Simulation",
   createWebGLScreen,
-  applicationBuilder,
+  createApplication,
   {}
 );
 
