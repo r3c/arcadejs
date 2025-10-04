@@ -1,4 +1,3 @@
-import { Context2DScreen } from "../screen";
 import { Matrix4 } from "../../math/matrix";
 import { Material, Mesh, defaultColor } from "../mesh";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
@@ -340,7 +339,7 @@ const projectVertexToScreen = (
 };
 
 type SoftwareRenderer = Renderer<
-  Context2DScreen,
+  CanvasRenderingContext2D,
   SoftwareScene,
   SoftwareSubject
 >;
@@ -393,7 +392,7 @@ const createSoftwareRenderer = (
         drawMesh(image, mesh, viewProjection, drawMode);
       }
 
-      target.context.putImageData(
+      target.putImageData(
         new ImageData(image.colors, image.size.x, image.size.y),
         0,
         0

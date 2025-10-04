@@ -5,7 +5,7 @@ import {
   declare,
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
-import { Context2DScreen } from "../../engine/graphic/screen";
+import { createCanvasScreen, Screen } from "../../engine/graphic/screen";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import {} from "../../engine/graphic/mesh";
@@ -36,9 +36,9 @@ type Configuration = typeof configurator extends ApplicationConfigurator<
   : never;
 
 const applicationBuilder = async (
-  screen: Context2DScreen
+  screen: Screen<CanvasRenderingContext2D>,
+  input: Input
 ): Promise<Application<Configuration>> => {
-  const input = new Input(screen.canvas);
   const camera = createOrbitCamera(
     {
       getRotate: () => input.fetchMove(Pointer.Grab),
@@ -48,6 +48,7 @@ const applicationBuilder = async (
     { x: 0, y: 0, z: -5 },
     Vector2.zero
   );
+  const context = screen.getContext();
   const cubeWithColor = await loadMeshFromJson("model/cube-color/mesh.json");
   const cubeWithTexture = await loadMeshFromJson("model/cube/mesh.json");
   const projection = Matrix4.fromIdentity();
@@ -69,7 +70,7 @@ const applicationBuilder = async (
     release() {},
 
     render() {
-      renderer?.render(screen, {
+      renderer?.render(context, {
         projection,
         view: camera.viewMatrix,
       });
@@ -88,7 +89,7 @@ const applicationBuilder = async (
 
 const process = declare(
   "Software rendering",
-  Context2DScreen,
+  createCanvasScreen,
   applicationBuilder,
   configurator
 );

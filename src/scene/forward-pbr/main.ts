@@ -6,7 +6,7 @@ import {
   declare,
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/screen";
+import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
 import { loadMeshFromGltf, loadMeshFromJson } from "../../engine/graphic/mesh";
@@ -56,10 +56,10 @@ type Configuration = typeof configurator extends ApplicationConfigurator<
   : never;
 
 const applicationBuilder = async (
-  screen: WebGLScreen
+  screen: Screen<WebGL2RenderingContext>,
+  input: Input
 ): Promise<Application<Configuration>> => {
-  const gl = screen.context;
-  const input = new Input(screen.canvas);
+  const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = new GlTarget(gl, screen.getSize());
 
@@ -241,7 +241,7 @@ const applicationBuilder = async (
 
 const process = declare(
   "Forward PBR lighting",
-  WebGLScreen,
+  createWebGLScreen,
   applicationBuilder,
   configurator
 );

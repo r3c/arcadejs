@@ -1,6 +1,7 @@
 import { Releasable } from "./io/resource";
-import { Screen } from "./graphic/screen";
+import { Screen, ScreenConstructor } from "./graphic/screen";
 import { Vector2 } from "./math/vector";
+import { Input } from "./io/controller";
 
 type Application<TConfiguration> = Releasable & {
   change: (configuration: TConfiguration) => Promise<void>;
@@ -9,8 +10,9 @@ type Application<TConfiguration> = Releasable & {
   update: (dt: number) => void;
 };
 
-type ApplicationBuilder<TScreen extends Screen, TConfiguration> = (
-  screen: TScreen
+type ApplicationBuilder<TContext, TConfiguration> = (
+  screen: Screen<TContext>,
+  input: Input
 ) => Promise<Application<TConfiguration>>;
 
 type ApplicationConfigurator<T> = {
@@ -23,16 +25,12 @@ type ApplicationWidget<T> = {
 };
 
 type Process = {
-  requestFullscreen: () => void;
+  fullscreen: () => void;
   start: () => Promise<void>;
   step: (dt: number) => void;
   stop: () => void;
   title: string;
 };
-
-interface ScreenConstructor<TScreen extends Screen> {
-  new (container: HTMLElement): TScreen;
-}
 
 const canonicalize = (name: string): string => {
   return name
@@ -144,10 +142,10 @@ const createSelect = (
   defaultValue,
 });
 
-const declare = <TScreen extends Screen, TConfiguration>(
+const declare = <TContext, TConfiguration>(
   title: string,
-  screenConstructor: ScreenConstructor<TScreen>,
-  applicationBuilder: ApplicationBuilder<TScreen, TConfiguration>,
+  screenConstructor: ScreenConstructor<TContext>,
+  applicationBuilder: ApplicationBuilder<TContext, TConfiguration>,
   configurator: ApplicationConfigurator<TConfiguration>
 ): Process => {
   let runtime:
@@ -155,12 +153,12 @@ const declare = <TScreen extends Screen, TConfiguration>(
         application: Application<TConfiguration>;
         configuration: TConfiguration;
         handle: number | undefined;
-        screen: TScreen;
+        screen: Screen<TContext>;
       }
     | undefined = undefined;
 
   return {
-    requestFullscreen: () => runtime?.screen.requestFullscreen(),
+    fullscreen: () => runtime?.screen.fullscreen(),
     start: async () => {
       if (runtime !== undefined) {
         return;
@@ -176,13 +174,18 @@ const declare = <TScreen extends Screen, TConfiguration>(
         container.removeChild(container.childNodes[0]);
       }
 
-      const screen = new screenConstructor(container);
-      const application = await applicationBuilder(screen);
+      const canvas = document.createElement("canvas");
+
+      container.appendChild(canvas);
+
+      const screen = screenConstructor(canvas);
+      const input = new Input(canvas);
+      const application = await applicationBuilder(screen, input);
       const configuration = configure(configurator, application.change);
 
       await application.change(configuration);
 
-      screen.onResize = application.resize;
+      screen.onResize(application.resize);
       screen.resize();
 
       runtime = { application, configuration, handle: undefined, screen };
@@ -287,7 +290,7 @@ const run = (applications: Process[]) => {
   // Initialize control elements
   const fullscreenWidget = createButton("Fullscreen");
   const fullscreen = fullscreenWidget.createElement(() =>
-    current?.requestFullscreen()
+    current?.fullscreen()
   );
 
   const sceneOptions = applications.map(({ title }) => title);

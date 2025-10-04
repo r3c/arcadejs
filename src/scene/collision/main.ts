@@ -1,6 +1,6 @@
 import { type Application, declare } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/screen";
+import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
@@ -168,10 +168,10 @@ const intersectLineWithPlane = (
 };
 
 const applicationBuilder = async (
-  screen: WebGLScreen
+  screen: Screen<WebGL2RenderingContext>,
+  input: Input
 ): Promise<Application<unknown>> => {
-  const gl = screen.context;
-  const input = new Input(screen.canvas);
+  const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = new GlTarget(gl, screen.getSize());
 
@@ -346,6 +346,6 @@ const applicationBuilder = async (
   };
 };
 
-const process = declare("Collision", WebGLScreen, applicationBuilder, {});
+const process = declare("Collision", createWebGLScreen, applicationBuilder, {});
 
 export { process };

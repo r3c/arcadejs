@@ -1,5 +1,5 @@
 import { type Application, declare } from "../../engine/application";
-import { Context2DScreen } from "../../engine/graphic/screen";
+import { type Screen, createCanvasScreen } from "../../engine/graphic/screen";
 import {
   SoftwareDrawMode,
   createSoftwareRenderer,
@@ -7,8 +7,9 @@ import {
 import { Matrix4 } from "../../engine/math/matrix";
 
 const applicationBuilder = async (
-  screen: Context2DScreen
+  screen: Screen<CanvasRenderingContext2D>
 ): Promise<Application<unknown>> => {
+  const context = screen.getContext();
   const renderer = createSoftwareRenderer(SoftwareDrawMode.Default);
   const scene = {
     projection: Matrix4.identity,
@@ -21,7 +22,7 @@ const applicationBuilder = async (
     release() {},
 
     render() {
-      renderer.render(screen, scene);
+      renderer.render(context, scene);
     },
 
     resize() {},
@@ -31,7 +32,7 @@ const applicationBuilder = async (
 
 const process = declare(
   "Blank screen",
-  Context2DScreen,
+  createCanvasScreen,
   applicationBuilder,
   {}
 );

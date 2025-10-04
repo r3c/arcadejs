@@ -6,7 +6,7 @@ import {
   declare,
 } from "../../engine/application";
 import { Input, Pointer } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/screen";
+import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
@@ -56,11 +56,11 @@ type Configuration = typeof configurator extends ApplicationConfigurator<
   : never;
 
 const applicationBuilder = async (
-  screen: WebGLScreen
+  screen: Screen<WebGL2RenderingContext>,
+  input: Input
 ): Promise<Application<Configuration>> => {
-  const gl = screen.context;
-  const input = new Input(screen.canvas);
-  const runtime = createRuntime(screen.context);
+  const gl = screen.getContext();
+  const runtime = createRuntime(gl);
   const target = new GlTarget(gl, screen.getSize());
 
   // Load models
@@ -238,7 +238,7 @@ const applicationBuilder = async (
 
 const process = declare(
   "Forward Phong lighting",
-  WebGLScreen,
+  createWebGLScreen,
   applicationBuilder,
   configurator
 );
