@@ -2,8 +2,8 @@ import { MutableVector2, Vector2 } from "../math/vector";
 
 class Screen {
   public readonly canvas: HTMLCanvasElement;
+  public onResize: (size: Vector2) => void;
 
-  private readonly resizeHandlers: Set<(size: Vector2) => void>;
   private readonly size: MutableVector2;
 
   private pixelRatio: number;
@@ -18,19 +18,9 @@ class Screen {
     canvas.onclick = () => canvas.focus();
 
     this.canvas = canvas;
+    this.onResize = () => {};
     this.pixelRatio = 2;
-    this.resizeHandlers = new Set<() => void>();
     this.size = Vector2.fromZero();
-
-    this.resize();
-  }
-
-  public addResizeHandler(resizeHandler: (size: Vector2) => void): () => void {
-    this.resizeHandlers.add(resizeHandler);
-
-    resizeHandler(this.size);
-
-    return () => this.resizeHandlers.delete(resizeHandler);
   }
 
   public getSize(): Vector2 {
@@ -53,10 +43,7 @@ class Screen {
     this.canvas.height = height;
     this.size.x = width;
     this.size.y = height;
-
-    for (const resizeHandler of this.resizeHandlers) {
-      resizeHandler(this.size);
-    }
+    this.onResize(this.size);
   }
 }
 

@@ -77,6 +77,7 @@ const applicationBuilder = async (
 
     resize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
+      renderer?.resize(size);
     },
 
     update(dt) {
