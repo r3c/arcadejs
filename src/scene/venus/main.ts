@@ -1,6 +1,6 @@
 import { type Application, declare } from "../../engine/application";
 import { Input } from "../../engine/io/controller";
-import { WebGLScreen } from "../../engine/graphic/screen";
+import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import {
   Mesh,
@@ -219,10 +219,10 @@ const warp = (position: number, center: number, radius: number): number => {
 };
 
 const applicationBuilder = async (
-  screen: WebGLScreen
+  screen: Screen<WebGL2RenderingContext>,
+  input: Input
 ): Promise<Application<unknown>> => {
-  const gl = screen.context;
-  const input = new Input(screen.canvas);
+  const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = new GlTarget(gl, screen.getSize());
 
@@ -428,6 +428,6 @@ const applicationBuilder = async (
   };
 };
 
-const process = declare("Venus³", WebGLScreen, applicationBuilder, {});
+const process = declare("Venus³", createWebGLScreen, applicationBuilder, {});
 
 export { process };

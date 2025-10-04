@@ -1,84 +1,94 @@
-import { MutableVector2, Vector2 } from "../math/vector";
+import { Vector2 } from "../math/vector";
 
-class Screen {
-  public readonly canvas: HTMLCanvasElement;
-  public onResize: (size: Vector2) => void;
+type Screen<TContext> = {
+  fullscreen: () => void;
+  getContext: () => TContext;
+  getSize: () => Vector2;
+  onResize: (handler: (size: Vector2) => void) => void;
+  resize: () => void;
+};
 
-  private readonly size: MutableVector2;
+type ScreenConstructor<TContext> = (
+  canvas: HTMLCanvasElement
+) => Screen<TContext>;
 
-  private pixelRatio: number;
+const createScreen = <TContext>(
+  canvas: HTMLCanvasElement,
+  context: TContext
+): Screen<TContext> => {
+  canvas.tabIndex = 0;
+  canvas.focus();
+  canvas.onclick = () => canvas.focus();
 
-  protected constructor(container: HTMLElement) {
-    const canvas = document.createElement("canvas");
+  const pixelRatio = 2;
+  const size = Vector2.fromZero();
 
-    container.appendChild(canvas);
+  let onResize = (_: Vector2) => {};
 
-    canvas.tabIndex = 0;
-    canvas.focus();
-    canvas.onclick = () => canvas.focus();
+  return {
+    fullscreen() {
+      canvas.requestFullscreen();
+    },
 
-    this.canvas = canvas;
-    this.onResize = () => {};
-    this.pixelRatio = 2;
-    this.size = Vector2.fromZero();
+    getContext() {
+      return context;
+    },
+
+    getSize() {
+      return size;
+    },
+
+    onResize(handler) {
+      onResize = handler;
+    },
+
+    resize() {
+      const height = Math.ceil(canvas.clientHeight * pixelRatio);
+      const width = Math.ceil(canvas.clientWidth * pixelRatio);
+
+      if (width === size.x && height === size.y) {
+        return;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      size.x = width;
+      size.y = height;
+
+      onResize(size);
+    },
+  };
+};
+
+const createCanvasScreen = (
+  canvas: HTMLCanvasElement
+): Screen<CanvasRenderingContext2D> => {
+  const context = canvas.getContext("2d");
+
+  if (context === null) {
+    throw Error("cannot get 2d context");
   }
 
-  public getSize(): Vector2 {
-    return this.size;
+  return createScreen(canvas, context);
+};
+
+const createWebGLScreen = (
+  canvas: HTMLCanvasElement
+): Screen<WebGL2RenderingContext> => {
+  const context = canvas.getContext("webgl2", {
+    premultipliedAlpha: false,
+  });
+
+  if (context === null) {
+    throw Error("cannot get WebGL context");
   }
 
-  public requestFullscreen() {
-    this.canvas.requestFullscreen?.();
-  }
+  return createScreen(canvas, context);
+};
 
-  public resize() {
-    const height = Math.ceil(this.canvas.clientHeight * this.pixelRatio);
-    const width = Math.ceil(this.canvas.clientWidth * this.pixelRatio);
-
-    if (width === this.size.x && height === this.size.y) {
-      return;
-    }
-
-    this.canvas.width = width;
-    this.canvas.height = height;
-    this.size.x = width;
-    this.size.y = height;
-    this.onResize(this.size);
-  }
-}
-
-class Context2DScreen extends Screen {
-  public readonly context: CanvasRenderingContext2D;
-
-  public constructor(container: HTMLElement) {
-    super(container);
-
-    const contextOrNull = this.canvas.getContext("2d");
-
-    if (contextOrNull === null) {
-      throw Error("cannot get 2d context");
-    }
-
-    this.context = contextOrNull;
-  }
-}
-
-class WebGLScreen extends Screen {
-  public readonly context: WebGL2RenderingContext;
-
-  public constructor(container: HTMLElement) {
-    super(container);
-
-    const contextOrNull = this.canvas.getContext("webgl2", {
-      premultipliedAlpha: false,
-    });
-
-    if (contextOrNull === null) {
-      throw Error("cannot get WebGL context");
-    }
-
-    this.context = contextOrNull;
-  }
-}
-
-export { Context2DScreen, Screen, WebGLScreen };
+export {
+  type Screen,
+  type ScreenConstructor,
+  createCanvasScreen,
+  createWebGLScreen,
+};
