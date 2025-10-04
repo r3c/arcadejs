@@ -180,9 +180,10 @@ const declare = <TScreen extends Screen, TConfiguration>(
       const application = await applicationBuilder(screen);
       const configuration = configure(configurator, application.change);
 
-      screen.addResizeHandler(application.resize);
-
       await application.change(configuration);
+
+      screen.onResize = application.resize;
+      screen.resize();
 
       runtime = { application, configuration, handle: undefined, screen };
     },

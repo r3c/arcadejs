@@ -358,6 +358,7 @@ const createSoftwareRenderer = (
   drawMode: SoftwareDrawMode
 ): SoftwareRenderer => {
   const meshes = new Map<Symbol, Mesh>();
+  const screenSize = Vector2.fromZero();
   const viewProjection = Matrix4.fromIdentity();
 
   return {
@@ -372,16 +373,15 @@ const createSoftwareRenderer = (
 
     render: (target, scene) => {
       const { projection, view } = scene;
-      const size = target.getSize();
 
-      if (size.x === 0 || size.y === 0) {
+      if (screenSize.x === 0 || screenSize.y === 0) {
         return;
       }
 
       const image = {
-        colors: new Uint8ClampedArray(size.x * size.y * 4),
-        depths: new Float32Array(size.x * size.y),
-        size,
+        colors: new Uint8ClampedArray(screenSize.x * screenSize.y * 4),
+        depths: new Float32Array(screenSize.x * screenSize.y),
+        size: screenSize,
       };
 
       image.depths.fill(Math.pow(2, 127));
@@ -400,8 +400,8 @@ const createSoftwareRenderer = (
       );
     },
 
-    resize: () => {
-      // No-op
+    resize: (size) => {
+      screenSize.set(size);
     },
   };
 };
