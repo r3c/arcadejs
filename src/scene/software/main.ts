@@ -35,7 +35,7 @@ type Configuration = typeof configurator extends ApplicationConfigurator<
   ? T
   : never;
 
-const applicationBuilder = async (
+const createApplication = async (
   screen: Screen<CanvasRenderingContext2D>,
   input: Input
 ): Promise<Application<Configuration>> => {
@@ -90,7 +90,7 @@ const applicationBuilder = async (
 const process = declare(
   "Software rendering",
   createCanvasScreen,
-  applicationBuilder,
+  createApplication,
   configurator
 );
 

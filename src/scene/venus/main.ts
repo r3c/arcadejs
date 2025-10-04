@@ -218,7 +218,7 @@ const warp = (position: number, center: number, radius: number): number => {
   return ((position - shift + range) % range) + shift;
 };
 
-const applicationBuilder = async (
+const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   input: Input
 ): Promise<Application<unknown>> => {
@@ -428,6 +428,6 @@ const applicationBuilder = async (
   };
 };
 
-const process = declare("Venus³", createWebGLScreen, applicationBuilder, {});
+const process = declare("Venus³", createWebGLScreen, createApplication, {});
 
 export { process };

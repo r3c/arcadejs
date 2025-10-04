@@ -122,7 +122,7 @@ type Configuration = typeof configurator extends ApplicationConfigurator<
   ? T
   : never;
 
-const applicationBuilder = async (
+const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   input: Input
 ): Promise<Application<Configuration>> => {
@@ -393,7 +393,7 @@ const applicationBuilder = async (
 const process = declare(
   "Deferred rendering",
   createWebGLScreen,
-  applicationBuilder,
+  createApplication,
   configurator
 );
 
