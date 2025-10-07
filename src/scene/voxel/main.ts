@@ -1,5 +1,5 @@
 import { Application, declare } from "../../engine/application";
-import { Input, Pointer } from "../../engine/io/controller";
+import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { createLibrary, loadMeshFromJson } from "../../engine/graphic/mesh";
@@ -26,7 +26,7 @@ const timeFactor = 20;
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  input: Input
+  gamepad: Gamepad
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -139,9 +139,9 @@ const createApplication = async (
 
   const camera = createOrbitCamera(
     {
-      getRotate: () => input.fetchMove(Pointer.Grab),
-      getMove: () => input.fetchMove(Pointer.Drag),
-      getZoom: () => input.fetchZoom(),
+      getRotate: () => gamepad.fetchMove(Pointer.Grab),
+      getMove: () => gamepad.fetchMove(Pointer.Drag),
+      getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -maxWorldRenderSize * 2 },
     { x: -Math.PI / 8, y: (5 * Math.PI) / 4 }
@@ -210,7 +210,7 @@ const createApplication = async (
       }
 
       // Simulate falling cell
-      if (input.fetchPress("arrowdown") && lookVoxel !== undefined) {
+      if (gamepad.fetchPress("arrowdown") && lookVoxel !== undefined) {
         const sourceOffset = lookOffset;
         const targetOffset: Vector3 = {
           x: sourceOffset.x,
@@ -236,12 +236,12 @@ const createApplication = async (
       }
 
       // Simulate upward force
-      if (input.fetchPress("arrowup") && lookVoxel !== undefined) {
+      if (gamepad.fetchPress("arrowup") && lookVoxel !== undefined) {
         worldPhysic.poke(lookOffset, { x: 0, y: 0.5, z: 0 });
       }
 
       // Simulate push force
-      if (input.fetchPress("space") && lookVoxel !== undefined) {
+      if (gamepad.fetchPress("space") && lookVoxel !== undefined) {
         const direction = Vector3.fromZero(
           Math.abs(cameraDirection.x) > Math.abs(cameraDirection.z)
             ? ["setFromXYZ", Math.sign(cameraDirection.x), 0, 0]

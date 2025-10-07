@@ -5,7 +5,7 @@ import {
   createSelect,
   declare,
 } from "../../engine/application";
-import { Input, Pointer } from "../../engine/io/controller";
+import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
@@ -57,7 +57,7 @@ type Configuration = typeof configurator extends ApplicationConfigurator<
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  input: Input
+  gamepad: Gamepad
 ): Promise<Application<Configuration>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -118,9 +118,9 @@ const createApplication = async (
   // Create state
   const camera = createOrbitCamera(
     {
-      getRotate: () => input.fetchMove(Pointer.Grab),
-      getMove: () => input.fetchMove(Pointer.Drag),
-      getZoom: () => input.fetchZoom(),
+      getRotate: () => gamepad.fetchMove(Pointer.Grab),
+      getMove: () => gamepad.fetchMove(Pointer.Drag),
+      getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
     Vector2.zero

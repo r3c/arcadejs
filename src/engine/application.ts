@@ -1,7 +1,7 @@
 import { Releasable } from "./io/resource";
 import { Screen, ScreenConstructor } from "./graphic/screen";
 import { Vector2 } from "./math/vector";
-import { Input } from "./io/controller";
+import { createGamepad, Gamepad } from "./io/gamepad";
 
 type Application<TConfiguration> = Releasable & {
   change: (configuration: TConfiguration) => Promise<void>;
@@ -12,7 +12,7 @@ type Application<TConfiguration> = Releasable & {
 
 type ApplicationConstructor<TContext, TConfiguration> = (
   screen: Screen<TContext>,
-  input: Input
+  gamepad: Gamepad
 ) => Promise<Application<TConfiguration>>;
 
 type ApplicationConfigurator<T> = {
@@ -179,8 +179,8 @@ const declare = <TContext, TConfiguration>(
       container.appendChild(canvas);
 
       const screen = screenConstructor(canvas);
-      const input = new Input(canvas);
-      const application = await createApplication(screen, input);
+      const gamepad = createGamepad(canvas);
+      const application = await createApplication(screen, gamepad);
       const configuration = configure(configurator, application.change);
 
       await application.change(configuration);

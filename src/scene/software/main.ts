@@ -4,7 +4,7 @@ import {
   createSelect,
   declare,
 } from "../../engine/application";
-import { Input, Pointer } from "../../engine/io/controller";
+import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { createCanvasScreen, Screen } from "../../engine/graphic/screen";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
@@ -37,13 +37,13 @@ type Configuration = typeof configurator extends ApplicationConfigurator<
 
 const createApplication = async (
   screen: Screen<CanvasRenderingContext2D>,
-  input: Input
+  gamepad: Gamepad
 ): Promise<Application<Configuration>> => {
   const camera = createOrbitCamera(
     {
-      getRotate: () => input.fetchMove(Pointer.Grab),
-      getMove: () => input.fetchMove(Pointer.Drag),
-      getZoom: () => input.fetchZoom(),
+      getRotate: () => gamepad.fetchMove(Pointer.Grab),
+      getMove: () => gamepad.fetchMove(Pointer.Drag),
+      getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
     Vector2.zero

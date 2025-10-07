@@ -1,5 +1,5 @@
 import { type Application, declare } from "../../engine/application";
-import { Input } from "../../engine/io/controller";
+import { Gamepad } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import {
@@ -58,7 +58,7 @@ type Star = {
 type Updater = (state: ApplicationState, dt: number) => void;
 
 type ApplicationState = {
-  input: Input;
+  gamepad: Gamepad;
   lights: Light[];
   lightTransforms: MutableMatrix4[];
   player: Player;
@@ -152,7 +152,7 @@ const createPlayerUpdater = (): Updater => {
   const v = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player, shipTransform } = state;
+    const { gamepad: input, player, shipTransform } = state;
 
     const horizontalDelta =
       (input.isPressed("arrowleft") ? rThrust : 0) +
@@ -220,7 +220,7 @@ const warp = (position: number, center: number, radius: number): number => {
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  input: Input
+  gamepad: Gamepad
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -299,7 +299,7 @@ const createApplication = async (
   const camera = createBehindCamera({
     getPosition: () => player.position,
     getRotation: () => player.rotation,
-    getZoom: () => input.fetchZoom(),
+    getZoom: () => gamepad.fetchZoom(),
   });
 
   const sceneRenderer = createForwardLightingRenderer(runtime, {
@@ -360,7 +360,7 @@ const createApplication = async (
   // Create state
   const projection = Matrix4.fromIdentity();
   const state: ApplicationState = {
-    input,
+    gamepad: gamepad,
     lights,
     lightTransforms,
     player,
