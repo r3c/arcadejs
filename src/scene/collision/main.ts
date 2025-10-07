@@ -1,5 +1,5 @@
 import { type Application, declare } from "../../engine/application";
-import { Input, Pointer } from "../../engine/io/controller";
+import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
@@ -38,7 +38,7 @@ type Updater = (state: ApplicationState, dt: number) => void;
 
 type ApplicationState = {
   camera: Camera;
-  input: Input;
+  gamepad: Gamepad;
   lights: Light[];
   surfaces: { setCollision: (flag: boolean) => void; plane: Plane }[];
   player: Player;
@@ -84,7 +84,7 @@ const createPlayerUpdater = (): Updater => {
   const yMovement = createSemiImplicitEulerMovement();
 
   return (state, dt) => {
-    const { input, player, sphereTransform, surfaces } = state;
+    const { gamepad: input, player, sphereTransform, surfaces } = state;
 
     const xDelta =
       (input.isPressed("arrowleft") ? -thrust : 0) +
@@ -169,7 +169,7 @@ const intersectLineWithPlane = (
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  input: Input
+  gamepad: Gamepad
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -271,9 +271,9 @@ const createApplication = async (
   // Create state
   const camera = createOrbitCamera(
     {
-      getRotate: () => input.fetchMove(Pointer.Grab),
-      getMove: () => input.fetchMove(Pointer.Drag),
-      getZoom: () => input.fetchZoom(),
+      getRotate: () => gamepad.fetchMove(Pointer.Grab),
+      getMove: () => gamepad.fetchMove(Pointer.Drag),
+      getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
     Vector2.zero
@@ -281,7 +281,7 @@ const createApplication = async (
   const projection = Matrix4.fromIdentity();
   const state: ApplicationState = {
     camera,
-    input,
+    gamepad: gamepad,
     lights: range(2).map((i) => ({
       mover: createOrbitMover(i, 5, 5, 2),
       position: Vector3.fromZero(),
