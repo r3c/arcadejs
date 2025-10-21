@@ -2,11 +2,12 @@ import { Releasable } from "../../io/resource";
 import { TextureSampler, Interpolation, Wrap } from "../mesh";
 import { GlContext } from "./resource";
 
-/**
- * Releasable WebGL texture, also circumvent native `WebGLTexture` type being
- * defined as an opaque empty object and therefore being compatible with any
- * unrelated object.
- */
+type GlStorage = {
+  format: number;
+  internal: number;
+  type: number;
+};
+
 type GlTexture = Releasable & {
   handle: WebGLTexture;
 };
@@ -21,38 +22,35 @@ const enum GlTextureType {
   Cube,
 }
 
-type GlNativeFormat = {
-  format: number;
-  internal: number;
-  type: number;
-};
+const storages = new Map<GlTextureFormat, GlStorage>([
+  [
+    GlTextureFormat.Depth16,
+    {
+      format: WebGL2RenderingContext["DEPTH_COMPONENT"],
+      internal: WebGL2RenderingContext["DEPTH_COMPONENT16"],
+      type: WebGL2RenderingContext["UNSIGNED_SHORT"],
+    },
+  ],
+  [
+    GlTextureFormat.RGBA8,
+    {
+      format: WebGL2RenderingContext["RGBA"],
+      internal: WebGL2RenderingContext["RGBA8"],
+      type: WebGL2RenderingContext["UNSIGNED_BYTE"],
+    },
+  ],
+]);
 
-/*
- ** Convert texture format into native WebGL format parameters.
- */
-const formatGetNative = (
-  gl: GlContext,
-  format: GlTextureFormat
-): GlNativeFormat => {
-  switch (format) {
-    case GlTextureFormat.Depth16:
-      return {
-        format: gl.DEPTH_COMPONENT,
-        internal: gl.DEPTH_COMPONENT16,
-        type: gl.UNSIGNED_SHORT,
-      };
+const targets = new Map([
+  [GlTextureType.Cube, WebGL2RenderingContext["TEXTURE_CUBE_MAP"]],
+  [GlTextureType.Quad, WebGL2RenderingContext["TEXTURE_2D"]],
+]);
 
-    case GlTextureFormat.RGBA8:
-      return {
-        format: gl.RGBA,
-        internal: gl.RGBA8,
-        type: gl.UNSIGNED_BYTE,
-      };
-
-    default:
-      throw Error(`invalid texture format ${format}`);
-  }
-};
+const wraps = new Map([
+  [Wrap.Clamp, WebGL2RenderingContext["CLAMP_TO_EDGE"]],
+  [Wrap.Mirror, WebGL2RenderingContext["MIRRORED_REPEAT"]],
+  [Wrap.Repeat, WebGL2RenderingContext["REPEAT"]],
+]);
 
 // TODO: avoid configure + render exported functions
 const renderbufferConfigure = (
@@ -63,7 +61,11 @@ const renderbufferConfigure = (
   format: GlTextureFormat,
   samples: number
 ) => {
-  const nativeFormat = formatGetNative(gl, format);
+  const storage = storages.get(format);
+
+  if (storage === undefined) {
+    throw Error(`unknown texture format ${format}`);
+  }
 
   gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
 
@@ -71,17 +73,12 @@ const renderbufferConfigure = (
     gl.renderbufferStorageMultisample(
       gl.RENDERBUFFER,
       samples,
-      nativeFormat.internal,
+      storage.internal,
       width,
       height
     );
   } else {
-    gl.renderbufferStorage(
-      gl.RENDERBUFFER,
-      nativeFormat.internal,
-      width,
-      height
-    );
+    gl.renderbufferStorage(gl.RENDERBUFFER, storage.internal, width, height);
   }
 
   gl.bindRenderbuffer(gl.RENDERBUFFER, null);
@@ -100,35 +97,6 @@ const renderbufferCreate = (gl: GlContext) => {
   return renderbuffer;
 };
 
-const textureGetTarget = (gl: GlContext, type: GlTextureType) => {
-  switch (type) {
-    case GlTextureType.Cube:
-      return gl.TEXTURE_CUBE_MAP;
-
-    case GlTextureType.Quad:
-      return gl.TEXTURE_2D;
-
-    default:
-      throw Error(`unknown texture type ${type}`);
-  }
-};
-
-const textureGetWrap = (gl: GlContext, wrap: Wrap) => {
-  switch (wrap) {
-    case Wrap.Clamp:
-      return gl.CLAMP_TO_EDGE;
-
-    case Wrap.Mirror:
-      return gl.MIRRORED_REPEAT;
-
-    case Wrap.Repeat:
-      return gl.REPEAT;
-
-    default:
-      throw Error(`unknown texture wrap mode ${wrap}`);
-  }
-};
-
 const createTexture = (
   gl: GlContext,
   previousTexture: GlTexture | undefined,
@@ -139,7 +107,23 @@ const createTexture = (
   sampler: TextureSampler,
   image: ImageData | ImageData[] | undefined
 ): GlTexture => {
-  const target = textureGetTarget(gl, type);
+  const storage = storages.get(format);
+
+  if (storage === undefined) {
+    throw Error(`unknown texture format ${format}`);
+  }
+
+  const target = targets.get(type);
+
+  if (target === undefined) {
+    throw Error(`unknown texture type ${type}`);
+  }
+
+  const wrap = wraps.get(sampler.wrap);
+
+  if (wrap === undefined) {
+    throw Error(`unknown texture wrap mode ${wrap}`);
+  }
 
   let handle: WebGLTexture;
 
@@ -166,14 +150,12 @@ const createTexture = (
     sampler.minifier === Interpolation.Linear
       ? gl.NEAREST_MIPMAP_LINEAR
       : gl.NEAREST_MIPMAP_NEAREST;
-  const nativeFormat = formatGetNative(gl, format);
-  const wrap = textureGetWrap(gl, sampler.wrap);
 
   gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
   gl.texParameteri(
     target,
     gl.TEXTURE_MIN_FILTER,
-    sampler !== undefined && sampler.mipmap ? mipmapFilter : minifierFilter
+    sampler.mipmap ? mipmapFilter : minifierFilter
   );
   gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
   gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
@@ -182,24 +164,24 @@ const createTexture = (
     gl.texImage2D(
       target,
       0,
-      nativeFormat.internal,
+      storage.internal,
       width,
       height,
       0,
-      nativeFormat.format,
-      nativeFormat.type,
+      storage.format,
+      storage.type,
       null
     );
   } else if ((<ImageData>image).data) {
     gl.texImage2D(
       target,
       0,
-      nativeFormat.internal,
+      storage.internal,
       width,
       height,
       0,
-      nativeFormat.format,
-      nativeFormat.type,
+      storage.format,
+      storage.type,
       (<ImageData>image).data
     );
   } else if ((<ImageData[]>image).length !== undefined) {
@@ -209,12 +191,12 @@ const createTexture = (
       gl.texImage2D(
         gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
         0,
-        nativeFormat.internal,
+        storage.internal,
         width,
         height,
         0,
-        nativeFormat.format,
-        nativeFormat.type,
+        storage.format,
+        storage.type,
         new Uint8Array((<ImageData>images[i]).data)
       );
     }
