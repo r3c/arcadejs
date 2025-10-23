@@ -19,6 +19,6 @@
     "watch": "vite"
   },
   "devDependencies": {
-    "vitest": "^3.2.3"
+    "vitest": "^4.0.1"
   }
 }
