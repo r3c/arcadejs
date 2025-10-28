@@ -247,7 +247,10 @@ const textureUniform = <TState>(
   target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"]
 ): GlShaderUniform<TState, { target: number; texture: GlTexture }> => ({
   allocateTexture: true,
-  createValue: () => ({ target, texture: { release: () => {}, handle: {} } }),
+  createValue: () => ({
+    target,
+    texture: { release: () => {}, resize: () => {}, handle: {} },
+  }),
   readValue: (state, { target }, defaultValue) => ({
     target,
     texture: primaryGetter(state) ?? defaultGetter(defaultValue),

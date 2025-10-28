@@ -139,10 +139,8 @@ const loadMaterial = (
     if (glTexture === undefined) {
       glTexture = createTexture(
         gl,
-        undefined,
         GlTextureType.Quad,
-        texture.imageData.width,
-        texture.imageData.height,
+        { x: texture.imageData.width, y: texture.imageData.height },
         GlTextureFormat.RGBA8,
         texture.sampler,
         texture.imageData

@@ -4,34 +4,24 @@ import { MutableVector2, Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
 import { Releasable } from "../io/resource";
 import {
+  GlRenderbuffer,
   GlTexture,
   GlTextureFormat,
   GlTextureType,
-  renderbufferConfigure,
-  renderbufferCreate,
+  createRenderbuffer,
   createTexture,
 } from "./webgl/texture";
 import { GlShader, GlShaderSource, createShader } from "./webgl/shader";
 
 type GlAttachment = {
-  renderbuffer: GlAttachmentRenderbuffer | undefined;
-  textures: GlAttachmentTexture[];
-};
-
-type GlAttachmentRenderbuffer = {
-  format: GlTextureFormat;
-  handle: WebGLRenderbuffer;
+  renderbuffer: GlRenderbuffer | undefined;
+  textures: GlTexture[];
 };
 
 enum GlAttachementTarget {
   Color,
   Depth,
 }
-
-type GlAttachmentTexture = {
-  format: GlTextureFormat;
-  handle: GlTexture;
-};
 
 type GlDrawMode =
   | WebGL2RenderingContext["TRIANGLES"]
@@ -46,10 +36,8 @@ const createRuntime = (context: GlContext): GlRuntime => {
   const createConstantTexture = (color: Vector4) =>
     createTexture(
       context,
-      undefined,
       GlTextureType.Quad,
-      1,
-      1,
+      { x: 1, y: 1 },
       GlTextureFormat.RGBA8,
       defaultSampler,
       new ImageData(
@@ -102,10 +90,8 @@ const loadTextureCube = (
 ): GlTexture => {
   return createTexture(
     gl,
-    undefined,
     GlTextureType.Cube,
-    facePositiveX.width,
-    facePositiveX.height,
+    { x: facePositiveX.width, y: facePositiveX.height },
     GlTextureFormat.RGBA8,
     filter ?? defaultSampler,
     [
@@ -126,10 +112,8 @@ const loadTextureQuad = (
 ): GlTexture => {
   return createTexture(
     gl,
-    undefined,
     GlTextureType.Quad,
-    image.width,
-    image.height,
+    { x: image.width, y: image.height },
     GlTextureFormat.RGBA8,
     filter ?? defaultSampler,
     image
@@ -197,40 +181,20 @@ class GlTarget implements Releasable {
   }
 
   public release() {
-    const gl = this.gl;
-
-    GlTarget.clearRenderbufferAttachments(gl, this.colorAttachment);
-    GlTarget.clearTextureAttachments(gl, this.depthAttachment);
+    GlTarget.clearRenderbufferAttachments(this.colorAttachment);
+    GlTarget.clearTextureAttachments(this.depthAttachment);
   }
 
   public resize(size: Vector2) {
-    const gl = this.gl;
-
     for (const attachment of [this.colorAttachment, this.depthAttachment]) {
       // Resize existing renderbuffer attachment if any
       if (attachment.renderbuffer !== undefined) {
-        renderbufferConfigure(
-          gl,
-          attachment.renderbuffer.handle,
-          size.x,
-          size.y,
-          attachment.renderbuffer.format,
-          1
-        );
+        attachment.renderbuffer.resize(size);
       }
 
       // Resize previously existing texture attachments if any
       for (const texture of attachment.textures) {
-        createTexture(
-          gl,
-          texture.handle,
-          GlTextureType.Quad,
-          size.x,
-          size.y,
-          texture.format,
-          defaultSampler,
-          undefined
-        );
+        texture.resize(size);
       }
     }
 
@@ -298,23 +262,16 @@ class GlTarget implements Releasable {
     );
   }
 
-  private static clearRenderbufferAttachments(
-    gl: GlContext,
-    attachment: GlAttachment
-  ) {
+  private static clearRenderbufferAttachments(attachment: GlAttachment) {
     if (attachment.renderbuffer !== undefined) {
-      gl.deleteRenderbuffer(attachment.renderbuffer.handle);
-
+      attachment.renderbuffer.release();
       attachment.renderbuffer = undefined;
     }
   }
 
-  private static clearTextureAttachments(
-    gl: GlContext,
-    attachment: GlAttachment
-  ) {
+  private static clearTextureAttachments(attachment: GlAttachment) {
     for (const texture of attachment.textures) {
-      gl.deleteTexture(texture.handle);
+      texture.release();
     }
 
     attachment.textures = [];
@@ -359,23 +316,11 @@ class GlTarget implements Releasable {
     const gl = this.gl;
 
     // Clear renderbuffer and texture attachments if any
-    GlTarget.clearRenderbufferAttachments(gl, attachment);
-    GlTarget.clearTextureAttachments(gl, attachment);
+    GlTarget.clearRenderbufferAttachments(attachment);
+    GlTarget.clearTextureAttachments(attachment);
 
     // Create renderbuffer attachment
-    const renderbuffer = renderbufferConfigure(
-      gl,
-      renderbufferCreate(gl),
-      this.viewSize.x,
-      this.viewSize.y,
-      format,
-      1
-    );
-
-    attachment.renderbuffer = {
-      format,
-      handle: renderbuffer,
-    };
+    attachment.renderbuffer = createRenderbuffer(gl, this.viewSize, format, 1);
 
     // Bind attachment to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -383,14 +328,14 @@ class GlTarget implements Releasable {
       gl.FRAMEBUFFER,
       target,
       gl.RENDERBUFFER,
-      renderbuffer
+      attachment.renderbuffer.handle
     );
 
     GlTarget.checkFramebuffer(gl);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    return renderbuffer;
+    return attachment.renderbuffer.handle;
   }
 
   private attachTexture(
@@ -431,10 +376,8 @@ class GlTarget implements Releasable {
 
     const texture = createTexture(
       gl,
-      undefined,
       type,
-      this.viewSize.x,
-      this.viewSize.y,
+      this.viewSize,
       format,
       filter,
       undefined
@@ -446,12 +389,9 @@ class GlTarget implements Releasable {
       const textureTarget = textureTargets[i];
 
       // Clear renderbuffer attachment if any
-      GlTarget.clearRenderbufferAttachments(gl, attachment);
+      GlTarget.clearRenderbufferAttachments(attachment);
 
-      const offset = attachment.textures.push({
-        format,
-        handle: texture,
-      });
+      const offset = attachment.textures.push(texture);
 
       // Bind attachment to framebuffer
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);

@@ -1,6 +1,12 @@
 import { Releasable } from "../../io/resource";
+import { Vector2 } from "../../math/vector";
 import { TextureSampler, Interpolation, Wrap } from "../mesh";
 import { GlContext } from "./resource";
+
+type GlRenderbuffer = Releasable & {
+  handle: WebGLRenderbuffer;
+  resize: (size: Vector2) => void;
+};
 
 type GlStorage = {
   format: number;
@@ -10,6 +16,7 @@ type GlStorage = {
 
 type GlTexture = Releasable & {
   handle: WebGLTexture;
+  resize: (size: Vector2) => void;
 };
 
 const enum GlTextureFormat {
@@ -52,57 +59,57 @@ const wraps = new Map([
   [Wrap.Repeat, WebGL2RenderingContext["REPEAT"]],
 ]);
 
-// TODO: avoid configure + render exported functions
-const renderbufferConfigure = (
+const createRenderbuffer = (
   gl: GlContext,
-  renderbuffer: WebGLRenderbuffer,
-  width: number,
-  height: number,
+  size: Vector2,
   format: GlTextureFormat,
   samples: number
-) => {
+): GlRenderbuffer => {
   const storage = storages.get(format);
 
   if (storage === undefined) {
     throw Error(`unknown texture format ${format}`);
   }
 
-  gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer);
+  const handle = gl.createRenderbuffer();
 
-  if (samples > 1) {
-    gl.renderbufferStorageMultisample(
-      gl.RENDERBUFFER,
-      samples,
-      storage.internal,
-      width,
-      height
-    );
-  } else {
-    gl.renderbufferStorage(gl.RENDERBUFFER, storage.internal, width, height);
-  }
-
-  gl.bindRenderbuffer(gl.RENDERBUFFER, null);
-
-  return renderbuffer;
-};
-
-// TODO: avoid configure + render exported functions
-const renderbufferCreate = (gl: GlContext) => {
-  const renderbuffer = gl.createRenderbuffer();
-
-  if (renderbuffer === null) {
+  if (handle === null) {
     throw Error("could not create renderbuffer");
   }
 
-  return renderbuffer;
+  const { internal } = storage;
+
+  const resize = (size: Vector2): void => {
+    gl.bindRenderbuffer(gl.RENDERBUFFER, handle);
+
+    if (samples > 1) {
+      gl.renderbufferStorageMultisample(
+        gl.RENDERBUFFER,
+        samples,
+        internal,
+        size.x,
+        size.y
+      );
+    } else {
+      gl.renderbufferStorage(gl.RENDERBUFFER, internal, size.x, size.y);
+    }
+
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+  };
+
+  resize(size);
+
+  return {
+    release: () => gl.deleteRenderbuffer(handle),
+    resize,
+    handle,
+  };
 };
 
 const createTexture = (
   gl: GlContext,
-  previousTexture: GlTexture | undefined,
   type: GlTextureType,
-  width: number,
-  height: number,
+  size: Vector2,
   format: GlTextureFormat,
   sampler: TextureSampler,
   image: ImageData | ImageData[] | undefined
@@ -125,102 +132,96 @@ const createTexture = (
     throw Error(`unknown texture wrap mode ${wrap}`);
   }
 
-  let handle: WebGLTexture;
+  const handle = gl.createTexture();
 
-  if (previousTexture === undefined) {
-    const newTexture = gl.createTexture();
-
-    if (newTexture === null) {
-      throw Error("could not create texture");
-    }
-
-    handle = newTexture;
-  } else {
-    handle = previousTexture.handle;
+  if (handle === null) {
+    throw Error("could not create texture");
   }
 
-  gl.bindTexture(target, handle);
+  const resize = (size: Vector2): void => {
+    gl.bindTexture(target, handle);
 
-  // Define texture format, filtering & wrapping parameters
-  const magnifierFilter =
-    sampler.magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
-  const minifierFilter =
-    sampler.minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
-  const mipmapFilter =
-    sampler.minifier === Interpolation.Linear
-      ? gl.NEAREST_MIPMAP_LINEAR
-      : gl.NEAREST_MIPMAP_NEAREST;
+    // Define texture format, filtering & wrapping parameters
+    const magnifierFilter =
+      sampler.magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+    const minifierMipmapFilter =
+      sampler.minifier === Interpolation.Linear
+        ? gl.NEAREST_MIPMAP_LINEAR
+        : gl.NEAREST_MIPMAP_NEAREST;
+    const minifierSingleFilter =
+      sampler.minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
+    const minifierFilter = sampler.mipmap
+      ? minifierMipmapFilter
+      : minifierSingleFilter;
 
-  gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
-  gl.texParameteri(
-    target,
-    gl.TEXTURE_MIN_FILTER,
-    sampler.mipmap ? mipmapFilter : minifierFilter
-  );
-  gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
-  gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
+    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minifierFilter);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
+    gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
 
-  if (image === undefined) {
-    gl.texImage2D(
-      target,
-      0,
-      storage.internal,
-      width,
-      height,
-      0,
-      storage.format,
-      storage.type,
-      null
-    );
-  } else if ((<ImageData>image).data) {
-    gl.texImage2D(
-      target,
-      0,
-      storage.internal,
-      width,
-      height,
-      0,
-      storage.format,
-      storage.type,
-      (<ImageData>image).data
-    );
-  } else if ((<ImageData[]>image).length !== undefined) {
-    const images = <ImageData[]>image;
-
-    for (let i = 0; i < 6; ++i) {
+    if (image === undefined) {
       gl.texImage2D(
-        gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+        target,
         0,
         storage.internal,
-        width,
-        height,
+        size.x,
+        size.y,
         0,
         storage.format,
         storage.type,
-        new Uint8Array((<ImageData>images[i]).data)
+        null
       );
+    } else if ((<ImageData>image).data) {
+      gl.texImage2D(
+        target,
+        0,
+        storage.internal,
+        size.x,
+        size.y,
+        0,
+        storage.format,
+        storage.type,
+        (<ImageData>image).data
+      );
+    } else if ((<ImageData[]>image).length !== undefined) {
+      const images = <ImageData[]>image;
+
+      for (let i = 0; i < 6; ++i) {
+        gl.texImage2D(
+          gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+          0,
+          storage.internal,
+          size.x,
+          size.y,
+          0,
+          storage.format,
+          storage.type,
+          new Uint8Array((<ImageData>images[i]).data)
+        );
+      }
     }
-  }
 
-  if (sampler.mipmap) {
-    gl.generateMipmap(target);
-  }
+    if (sampler.mipmap) {
+      gl.generateMipmap(target);
+    }
 
-  gl.bindTexture(target, null);
+    gl.bindTexture(target, null);
+  };
+
+  resize(size);
 
   return {
-    release: () => {
-      gl.deleteTexture(handle);
-    },
+    release: () => gl.deleteTexture(handle),
+    resize,
     handle,
   };
 };
 
 export {
+  type GlRenderbuffer,
   type GlTexture,
   GlTextureFormat,
   GlTextureType,
+  createRenderbuffer,
   createTexture,
-  renderbufferConfigure,
-  renderbufferCreate,
 };
