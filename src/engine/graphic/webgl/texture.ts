@@ -3,15 +3,15 @@ import { Vector2 } from "../../math/vector";
 import { TextureSampler, Interpolation, Wrap } from "../mesh";
 import { GlContext } from "./resource";
 
+type GlEncoding = {
+  layout: number;
+  storage: number;
+  type: number;
+};
+
 type GlRenderbuffer = Releasable & {
   handle: WebGLRenderbuffer;
   resize: (size: Vector2) => void;
-};
-
-type GlStorage = {
-  format: number;
-  internal: number;
-  type: number;
 };
 
 type GlTexture = Releasable & {
@@ -29,20 +29,20 @@ const enum GlTextureType {
   Cube,
 }
 
-const storages = new Map<GlTextureFormat, GlStorage>([
+const encodings = new Map<GlTextureFormat, GlEncoding>([
   [
     GlTextureFormat.Depth16,
     {
-      format: WebGL2RenderingContext["DEPTH_COMPONENT"],
-      internal: WebGL2RenderingContext["DEPTH_COMPONENT16"],
+      layout: WebGL2RenderingContext["DEPTH_COMPONENT"],
+      storage: WebGL2RenderingContext["DEPTH_COMPONENT16"],
       type: WebGL2RenderingContext["UNSIGNED_SHORT"],
     },
   ],
   [
     GlTextureFormat.RGBA8,
     {
-      format: WebGL2RenderingContext["RGBA"],
-      internal: WebGL2RenderingContext["RGBA8"],
+      layout: WebGL2RenderingContext["RGBA"],
+      storage: WebGL2RenderingContext["RGBA8"],
       type: WebGL2RenderingContext["UNSIGNED_BYTE"],
     },
   ],
@@ -65,9 +65,9 @@ const createRenderbuffer = (
   format: GlTextureFormat,
   samples: number
 ): GlRenderbuffer => {
-  const storage = storages.get(format);
+  const encoding = encodings.get(format);
 
-  if (storage === undefined) {
+  if (encoding === undefined) {
     throw Error(`unknown texture format ${format}`);
   }
 
@@ -77,7 +77,7 @@ const createRenderbuffer = (
     throw Error("could not create renderbuffer");
   }
 
-  const { internal } = storage;
+  const { storage } = encoding;
 
   const resize = (size: Vector2): void => {
     gl.bindRenderbuffer(gl.RENDERBUFFER, handle);
@@ -86,12 +86,12 @@ const createRenderbuffer = (
       gl.renderbufferStorageMultisample(
         gl.RENDERBUFFER,
         samples,
-        internal,
+        storage,
         size.x,
         size.y
       );
     } else {
-      gl.renderbufferStorage(gl.RENDERBUFFER, internal, size.x, size.y);
+      gl.renderbufferStorage(gl.RENDERBUFFER, storage, size.x, size.y);
     }
 
     gl.bindRenderbuffer(gl.RENDERBUFFER, null);
@@ -114,9 +114,9 @@ const createTexture = (
   sampler: TextureSampler,
   image: ImageData | ImageData[] | undefined
 ): GlTexture => {
-  const storage = storages.get(format);
+  const encoding = encodings.get(format);
 
-  if (storage === undefined) {
+  if (encoding === undefined) {
     throw Error(`unknown texture format ${format}`);
   }
 
@@ -159,45 +159,21 @@ const createTexture = (
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
 
-    if (image === undefined) {
-      gl.texImage2D(
-        target,
-        0,
-        storage.internal,
-        size.x,
-        size.y,
-        0,
-        storage.format,
-        storage.type,
-        null
-      );
-    } else if ((<ImageData>image).data) {
-      gl.texImage2D(
-        target,
-        0,
-        storage.internal,
-        size.x,
-        size.y,
-        0,
-        storage.format,
-        storage.type,
-        (<ImageData>image).data
-      );
-    } else if ((<ImageData[]>image).length !== undefined) {
-      const images = <ImageData[]>image;
+    const { layout, storage, type } = encoding;
+    const { x, y } = size;
+    const imageArray = image as ImageData[];
+    const imageData = image as ImageData;
 
+    if (image === undefined) {
+      gl.texImage2D(target, 0, storage, x, y, 0, layout, type, null);
+    } else if (imageData.data !== undefined) {
+      gl.texImage2D(target, 0, storage, x, y, 0, layout, type, imageData.data);
+    } else if (imageArray.length !== undefined) {
       for (let i = 0; i < 6; ++i) {
-        gl.texImage2D(
-          gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
-          0,
-          storage.internal,
-          size.x,
-          size.y,
-          0,
-          storage.format,
-          storage.type,
-          new Uint8Array((<ImageData>images[i]).data)
-        );
+        const pixels = new Uint8Array(imageArray[i].data);
+        const face = gl.TEXTURE_CUBE_MAP_POSITIVE_X + i;
+
+        gl.texImage2D(face, 0, storage, x, y, 0, layout, type, pixels);
       }
     }
 
