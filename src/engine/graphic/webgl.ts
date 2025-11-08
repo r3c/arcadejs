@@ -1,6 +1,6 @@
 import { range } from "../language/iterable";
 import { TextureSampler, Interpolation, Wrap, defaultSampler } from "./mesh";
-import { MutableVector2, Vector2, Vector4 } from "../math/vector";
+import { Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
 import { Releasable } from "../io/resource";
 import {
@@ -120,207 +120,75 @@ const loadTextureQuad = (
   );
 };
 
-class GlTarget implements Releasable {
-  private readonly gl: GlContext;
+type GlTarget = {
+  clear(): void;
+  draw(mode: GlDrawMode, indexBuffer: GlBuffer): void;
+  setColorClear(color: Vector4): void;
+  setDepthClear(depth: number): void;
+  setSize(size: Vector2): void;
+};
 
-  private colorAttachment: GlAttachment;
-  private colorClear: Vector4;
-  private depthAttachment: GlAttachment;
-  private depthClear: number;
-  private framebuffers: WebGLFramebuffer[];
-  private viewSize: MutableVector2;
+type GlFramebufferTarget = GlTarget &
+  Releasable & {
+    setColorRenderbuffer(format: GlTextureFormat): GlRenderbuffer;
+    setColorTexture(format: GlTextureFormat, type: GlTextureType): GlTexture;
+    setDepthRenderbuffer(format: GlTextureFormat): GlRenderbuffer;
+    setDepthTexture(format: GlTextureFormat, type: GlTextureType): GlTexture;
+  };
 
-  public constructor(gl: GlContext, size: Vector2) {
-    this.colorAttachment = { renderbuffer: undefined, textures: [] };
-    this.colorClear = { x: 0, y: 0, z: 0, w: 0 };
-    this.depthAttachment = { renderbuffer: undefined, textures: [] };
-    this.depthClear = 1;
-    this.framebuffers = [];
-    this.gl = gl;
-    this.viewSize = Vector2.fromSource(size);
+type GlScreenTarget = GlTarget;
+
+const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
+  const colorAttachment: GlAttachment = {
+    renderbuffer: undefined,
+    textures: [],
+  };
+  const colorClear = Vector4.fromZero();
+  const depthAttachment: GlAttachment = {
+    renderbuffer: undefined,
+    textures: [],
+  };
+  const framebuffer = gl.createFramebuffer();
+  const viewSize = Vector2.fromZero();
+
+  if (framebuffer === null) {
+    throw Error("could not create framebuffer");
   }
 
-  public clear(framebufferIndex: number) {
-    const gl = this.gl;
+  let depthClear = 1;
 
-    gl.bindFramebuffer(
-      gl.FRAMEBUFFER,
-      framebufferIndex < this.framebuffers.length
-        ? this.framebuffers[framebufferIndex]
-        : null
-    );
-    gl.viewport(0, 0, this.viewSize.x, this.viewSize.y);
-
-    gl.clearColor(
-      this.colorClear.x,
-      this.colorClear.y,
-      this.colorClear.z,
-      this.colorClear.z
-    );
-    gl.clearDepth(this.depthClear);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  }
-
-  public draw(
-    framebufferIndex: number,
-    mode: GlDrawMode,
-    indexBuffer: GlBuffer
-  ) {
-    const gl = this.gl;
-
-    gl.bindFramebuffer(
-      gl.FRAMEBUFFER,
-      framebufferIndex < this.framebuffers.length
-        ? this.framebuffers[framebufferIndex]
-        : null
-    );
-    gl.viewport(0, 0, this.viewSize.x, this.viewSize.y);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
-    gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
-  }
-
-  public release() {
-    GlTarget.clearRenderbufferAttachments(this.colorAttachment);
-    GlTarget.clearTextureAttachments(this.depthAttachment);
-  }
-
-  public resize(size: Vector2) {
-    for (const attachment of [this.colorAttachment, this.depthAttachment]) {
-      // Resize existing renderbuffer attachment if any
-      if (attachment.renderbuffer !== undefined) {
-        attachment.renderbuffer.resize(size);
-      }
-
-      // Resize previously existing texture attachments if any
-      for (const texture of attachment.textures) {
-        texture.resize(size);
-      }
-    }
-
-    this.viewSize.set(size);
-  }
-
-  public setClearColor(r: number, g: number, b: number, a: number) {
-    this.colorClear = { x: r, y: g, z: b, w: a };
-  }
-
-  public setClearDepth(depth: number) {
-    this.depthClear = depth;
-  }
-
-  public setupColorRenderbuffer(format: GlTextureFormat) {
-    return this.attachRenderbuffer(
-      this.colorAttachment,
-      format,
-      GlAttachementTarget.Color
-    );
-  }
-
-  public setupColorTexture(format: GlTextureFormat, type: GlTextureType) {
-    const texture = this.attachTexture(
-      this.colorAttachment,
-      format,
-      type,
-      GlAttachementTarget.Color
-    );
-
-    // Configure draw buffers
-    const gl = this.gl;
-
-    for (const framebuffer of this.framebuffers) {
-      if (framebuffer === undefined) {
-        continue;
-      }
-
-      const buffers = range(this.colorAttachment.textures.length).map(
-        (i) => gl.COLOR_ATTACHMENT0 + i
-      );
-
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-      gl.drawBuffers(buffers);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
-
-    return texture;
-  }
-
-  public setupDepthRenderbuffer(format: GlTextureFormat) {
-    return this.attachRenderbuffer(
-      this.depthAttachment,
-      format,
-      GlAttachementTarget.Depth
-    );
-  }
-
-  public setupDepthTexture(format: GlTextureFormat, type: GlTextureType) {
-    return this.attachTexture(
-      this.depthAttachment,
-      format,
-      type,
-      GlAttachementTarget.Depth
-    );
-  }
-
-  private static clearRenderbufferAttachments(attachment: GlAttachment) {
+  const clearRenderbufferAttachments = (attachment: GlAttachment) => {
     if (attachment.renderbuffer !== undefined) {
       attachment.renderbuffer.release();
       attachment.renderbuffer = undefined;
     }
-  }
+  };
 
-  private static clearTextureAttachments(attachment: GlAttachment) {
+  const clearTextureAttachments = (attachment: GlAttachment) => {
     for (const texture of attachment.textures) {
       texture.release();
     }
 
     attachment.textures = [];
-  }
+  };
 
-  private static checkFramebuffer(gl: GlContext) {
+  const checkFramebuffer = () => {
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
       throw Error("invalid framebuffer operation");
     }
-  }
+  };
 
-  private configureFramebuffer(framebufferIndex: number) {
-    if (
-      this.framebuffers.length > framebufferIndex &&
-      this.framebuffers[framebufferIndex] !== undefined
-    ) {
-      return this.framebuffers[framebufferIndex];
-    }
-
-    this.framebuffers.length = Math.max(
-      this.framebuffers.length,
-      framebufferIndex + 1
-    );
-
-    const framebuffer = this.gl.createFramebuffer();
-
-    if (framebuffer === null) {
-      throw Error("could not create framebuffer");
-    }
-
-    this.framebuffers[framebufferIndex] = framebuffer;
-
-    return framebuffer;
-  }
-
-  private attachRenderbuffer(
+  const attachRenderbuffer = (
     attachment: GlAttachment,
     format: GlTextureFormat,
     target: number
-  ) {
-    const framebuffer = this.configureFramebuffer(0);
-    const gl = this.gl;
-
+  ): GlRenderbuffer => {
     // Clear renderbuffer and texture attachments if any
-    GlTarget.clearRenderbufferAttachments(attachment);
-    GlTarget.clearTextureAttachments(attachment);
+    clearRenderbufferAttachments(attachment);
+    clearTextureAttachments(attachment);
 
     // Create renderbuffer attachment
-    attachment.renderbuffer = createRenderbuffer(gl, this.viewSize, format, 1);
+    attachment.renderbuffer = createRenderbuffer(gl, viewSize, format, 1);
 
     // Bind attachment to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -331,21 +199,19 @@ class GlTarget implements Releasable {
       attachment.renderbuffer.handle
     );
 
-    GlTarget.checkFramebuffer(gl);
+    checkFramebuffer();
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-    return attachment.renderbuffer.handle;
-  }
+    return attachment.renderbuffer;
+  };
 
-  private attachTexture(
+  const attachTexture = (
     attachment: GlAttachment,
     format: GlTextureFormat,
     type: GlTextureType,
     framebufferTarget: GlAttachementTarget
-  ) {
-    const gl = this.gl;
-
+  ) => {
     // Generate texture targets
     let textureTargets: number[];
 
@@ -377,7 +243,7 @@ class GlTarget implements Releasable {
     const texture = createTexture(
       gl,
       type,
-      this.viewSize,
+      viewSize,
       format,
       filter,
       undefined
@@ -385,11 +251,10 @@ class GlTarget implements Releasable {
 
     // Bind frame buffers
     for (let i = 0; i < textureTargets.length; ++i) {
-      const framebuffer = this.configureFramebuffer(i);
       const textureTarget = textureTargets[i];
 
       // Clear renderbuffer attachment if any
-      GlTarget.clearRenderbufferAttachments(attachment);
+      clearRenderbufferAttachments(attachment);
 
       const offset = attachment.textures.push(texture);
 
@@ -397,40 +262,175 @@ class GlTarget implements Releasable {
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
       gl.framebufferTexture2D(
         gl.FRAMEBUFFER,
-        this.getAttachment(framebufferTarget, offset - 1),
+        getAttachment(framebufferTarget, offset - 1),
         textureTarget,
         texture.handle,
         0
       );
 
-      GlTarget.checkFramebuffer(gl);
+      checkFramebuffer();
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
 
     return texture;
-  }
+  };
 
-  private getAttachment(attachementTarget: GlAttachementTarget, index: number) {
+  const getAttachment = (
+    attachementTarget: GlAttachementTarget,
+    index: number
+  ) => {
     switch (attachementTarget) {
       case GlAttachementTarget.Color:
-        return this.gl.COLOR_ATTACHMENT0 + index;
+        return gl.COLOR_ATTACHMENT0 + index;
 
       case GlAttachementTarget.Depth:
-        return this.gl.DEPTH_ATTACHMENT + index;
+        return gl.DEPTH_ATTACHMENT + index;
 
       default:
         throw Error(`invalid attachment target ${attachementTarget}`);
     }
-  }
-}
+  };
+
+  return {
+    clear() {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.viewport(0, 0, viewSize.x, viewSize.y);
+      gl.clearColor(colorClear.x, colorClear.y, colorClear.z, colorClear.z);
+      gl.clearDepth(depthClear);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    },
+
+    draw(mode: GlDrawMode, indexBuffer: GlBuffer) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.viewport(0, 0, viewSize.x, viewSize.y);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
+      gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
+    },
+
+    release() {
+      clearRenderbufferAttachments(colorAttachment);
+      clearTextureAttachments(depthAttachment);
+    },
+
+    setSize(size) {
+      for (const attachment of [colorAttachment, depthAttachment]) {
+        // Resize existing renderbuffer attachment if any
+        if (attachment.renderbuffer !== undefined) {
+          attachment.renderbuffer.resize(size);
+        }
+
+        // Resize previously existing texture attachments if any
+        for (const texture of attachment.textures) {
+          texture.resize(size);
+        }
+      }
+
+      viewSize.set(size);
+    },
+
+    setColorClear(color: Vector4) {
+      colorClear.set(color);
+    },
+
+    setColorRenderbuffer(format: GlTextureFormat) {
+      return attachRenderbuffer(
+        colorAttachment,
+        format,
+        GlAttachementTarget.Color
+      );
+    },
+
+    setColorTexture(format: GlTextureFormat, type: GlTextureType) {
+      const texture = attachTexture(
+        colorAttachment,
+        format,
+        type,
+        GlAttachementTarget.Color
+      );
+
+      // Configure draw buffers
+      const buffers = range(colorAttachment.textures.length).map(
+        (i) => gl.COLOR_ATTACHMENT0 + i
+      );
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.drawBuffers(buffers);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      return texture;
+    },
+
+    setDepthClear(depth: number) {
+      depthClear = depth;
+    },
+
+    setDepthRenderbuffer(format: GlTextureFormat) {
+      return attachRenderbuffer(
+        depthAttachment,
+        format,
+        GlAttachementTarget.Depth
+      );
+    },
+
+    setDepthTexture(format: GlTextureFormat, type: GlTextureType) {
+      return attachTexture(
+        depthAttachment,
+        format,
+        type,
+        GlAttachementTarget.Depth
+      );
+    },
+  };
+};
+
+const createScreenTarget = (gl: GlContext): GlScreenTarget => {
+  const colorClear = Vector4.fromZero();
+  const viewSize = Vector2.fromZero();
+
+  let depthClear = 1;
+
+  return {
+    clear() {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, viewSize.x, viewSize.y);
+
+      gl.clearColor(colorClear.x, colorClear.y, colorClear.z, colorClear.z);
+      gl.clearDepth(depthClear);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    },
+
+    draw(mode, indexBuffer) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, viewSize.x, viewSize.y);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
+      gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
+    },
+
+    setColorClear(color) {
+      colorClear.set(color);
+    },
+
+    setDepthClear(depth) {
+      depthClear = depth;
+    },
+
+    setSize(size) {
+      viewSize.set(size);
+    },
+  };
+};
 
 export {
+  type GlFramebufferTarget,
   type GlRuntime,
-  GlTarget,
+  type GlScreenTarget,
+  type GlTarget,
   GlTextureFormat,
   GlTextureType,
   createRuntime,
+  createFramebufferTarget,
+  createScreenTarget,
   loadTextureCube,
   loadTextureQuad,
 };

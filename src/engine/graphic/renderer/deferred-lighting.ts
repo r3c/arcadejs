@@ -28,7 +28,13 @@ import {
 } from "../webgl/shaders/rgb";
 import { shininessDecode, shininessEncode } from "../webgl/shaders/shininess";
 import { Vector2, Vector3 } from "../../math/vector";
-import { GlRuntime, GlTarget, GlTextureFormat, GlTextureType } from "../webgl";
+import {
+  createFramebufferTarget,
+  GlRuntime,
+  GlTarget,
+  GlTextureFormat,
+  GlTextureType,
+} from "../webgl";
 import {
   GlDirectionalLightPolygon,
   GlPointLightPolygon,
@@ -798,16 +804,23 @@ const createDeferredLightingRenderer = (
   configuration: DeferredLightingConfiguration
 ): DeferredLightingRenderer => {
   const gl = runtime.context;
-  const geometryTarget = new GlTarget(gl, {
+  const geometryTarget = createFramebufferTarget(gl);
+  const lightTarget = createFramebufferTarget(gl);
+
+  // FIXME: framebuffer target attachements (renderbuffer or texture) get their
+  // size initialized at creation and are not affected by further `setSize`
+  // calls on their parent target. Until this is fixed, we need to pre-assign a
+  // valid size here to avoid following `set{Color,Depth}*` calls to fail.
+  geometryTarget.setSize({
     x: gl.drawingBufferWidth,
     y: gl.drawingBufferHeight,
   });
-  const lightTarget = new GlTarget(gl, {
+  lightTarget.setSize({
     x: gl.drawingBufferWidth,
     y: gl.drawingBufferHeight,
   });
 
-  const depthBuffer = geometryTarget.setupDepthTexture(
+  const depthBuffer = geometryTarget.setDepthTexture(
     GlTextureFormat.Depth16,
     GlTextureType.Quad
   );
@@ -831,7 +844,7 @@ const createDeferredLightingRenderer = (
     geometryBinder,
     {}
   );
-  const lightBuffer = lightTarget.setupColorTexture(
+  const lightBuffer = lightTarget.setColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
@@ -843,7 +856,7 @@ const createDeferredLightingRenderer = (
   );
   const pointLightBillboard = createPointLightBillboard(gl);
   const pointLightPainter = loadPointLightPainter(runtime, configuration);
-  const normalAndGlossBuffer = geometryTarget.setupColorTexture(
+  const normalAndGlossBuffer = geometryTarget.setColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
@@ -906,7 +919,7 @@ const createDeferredLightingRenderer = (
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
 
-      geometryTarget.clear(0);
+      geometryTarget.clear();
       geometryRenderer.render(geometryTarget, scene);
 
       // Render lights to light buffer
@@ -916,8 +929,8 @@ const createDeferredLightingRenderer = (
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.DST_COLOR, gl.ZERO);
 
-      lightTarget.setClearColor(1, 1, 1, 1);
-      lightTarget.clear(0);
+      lightTarget.setColorClear({ x: 1, y: 1, z: 1, w: 1 });
+      lightTarget.clear();
 
       // Draw directional lights using fullscreen quads
       if (directionalLights !== undefined) {
@@ -975,8 +988,8 @@ const createDeferredLightingRenderer = (
     },
 
     resize(size: Vector2) {
-      geometryTarget.resize(size);
-      lightTarget.resize(size);
+      geometryTarget.setSize(size);
+      lightTarget.setSize(size);
     },
   };
 };

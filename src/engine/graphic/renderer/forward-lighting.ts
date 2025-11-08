@@ -22,7 +22,13 @@ import {
 } from "../webgl/shaders/phong";
 import { linearToStandard, standardToLinear } from "../webgl/shaders/rgb";
 import { Vector3 } from "../../math/vector";
-import { GlRuntime, GlTarget, GlTextureFormat, GlTextureType } from "../webgl";
+import {
+  createFramebufferTarget,
+  GlRuntime,
+  GlTarget,
+  GlTextureFormat,
+  GlTextureType,
+} from "../webgl";
 import {
   shaderWhen,
   shaderCase,
@@ -832,7 +838,13 @@ const createForwardLightingRenderer = (
   };
 
   const directionalShadowTargets = range(directive.maxDirectionalLights).map(
-    () => new GlTarget(gl, targetSize)
+    () => {
+      const target = createFramebufferTarget(gl);
+
+      target.setSize(targetSize);
+
+      return target;
+    }
   );
   const lightBinder = createLightBinder(runtime, directive, configuration);
   const lightRenderer = createGlMeshRenderer(
@@ -842,7 +854,7 @@ const createForwardLightingRenderer = (
   );
 
   const directionalShadowBuffers = directionalShadowTargets.map((target) =>
-    target.setupDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
+    target.setDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
   );
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
   const directionalShadowRenderer = createGlMeshRenderer(
@@ -935,7 +947,7 @@ const createForwardLightingRenderer = (
 
           const directionalShadowTarget = directionalShadowTargets[i];
 
-          directionalShadowTarget.clear(0);
+          directionalShadowTarget.clear();
 
           directionalShadowRenderer.render(directionalShadowTarget, {
             projection: directionalShadowProjection,

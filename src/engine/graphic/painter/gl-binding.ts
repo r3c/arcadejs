@@ -9,7 +9,7 @@ const createGlBindingPainter = <TScene>(
 ): Painter<GlTarget, TScene> => ({
   paint(target, scene) {
     binding.bind(scene);
-    target.draw(0, WebGL2RenderingContext["TRIANGLES"], indexGetter(scene));
+    target.draw(WebGL2RenderingContext["TRIANGLES"], indexGetter(scene));
   },
 });
 
