@@ -56,7 +56,7 @@ const createApplication = async (
   let renderer: SoftwareRenderer | undefined = undefined;
 
   return {
-    async change(configuration) {
+    async setConfiguration(configuration) {
       const { mode } = configuration;
       const mesh = mode === 2 ? cubeWithTexture : cubeWithColor;
 
@@ -64,7 +64,7 @@ const createApplication = async (
         mode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default
       );
 
-      renderer.append({ mesh });
+      renderer.addSubject({ mesh });
     },
 
     release() {},
@@ -76,9 +76,9 @@ const createApplication = async (
       });
     },
 
-    resize(size) {
+    setSize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      renderer?.resize(size);
+      renderer?.setSize(size);
     },
 
     update(dt) {

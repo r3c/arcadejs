@@ -313,22 +313,6 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       clearTextureAttachments(depthAttachment);
     },
 
-    setSize(size) {
-      for (const attachment of [colorAttachment, depthAttachment]) {
-        // Resize existing renderbuffer attachment if any
-        if (attachment.renderbuffer !== undefined) {
-          attachment.renderbuffer.resize(size);
-        }
-
-        // Resize previously existing texture attachments if any
-        for (const texture of attachment.textures) {
-          texture.resize(size);
-        }
-      }
-
-      viewSize.set(size);
-    },
-
     setColorClear(color: Vector4) {
       colorClear.set(color);
     },
@@ -380,6 +364,22 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
         type,
         GlAttachementTarget.Depth
       );
+    },
+
+    setSize(size) {
+      for (const attachment of [colorAttachment, depthAttachment]) {
+        // Resize existing renderbuffer attachment if any
+        if (attachment.renderbuffer !== undefined) {
+          attachment.renderbuffer.setSize(size);
+        }
+
+        // Resize previously existing texture attachments if any
+        for (const texture of attachment.textures) {
+          texture.setSize(size);
+        }
+      }
+
+      viewSize.set(size);
     },
   };
 };

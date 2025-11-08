@@ -125,7 +125,7 @@ const createApplication = async (
   const select = createDynamicMesh(selectModel.mesh);
   const selectTransform = select.transform;
 
-  renderer.append({
+  renderer.addSubject({
     mesh: select.mesh,
     noShadow: false,
   });
@@ -162,7 +162,7 @@ const createApplication = async (
   let time = 0;
 
   return {
-    async change() {},
+    async setConfiguration() {},
 
     release() {},
 
@@ -292,9 +292,9 @@ const createApplication = async (
       renderer.render(target, lightScene);
     },
 
-    resize(size) {
+    setSize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      renderer.resize(size);
+      renderer.setSize(size);
       target.setSize(size);
     },
   };

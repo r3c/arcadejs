@@ -11,12 +11,12 @@ type GlEncoding = {
 
 type GlRenderbuffer = Releasable & {
   handle: WebGLRenderbuffer;
-  resize: (size: Vector2) => void;
+  setSize: (size: Vector2) => void;
 };
 
 type GlTexture = Releasable & {
   handle: WebGLTexture;
-  resize: (size: Vector2) => void;
+  setSize: (size: Vector2) => void;
 };
 
 const enum GlTextureFormat {
@@ -101,7 +101,7 @@ const createRenderbuffer = (
 
   return {
     release: () => gl.deleteRenderbuffer(handle),
-    resize,
+    setSize: resize,
     handle,
   };
 };
@@ -188,7 +188,7 @@ const createTexture = (
 
   return {
     release: () => gl.deleteTexture(handle),
-    resize,
+    setSize: resize,
     handle,
   };
 };

@@ -111,7 +111,7 @@ const createApplication = async (
   let time = 0;
 
   return {
-    async change(configuration) {
+    async setConfiguration(configuration) {
       renderer?.release();
 
       const newRenderer = createForwardLightingRenderer(runtime, {
@@ -125,11 +125,11 @@ const createApplication = async (
         noNormalMap: !configuration.useNormalMap,
       });
 
-      newRenderer.append({ mesh: models.cube.mesh });
+      newRenderer.addSubject({ mesh: models.cube.mesh });
 
       const ground = createDynamicMesh(models.ground.mesh);
 
-      newRenderer.append({ mesh: ground.mesh });
+      newRenderer.addSubject({ mesh: ground.mesh });
 
       ground.transform.translate({ x: 0, y: -1.5, z: 0 });
 
@@ -137,7 +137,7 @@ const createApplication = async (
         () => {
           const { mesh, transform } = createDynamicMesh(models.light.mesh);
 
-          newRenderer.append({ mesh, noShadow: true });
+          newRenderer.addSubject({ mesh, noShadow: true });
 
           return transform;
         }
@@ -145,7 +145,7 @@ const createApplication = async (
       pointLightTransforms = range(configuration.nbPointLights).map(() => {
         const { mesh, transform } = createDynamicMesh(models.light.mesh);
 
-        newRenderer.append({ mesh, noShadow: true });
+        newRenderer.addSubject({ mesh, noShadow: true });
 
         return transform;
       });
@@ -197,9 +197,9 @@ const createApplication = async (
       }
     },
 
-    resize(size) {
+    setSize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      renderer?.resize(size);
+      renderer?.setSize(size);
       target.setSize(size);
     },
 

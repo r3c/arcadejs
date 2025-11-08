@@ -249,7 +249,7 @@ const textureUniform = <TState>(
   allocateTexture: true,
   createValue: () => ({
     target,
-    texture: { release: () => {}, resize: () => {}, handle: {} },
+    texture: { release: () => {}, setSize: () => {}, handle: {} },
   }),
   readValue: (state, { target }, defaultValue) => ({
     target,

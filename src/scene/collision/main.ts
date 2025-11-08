@@ -217,7 +217,7 @@ const createApplication = async (
   const sphereModel = createModel(gl, sphereMesh);
   const sphere = createDynamicMesh(sphereModel.mesh);
 
-  renderer.append({ mesh: sphere.mesh });
+  renderer.addSubject({ mesh: sphere.mesh });
 
   const floor0Model = createModel(gl, floor0Mesh);
   const floor1Model = createModel(gl, floor1Mesh);
@@ -260,7 +260,7 @@ const createApplication = async (
       remove();
 
       collision = flag;
-      remove = renderer.append({ mesh: flag ? floor1.mesh : floor0.mesh });
+      remove = renderer.addSubject({ mesh: flag ? floor1.mesh : floor0.mesh });
     };
 
     surfaces.push({ plane, setCollision });
@@ -304,7 +304,7 @@ const createApplication = async (
   ];
 
   return {
-    async change() {},
+    async setConfiguration() {},
 
     release() {
       renderer.release();
@@ -331,9 +331,9 @@ const createApplication = async (
       renderer.render(target, scene);
     },
 
-    resize(size) {
+    setSize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
-      renderer.resize(size);
+      renderer.setSize(size);
       target.setSize(size);
     },
 

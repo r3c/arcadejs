@@ -2,9 +2,9 @@ import { Vector2 } from "../../math/vector";
 
 type Renderer<TTarget, TScene, TSubject> = {
   /**
-   * Append subject to renderer.
+   * Register subject to renderer.
    */
-  append: (subject: TSubject) => () => void;
+  addSubject: (subject: TSubject) => () => void;
 
   /**
    * Render scene.
@@ -14,7 +14,7 @@ type Renderer<TTarget, TScene, TSubject> = {
   /**
    * Resize rendering target.
    */
-  resize: (size: Vector2) => void;
+  setSize: (size: Vector2) => void;
 };
 
 export { type Renderer };

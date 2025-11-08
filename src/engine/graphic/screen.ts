@@ -5,7 +5,7 @@ type Screen<TContext> = {
   getContext: () => TContext;
   getSize: () => Vector2;
   onResize: (handler: (size: Vector2) => void) => void;
-  resize: () => void;
+  setSize: () => void;
 };
 
 type ScreenConstructor<TContext> = (
@@ -42,7 +42,7 @@ const createScreen = <TContext>(
       onResize = handler;
     },
 
-    resize() {
+    setSize() {
       const height = Math.ceil(canvas.clientHeight * pixelRatio);
       const width = Math.ceil(canvas.clientWidth * pixelRatio);
 

@@ -104,7 +104,10 @@ const cubeFaces: WorldCubeFace[] = [
 
 const createWorldGraphic = (
   runtime: GlRuntime,
-  renderer: Pick<Renderer<unknown, unknown, ForwardLightingSubject>, "append">,
+  renderer: Pick<
+    Renderer<unknown, unknown, ForwardLightingSubject>,
+    "addSubject"
+  >,
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,
@@ -131,7 +134,7 @@ const createWorldGraphic = (
   }));
 
   const chunkHandles = range(chunks.length).map(() =>
-    renderer.append({
+    renderer.addSubject({
       mesh: {
         children: [],
         release: () => {},
@@ -283,7 +286,7 @@ const createWorldGraphic = (
         // FIXME: release previous model
 
         chunkHandles[chunkIndex]();
-        chunkHandles[chunkIndex] = renderer.append({
+        chunkHandles[chunkIndex] = renderer.addSubject({
           mesh: model.mesh,
           noShadow: true,
         });

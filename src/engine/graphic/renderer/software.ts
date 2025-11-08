@@ -361,7 +361,7 @@ const createSoftwareRenderer = (
   const viewProjection = Matrix4.fromIdentity();
 
   return {
-    append: (subject) => {
+    addSubject: (subject) => {
       const { mesh } = subject;
       const symbol = Symbol();
 
@@ -399,7 +399,7 @@ const createSoftwareRenderer = (
       );
     },
 
-    resize: (size) => {
+    setSize: (size) => {
       screenSize.set(size);
     },
   };

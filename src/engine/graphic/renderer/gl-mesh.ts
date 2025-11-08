@@ -169,7 +169,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
   };
 
   return {
-    append(mesh) {
+    addSubject(mesh) {
       const removals: { featureKey: number; materials: GlMaterial[] }[] = [];
       const results = explode(mesh);
       const symbol = Symbol();
@@ -262,7 +262,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
       }
     },
 
-    resize() {},
+    setSize() {},
   };
 };
 
