@@ -132,6 +132,9 @@ const createLightSource = (
   directive: Directive,
   feature: GlMeshFeature
 ): GlShaderSource => {
+  const maxDirectionalLights = Math.max(directive.maxDirectionalLights, 1);
+  const maxPointLights = Math.max(directive.maxPointLights, 1);
+
   const header = `
 ${directionalLight.declare(directive)}
 ${pointLight.declare(directive)}
@@ -146,24 +149,12 @@ const mat4 texUnitConverter = mat4(
 uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform ${directionalLightType} directionalLights[${Math.max(
-    directive.maxDirectionalLights,
-    1
-  )}];
-uniform ${pointLightType} pointLights[max(${Math.max(
-    directive.maxPointLights,
-    1
-  )}, 1)];
+uniform ${directionalLightType} directionalLights[${maxDirectionalLights}];
+uniform ${pointLightType} pointLights[${maxPointLights}];
 
 // FIXME: adding shadowMap as field to {directional,point}Light structures doesn't work for some reason
-uniform sampler2D directionalLightShadowMaps[${Math.max(
-    directive.maxDirectionalLights,
-    1
-  )}];
-uniform sampler2D pointLightShadowMaps[${Math.max(
-    directive.maxPointLights,
-    1
-  )}];
+uniform sampler2D directionalLightShadowMaps[${maxDirectionalLights}];
+uniform sampler2D pointLightShadowMaps[${maxPointLights}];
 `;
 
   return {
@@ -189,17 +180,11 @@ out vec3 normal; // Normal at point in camera space
 out vec3 tangent; // Tangent at point in camera space
 out vec4 tint; // Tint at point
 
-out vec3 directionalLightDistances[${Math.max(
-      directive.maxDirectionalLights,
-      1
-    )}];
-out vec3 directionalLightShadows[${Math.max(
-      directive.maxDirectionalLights,
-      1
-    )}];
+out vec3 directionalLightDistances[${maxDirectionalLights}];
+out vec3 directionalLightShadows[${maxDirectionalLights}];
 
-out vec3 pointLightDistances[${Math.max(directive.maxPointLights, 1)}];
-out vec3 pointLightShadows[${Math.max(directive.maxPointLights, 1)}];
+out vec3 pointLightDistances[${maxPointLights}];
+out vec3 pointLightShadows[${maxPointLights}];
 
 vec3 toCameraDirection(in vec3 worldDirection) {
   return (viewMatrix * vec4(worldDirection, 0.0)).xyz;
@@ -324,14 +309,10 @@ in vec3 normal;
 in vec3 tangent;
 in vec4 tint;
 
-in vec3 directionalLightDistances[${Math.max(
-      directive.maxDirectionalLights,
-      1
-    )}];
-in vec3 directionalLightShadows[${Math.max(directive.maxDirectionalLights, 1)}];
-
-in vec3 pointLightDistances[${Math.max(directive.maxPointLights, 1)}];
-in vec3 pointLightShadows[${Math.max(directive.maxPointLights, 1)}];
+in vec3 directionalLightDistances[${maxDirectionalLights}];
+in vec3 directionalLightShadows[${maxDirectionalLights}];
+in vec3 pointLightDistances[${maxPointLights}];
+in vec3 pointLightShadows[${maxPointLights}];
 
 layout(location=0) out vec4 fragColor;
 
