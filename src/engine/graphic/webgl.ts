@@ -13,30 +13,40 @@ import {
 } from "./webgl/texture";
 import { GlShader, GlShaderSource, createShader } from "./webgl/shader";
 
-type GlAttachment = {
-  clear(): void;
+type GlAttachment = Releasable & {
   renderbuffer: GlRenderbuffer | undefined;
-  textures: GlTexture[];
+  textures: readonly GlTexture[];
+  setRenderbuffer(renderbuffer: GlRenderbuffer): void;
+  setTextures(textures: readonly GlTexture[]): void;
 };
 
 const createAttachment = (): GlAttachment => {
   let renderbuffer: GlRenderbuffer | undefined = undefined;
   let textures: GlTexture[] = [];
 
+  const release = () => {
+    if (renderbuffer !== undefined) {
+      renderbuffer.release();
+      renderbuffer = undefined;
+    }
+
+    for (const texture of textures) {
+      texture.release();
+    }
+
+    textures = [];
+  };
+
   return {
-    clear() {
-      if (renderbuffer !== undefined) {
-        renderbuffer.release();
-        renderbuffer = undefined;
-      }
-
-      for (const texture of textures) {
-        texture.release();
-      }
-
-      textures = [];
+    release,
+    setRenderbuffer(renderbuffer) {
+      release();
+      renderbuffer = renderbuffer;
     },
-
+    setTextures(textures) {
+      release();
+      textures = textures;
+    },
     renderbuffer,
     textures,
   };
@@ -193,8 +203,8 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
     },
 
     release() {
-      colorAttachment.clear();
-      depthAttachment.clear();
+      colorAttachment.release();
+      depthAttachment.release();
     },
 
     setColorClear(color: Vector4) {
@@ -331,11 +341,10 @@ const attachRenderbuffer = (
   format: GlTextureFormat,
   target: number
 ): GlRenderbuffer => {
-  // Clear renderbuffer and texture attachments if any
-  attachment.clear();
+  // Create and attach renderbuffer attachment
+  const renderbuffer = createRenderbuffer(gl, viewSize, format, 1);
 
-  // Create renderbuffer attachment
-  attachment.renderbuffer = createRenderbuffer(gl, viewSize, format, 1);
+  attachment.setRenderbuffer(renderbuffer);
 
   // Bind attachment to framebuffer
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -343,14 +352,14 @@ const attachRenderbuffer = (
     gl.FRAMEBUFFER,
     target,
     gl.RENDERBUFFER,
-    attachment.renderbuffer.handle
+    renderbuffer.handle
   );
 
   checkFramebuffer(gl);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-  return attachment.renderbuffer;
+  return renderbuffer;
 };
 
 const attachTexture = (
@@ -362,9 +371,6 @@ const attachTexture = (
   type: GlTextureType,
   framebufferTarget: GlAttachementTarget
 ) => {
-  // Clear renderbuffer attachment if any
-  attachment.clear();
-
   // Generate texture targets
   let textureTargets: number[];
 
@@ -391,13 +397,17 @@ const attachTexture = (
     wrap: Wrap.Clamp,
   };
 
+  // FIXME: this doesn't support multiple textures, same textures is actually
+  // repeated in the attachment textures array
   const texture = createTexture(gl, type, viewSize, format, filter, undefined);
 
   // Bind frame buffers
+  const textures: GlTexture[] = [];
+
   for (let i = 0; i < textureTargets.length; ++i) {
     const textureTarget = textureTargets[i];
 
-    const offset = attachment.textures.push(texture);
+    const offset = textures.push(texture);
 
     // Bind attachment to framebuffer
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -413,6 +423,8 @@ const attachTexture = (
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
+
+  attachment.setTextures(textures);
 
   return texture;
 };
