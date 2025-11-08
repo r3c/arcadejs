@@ -5,7 +5,7 @@ import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
-import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { createRuntime, createScreenTarget } from "../../engine/graphic/webgl";
 import {
   createModel,
   createDynamicMesh,
@@ -173,7 +173,7 @@ const createApplication = async (
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
-  const target = new GlTarget(gl, screen.getSize());
+  const target = createScreenTarget(gl);
 
   // Load meshes
   const floor0Mesh = await loadMeshFromJson("model/cube/mesh.json", {
@@ -311,12 +311,11 @@ const createApplication = async (
       runtime.release();
       floor0Model.release();
       sphereModel.release();
-      target.release();
     },
 
     render() {
       // Draw scene
-      target.clear(0);
+      target.clear();
 
       const scene: ForwardLightingScene = {
         ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
@@ -335,7 +334,7 @@ const createApplication = async (
     resize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
       renderer.resize(size);
-      target.resize(size);
+      target.setSize(size);
     },
 
     update(dt) {

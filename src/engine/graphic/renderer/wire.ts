@@ -214,12 +214,7 @@ const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
 
       for (const subject of subjects.values()) {
         subjectBinding.bind(subject);
-
-        target.draw(
-          0,
-          WebGL2RenderingContext["LINES"],
-          subject.wireModel.index
-        );
+        target.draw(WebGL2RenderingContext["LINES"], subject.wireModel.index);
       }
     },
 

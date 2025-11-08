@@ -11,7 +11,7 @@ import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
-import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { createRuntime, createScreenTarget } from "../../engine/graphic/webgl";
 import { createCircleMover, createOrbitMover } from "../move";
 import {
   createModel,
@@ -61,7 +61,7 @@ const createApplication = async (
 ): Promise<Application<Configuration>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
-  const target = new GlTarget(gl, screen.getSize());
+  const target = createScreenTarget(gl);
 
   // Load models
   const cubeMesh = await loadMeshFromJson("model/cube/mesh.json");
@@ -162,12 +162,11 @@ const createApplication = async (
       models.light.release();
       renderer?.release();
       runtime.release();
-      target.release();
     },
 
     render() {
       // Clear screen
-      target.clear(0);
+      target.clear();
 
       // Draw scene
       const scene: ForwardLightingScene = {
@@ -201,7 +200,7 @@ const createApplication = async (
     resize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
       renderer?.resize(size);
-      target.resize(size);
+      target.setSize(size);
     },
 
     update(dt) {

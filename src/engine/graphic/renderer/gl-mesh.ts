@@ -106,7 +106,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
 
     for (const { indexBuffer, polygon } of mesh.primitives) {
       polygonBinding.bind(polygon);
-      target.draw(0, drawMode, indexBuffer);
+      target.draw(drawMode, indexBuffer);
     }
   };
 

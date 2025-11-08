@@ -12,8 +12,8 @@ import {
 import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
 import {
-  GlTarget,
   createRuntime,
+  createScreenTarget,
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
 import {
@@ -224,7 +224,7 @@ const createApplication = async (
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
-  const target = new GlTarget(gl, screen.getSize());
+  const target = createScreenTarget(gl);
 
   // Load meshes
   const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
@@ -392,12 +392,11 @@ const createApplication = async (
       sceneRenderer.release();
       shipModel.release();
       sprite.release();
-      target.release();
     },
 
     render() {
       // Draw scene
-      target.clear(0);
+      target.clear();
 
       const scene: ForwardLightingScene = {
         ambientLightColor: { x: 0, y: 0, z: 0 },
@@ -417,7 +416,7 @@ const createApplication = async (
     resize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
       sceneRenderer.resize(size);
-      target.resize(size);
+      target.setSize(size);
     },
 
     update(dt) {

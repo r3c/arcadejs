@@ -7,7 +7,7 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import { createWorldGraphic, createWorldPhysic } from "./world";
 import { noise } from "./perlin";
-import { GlTarget, createRuntime } from "../../engine/graphic/webgl";
+import { createRuntime, createScreenTarget } from "../../engine/graphic/webgl";
 import { createOrbitMover } from "../move";
 import {
   createModel,
@@ -30,7 +30,7 @@ const createApplication = async (
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
-  const target = new GlTarget(gl, screen.getSize());
+  const target = createScreenTarget(gl);
 
   // Load models
   const worldScaleVector = Vector3.fromZero();
@@ -275,7 +275,7 @@ const createApplication = async (
 
     render() {
       // Clear screen
-      target.clear(0);
+      target.clear();
 
       // Forward pass
       const lightScene: ForwardLightingScene = {
@@ -295,7 +295,7 @@ const createApplication = async (
     resize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
       renderer.resize(size);
-      target.resize(size);
+      target.setSize(size);
     },
   };
 };
