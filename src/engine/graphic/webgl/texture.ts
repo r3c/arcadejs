@@ -165,7 +165,15 @@ const createTexture = (
     const imageData = image as ImageData;
 
     if (image === undefined) {
-      gl.texImage2D(target, 0, storage, x, y, 0, layout, type, null);
+      if (target === gl.TEXTURE_CUBE_MAP) {
+        for (let i = 0; i < 6; ++i) {
+          const face = gl.TEXTURE_CUBE_MAP_POSITIVE_X + i;
+
+          gl.texImage2D(face, 0, storage, x, y, 0, layout, type, null);
+        }
+      } else {
+        gl.texImage2D(target, 0, storage, x, y, 0, layout, type, null);
+      }
     } else if (imageData.data !== undefined) {
       gl.texImage2D(target, 0, storage, x, y, 0, layout, type, imageData.data);
     } else if (imageArray.length !== undefined) {

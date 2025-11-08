@@ -180,6 +180,7 @@ const createApplication = async (
     mover: createOrbitMover(i, 1, 5, 1),
     position: Vector3.fromZero(),
     radius: 0,
+    shadow: false,
   }));
   const projection = Matrix4.fromIdentity();
 

@@ -11,6 +11,7 @@ type PointLight = {
   color: Vector3;
   position: Vector3;
   radius: number;
+  shadow: boolean;
 };
 
 const directionalLightType = "DirectionalLight";
@@ -61,11 +62,16 @@ const pointLight: GlShaderFunction<
   { hasShadow: boolean },
   { light: string; distanceCamera: string }
 > = {
-  declare: () => `
+  declare: ({ hasShadow }) => `
 struct ${pointLightType} {
   vec3 color;
   vec3 position;
   float radius;
+${shaderWhen(
+  hasShadow,
+  `
+  bool castShadow;`
+)}
 };
 
 ${resultLightTableDeclare}

@@ -49,7 +49,37 @@ const debugModes: {
   {
     name: "Directional",
     source: GlEncodingSource.Sampler2d,
-    getTexture: (renderer) => renderer.directionalShadowBuffers[0],
+    getTexture: (renderer) => renderer.directionalShadowMaps[0],
+  },
+  {
+    name: "Point -X",
+    source: GlEncodingSource.SamplerCubeNegativeX,
+    getTexture: (renderer) => renderer.pointShadowMaps[0],
+  },
+  {
+    name: "Point +X",
+    source: GlEncodingSource.SamplerCubePositiveX,
+    getTexture: (renderer) => renderer.pointShadowMaps[0],
+  },
+  {
+    name: "Point -Y",
+    source: GlEncodingSource.SamplerCubeNegativeY,
+    getTexture: (renderer) => renderer.pointShadowMaps[0],
+  },
+  {
+    name: "Point +Y",
+    source: GlEncodingSource.SamplerCubePositiveY,
+    getTexture: (renderer) => renderer.pointShadowMaps[0],
+  },
+  {
+    name: "Point -Z",
+    source: GlEncodingSource.SamplerCubeNegativeZ,
+    getTexture: (renderer) => renderer.pointShadowMaps[0],
+  },
+  {
+    name: "Point +Z",
+    source: GlEncodingSource.SamplerCubePositiveZ,
+    getTexture: (renderer) => renderer.pointShadowMaps[0],
   },
 ];
 
@@ -219,6 +249,7 @@ const createApplication = async (
             color: { x: 0.8, y: 0.8, z: 0.8 },
             position,
             radius: 5,
+            shadow: true,
           })),
         projection,
         view: camera.viewMatrix,

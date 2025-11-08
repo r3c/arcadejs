@@ -42,6 +42,7 @@ type GlFramebufferTarget = GlTarget &
     setColorTextures(attachmentTextures: GlAttachmentTexture[]): GlTexture[];
     setDepthRenderbuffer(format: GlFormat): GlRenderbuffer;
     setDepthTexture(attachmentTextures: GlAttachmentTexture): GlTexture;
+    setDepthTextureFace(texture: GlTexture, face: number): void;
   };
 
 type GlScreenTarget = GlTarget;
@@ -208,6 +209,21 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       depthAttachment.setTextures(textures);
 
       return textures[0];
+    },
+
+    setDepthTextureFace(texture, face) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.framebufferTexture2D(
+        gl.FRAMEBUFFER,
+        gl.DEPTH_ATTACHMENT,
+        gl.TEXTURE_CUBE_MAP_POSITIVE_X + face,
+        texture.handle,
+        0
+      );
+
+      checkFramebuffer(gl);
+
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     },
 
     setSize(size) {
