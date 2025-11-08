@@ -117,6 +117,10 @@ type LightScene = GlMeshScene & {
   projectionShadow: Matrix4;
 };
 
+type ShadowPointLight = PointLight & {
+  FIXME: boolean;
+};
+
 type ShadowScene = GlMeshScene & {
   projection: Matrix4;
 };
@@ -136,7 +140,7 @@ type Directive = {
 
 const createLightSource = (
   directive: Directive,
-  feature: GlMeshFeature
+  feature: GlMeshFeature,
 ): GlShaderSource => {
   const maxDirectionalLights = Math.max(directive.maxDirectionalLights, 1);
   const maxPointLights = Math.max(directive.maxPointLights, 1);
@@ -213,7 +217,7 @@ void main(void) {
       vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * pointWorld;
 
       directionalLightShadows[i] = pointShadow.xyz;
-    }`
+    }`,
     )}
 
     directionalLightDistances[i] = toCameraDirection(directionalLights[i].direction);
@@ -224,7 +228,7 @@ void main(void) {
  ${shaderWhen(
    directive.hasShadow,
    `
-    // FIXME: shadow map code`
+    // FIXME: shadow map code`,
  )}
 
     pointLightDistances[i] = toCameraPosition(pointLights[i].position) - pointCamera.xyz;
@@ -233,19 +237,19 @@ void main(void) {
   coordinate = ${shaderWhen(
     feature.hasCoordinate,
     "coordinates",
-    "vec2(0.0, 0.0)"
+    "vec2(0.0, 0.0)",
   )};
 
   normal = normalize(normalMatrix * ${shaderWhen(
     feature.hasNormal,
     "normals",
-    "vec3(0.0, 0.0, 1.0)"
+    "vec3(0.0, 0.0, 1.0)",
   )});
 
   tangent = normalize(normalMatrix * ${shaderWhen(
     feature.hasTangent,
     "tangents",
-    "vec3(1.0, 0.0, 0.0)"
+    "vec3(1.0, 0.0, 0.0)",
   )});
 
   tint = ${shaderWhen(feature.hasTint, "tints", "vec4(1.0)")};
@@ -305,7 +309,7 @@ ${pbrEnvironment.declare({
   environment: directive.lightModelPhysicalIBL,
 })}
 ${pbrLight.declare({})}`,
-  ]
+  ],
 )}
 
 in vec3 bitangent;
@@ -329,11 +333,11 @@ vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 
       ForwardLightingLightModel.Phong,
       `
   ${phongLightType} phongLight = ${phongLightCast.invoke({
-        eye: "eyeDirection",
-        light: "light",
-        normal: "normal",
-        shininess: "material.shininess",
-      })};
+    eye: "eyeDirection",
+    light: "light",
+    normal: "normal",
+    shininess: "material.shininess",
+  })};
 
   return ${phongLightApply.invoke({
     lightCast: "phongLight",
@@ -351,7 +355,7 @@ vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 
     normal: "normal",
   })};
   `,
-    ]
+    ],
   )}
 }
 
@@ -374,17 +378,17 @@ void main(void) {
   })};
 
   ${materialType} material = ${materialSample.invoke({
-      coordinate: "coordinateParallax",
-      diffuseColor: "diffuseColor * tint",
-      diffuseMap: "diffuseMap",
-      specularColor: "specularColor",
-      specularMap: "specularMap",
-      metalnessMap: "metalnessMap",
-      metalnessStrength: "metalnessStrength",
-      roughnessMap: "roughnessMap",
-      roughnessStrength: "roughnessStrength",
-      shininess: "shininess",
-    })};
+    coordinate: "coordinateParallax",
+    diffuseColor: "diffuseColor * tint",
+    diffuseMap: "diffuseMap",
+    specularColor: "specularColor",
+    specularMap: "specularMap",
+    metalnessMap: "metalnessMap",
+    metalnessStrength: "metalnessStrength",
+    roughnessMap: "roughnessMap",
+    roughnessStrength: "roughnessStrength",
+    shininess: "shininess",
+  })};
 
   // Apply environment (ambient or influence-based) lighting
   vec3 color = ${shaderCase(
@@ -394,7 +398,7 @@ void main(void) {
       `material.diffuseColor.rgb * ambientLightColor * ${shaderWhen(
         directive.lightModelPhongAmbient,
         "1.0",
-        "0.0"
+        "0.0",
       )};`,
     ],
     [
@@ -409,9 +413,9 @@ void main(void) {
       })} * ambientLightColor * ${shaderWhen(
         directive.lightModelPhysicalAmbient,
         "1.0",
-        "0.0"
+        "0.0",
       )};`,
-    ]
+    ],
   )}
 
   // Apply components from directional lights
@@ -426,7 +430,7 @@ void main(void) {
   float shadowMapSample = texture(directionalLightShadowMaps[${i}], directionalLightShadows[${i}].xy).r;
   directionalLightApply = !directionalLights[${i}].castShadow || shadowMapSample >= directionalLightShadows[${i}].z;`,
     `
-  directionalLightApply = true;`
+  directionalLightApply = true;`,
   )}
 
   if (directionalLightApply) {
@@ -436,7 +440,7 @@ void main(void) {
     })};
 
     color += getLight(directionalLight, material, modifiedNormal, eyeDirection);
-  }`
+  }`,
   )}
 
   // Apply components from point lights
@@ -449,7 +453,7 @@ void main(void) {
     `
     pointLightApply = true;`, // FIXME: point light shadows not supported yet
     `
-    pointLightApply = true;`
+    pointLightApply = true;`,
   )}
 
   if (pointLightApply) {
@@ -459,7 +463,7 @@ void main(void) {
     })};
 
     color += getLight(pointLight, material, modifiedNormal, eyeDirection);
-  }`
+  }`,
   )}
 
   // Apply occlusion component
@@ -508,7 +512,7 @@ const createLightBinder = (
     | "noOcclusionMap"
     | "noRoughnessMap"
     | "noSpecularMap"
-  >
+  >,
 ): GlMeshBinder<LightScene> => {
   return (feature) => {
     const shader = runtime.createShader(createLightSource(directive, feature));
@@ -519,7 +523,7 @@ const createLightBinder = (
     if (feature.hasCoordinate) {
       polygonBinding.setAttribute(
         "coordinates",
-        ({ coordinate }) => coordinate
+        ({ coordinate }) => coordinate,
       );
     }
 
@@ -542,11 +546,11 @@ const createLightBinder = (
 
     matrixBinding.setUniform(
       "modelMatrix",
-      uniform.matrix4f(({ model }) => model)
+      uniform.matrix4f(({ model }) => model),
     );
     matrixBinding.setUniform(
       "normalMatrix",
-      uniform.matrix3f(({ normal }) => normal)
+      uniform.matrix3f(({ normal }) => normal),
     );
 
     // Bind scene uniforms
@@ -554,17 +558,17 @@ const createLightBinder = (
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      uniform.matrix4f(({ projection }) => projection)
+      uniform.matrix4f(({ projection }) => projection),
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      uniform.matrix4f(({ view }) => view)
+      uniform.matrix4f(({ view }) => view),
     );
 
     if (directive.hasShadow) {
       sceneBinding.setUniform(
         "shadowProjectionMatrix",
-        uniform.matrix4f(({ projectionShadow }) => projectionShadow)
+        uniform.matrix4f(({ projectionShadow }) => projectionShadow),
       );
     }
 
@@ -573,30 +577,30 @@ const createLightBinder = (
 
     materialBinding.setUniform(
       "diffuseColor",
-      uniform.vector4f(({ diffuseColor }) => diffuseColor)
+      uniform.vector4f(({ diffuseColor }) => diffuseColor),
     );
     materialBinding.setUniform(
       "diffuseMap",
       !configuration.noDiffuseMap
         ? uniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
-        : uniform.tex2dWhite(() => undefined)
+        : uniform.tex2dWhite(() => undefined),
     );
 
     switch (directive.lightModel) {
       case ForwardLightingLightModel.Phong:
         materialBinding.setUniform(
           "shininess",
-          uniform.number(({ shininess }) => shininess)
+          uniform.number(({ shininess }) => shininess),
         );
         materialBinding.setUniform(
           "specularColor",
-          uniform.vector4f(({ specularColor }) => specularColor)
+          uniform.vector4f(({ specularColor }) => specularColor),
         );
         materialBinding.setUniform(
           "specularMap",
           !configuration.noSpecularMap
             ? uniform.tex2dWhite(({ diffuseMap: d, specularMap: s }) => s ?? d)
-            : uniform.tex2dWhite(() => undefined)
+            : uniform.tex2dWhite(() => undefined),
         );
 
         break;
@@ -605,15 +609,17 @@ const createLightBinder = (
         if (directive.lightModelPhysicalIBL) {
           sceneBinding.setUniform(
             "environmentBrdfMap",
-            uniform.tex2dBlack(({ environmentLight }) => environmentLight?.brdf)
+            uniform.tex2dBlack(
+              ({ environmentLight }) => environmentLight?.brdf,
+            ),
           );
           sceneBinding.setUniform(
             "environmentDiffuseMap",
-            uniform.tex3d(({ environmentLight }) => environmentLight?.diffuse)
+            uniform.tex3d(({ environmentLight }) => environmentLight?.diffuse),
           );
           sceneBinding.setUniform(
             "environmentSpecularMap",
-            uniform.tex3d(({ environmentLight }) => environmentLight?.specular)
+            uniform.tex3d(({ environmentLight }) => environmentLight?.specular),
           );
         }
 
@@ -621,21 +627,21 @@ const createLightBinder = (
           "metalnessMap",
           !configuration.noMetalnessMap
             ? uniform.tex2dBlack(({ metalnessMap }) => metalnessMap)
-            : uniform.tex2dBlack(() => undefined)
+            : uniform.tex2dBlack(() => undefined),
         );
         materialBinding.setUniform(
           "roughnessMap",
           !configuration.noRoughnessMap
             ? uniform.tex2dBlack(({ roughnessMap }) => roughnessMap)
-            : uniform.tex2dBlack(() => undefined)
+            : uniform.tex2dBlack(() => undefined),
         );
         materialBinding.setUniform(
           "metalnessStrength",
-          uniform.number(({ metalnessStrength }) => metalnessStrength)
+          uniform.number(({ metalnessStrength }) => metalnessStrength),
         );
         materialBinding.setUniform(
           "roughnessStrength",
-          uniform.number(({ roughnessStrength }) => roughnessStrength)
+          uniform.number(({ roughnessStrength }) => roughnessStrength),
         );
 
         break;
@@ -645,41 +651,41 @@ const createLightBinder = (
       "emissiveMap",
       !configuration.noEmissiveMap
         ? uniform.tex2dBlack(({ emissiveMap }) => emissiveMap)
-        : uniform.tex2dBlack(() => undefined)
+        : uniform.tex2dBlack(() => undefined),
     );
     materialBinding.setUniform(
       "emissiveColor",
-      uniform.vector4f(({ emissiveColor }) => emissiveColor)
+      uniform.vector4f(({ emissiveColor }) => emissiveColor),
     );
     materialBinding.setUniform(
       "heightMap",
       !configuration.noHeightMap
         ? uniform.tex2dBlack(({ heightMap }) => heightMap)
-        : uniform.tex2dBlack(() => undefined)
+        : uniform.tex2dBlack(() => undefined),
     );
     materialBinding.setUniform(
       "heightParallaxBias",
-      uniform.number(({ heightParallaxBias }) => heightParallaxBias)
+      uniform.number(({ heightParallaxBias }) => heightParallaxBias),
     );
     materialBinding.setUniform(
       "heightParallaxScale",
-      uniform.number(({ heightParallaxScale }) => heightParallaxScale)
+      uniform.number(({ heightParallaxScale }) => heightParallaxScale),
     );
     materialBinding.setUniform(
       "normalMap",
       !configuration.noNormalMap
         ? uniform.tex2dNormal(({ normalMap }) => normalMap)
-        : uniform.tex2dNormal(() => undefined)
+        : uniform.tex2dNormal(() => undefined),
     );
     materialBinding.setUniform(
       "occlusionMap",
       !configuration.noOcclusionMap
         ? uniform.tex2dBlack(({ occlusionMap }) => occlusionMap)
-        : uniform.tex2dBlack(() => undefined)
+        : uniform.tex2dBlack(() => undefined),
     );
     materialBinding.setUniform(
       "occlusionStrength",
-      uniform.number(({ occlusionStrength }) => occlusionStrength)
+      uniform.number(({ occlusionStrength }) => occlusionStrength),
     );
 
     // Bind light uniforms
@@ -689,7 +695,7 @@ const createLightBinder = (
 
     sceneBinding.setUniform(
       "ambientLightColor",
-      uniform.vector3f(({ ambientLightColor }) => ambientLightColor)
+      uniform.vector3f(({ ambientLightColor }) => ambientLightColor),
     );
 
     for (let i = 0; i < directive.maxDirectionalLights; ++i) {
@@ -701,24 +707,24 @@ const createLightBinder = (
           uniform.boolean(
             ({ directionalShadowLights }) =>
               index < directionalShadowLights.length &&
-              directionalShadowLights[index].shadow
-          )
+              directionalShadowLights[index].shadow,
+          ),
         );
         sceneBinding.setUniform(
           `directionalLights[${index}].shadowViewMatrix`,
           uniform.matrix4f(({ directionalShadowLights }) =>
             index < directionalShadowLights.length
               ? directionalShadowLights[index].shadowView
-              : Matrix4.identity
-          )
+              : Matrix4.identity,
+          ),
         );
         sceneBinding.setUniform(
           `directionalLightShadowMaps[${index}]`,
           uniform.tex2dBlack(({ directionalShadowLights }) =>
             index < directionalShadowLights.length
               ? directionalShadowLights[index].shadowMap
-              : undefined
-          )
+              : undefined,
+          ),
         );
       }
 
@@ -727,16 +733,16 @@ const createLightBinder = (
         uniform.vector3f(({ directionalShadowLights }) =>
           index < directionalShadowLights.length
             ? directionalShadowLights[index].color
-            : defaultColor
-        )
+            : defaultColor,
+        ),
       );
       sceneBinding.setUniform(
         `directionalLights[${i}].direction`,
         uniform.vector3f(({ directionalShadowLights }) =>
           index < directionalShadowLights.length
             ? directionalShadowLights[index].direction
-            : defaultDirection
-        )
+            : defaultDirection,
+        ),
       );
     }
 
@@ -748,22 +754,24 @@ const createLightBinder = (
         uniform.vector3f(({ pointShadowLights }) =>
           index < pointShadowLights.length
             ? pointShadowLights[index].color
-            : defaultColor
-        )
+            : defaultColor,
+        ),
       );
       sceneBinding.setUniform(
         `pointLights[${i}].position`,
         uniform.vector3f(({ pointShadowLights }) =>
           index < pointShadowLights.length
             ? pointShadowLights[index].position
-            : defaultPosition
-        )
+            : defaultPosition,
+        ),
       );
       sceneBinding.setUniform(
         `pointLights[${i}].radius`,
         uniform.number(({ pointShadowLights }) =>
-          index < pointShadowLights.length ? pointShadowLights[index].radius : 0
-        )
+          index < pointShadowLights.length
+            ? pointShadowLights[index].radius
+            : 0,
+        ),
       );
     }
 
@@ -778,7 +786,7 @@ const createLightBinder = (
 };
 
 const createDirectionalShadowBinder = (
-  runtime: GlRuntime
+  runtime: GlRuntime,
 ): GlMeshBinder<ShadowScene> => {
   return () => {
     const shader = runtime.createShader(createShadowDirectionalSource());
@@ -791,18 +799,18 @@ const createDirectionalShadowBinder = (
 
     matrixBinding.setUniform(
       "modelMatrix",
-      uniform.matrix4f(({ model }) => model)
+      uniform.matrix4f(({ model }) => model),
     );
 
     const sceneBinding = shader.declare<ShadowScene>();
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      uniform.matrix4f(({ projection }) => projection)
+      uniform.matrix4f(({ projection }) => projection),
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      uniform.matrix4f(({ view }) => view)
+      uniform.matrix4f(({ view }) => view),
     );
 
     const materialBinding = shader.declare<GlMaterial>();
@@ -819,10 +827,10 @@ const createDirectionalShadowBinder = (
 
 const createForwardLightingRenderer = (
   runtime: GlRuntime,
-  configuration: ForwardLightingConfiguration
+  configuration: ForwardLightingConfiguration,
 ): ForwardLightingRenderer => {
   const gl = runtime.context;
-  const targetSize = { x: 1024, y: 1024 };
+  const shadowSize = { x: 1024, y: 1024 };
 
   const directive: Directive = {
     hasShadow: !configuration.noShadow,
@@ -837,30 +845,41 @@ const createForwardLightingRenderer = (
     maxPointLights: configuration.maxPointLights ?? 4,
   };
 
-  const directionalShadowTargets = range(directive.maxDirectionalLights).map(
+  const shadowDirectionalTargets = range(directive.maxDirectionalLights).map(
     () => {
       const target = createFramebufferTarget(gl);
 
-      target.setSize(targetSize);
+      target.setSize(shadowSize);
 
       return target;
-    }
+    },
   );
+  const shadowDirectionalBuffers = shadowDirectionalTargets.map((target) =>
+    target.setDepthTexture({ format: GlFormat.Depth16, map: GlMap.Quad }),
+  );
+  const shadowPointTargets = range(directive.maxPointLights).map(() => {
+    const target = createFramebufferTarget(gl);
+
+    target.setSize(shadowSize);
+
+    return target;
+  });
+  const shadowPointBuffers = shadowPointTargets.map((target) =>
+    target.setDepthTexture({ format: GlFormat.Depth16, map: GlMap.Cube }),
+  );
+
   const lightBinder = createLightBinder(runtime, directive, configuration);
   const lightRenderer = createGlMeshRenderer(
     GlPencil.Triangle,
     lightBinder,
-    {}
+    {},
   );
 
-  const directionalShadowBuffers = directionalShadowTargets.map((target) =>
-    target.setDepthTexture({ format: GlFormat.Depth16, map: GlMap.Quad })
-  );
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
   const directionalShadowRenderer = createGlMeshRenderer(
     GlPencil.Triangle,
     directionalShadowBinder,
-    {}
+    {},
   );
   const directionalShadowProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -873,9 +892,17 @@ const createForwardLightingRenderer = (
   ]);
   const shadowDirection = Vector3.fromZero();
 
+  const pointShadowProjection = Matrix4.fromIdentity([
+    "setFromPerspective",
+    Math.PI / 4,
+    shadowSize.x / shadowSize.y,
+    1,
+    25,
+  ]);
+
   return {
     // FIXME: debug
-    directionalShadowBuffers,
+    directionalShadowBuffers: shadowDirectionalBuffers,
 
     release: () => {
       directionalShadowRenderer.release();
@@ -917,12 +944,12 @@ const createForwardLightingRenderer = (
       gl.depthMask(true);
 
       // Create shadow maps for directional lights
-      const directionalShadowLights = [];
+      const shadowDirectionalLights: ShadowDirectionalLight[] = [];
 
       if (directionalLights !== undefined) {
         const nbDirectionalLights = Math.min(
           directionalLights.length,
-          directive.maxDirectionalLights
+          directive.maxDirectionalLights,
         );
 
         for (let i = 0; i < nbDirectionalLights; ++i) {
@@ -931,7 +958,7 @@ const createForwardLightingRenderer = (
           shadowDirection.setFromXYZ(
             -light.direction.x,
             -light.direction.y,
-            -light.direction.z
+            -light.direction.z,
           );
 
           const directionalShadowView = Matrix4.fromSource(
@@ -944,10 +971,10 @@ const createForwardLightingRenderer = (
                 shadowDirection,
                 { x: 0, y: 1, z: 0 },
               ]),
-            ]
+            ],
           );
 
-          const directionalShadowTarget = directionalShadowTargets[i];
+          const directionalShadowTarget = shadowDirectionalTargets[i];
 
           directionalShadowTarget.clear();
 
@@ -956,11 +983,57 @@ const createForwardLightingRenderer = (
             view: directionalShadowView,
           });
 
-          directionalShadowLights.push({
+          shadowDirectionalLights.push({
             color: light.color,
             direction: light.direction,
             shadow: light.shadow,
-            shadowMap: directionalShadowBuffers[i],
+            shadowMap: shadowDirectionalBuffers[i],
+            shadowView: directionalShadowView,
+          });
+        }
+      }
+
+      // Create shadow maps for point lights
+      // From: https://webgl2fundamentals.org/webgl/lessons/webgl-shadows.html
+      const shadowPointLights: ShadowPointLight[] = [];
+
+      if (pointLights !== undefined) {
+        const nbPointLights = Math.min(
+          pointLights.length,
+          directive.maxPointLights,
+        );
+
+        for (let i = 0; i < nbPointLights; ++i) {
+          const light = pointLights[i];
+
+          const parameters = [
+            { shift: { x: 1, y: 0, z: 0 }, target: { x: 0, y: -1, z: 0 } },
+            { shift: { x: -1, y: 0, z: 0 }, target: { x: 0, y: -1, z: 0 } },
+            { shift: { x: 0, y: 1, z: 0 }, target: { x: 0, y: 0, z: 1 } },
+            { shift: { x: 0, y: -1, z: 0 }, target: { x: 0, y: 0, z: -1 } },
+            { shift: { x: 0, y: 0, z: 1 }, target: { x: 1, y: 0, z: 0 } },
+            { shift: { x: 0, y: 0, z: -1 }, target: { x: -1, y: 0, z: 0 } },
+          ];
+
+          const shadowLightViews = parameters.map(({ shift, target }) =>
+            Matrix4.fromIdentity(["setFromDirection", shift, target]),
+          );
+
+          const shadowPointTarget = shadowPointTargets[i];
+
+          shadowPointTarget.clear();
+
+          shadowPointRenderer.render(shadowPointTarget, {
+            projection: pointShadowProjection,
+            views: shadowLightViews,
+          });
+
+          shadowPointLights.push({
+            color: light.color,
+            position: light.position,
+            radius: light.radius,
+            shadow: light.shadow,
+            shadowMap: shadowPointBuffers[i],
             shadowView: directionalShadowView,
           });
         }
@@ -972,9 +1045,9 @@ const createForwardLightingRenderer = (
 
       lightRenderer.render(target, {
         ambientLightColor: ambientLightColor ?? Vector3.zero,
-        directionalShadowLights,
+        directionalShadowLights: shadowDirectionalLights,
         environmentLight,
-        pointShadowLights: pointLights ?? [],
+        pointShadowLights: shadowPointLights,
         projection,
         projectionShadow: directionalShadowProjection,
         view,
