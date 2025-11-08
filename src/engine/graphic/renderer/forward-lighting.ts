@@ -117,6 +117,10 @@ type LightScene = GlMeshScene & {
   projectionShadow: Matrix4;
 };
 
+type ShadowPointLight = PointLight & {
+  FIXME: boolean;
+};
+
 type ShadowScene = GlMeshScene & {
   projection: Matrix4;
 };
@@ -822,7 +826,7 @@ const createForwardLightingRenderer = (
   configuration: ForwardLightingConfiguration
 ): ForwardLightingRenderer => {
   const gl = runtime.context;
-  const targetSize = { x: 1024, y: 1024 };
+  const shadowSize = { x: 1024, y: 1024 };
 
   const directive: Directive = {
     hasShadow: !configuration.noShadow,
@@ -837,15 +841,29 @@ const createForwardLightingRenderer = (
     maxPointLights: configuration.maxPointLights ?? 4,
   };
 
-  const directionalShadowTargets = range(directive.maxDirectionalLights).map(
+  const shadowDirectionalTargets = range(directive.maxDirectionalLights).map(
     () => {
       const target = createFramebufferTarget(gl);
 
-      target.setSize(targetSize);
+      target.setSize(shadowSize);
 
       return target;
     }
   );
+  const shadowDirectionalBuffers = shadowDirectionalTargets.map((target) =>
+    target.setDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
+  );
+  const shadowPointTargets = range(directive.maxPointLights).map(() => {
+    const target = createFramebufferTarget(gl);
+
+    target.setSize(shadowSize);
+
+    return target;
+  });
+  const shadowPointBuffers = shadowPointTargets.map((target) =>
+    target.setDepthTexture(GlTextureFormat.Depth16, GlTextureType.Cube)
+  );
+
   const lightBinder = createLightBinder(runtime, directive, configuration);
   const lightRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
@@ -853,9 +871,6 @@ const createForwardLightingRenderer = (
     {}
   );
 
-  const directionalShadowBuffers = directionalShadowTargets.map((target) =>
-    target.setDepthTexture(GlTextureFormat.Depth16, GlTextureType.Quad)
-  );
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
   const directionalShadowRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
@@ -873,9 +888,17 @@ const createForwardLightingRenderer = (
   ]);
   const shadowDirection = Vector3.fromZero();
 
+  const pointShadowProjection = Matrix4.fromIdentity([
+    "setFromPerspective",
+    Math.PI / 4,
+    shadowSize.x / shadowSize.y,
+    1,
+    25,
+  ]);
+
   return {
     // FIXME: debug
-    directionalShadowBuffers,
+    directionalShadowBuffers: shadowDirectionalBuffers,
 
     release: () => {
       directionalShadowRenderer.release();
@@ -886,7 +909,9 @@ const createForwardLightingRenderer = (
       const { mesh, noShadow } = subject;
 
       const shadowResource =
-        noShadow !== true ? directionalShadowRenderer.addSubject(mesh) : undefined;
+        noShadow !== true
+          ? directionalShadowRenderer.addSubject(mesh)
+          : undefined;
       const lightResource = lightRenderer.addSubject(mesh);
 
       return () => {
@@ -915,7 +940,7 @@ const createForwardLightingRenderer = (
       gl.depthMask(true);
 
       // Create shadow maps for directional lights
-      const directionalShadowLights = [];
+      const shadowDirectionalLights: ShadowDirectionalLight[] = [];
 
       if (directionalLights !== undefined) {
         const nbDirectionalLights = Math.min(
@@ -945,7 +970,7 @@ const createForwardLightingRenderer = (
             ]
           );
 
-          const directionalShadowTarget = directionalShadowTargets[i];
+          const directionalShadowTarget = shadowDirectionalTargets[i];
 
           directionalShadowTarget.clear();
 
@@ -954,11 +979,57 @@ const createForwardLightingRenderer = (
             view: directionalShadowView,
           });
 
-          directionalShadowLights.push({
+          shadowDirectionalLights.push({
             color: light.color,
             direction: light.direction,
             shadow: light.shadow,
-            shadowMap: directionalShadowBuffers[i],
+            shadowMap: shadowDirectionalBuffers[i],
+            shadowView: directionalShadowView,
+          });
+        }
+      }
+
+      // Create shadow maps for point lights
+      // From: https://webgl2fundamentals.org/webgl/lessons/webgl-shadows.html
+      const shadowPointLights: ShadowPointLight[] = [];
+
+      if (pointLights !== undefined) {
+        const nbPointLights = Math.min(
+          pointLights.length,
+          directive.maxPointLights
+        );
+
+        for (let i = 0; i < nbPointLights; ++i) {
+          const light = pointLights[i];
+
+          const parameters = [
+            { shift: { x: 1, y: 0, z: 0 }, target: { x: 0, y: -1, z: 0 } },
+            { shift: { x: -1, y: 0, z: 0 }, target: { x: 0, y: -1, z: 0 } },
+            { shift: { x: 0, y: 1, z: 0 }, target: { x: 0, y: 0, z: 1 } },
+            { shift: { x: 0, y: -1, z: 0 }, target: { x: 0, y: 0, z: -1 } },
+            { shift: { x: 0, y: 0, z: 1 }, target: { x: 1, y: 0, z: 0 } },
+            { shift: { x: 0, y: 0, z: -1 }, target: { x: -1, y: 0, z: 0 } },
+          ];
+
+          const shadowLightViews = parameters.map(({ shift, target }) =>
+            Matrix4.fromIdentity(["setFromDirection", shift, target])
+          );
+
+          const shadowPointTarget = shadowPointTargets[i];
+
+          shadowPointTarget.clear();
+
+          shadowPointRenderer.render(shadowPointTarget, {
+            projection: pointShadowProjection,
+            views: shadowLightViews,
+          });
+
+          shadowPointLights.push({
+            color: light.color,
+            position: light.position,
+            radius: light.radius,
+            shadow: light.shadow,
+            shadowMap: shadowPointBuffers[i],
             shadowView: directionalShadowView,
           });
         }
@@ -970,9 +1041,9 @@ const createForwardLightingRenderer = (
 
       lightRenderer.render(target, {
         ambientLightColor: ambientLightColor ?? Vector3.zero,
-        directionalShadowLights,
+        directionalShadowLights: shadowDirectionalLights,
         environmentLight,
-        pointShadowLights: pointLights ?? [],
+        pointShadowLights: shadowPointLights,
         projection,
         projectionShadow: directionalShadowProjection,
         view,

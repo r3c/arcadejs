@@ -11,6 +11,7 @@ type PointLight = {
   color: Vector3;
   position: Vector3;
   radius: number;
+  shadow: boolean;
 };
 
 const directionalLightType = "DirectionalLight";
