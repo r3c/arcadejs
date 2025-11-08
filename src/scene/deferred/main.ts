@@ -264,6 +264,8 @@ const createApplication = async (
           break;
       }
 
+      newRenderer.setSize(screen.getSize());
+
       // Register cube subjects
       for (const i of range(16)) {
         const cube = createDynamicMesh(models.cube.mesh);

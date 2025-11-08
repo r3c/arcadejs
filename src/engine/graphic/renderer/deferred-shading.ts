@@ -783,20 +783,6 @@ const createDeferredShadingRenderer = (
   const gl = runtime.context;
   const geometryTarget = createFramebufferTarget(gl);
   const sceneTarget = createFramebufferTarget(gl);
-
-  // FIXME: framebuffer target attachements (renderbuffer or texture) get their
-  // size initialized at creation and are not affected by further `setSize`
-  // calls on their parent target. Until this is fixed, we need to pre-assign a
-  // valid size here to avoid following `set{Color,Depth}*` calls to fail.
-  geometryTarget.setSize({
-    x: gl.drawingBufferWidth,
-    y: gl.drawingBufferHeight,
-  });
-  sceneTarget.setSize({
-    x: gl.drawingBufferWidth,
-    y: gl.drawingBufferHeight,
-  });
-
   const diffuseAndShininessBuffer = geometryTarget.setColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
