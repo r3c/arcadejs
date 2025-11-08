@@ -197,7 +197,7 @@ const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
   const subjects = new Map<Symbol, WireSubject>();
 
   return {
-    append(subject) {
+    addSubject(subject) {
       const symbol = Symbol();
 
       subjects.set(symbol, subject);
@@ -218,7 +218,7 @@ const createWireRenderer = (runtime: GlRuntime): WireRenderer => {
       }
     },
 
-    resize() {},
+    setSize() {},
   };
 };
 

@@ -870,11 +870,11 @@ const createDeferredLightingRenderer = (
       materialRenderer.release();
     },
 
-    append(subject) {
+    addSubject(subject) {
       const { mesh } = subject;
 
-      const geometryResource = geometryRenderer.append(mesh);
-      const materialResource = materialRenderer.append(mesh);
+      const geometryResource = geometryRenderer.addSubject(mesh);
+      const materialResource = materialRenderer.addSubject(mesh);
 
       return () => {
         geometryResource();
@@ -987,7 +987,7 @@ const createDeferredLightingRenderer = (
       });
     },
 
-    resize(size: Vector2) {
+    setSize(size: Vector2) {
       geometryTarget.setSize(size);
       lightTarget.setSize(size);
     },

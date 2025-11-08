@@ -882,12 +882,12 @@ const createForwardLightingRenderer = (
       lightRenderer.release();
     },
 
-    append: (subject) => {
+    addSubject: (subject) => {
       const { mesh, noShadow } = subject;
 
       const shadowResource =
-        noShadow !== true ? directionalShadowRenderer.append(mesh) : undefined;
-      const lightResource = lightRenderer.append(mesh);
+        noShadow !== true ? directionalShadowRenderer.addSubject(mesh) : undefined;
+      const lightResource = lightRenderer.addSubject(mesh);
 
       return () => {
         shadowResource?.();
@@ -979,7 +979,7 @@ const createForwardLightingRenderer = (
       });
     },
 
-    resize: () => {},
+    setSize: () => {},
   };
 };
 

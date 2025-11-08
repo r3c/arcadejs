@@ -17,7 +17,7 @@ const createApplication = async (
   };
 
   return {
-    async change() {},
+    async setConfiguration() {},
 
     release() {},
 
@@ -25,7 +25,7 @@ const createApplication = async (
       renderer.render(context, scene);
     },
 
-    resize() {},
+    setSize() {},
     update() {},
   };
 };

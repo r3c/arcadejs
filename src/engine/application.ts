@@ -4,9 +4,9 @@ import { Vector2 } from "./math/vector";
 import { createGamepad, Gamepad } from "./io/gamepad";
 
 type Application<TConfiguration> = Releasable & {
-  change: (configuration: TConfiguration) => Promise<void>;
   render: () => void;
-  resize: (size: Vector2) => void;
+  setConfiguration: (configuration: TConfiguration) => Promise<void>;
+  setSize: (size: Vector2) => void;
   update: (dt: number) => void;
 };
 
@@ -181,12 +181,15 @@ const declare = <TContext, TConfiguration>(
       const screen = screenConstructor(canvas);
       const gamepad = createGamepad(canvas);
       const application = await createApplication(screen, gamepad);
-      const configuration = configure(configurator, application.change);
+      const configuration = configure(
+        configurator,
+        application.setConfiguration
+      );
 
-      await application.change(configuration);
+      await application.setConfiguration(configuration);
 
-      screen.onResize(application.resize);
-      screen.resize();
+      screen.onResize(application.setSize);
+      screen.setSize();
 
       runtime = { application, configuration, handle: undefined, screen };
     },
@@ -197,7 +200,7 @@ const declare = <TContext, TConfiguration>(
 
       const { application, screen } = runtime;
 
-      screen.resize();
+      screen.setSize();
       application.update(dt);
 
       runtime.handle = requestAnimationFrame(application.render);

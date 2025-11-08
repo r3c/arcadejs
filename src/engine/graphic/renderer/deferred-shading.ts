@@ -808,7 +808,7 @@ const createDeferredShadingRenderer = (
     ambientLightBinder,
     {}
   );
-  ambientLightRenderer.append(ambientLightQuad.mesh);
+  ambientLightRenderer.addSubject(ambientLightQuad.mesh);
   const depthBuffer = geometryTarget.setDepthTexture(
     GlTextureFormat.Depth16,
     GlTextureType.Quad
@@ -856,10 +856,10 @@ const createDeferredShadingRenderer = (
       ambientLightQuad.release();
     },
 
-    append(subject) {
+    addSubject(subject) {
       const { mesh } = subject;
 
-      return geometryRenderer.append(mesh);
+      return geometryRenderer.addSubject(mesh);
     },
 
     render(target, scene) {
@@ -973,7 +973,7 @@ const createDeferredShadingRenderer = (
       });
     },
 
-    resize(size: Vector2) {
+    setSize(size: Vector2) {
       geometryTarget.setSize(size);
       sceneTarget.setSize(size);
     },

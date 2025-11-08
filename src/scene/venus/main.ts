@@ -312,7 +312,7 @@ const createApplication = async (
   const ship = createDynamicMesh(shipModel.mesh);
   const shipTransform = ship.transform;
 
-  sceneRenderer.append({ mesh: ship.mesh });
+  sceneRenderer.addSubject({ mesh: ship.mesh });
 
   // Lights
   const lights = range(2).map((i) => ({
@@ -324,7 +324,7 @@ const createApplication = async (
   const lightTransforms = lights.map(() => {
     const { mesh, transform } = createDynamicMesh(lightModel.mesh);
 
-    sceneRenderer.append({ mesh, noShadow: true });
+    sceneRenderer.addSubject({ mesh, noShadow: true });
 
     return transform;
   });
@@ -352,7 +352,7 @@ const createApplication = async (
   const starTransforms = stars.map(({ variant }) => {
     const { mesh, transform } = createDynamicMesh(starModels[variant].mesh);
 
-    sceneRenderer.append({ mesh });
+    sceneRenderer.addSubject({ mesh });
 
     return transform;
   });
@@ -379,7 +379,7 @@ const createApplication = async (
   ];
 
   return {
-    async change() {},
+    async setConfiguration() {},
 
     release() {
       for (const starModel of starModels) {
@@ -413,9 +413,9 @@ const createApplication = async (
       particleEmitter.render(target, scene);
     },
 
-    resize(size) {
+    setSize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
-      sceneRenderer.resize(size);
+      sceneRenderer.setSize(size);
       target.setSize(size);
     },
 

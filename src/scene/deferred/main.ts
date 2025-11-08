@@ -195,7 +195,7 @@ const createApplication = async (
   let time = 0;
 
   return {
-    async change(configuration) {
+    async setConfiguration(configuration) {
       encodingPainter?.release();
       sceneRenderer?.release();
 
@@ -268,7 +268,7 @@ const createApplication = async (
       for (const i of range(16)) {
         const cube = createDynamicMesh(models.cube.mesh);
 
-        newRenderer.append({ mesh: cube.mesh });
+        newRenderer.addSubject({ mesh: cube.mesh });
 
         cube.transform.translate({
           x: ((i % 4) - 1.5) * 2,
@@ -280,7 +280,7 @@ const createApplication = async (
       // Register ground subject
       const ground = createDynamicMesh(models.ground.mesh);
 
-      newRenderer.append({ mesh: ground.mesh });
+      newRenderer.addSubject({ mesh: ground.mesh });
 
       ground.transform.translate({ x: 0, y: -1.5, z: 0 });
 
@@ -303,7 +303,7 @@ const createApplication = async (
           models.directionalLight.mesh
         );
 
-        newRenderer.append({ mesh });
+        newRenderer.addSubject({ mesh });
 
         return transform;
       });
@@ -311,7 +311,7 @@ const createApplication = async (
       pointLightTransforms = range(pointLights.length).map(() => {
         const { mesh, transform } = createDynamicMesh(models.pointLight.mesh);
 
-        newRenderer.append({ mesh });
+        newRenderer.addSubject({ mesh });
 
         return transform;
       });
@@ -352,9 +352,9 @@ const createApplication = async (
       }
     },
 
-    resize(size) {
+    setSize(size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      sceneRenderer?.resize(size);
+      sceneRenderer?.setSize(size);
       target.setSize(size);
     },
 
