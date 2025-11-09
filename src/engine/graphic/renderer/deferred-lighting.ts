@@ -834,13 +834,13 @@ const createDeferredLightingRenderer = (
   const pointLightBinding = loadPointLightBinding(runtime, configuration);
   const depthBuffer = geometryTarget.setDepthTexture({
     format: GlFormat.Depth16,
-    type: GlMap.Quad,
+    map: GlMap.Quad,
   });
   const [normalAndGlossBuffer] = geometryTarget.setColorTextures([
-    { format: GlFormat.RGBA8, type: GlMap.Quad },
+    { format: GlFormat.RGBA8, map: GlMap.Quad },
   ]);
   const [lightBuffer] = lightTarget.setColorTextures([
-    { format: GlFormat.RGBA8, type: GlMap.Quad },
+    { format: GlFormat.RGBA8, map: GlMap.Quad },
   ]);
 
   return {

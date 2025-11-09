@@ -25,7 +25,7 @@ const enum GlAttachementTarget {
 
 type GlAttachmentTexture = {
   format: GlFormat;
-  type: GlMap;
+  map: GlMap;
 };
 
 const enum GlPencil {
@@ -311,14 +311,14 @@ const attachTextures = (
 
   let attachmentIndex = 0;
 
-  for (const { format, type } of attachmentTextures) {
+  for (const { format, map } of attachmentTextures) {
     const attachmentTarget = getAttachment(target, attachmentIndex++);
-    const texture = createTexture(gl, type, size, format, filter, undefined);
+    const texture = createTexture(gl, map, size, format, filter, undefined);
 
     // Generate texture targets
     let textureTargets: number[];
 
-    switch (type) {
+    switch (map) {
       case GlMap.Cube:
         textureTargets = range(6).map(
           (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i
@@ -332,7 +332,7 @@ const attachTextures = (
         break;
 
       default:
-        throw Error(`invalid texture type ${type}`);
+        throw Error(`invalid map ${map}`);
     }
 
     // Bind attachment to framebuffer
