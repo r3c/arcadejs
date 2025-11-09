@@ -138,7 +138,7 @@ const createTexture = (
     throw Error("could not create texture");
   }
 
-  const resize = (size: Vector2): void => {
+  const setSize = (size: Vector2): void => {
     gl.bindTexture(target, handle);
 
     // Define texture format, filtering & wrapping parameters
@@ -184,11 +184,11 @@ const createTexture = (
     gl.bindTexture(target, null);
   };
 
-  resize(size);
+  setSize(size);
 
   return {
     release: () => gl.deleteTexture(handle),
-    setSize: resize,
+    setSize,
     handle,
   };
 };

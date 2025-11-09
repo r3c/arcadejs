@@ -804,10 +804,6 @@ const createDeferredLightingRenderer = (
   const gl = runtime.context;
   const geometryTarget = createFramebufferTarget(gl);
   const lightTarget = createFramebufferTarget(gl);
-  const depthBuffer = geometryTarget.setDepthTexture(
-    GlTextureFormat.Depth16,
-    GlTextureType.Quad
-  );
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightBinding = loadDirectionalLightBinding(
     runtime,
@@ -828,10 +824,6 @@ const createDeferredLightingRenderer = (
     geometryBinder,
     {}
   );
-  const lightBuffer = lightTarget.setColorTexture(
-    GlTextureFormat.RGBA8,
-    GlTextureType.Quad
-  );
   const materialBinder = createMaterialBinder(runtime, configuration);
   const materialRenderer = createGlMeshRenderer(
     GlMeshRendererMode.Triangle,
@@ -840,10 +832,16 @@ const createDeferredLightingRenderer = (
   );
   const pointLightBillboard = createPointLightBillboard(gl);
   const pointLightBinding = loadPointLightBinding(runtime, configuration);
-  const normalAndGlossBuffer = geometryTarget.setColorTexture(
-    GlTextureFormat.RGBA8,
-    GlTextureType.Quad
-  );
+  const depthBuffer = geometryTarget.setDepthTexture({
+    format: GlTextureFormat.Depth16,
+    type: GlTextureType.Quad,
+  });
+  const [normalAndGlossBuffer] = geometryTarget.setColorTextures([
+    { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+  ]);
+  const [lightBuffer] = lightTarget.setColorTextures([
+    { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+  ]);
 
   return {
     depthBuffer,
