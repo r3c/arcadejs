@@ -9,6 +9,16 @@ type GlEncoding = {
   type: number;
 };
 
+const enum GlFormat {
+  Depth16,
+  RGBA8,
+}
+
+const enum GlMap {
+  Quad,
+  Cube,
+}
+
 type GlRenderbuffer = Releasable & {
   handle: WebGLRenderbuffer;
   setSize: (size: Vector2) => void;
@@ -19,19 +29,9 @@ type GlTexture = Releasable & {
   setSize: (size: Vector2) => void;
 };
 
-const enum GlTextureFormat {
-  Depth16,
-  RGBA8,
-}
-
-const enum GlTextureType {
-  Quad,
-  Cube,
-}
-
-const encodings = new Map<GlTextureFormat, GlEncoding>([
+const encodings = new Map<GlFormat, GlEncoding>([
   [
-    GlTextureFormat.Depth16,
+    GlFormat.Depth16,
     {
       layout: WebGL2RenderingContext["DEPTH_COMPONENT"],
       storage: WebGL2RenderingContext["DEPTH_COMPONENT16"],
@@ -39,7 +39,7 @@ const encodings = new Map<GlTextureFormat, GlEncoding>([
     },
   ],
   [
-    GlTextureFormat.RGBA8,
+    GlFormat.RGBA8,
     {
       layout: WebGL2RenderingContext["RGBA"],
       storage: WebGL2RenderingContext["RGBA8"],
@@ -49,8 +49,8 @@ const encodings = new Map<GlTextureFormat, GlEncoding>([
 ]);
 
 const targets = new Map([
-  [GlTextureType.Cube, WebGL2RenderingContext["TEXTURE_CUBE_MAP"]],
-  [GlTextureType.Quad, WebGL2RenderingContext["TEXTURE_2D"]],
+  [GlMap.Cube, WebGL2RenderingContext["TEXTURE_CUBE_MAP"]],
+  [GlMap.Quad, WebGL2RenderingContext["TEXTURE_2D"]],
 ]);
 
 const wraps = new Map([
@@ -62,7 +62,7 @@ const wraps = new Map([
 const createRenderbuffer = (
   gl: GlContext,
   size: Vector2,
-  format: GlTextureFormat,
+  format: GlFormat,
   samples: number
 ): GlRenderbuffer => {
   const encoding = encodings.get(format);
@@ -108,9 +108,9 @@ const createRenderbuffer = (
 
 const createTexture = (
   gl: GlContext,
-  type: GlTextureType,
+  type: GlMap,
   size: Vector2,
-  format: GlTextureFormat,
+  format: GlFormat,
   sampler: TextureSampler,
   image: ImageData | ImageData[] | undefined
 ): GlTexture => {
@@ -196,8 +196,8 @@ const createTexture = (
 export {
   type GlRenderbuffer,
   type GlTexture,
-  GlTextureFormat,
-  GlTextureType,
+  GlFormat,
+  GlMap,
   createRenderbuffer,
   createTexture,
 };

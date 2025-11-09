@@ -12,8 +12,8 @@ import {
 import { GlShaderAttribute, createAttribute } from "./shader";
 import {
   GlTexture,
-  GlTextureFormat,
-  GlTextureType,
+  GlFormat,
+  GlMap,
   createTexture,
 } from "./texture";
 
@@ -139,9 +139,9 @@ const loadMaterial = (
     if (glTexture === undefined) {
       glTexture = createTexture(
         gl,
-        GlTextureType.Quad,
+        GlMap.Quad,
         { x: texture.imageData.width, y: texture.imageData.height },
-        GlTextureFormat.RGBA8,
+        GlFormat.RGBA8,
         texture.sampler,
         texture.imageData
       );

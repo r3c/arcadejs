@@ -9,7 +9,7 @@ import {
   Vector3,
   Vector4,
 } from "../../math/vector";
-import { GlRuntime, GlTarget } from "../webgl";
+import { GlPencil, GlRuntime, GlTarget } from "../webgl";
 import {
   GlBuffer,
   GlContext,
@@ -365,7 +365,7 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
 
       for (const billboard of billboards) {
         billboardBinding.bind(billboard);
-        target.draw(WebGL2RenderingContext["TRIANGLES"], billboard.indexBuffer);
+        target.draw(GlPencil.Triangle, billboard.indexBuffer);
       }
     },
 

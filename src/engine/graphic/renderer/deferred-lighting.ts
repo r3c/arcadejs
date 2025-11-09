@@ -30,10 +30,11 @@ import { shininessDecode, shininessEncode } from "../webgl/shaders/shininess";
 import { Vector2, Vector3 } from "../../math/vector";
 import {
   createFramebufferTarget,
+  GlPencil,
   GlRuntime,
   GlTarget,
-  GlTextureFormat,
-  GlTextureType,
+  GlFormat,
+  GlMap,
 } from "../webgl";
 import {
   GlDirectionalLightPolygon,
@@ -54,7 +55,6 @@ import { Renderer } from "./definition";
 import {
   GlMeshBinder,
   GlMeshMatrix,
-  GlMeshRendererMode,
   GlMeshScene,
   createGlMeshRenderer,
 } from "./gl-mesh";
@@ -820,27 +820,27 @@ const createDeferredLightingRenderer = (
   ]);
   const geometryBinder = createGeometryBinder(runtime, configuration);
   const geometryRenderer = createGlMeshRenderer(
-    GlMeshRendererMode.Triangle,
+    GlPencil.Triangle,
     geometryBinder,
     {}
   );
   const materialBinder = createMaterialBinder(runtime, configuration);
   const materialRenderer = createGlMeshRenderer(
-    GlMeshRendererMode.Triangle,
+    GlPencil.Triangle,
     materialBinder,
     {}
   );
   const pointLightBillboard = createPointLightBillboard(gl);
   const pointLightBinding = loadPointLightBinding(runtime, configuration);
   const depthBuffer = geometryTarget.setDepthTexture({
-    format: GlTextureFormat.Depth16,
-    type: GlTextureType.Quad,
+    format: GlFormat.Depth16,
+    type: GlMap.Quad,
   });
   const [normalAndGlossBuffer] = geometryTarget.setColorTextures([
-    { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+    { format: GlFormat.RGBA8, type: GlMap.Quad },
   ]);
   const [lightBuffer] = lightTarget.setColorTextures([
-    { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+    { format: GlFormat.RGBA8, type: GlMap.Quad },
   ]);
 
   return {
@@ -937,7 +937,7 @@ const createDeferredLightingRenderer = (
           });
 
           lightTarget.draw(
-            WebGL2RenderingContext["TRIANGLES"],
+            GlPencil.Triangle,
             directionalLightBillboard.indexBuffer
           );
         }
@@ -957,10 +957,7 @@ const createDeferredLightingRenderer = (
           viewport,
         });
 
-        lightTarget.draw(
-          WebGL2RenderingContext["TRIANGLES"],
-          pointLightBillboard.indexBuffer
-        );
+        lightTarget.draw(GlPencil.Triangle, pointLightBillboard.indexBuffer);
       }
 
       // Render materials to output

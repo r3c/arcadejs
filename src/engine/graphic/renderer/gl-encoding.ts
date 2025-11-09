@@ -1,6 +1,6 @@
 import { Releasable } from "../../io/resource";
 import { Matrix4 } from "../../math/matrix";
-import { GlRuntime, GlTarget } from "../webgl";
+import { GlPencil, GlRuntime, GlTarget } from "../webgl";
 import {
   shaderCase,
   GlShader,
@@ -197,7 +197,7 @@ const createGlEncodingRenderer = (
           position,
           source: scene,
         });
-        target.draw(WebGL2RenderingContext["TRIANGLES"], indexBuffer);
+        target.draw(GlPencil.Triangle, indexBuffer);
       }
     },
 
