@@ -789,7 +789,7 @@ const createDeferredShadingRenderer = (
   ambientLightRenderer.addSubject(ambientLightQuad.mesh);
   const depthBuffer = geometryTarget.setDepthTexture({
     format: GlFormat.Depth16,
-    type: GlMap.Quad,
+    map: GlMap.Quad,
   });
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightBinding = loadDirectionalLightBinding(
@@ -816,11 +816,11 @@ const createDeferredShadingRenderer = (
   const sceneBinding = loadPostBinding(runtime);
   const [diffuseAndShininessBuffer, normalAndSpecularBuffer] =
     geometryTarget.setColorTextures([
-      { format: GlFormat.RGBA8, type: GlMap.Quad },
-      { format: GlFormat.RGBA8, type: GlMap.Quad },
+      { format: GlFormat.RGBA8, map: GlMap.Quad },
+      { format: GlFormat.RGBA8, map: GlMap.Quad },
     ]);
   const [sceneBuffer] = sceneTarget.setColorTextures([
-    { format: GlFormat.RGBA8, type: GlMap.Quad },
+    { format: GlFormat.RGBA8, map: GlMap.Quad },
   ]);
 
   return {

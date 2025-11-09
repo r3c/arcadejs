@@ -854,10 +854,7 @@ const createForwardLightingRenderer = (
   );
 
   const directionalShadowBuffers = directionalShadowTargets.map((target) =>
-    target.setDepthTexture({
-      format: GlFormat.Depth16,
-      type: GlMap.Quad,
-    })
+    target.setDepthTexture({ format: GlFormat.Depth16, map: GlMap.Quad })
   );
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
   const directionalShadowRenderer = createGlMeshRenderer(
