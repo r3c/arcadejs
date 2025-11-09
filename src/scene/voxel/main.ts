@@ -7,7 +7,8 @@ import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
 import { createWorldGraphic, createWorldPhysic } from "./world";
 import { noise } from "./perlin";
-import { createRuntime, createScreenTarget } from "../../engine/graphic/webgl";
+import { createRuntime } from "../../engine/graphic/webgl";
+import { createScreenTarget } from "../../engine/graphic/webgl/target";
 import { createOrbitMover } from "../move";
 import {
   createModel,

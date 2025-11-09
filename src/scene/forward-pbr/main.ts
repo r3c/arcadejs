@@ -14,10 +14,10 @@ import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
 import {
   createRuntime,
-  createScreenTarget,
   loadTextureCube,
   loadTextureQuad,
 } from "../../engine/graphic/webgl";
+import { createScreenTarget } from "../../engine/graphic/webgl/target";
 import { createOrbitMover } from "../move";
 import {
   createModel,

@@ -11,11 +11,8 @@ import {
 } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
-import {
-  createRuntime,
-  createScreenTarget,
-  loadTextureQuad,
-} from "../../engine/graphic/webgl";
+import { createRuntime, loadTextureQuad } from "../../engine/graphic/webgl";
+import { createScreenTarget } from "../../engine/graphic/webgl/target";
 import {
   ForwardLightingScene,
   createForwardLightingRenderer,

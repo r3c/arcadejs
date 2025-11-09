@@ -9,7 +9,8 @@ import {
   Vector3,
   Vector4,
 } from "../../math/vector";
-import { GlPencil, GlRuntime, GlTarget } from "../webgl";
+import { GlRuntime } from "../webgl";
+import { GlPencil, GlTarget } from "../webgl/target";
 import {
   GlBuffer,
   GlContext,
