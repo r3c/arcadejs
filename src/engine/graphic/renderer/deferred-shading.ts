@@ -779,10 +779,6 @@ const createDeferredShadingRenderer = (
   const gl = runtime.context;
   const geometryTarget = createFramebufferTarget(gl);
   const sceneTarget = createFramebufferTarget(gl);
-  const diffuseAndShininessBuffer = geometryTarget.setColorTexture(
-    GlTextureFormat.RGBA8,
-    GlTextureType.Quad
-  );
   const ambientLightBinder = createAmbientLightBinder(runtime, configuration);
   const ambientLightQuad = createModel(gl, commonMesh.quad);
   const ambientLightRenderer = createGlMeshRenderer(
@@ -791,10 +787,10 @@ const createDeferredShadingRenderer = (
     {}
   );
   ambientLightRenderer.addSubject(ambientLightQuad.mesh);
-  const depthBuffer = geometryTarget.setDepthTexture(
-    GlTextureFormat.Depth16,
-    GlTextureType.Quad
-  );
+  const depthBuffer = geometryTarget.setDepthTexture({
+    format: GlTextureFormat.Depth16,
+    type: GlTextureType.Quad,
+  });
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightBinding = loadDirectionalLightBinding(
     runtime,
@@ -816,16 +812,16 @@ const createDeferredShadingRenderer = (
     {}
   );
   const pointLightBillboard = createPointLightBillboard(gl);
-  const normalAndSpecularBuffer = geometryTarget.setColorTexture(
-    GlTextureFormat.RGBA8,
-    GlTextureType.Quad
-  );
   const pointLightBinding = loadPointLightBinding(runtime, configuration);
-  const sceneBuffer = sceneTarget.setColorTexture(
-    GlTextureFormat.RGBA8,
-    GlTextureType.Quad
-  );
   const sceneBinding = loadPostBinding(runtime);
+  const [diffuseAndShininessBuffer, normalAndSpecularBuffer] =
+    geometryTarget.setColorTextures([
+      { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+      { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+    ]);
+  const [sceneBuffer] = sceneTarget.setColorTextures([
+    { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+  ]);
 
   return {
     depthBuffer,
