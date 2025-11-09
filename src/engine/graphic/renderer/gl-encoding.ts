@@ -15,7 +15,7 @@ import { linearToStandard } from "../webgl/shaders/rgb";
 import { normalDecode } from "../webgl/shaders/normal";
 import { linearDepth } from "../webgl/shaders/depth";
 import { commonMesh } from "../mesh";
-import { createGlBindingPainter, Painter } from "../painter";
+import { Renderer } from "./definition";
 
 const enum GlEncodingChannel {
   Identity,
@@ -47,7 +47,7 @@ type GlEncodingConfiguration = {
   zNear: number;
 };
 
-type GlEncodingPainter = Releasable & Painter<GlTarget, GlTexture>;
+type GlEncodingRenderer = Releasable & Renderer<GlTarget, GlTexture, void>;
 
 type Scene = {
   coordinate: GlShaderAttribute;
@@ -134,7 +134,7 @@ void main(void) {
 }`,
 });
 
-const createPainter = (shader: GlShader) => {
+const createBinding = (shader: GlShader) => {
   const binding = shader.declare<Scene>();
 
   binding.setAttribute("coordinate", ({ coordinate }) => coordinate);
@@ -148,15 +148,15 @@ const createPainter = (shader: GlShader) => {
     uniform.tex2dBlack(({ source }) => source)
   );
 
-  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
+  return binding;
 };
 
-const createGlEncodingPainter = (
+const createGlEncodingRenderer = (
   runtime: GlRuntime,
   configuration: GlEncodingConfiguration
-): GlEncodingPainter => {
+): GlEncodingRenderer => {
   const shader = runtime.createShader(createSource(configuration));
-  const painter = createPainter(shader);
+  const binding = createBinding(shader);
   const quad = createModel(runtime.context, commonMesh.quad);
   const scale = configuration.scale ?? 0.4;
 
@@ -167,12 +167,16 @@ const createGlEncodingPainter = (
   );
 
   return {
+    addSubject() {
+      return () => {};
+    },
+
     release() {
       quad.release();
       shader.release();
     },
 
-    paint(target, scene) {
+    render(target, scene) {
       const gl = runtime.context;
 
       gl.disable(gl.BLEND);
@@ -186,22 +190,25 @@ const createGlEncodingPainter = (
       const { coordinate, position } = polygon;
 
       if (coordinate !== undefined) {
-        painter.paint(target, {
+        binding.bind({
           coordinate,
           indexBuffer,
           modelMatrix,
           position,
           source: scene,
         });
+        target.draw(WebGL2RenderingContext["TRIANGLES"], indexBuffer);
       }
     },
+
+    setSize() {},
   };
 };
 
 export {
   type GlEncodingConfiguration,
-  type GlEncodingPainter,
+  type GlEncodingRenderer,
   GlEncodingChannel,
   GlEncodingFormat,
-  createGlEncodingPainter,
+  createGlEncodingRenderer,
 };

@@ -46,10 +46,10 @@ import {
   shaderWhen,
   shaderCase,
   GlShaderSource,
+  GlShaderBinding,
 } from "../webgl/shader";
 import { GlTexture } from "../webgl/texture";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
-import { GlBuffer } from "../webgl/resource";
 import { Renderer } from "./definition";
 import {
   GlMeshBinder,
@@ -58,7 +58,6 @@ import {
   GlMeshScene,
   createGlMeshRenderer,
 } from "./gl-mesh";
-import { createGlBindingPainter, Painter } from "../painter";
 
 const enum DeferredLightingLightModel {
   None,
@@ -472,7 +471,6 @@ type DeferredLightingSubject = {
 
 type LightScene = GlMeshScene & {
   depthBuffer: GlTexture;
-  indexBuffer: GlBuffer;
   model: Matrix4;
   normalAndGlossBuffer: GlTexture;
   projection: Matrix4;
@@ -639,10 +637,10 @@ const loadLightBinding = <TScene extends LightScene>(
   return binding;
 };
 
-const loadDirectionalLightPainter = (
+const loadDirectionalLightBinding = (
   runtime: GlRuntime,
   configuration: DeferredLightingConfiguration
-): Painter<GlTarget, DirectionalLightScene> => {
+): GlShaderBinding<DirectionalLightScene> => {
   const binding = loadLightBinding<DirectionalLightScene>(
     runtime,
     configuration,
@@ -660,13 +658,13 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
+  return binding;
 };
 
-const loadPointLightPainter = (
+const loadPointLightBinding = (
   runtime: GlRuntime,
   configuration: DeferredLightingConfiguration
-): Painter<GlTarget, PointLightScene> => {
+): GlShaderBinding<PointLightScene> => {
   const binding = loadLightBinding<PointLightScene>(
     runtime,
     configuration,
@@ -682,7 +680,7 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
+  return binding;
 };
 
 const createMaterialBinder = (
@@ -811,7 +809,7 @@ const createDeferredLightingRenderer = (
     GlTextureType.Quad
   );
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
-  const directionalLightPainter = loadDirectionalLightPainter(
+  const directionalLightBinding = loadDirectionalLightBinding(
     runtime,
     configuration
   );
@@ -841,7 +839,7 @@ const createDeferredLightingRenderer = (
     {}
   );
   const pointLightBillboard = createPointLightBillboard(gl);
-  const pointLightPainter = loadPointLightPainter(runtime, configuration);
+  const pointLightBinding = loadPointLightBinding(runtime, configuration);
   const normalAndGlossBuffer = geometryTarget.setColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
@@ -929,10 +927,9 @@ const createDeferredLightingRenderer = (
         model.invert();
 
         for (const directionalLight of directionalLights) {
-          directionalLightPainter.paint(lightTarget, {
+          directionalLightBinding.bind({
             depthBuffer: depthBuffer,
             directionalLight,
-            indexBuffer: directionalLightBillboard.indexBuffer,
             model,
             normalAndGlossBuffer: normalAndGlossBuffer,
             polygon: directionalLightBillboard.polygon,
@@ -940,16 +937,20 @@ const createDeferredLightingRenderer = (
             view,
             viewport,
           });
+
+          lightTarget.draw(
+            WebGL2RenderingContext["TRIANGLES"],
+            directionalLightBillboard.indexBuffer
+          );
         }
       }
 
       // Draw point lights using quads
       if (pointLights !== undefined) {
         pointLightBillboard.set(pointLights);
-        pointLightPainter.paint(lightTarget, {
+        pointLightBinding.bind({
           billboard,
           depthBuffer: depthBuffer,
-          indexBuffer: pointLightBillboard.indexBuffer,
           model: Matrix4.identity, // FIXME: remove from shader
           normalAndGlossBuffer: normalAndGlossBuffer,
           polygon: pointLightBillboard.polygon,
@@ -957,6 +958,11 @@ const createDeferredLightingRenderer = (
           view,
           viewport,
         });
+
+        lightTarget.draw(
+          WebGL2RenderingContext["TRIANGLES"],
+          pointLightBillboard.indexBuffer
+        );
       }
 
       // Render materials to output

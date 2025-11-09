@@ -45,7 +45,6 @@ import {
 } from "../webgl/shader";
 import { GlMaterial, GlMesh, GlPolygon, createModel } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
-import { GlBuffer } from "../webgl/resource";
 import {
   linearToStandard,
   luminance,
@@ -60,7 +59,6 @@ import {
   GlMeshScene,
   createGlMeshRenderer,
 } from "./gl-mesh";
-import { createGlBindingPainter } from "../painter";
 
 const enum DeferredShadingLightModel {
   None,
@@ -471,7 +469,6 @@ type GeometryScene = GlMeshScene & {
 type LightScene = GlMeshScene & {
   diffuseAndShininessBuffer: GlTexture;
   depthBuffer: GlTexture;
-  indexBuffer: GlBuffer;
   model: Matrix4;
   normalAndSpecularBuffer: GlTexture;
   projection: Matrix4;
@@ -489,7 +486,6 @@ type PointLightScene = LightScene & {
 };
 
 type PostScene = {
-  indexBuffer: GlBuffer;
   position: GlShaderAttribute;
   source: GlTexture;
 };
@@ -717,7 +713,7 @@ const loadLightBinding = <TScene extends LightScene>(
   return binding;
 };
 
-const loadDirectionalLightPainter = (
+const loadDirectionalLightBinding = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration
 ) => {
@@ -738,10 +734,10 @@ const loadDirectionalLightPainter = (
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
-  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
+  return binding;
 };
 
-const loadPointLightPainter = (
+const loadPointLightBinding = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration
 ) => {
@@ -760,10 +756,10 @@ const loadPointLightPainter = (
   binding.setAttribute("lightRadius", ({ polygon: p }) => p.lightRadius);
   binding.setAttribute("lightShift", ({ polygon: p }) => p.lightShift);
 
-  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
+  return binding;
 };
 
-const loadPostPainter = (runtime: GlRuntime) => {
+const loadPostBinding = (runtime: GlRuntime) => {
   const shader = runtime.createShader(createPostSource());
   const binding = shader.declare<PostScene>();
 
@@ -773,7 +769,7 @@ const loadPostPainter = (runtime: GlRuntime) => {
     uniform.tex2dBlack(({ source }) => source)
   );
 
-  return createGlBindingPainter(binding, ({ indexBuffer }) => indexBuffer);
+  return binding;
 };
 
 const createDeferredShadingRenderer = (
@@ -800,7 +796,7 @@ const createDeferredShadingRenderer = (
     GlTextureType.Quad
   );
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
-  const directionalLightPainter = loadDirectionalLightPainter(
+  const directionalLightBinding = loadDirectionalLightBinding(
     runtime,
     configuration
   );
@@ -824,12 +820,12 @@ const createDeferredShadingRenderer = (
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
-  const pointLightPainter = loadPointLightPainter(runtime, configuration);
+  const pointLightBinding = loadPointLightBinding(runtime, configuration);
   const sceneBuffer = sceneTarget.setColorTexture(
     GlTextureFormat.RGBA8,
     GlTextureType.Quad
   );
-  const scenePainter = loadPostPainter(runtime);
+  const sceneBinding = loadPostBinding(runtime);
 
   return {
     depthBuffer,
@@ -918,11 +914,10 @@ const createDeferredShadingRenderer = (
         model.invert();
 
         for (const directionalLight of directionalLights) {
-          directionalLightPainter.paint(sceneTarget, {
+          directionalLightBinding.bind({
             diffuseAndShininessBuffer: diffuseAndShininessBuffer,
             depthBuffer: depthBuffer,
             directionalLight,
-            indexBuffer: directionalLightBillboard.indexBuffer,
             model,
             normalAndSpecularBuffer: normalAndSpecularBuffer,
             polygon: directionalLightBillboard.polygon,
@@ -930,6 +925,10 @@ const createDeferredShadingRenderer = (
             view,
             viewport,
           });
+          sceneTarget.draw(
+            WebGL2RenderingContext["TRIANGLES"],
+            directionalLightBillboard.indexBuffer
+          );
         }
       }
 
@@ -937,11 +936,10 @@ const createDeferredShadingRenderer = (
       if (pointLights !== undefined) {
         pointLightBillboard.set(pointLights);
 
-        pointLightPainter.paint(sceneTarget, {
+        pointLightBinding.bind({
           diffuseAndShininessBuffer: diffuseAndShininessBuffer,
           billboard,
           depthBuffer,
-          indexBuffer: pointLightBillboard.indexBuffer,
           model: Matrix4.identity, // FIXME: remove from shader
           normalAndSpecularBuffer: normalAndSpecularBuffer,
           polygon: pointLightBillboard.polygon,
@@ -949,14 +947,21 @@ const createDeferredShadingRenderer = (
           view,
           viewport,
         });
+        sceneTarget.draw(
+          WebGL2RenderingContext["TRIANGLES"],
+          pointLightBillboard.indexBuffer
+        );
       }
 
       // Draw scene
-      scenePainter.paint(target, {
-        indexBuffer: directionalLightBillboard.indexBuffer, // FIXME: dedicated quad
+      sceneBinding.bind({
         position: directionalLightBillboard.polygon.lightPosition,
         source: sceneBuffer,
       });
+      target.draw(
+        WebGL2RenderingContext["TRIANGLES"],
+        directionalLightBillboard.indexBuffer
+      );
     },
 
     setSize(size: Vector2) {
