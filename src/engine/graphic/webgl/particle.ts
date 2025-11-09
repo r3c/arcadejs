@@ -23,7 +23,6 @@ import {
   uniform,
 } from "./shader";
 import { GlTexture } from "./texture";
-import { createGlBindingPainter } from "../painter";
 
 type ParticleBillboard = Releasable & {
   flush: () => void;
@@ -297,10 +296,6 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
   );
 
   const billboards: ParticleBillboard[] = [];
-  const painter = createGlBindingPainter(
-    billboardBinding,
-    ({ indexBuffer }) => indexBuffer
-  );
   const sceneState = {
     billboard: Matrix4.fromIdentity(),
     projection: Matrix4.identity,
@@ -368,8 +363,9 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
 
       sceneBinding.bind(sceneState);
 
-      for (let i = 0; i < billboards.length; ++i) {
-        painter.paint(target, billboards[i]);
+      for (const billboard of billboards) {
+        billboardBinding.bind(billboard);
+        target.draw(WebGL2RenderingContext["TRIANGLES"], billboard.indexBuffer);
       }
     },
 

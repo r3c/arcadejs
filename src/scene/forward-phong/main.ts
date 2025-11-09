@@ -25,10 +25,10 @@ import {
   ForwardLightingScene,
 } from "../../engine/graphic/renderer";
 import {
-  createGlEncodingPainter,
+  createGlEncodingRenderer,
   GlEncodingChannel,
   GlEncodingFormat,
-} from "../../engine/graphic/painter";
+} from "../../engine/graphic/renderer";
 
 /*
  ** What changed?
@@ -90,7 +90,7 @@ const createApplication = async (
     mover: createOrbitMover(i, 2, 2, 1),
     position: Vector3.fromZero(),
   }));
-  const encodingPainter = createGlEncodingPainter(runtime, {
+  const encodingRenderer = createGlEncodingRenderer(runtime, {
     channel: GlEncodingChannel.Red,
     format: GlEncodingFormat.Monochrome,
     zNear: 0.1,
@@ -156,7 +156,7 @@ const createApplication = async (
     },
 
     release() {
-      encodingPainter.release();
+      encodingRenderer.release();
       models.cube.release();
       models.ground.release();
       models.light.release();
@@ -193,7 +193,7 @@ const createApplication = async (
 
       // Draw texture debug
       if (debugMode && renderer !== undefined) {
-        encodingPainter.paint(target, renderer.directionalShadowBuffers[0]);
+        encodingRenderer.render(target, renderer.directionalShadowBuffers[0]);
       }
     },
 

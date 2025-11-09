@@ -30,11 +30,11 @@ import {
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { createOrbitCamera } from "../../engine/stage/camera";
 import {
-  createGlEncodingPainter,
   GlEncodingChannel,
   GlEncodingFormat,
-  GlEncodingPainter,
-} from "../../engine/graphic/painter";
+  GlEncodingRenderer,
+  createGlEncodingRenderer,
+} from "../../engine/graphic/renderer";
 
 /*
  ** What changed?
@@ -184,7 +184,7 @@ const createApplication = async (
   }));
   const projection = Matrix4.fromIdentity();
 
-  let encodingPainter: GlEncodingPainter | undefined = undefined;
+  let encodingRenderer: GlEncodingRenderer | undefined = undefined;
   let encodingTexture: GlTexture | undefined = undefined;
   let directionalLights: typeof allDirectionalLights;
   let directionalLightTransforms: MutableMatrix4[] = [];
@@ -196,12 +196,12 @@ const createApplication = async (
 
   return {
     async setConfiguration(configuration) {
-      encodingPainter?.release();
+      encodingRenderer?.release();
       sceneRenderer?.release();
 
-      encodingPainter =
+      encodingRenderer =
         configuration.debugMode !== 0
-          ? createGlEncodingPainter(runtime, {
+          ? createGlEncodingRenderer(runtime, {
               channel: debugConfigurations[configuration.debugMode - 1].channel,
               format: debugConfigurations[configuration.debugMode - 1].format,
               zNear: 0.1,
@@ -323,7 +323,7 @@ const createApplication = async (
     },
 
     release() {
-      encodingPainter?.release();
+      encodingRenderer?.release();
       encodingTexture?.release();
       models.cube.release();
       models.directionalLight.release();
@@ -350,7 +350,7 @@ const createApplication = async (
 
       // Draw debug
       if (encodingTexture !== undefined) {
-        encodingPainter?.paint(target, encodingTexture);
+        encodingRenderer?.render(target, encodingTexture);
       }
     },
 

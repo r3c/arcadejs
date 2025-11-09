@@ -30,6 +30,13 @@ import {
   SoftwareSubject,
   createSoftwareRenderer,
 } from "./renderer/software";
+import {
+  GlEncodingChannel,
+  GlEncodingConfiguration,
+  GlEncodingFormat,
+  GlEncodingRenderer,
+  createGlEncodingRenderer,
+} from "./renderer/gl-encoding";
 
 export {
   type DeferredLightingConfiguration,
@@ -44,6 +51,8 @@ export {
   type ForwardLightingRenderer,
   type ForwardLightingScene,
   type ForwardLightingSubject,
+  type GlEncodingConfiguration,
+  type GlEncodingRenderer,
   type Renderer,
   type SoftwareRenderer,
   type SoftwareScene,
@@ -51,9 +60,12 @@ export {
   DeferredLightingLightModel,
   DeferredShadingLightModel,
   ForwardLightingLightModel,
+  GlEncodingChannel,
+  GlEncodingFormat,
   SoftwareDrawMode,
   createDeferredLightingRenderer,
   createDeferredShadingRenderer,
   createForwardLightingRenderer,
+  createGlEncodingRenderer,
   createSoftwareRenderer,
 };
