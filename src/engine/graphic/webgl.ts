@@ -4,10 +4,10 @@ import { Vector2, Vector4 } from "../math/vector";
 import { GlBuffer, GlContext } from "./webgl/resource";
 import { Releasable } from "../io/resource";
 import {
+  GlFormat,
+  GlMap,
   GlRenderbuffer,
   GlTexture,
-  GlTextureFormat,
-  GlTextureType,
   createRenderbuffer,
   createTexture,
 } from "./webgl/texture";
@@ -58,19 +58,25 @@ const createAttachment = (): GlAttachment => {
   };
 };
 
-enum GlAttachementTarget {
+const enum GlAttachementTarget {
   Color,
   Depth,
 }
 
 type GlAttachmentTexture = {
-  format: GlTextureFormat;
-  type: GlTextureType;
+  format: GlFormat;
+  type: GlMap;
 };
 
-type GlDrawMode =
-  | WebGL2RenderingContext["TRIANGLES"]
-  | WebGL2RenderingContext["LINES"];
+const enum GlPencil {
+  Triangle,
+  Wire,
+}
+
+const drawModes = new Map<GlPencil, number>([
+  [GlPencil.Triangle, WebGL2RenderingContext["TRIANGLES"]],
+  [GlPencil.Wire, WebGL2RenderingContext["LINES"]],
+]);
 
 type GlRuntime = Releasable & {
   createShader: (source: GlShaderSource) => GlShader;
@@ -81,9 +87,9 @@ const createRuntime = (context: GlContext): GlRuntime => {
   const createConstantTexture = (color: Vector4) =>
     createTexture(
       context,
-      GlTextureType.Quad,
+      GlMap.Quad,
       { x: 1, y: 1 },
-      GlTextureFormat.RGBA8,
+      GlFormat.RGBA8,
       defaultSampler,
       new ImageData(
         new Uint8ClampedArray(
@@ -135,9 +141,9 @@ const loadTextureCube = (
 ): GlTexture => {
   return createTexture(
     gl,
-    GlTextureType.Cube,
+    GlMap.Cube,
     { x: facePositiveX.width, y: facePositiveX.height },
-    GlTextureFormat.RGBA8,
+    GlFormat.RGBA8,
     filter ?? defaultSampler,
     [
       facePositiveX,
@@ -157,9 +163,9 @@ const loadTextureQuad = (
 ): GlTexture => {
   return createTexture(
     gl,
-    GlTextureType.Quad,
+    GlMap.Quad,
     { x: image.width, y: image.height },
-    GlTextureFormat.RGBA8,
+    GlFormat.RGBA8,
     filter ?? defaultSampler,
     image
   );
@@ -167,7 +173,7 @@ const loadTextureQuad = (
 
 type GlTarget = {
   clear(): void;
-  draw(mode: GlDrawMode, indexBuffer: GlBuffer): void;
+  draw(mode: GlPencil, indexBuffer: GlBuffer): void;
   setColorClear(color: Vector4): void;
   setDepthClear(depth: number): void;
   setSize(size: Vector2): void;
@@ -175,9 +181,9 @@ type GlTarget = {
 
 type GlFramebufferTarget = GlTarget &
   Releasable & {
-    setColorRenderbuffer(format: GlTextureFormat): GlRenderbuffer;
+    setColorRenderbuffer(format: GlFormat): GlRenderbuffer;
     setColorTextures(attachmentTextures: GlAttachmentTexture[]): GlTexture[];
-    setDepthRenderbuffer(format: GlTextureFormat): GlRenderbuffer;
+    setDepthRenderbuffer(format: GlFormat): GlRenderbuffer;
     setDepthTexture(attachmentTextures: GlAttachmentTexture): GlTexture;
   };
 
@@ -206,11 +212,17 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     },
 
-    draw(mode: GlDrawMode, indexBuffer: GlBuffer) {
+    draw(pencil, indexBuffer) {
+      const drawMode = drawModes.get(pencil);
+
+      if (drawMode === undefined) {
+        throw Error(`unknown pencil ${pencil}`);
+      }
+
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
       gl.viewport(0, 0, viewSize.x, viewSize.y);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
-      gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
+      gl.drawElements(drawMode, indexBuffer.length, indexBuffer.type, 0);
     },
 
     release() {
@@ -218,11 +230,11 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       depthAttachment.release();
     },
 
-    setColorClear(color: Vector4) {
+    setColorClear(color) {
       colorClear.set(color);
     },
 
-    setColorRenderbuffer(format: GlTextureFormat) {
+    setColorRenderbuffer(format) {
       const renderbuffer = attachRenderbuffer(
         gl,
         viewSize,
@@ -236,7 +248,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       return renderbuffer;
     },
 
-    setColorTextures(attachmentTextures: GlAttachmentTexture[]) {
+    setColorTextures(attachmentTextures) {
       const textures = attachTextures(
         gl,
         viewSize,
@@ -263,7 +275,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       depthClear = depth;
     },
 
-    setDepthRenderbuffer(format: GlTextureFormat) {
+    setDepthRenderbuffer(format) {
       const renderbuffer = attachRenderbuffer(
         gl,
         viewSize,
@@ -277,7 +289,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       return renderbuffer;
     },
 
-    setDepthTexture(attachmentTexture: GlAttachmentTexture) {
+    setDepthTexture(attachmentTexture) {
       const textures = attachTextures(
         gl,
         viewSize,
@@ -315,11 +327,17 @@ const createScreenTarget = (gl: GlContext): GlScreenTarget => {
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     },
 
-    draw(mode, indexBuffer) {
+    draw(pencil, indexBuffer) {
+      const drawMode = drawModes.get(pencil);
+
+      if (drawMode === undefined) {
+        throw Error(`unknown pencil ${pencil}`);
+      }
+
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, viewSize.x, viewSize.y);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer.buffer);
-      gl.drawElements(mode, indexBuffer.length, indexBuffer.type, 0);
+      gl.drawElements(drawMode, indexBuffer.length, indexBuffer.type, 0);
     },
 
     setColorClear(color) {
@@ -346,7 +364,7 @@ const attachRenderbuffer = (
   gl: WebGL2RenderingContext,
   viewSize: Vector2,
   framebuffer: WebGLFramebuffer,
-  format: GlTextureFormat,
+  format: GlFormat,
   target: number
 ): GlRenderbuffer => {
   // Create renderbuffer attachment
@@ -395,14 +413,14 @@ const attachTextures = (
     let textureTargets: number[];
 
     switch (type) {
-      case GlTextureType.Cube:
+      case GlMap.Cube:
         textureTargets = range(6).map(
           (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i
         );
 
         break;
 
-      case GlTextureType.Quad:
+      case GlMap.Quad:
         textureTargets = [gl.TEXTURE_2D];
 
         break;
@@ -452,10 +470,11 @@ export {
   type GlRuntime,
   type GlScreenTarget,
   type GlTarget,
-  GlTextureFormat,
-  GlTextureType,
-  createRuntime,
+  GlFormat,
+  GlMap,
+  GlPencil,
   createFramebufferTarget,
+  createRuntime,
   createScreenTarget,
   loadTextureCube,
   loadTextureQuad,

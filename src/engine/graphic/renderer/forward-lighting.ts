@@ -24,10 +24,11 @@ import { linearToStandard, standardToLinear } from "../webgl/shaders/rgb";
 import { Vector3 } from "../../math/vector";
 import {
   createFramebufferTarget,
+  GlPencil,
   GlRuntime,
   GlTarget,
-  GlTextureFormat,
-  GlTextureType,
+  GlFormat,
+  GlMap,
 } from "../webgl";
 import {
   shaderWhen,
@@ -42,7 +43,6 @@ import {
   GlMeshBinder,
   GlMeshFeature,
   GlMeshMatrix,
-  GlMeshRendererMode,
   GlMeshScene,
   createGlMeshRenderer,
 } from "./gl-mesh";
@@ -848,20 +848,20 @@ const createForwardLightingRenderer = (
   );
   const lightBinder = createLightBinder(runtime, directive, configuration);
   const lightRenderer = createGlMeshRenderer(
-    GlMeshRendererMode.Triangle,
+    GlPencil.Triangle,
     lightBinder,
     {}
   );
 
   const directionalShadowBuffers = directionalShadowTargets.map((target) =>
     target.setDepthTexture({
-      format: GlTextureFormat.Depth16,
-      type: GlTextureType.Quad,
+      format: GlFormat.Depth16,
+      type: GlMap.Quad,
     })
   );
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
   const directionalShadowRenderer = createGlMeshRenderer(
-    GlMeshRendererMode.Triangle,
+    GlPencil.Triangle,
     directionalShadowBinder,
     {}
   );

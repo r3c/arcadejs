@@ -1,6 +1,6 @@
 import { createCompositeReleasable, Releasable } from "../../io/resource";
 import { Matrix3, Matrix4 } from "../../math/matrix";
-import { GlTarget } from "../webgl";
+import { GlPencil, GlTarget } from "../webgl";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlBuffer } from "../webgl/resource";
 import { GlShaderBinding } from "../webgl/shader";
@@ -45,11 +45,6 @@ type GlMeshPrimitive = {
 type GlMeshRenderer<TScene extends GlMeshScene> = Releasable &
   Renderer<GlTarget, TScene, GlMesh>;
 
-const enum GlMeshRendererMode {
-  Triangle,
-  Wire,
-}
-
 type GlMeshScene = {
   view: Matrix4;
 };
@@ -59,29 +54,19 @@ type GlMeshShader<TScene> = {
   nodesByMaterial: Map<GlMaterial, Map<Symbol, GlMeshNode>>;
 };
 
-const drawModes = {
-  [GlMeshRendererMode.Triangle]: WebGL2RenderingContext["TRIANGLES"],
-  [GlMeshRendererMode.Wire]: WebGL2RenderingContext["LINES"],
-};
-
 /*
  ** Create a renderer keeping scene objects organized in a hierarchical tree to
  ** reuse bindings as much as possible:
  ** Renderer > Shader feature > Material > Nested objects > Polygons
  */
 const createGlMeshRenderer = <TScene extends GlMeshScene>(
-  mode: GlMeshRendererMode,
+  mode: GlPencil,
   binder: GlMeshBinder<TScene>,
   configuration: GlMeshConfiguration
 ): GlMeshRenderer<TScene> => {
   const autoReleaseShader = configuration.autoReleaseShader ?? false;
   const releasable = createCompositeReleasable();
-  const drawMode = drawModes[mode];
   const shaders = new Map<number, GlMeshShader<TScene>>();
-
-  if (drawMode === undefined) {
-    throw new Error("unknown draw mode");
-  }
 
   /**
    * Recursive mesh drawing function, recursively draw exploded meshes. When
@@ -106,7 +91,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
 
     for (const { indexBuffer, polygon } of mesh.primitives) {
       polygonBinding.bind(polygon);
-      target.draw(drawMode, indexBuffer);
+      target.draw(mode, indexBuffer);
     }
   };
 
@@ -290,6 +275,5 @@ export {
   type GlMeshMatrix,
   type GlMeshRenderer,
   type GlMeshScene,
-  GlMeshRendererMode,
   createGlMeshRenderer,
 };

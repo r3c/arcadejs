@@ -25,10 +25,11 @@ import { shininessDecode, shininessEncode } from "../webgl/shaders/shininess";
 import { Vector2, Vector3 } from "../../math/vector";
 import {
   createFramebufferTarget,
+  GlPencil,
   GlRuntime,
   GlTarget,
-  GlTextureFormat,
-  GlTextureType,
+  GlFormat,
+  GlMap,
 } from "../webgl";
 import {
   GlDirectionalLightPolygon,
@@ -55,7 +56,6 @@ import { Renderer } from "./definition";
 import {
   GlMeshBinder,
   GlMeshMatrix,
-  GlMeshRendererMode,
   GlMeshScene,
   createGlMeshRenderer,
 } from "./gl-mesh";
@@ -782,14 +782,14 @@ const createDeferredShadingRenderer = (
   const ambientLightBinder = createAmbientLightBinder(runtime, configuration);
   const ambientLightQuad = createModel(gl, commonMesh.quad);
   const ambientLightRenderer = createGlMeshRenderer(
-    GlMeshRendererMode.Triangle,
+    GlPencil.Triangle,
     ambientLightBinder,
     {}
   );
   ambientLightRenderer.addSubject(ambientLightQuad.mesh);
   const depthBuffer = geometryTarget.setDepthTexture({
-    format: GlTextureFormat.Depth16,
-    type: GlTextureType.Quad,
+    format: GlFormat.Depth16,
+    type: GlMap.Quad,
   });
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightBinding = loadDirectionalLightBinding(
@@ -807,7 +807,7 @@ const createDeferredShadingRenderer = (
   ]);
   const geometryBinder = createGeometryBinder(runtime, configuration);
   const geometryRenderer = createGlMeshRenderer(
-    GlMeshRendererMode.Triangle,
+    GlPencil.Triangle,
     geometryBinder,
     {}
   );
@@ -816,11 +816,11 @@ const createDeferredShadingRenderer = (
   const sceneBinding = loadPostBinding(runtime);
   const [diffuseAndShininessBuffer, normalAndSpecularBuffer] =
     geometryTarget.setColorTextures([
-      { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
-      { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+      { format: GlFormat.RGBA8, type: GlMap.Quad },
+      { format: GlFormat.RGBA8, type: GlMap.Quad },
     ]);
   const [sceneBuffer] = sceneTarget.setColorTextures([
-    { format: GlTextureFormat.RGBA8, type: GlTextureType.Quad },
+    { format: GlFormat.RGBA8, type: GlMap.Quad },
   ]);
 
   return {
@@ -922,7 +922,7 @@ const createDeferredShadingRenderer = (
             viewport,
           });
           sceneTarget.draw(
-            WebGL2RenderingContext["TRIANGLES"],
+            GlPencil.Triangle,
             directionalLightBillboard.indexBuffer
           );
         }
@@ -943,10 +943,7 @@ const createDeferredShadingRenderer = (
           view,
           viewport,
         });
-        sceneTarget.draw(
-          WebGL2RenderingContext["TRIANGLES"],
-          pointLightBillboard.indexBuffer
-        );
+        sceneTarget.draw(GlPencil.Triangle, pointLightBillboard.indexBuffer);
       }
 
       // Draw scene
@@ -954,10 +951,7 @@ const createDeferredShadingRenderer = (
         position: directionalLightBillboard.polygon.lightPosition,
         source: sceneBuffer,
       });
-      target.draw(
-        WebGL2RenderingContext["TRIANGLES"],
-        directionalLightBillboard.indexBuffer
-      );
+      target.draw(GlPencil.Triangle, directionalLightBillboard.indexBuffer);
     },
 
     setSize(size: Vector2) {
