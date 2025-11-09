@@ -5,7 +5,8 @@ import { range } from "../../engine/language/iterable";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
-import { createRuntime, createScreenTarget } from "../../engine/graphic/webgl";
+import { createRuntime } from "../../engine/graphic/webgl";
+import { createScreenTarget } from "../../engine/graphic/webgl/target";
 import {
   createModel,
   createDynamicMesh,

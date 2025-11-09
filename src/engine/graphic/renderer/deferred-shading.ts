@@ -23,14 +23,14 @@ import {
 } from "../webgl/shaders/phong";
 import { shininessDecode, shininessEncode } from "../webgl/shaders/shininess";
 import { Vector2, Vector3 } from "../../math/vector";
+import { GlRuntime } from "../webgl";
 import {
   createFramebufferTarget,
   GlPencil,
-  GlRuntime,
   GlTarget,
   GlFormat,
   GlMap,
-} from "../webgl";
+} from "../webgl/target";
 import {
   GlDirectionalLightPolygon,
   GlPointLightPolygon,

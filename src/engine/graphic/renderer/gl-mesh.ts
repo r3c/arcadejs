@@ -1,6 +1,6 @@
 import { createCompositeReleasable, Releasable } from "../../io/resource";
 import { Matrix3, Matrix4 } from "../../math/matrix";
-import { GlPencil, GlTarget } from "../webgl";
+import { GlPencil, GlTarget } from "../webgl/target";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlBuffer } from "../webgl/resource";
 import { GlShaderBinding } from "../webgl/shader";

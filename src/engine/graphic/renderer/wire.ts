@@ -3,7 +3,8 @@ import { range } from "../../language/iterable";
 import { Matrix4 } from "../../math/matrix";
 import { Vector3 } from "../../math/vector";
 import { Mesh, Polygon, createFlatMesh } from "../mesh";
-import { GlRuntime, GlTarget } from "../webgl";
+import { GlRuntime } from "../webgl";
+import { GlTarget } from "../webgl/target";
 import {
   GlBuffer,
   createStaticArrayBuffer,

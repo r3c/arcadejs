@@ -22,14 +22,14 @@ import {
 } from "../webgl/shaders/phong";
 import { linearToStandard, standardToLinear } from "../webgl/shaders/rgb";
 import { Vector3 } from "../../math/vector";
+import { GlRuntime } from "../webgl";
 import {
   createFramebufferTarget,
   GlPencil,
-  GlRuntime,
   GlTarget,
   GlFormat,
   GlMap,
-} from "../webgl";
+} from "../webgl/target";
 import {
   shaderWhen,
   shaderCase,

@@ -1,6 +1,7 @@
 import { Releasable } from "../../io/resource";
 import { Matrix4 } from "../../math/matrix";
-import { GlPencil, GlRuntime, GlTarget } from "../webgl";
+import { GlRuntime } from "../webgl";
+import { GlPencil, GlTarget } from "../webgl/target";
 import {
   shaderCase,
   GlShader,
