@@ -22,11 +22,11 @@ type GlShaderBinding<TState> = {
   bind: (state: TState) => void;
   setAttribute: (
     name: string,
-    getter: (state: TState) => GlShaderAttribute | undefined
+    getter: (state: TState) => GlShaderAttribute | undefined,
   ) => void;
   setUniform: <TValue>(
     name: string,
-    accessor: GlShaderUniform<TState, TValue>
+    accessor: GlShaderUniform<TState, TValue>,
   ) => void;
 };
 
@@ -38,7 +38,7 @@ type GlShaderDefault = {
 
 type GlShaderFunction<
   TDeclare extends Record<string, unknown>,
-  TInvoke extends Record<string, string>
+  TInvoke extends Record<string, string>,
 > = {
   declare: (parameters: TDeclare) => string;
   invoke: (parameters: TInvoke) => string;
@@ -55,20 +55,20 @@ type GlShaderUniform<TState, TValue> = {
   readValue: (
     state: TState,
     currentValue: TValue,
-    defaultValue: GlShaderDefault
+    defaultValue: GlShaderDefault,
   ) => TValue;
   setUniform: (
     gl: GlContext,
     location: WebGLUniformLocation,
     value: TValue,
-    textureIndex: number
+    textureIndex: number,
   ) => void;
 };
 
 const compileShader = (
   gl: GlContext,
   shaderType: number,
-  source: string
+  source: string,
 ): WebGLShader => {
   const shader = gl.createShader(shaderType);
 
@@ -85,8 +85,8 @@ const compileShader = (
       shaderType === gl.FRAGMENT_SHADER
         ? "fragment"
         : shaderType === gl.VERTEX_SHADER
-        ? "vertex"
-        : "unknown";
+          ? "vertex"
+          : "unknown";
     const pattern = /ERROR: [0-9]+:([0-9]+)/;
 
     gl.deleteShader(shader);
@@ -101,12 +101,12 @@ const compileShader = (
         `could not compile ${name} shader (${error}) around:\n${source
           .split("\n")
           .slice(Math.max(begin, 0), end)
-          .join("\n")}`
+          .join("\n")}`,
       );
     }
 
     throw Error(
-      `could not compile ${name} shader (${error}) in source:\n${source}`
+      `could not compile ${name} shader (${error}) in source:\n${source}`,
     );
   }
 
@@ -115,7 +115,7 @@ const compileShader = (
 
 const createAttribute = (
   buffer: GlBuffer,
-  stride: number
+  stride: number,
 ): GlShaderAttribute => {
   return { buffer, stride };
 };
@@ -124,7 +124,7 @@ const createShader = (
   gl: GlContext,
   useProgram: (program: WebGLProgram) => void,
   shaderDefault: GlShaderDefault,
-  source: GlShaderSource
+  source: GlShaderSource,
 ): GlShader => {
   const program = gl.createProgram();
 
@@ -205,7 +205,7 @@ const createShader = (
               buffer.type,
               false,
               buffer.bytesPerElement * stride,
-              0
+              0,
             );
             gl.enableVertexAttribArray(location);
           });
@@ -244,7 +244,7 @@ const createShader = (
 const textureUniform = <TState>(
   primaryGetter: (state: TState) => GlTexture | undefined,
   defaultGetter: (defaultValue: GlShaderDefault) => GlTexture,
-  target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"]
+  target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"],
 ): GlShaderUniform<TState, { target: number; texture: GlTexture }> => ({
   allocateTexture: true,
   createValue: () => ({
@@ -280,12 +280,12 @@ const shaderLoop = (count: number, body: (i: number) => string): string =>
 const shaderWhen = (
   condition: boolean,
   whenTrue: string,
-  whenFalse?: string
-): string => (condition ? whenTrue : whenFalse ?? "");
+  whenFalse?: string,
+): string => (condition ? whenTrue : (whenFalse ?? ""));
 
 const uniform = {
   boolean: <TState>(
-    getter: (state: TState) => boolean
+    getter: (state: TState) => boolean,
   ): GlShaderUniform<TState, number> => ({
     allocateTexture: false,
     createValue: () => 0,
@@ -294,7 +294,7 @@ const uniform = {
   }),
 
   matrix3f: <TState>(
-    getter: (state: TState) => Matrix3
+    getter: (state: TState) => Matrix3,
   ): GlShaderUniform<TState, Float32Array> => {
     return {
       allocateTexture: false,
@@ -319,7 +319,7 @@ const uniform = {
   },
 
   matrix4f: <TState>(
-    getter: (state: TState) => Matrix4
+    getter: (state: TState) => Matrix4,
   ): GlShaderUniform<TState, Float32Array> => ({
     allocateTexture: false,
     createValue: () => new Float32Array(16),
@@ -349,7 +349,7 @@ const uniform = {
   }),
 
   number: <TState>(
-    getter: (state: TState) => number
+    getter: (state: TState) => number,
   ): GlShaderUniform<TState, number> => ({
     allocateTexture: false,
     createValue: () => 0,
@@ -361,21 +361,21 @@ const uniform = {
     textureUniform(
       getter,
       ({ textureBlack }) => textureBlack,
-      WebGL2RenderingContext["TEXTURE_2D"]
+      WebGL2RenderingContext["TEXTURE_2D"],
     ),
 
   tex2dNormal: <TState>(getter: (state: TState) => GlTexture | undefined) =>
     textureUniform(
       getter,
       ({ textureNormal }) => textureNormal,
-      WebGL2RenderingContext["TEXTURE_2D"]
+      WebGL2RenderingContext["TEXTURE_2D"],
     ),
 
   tex2dWhite: <TState>(getter: (state: TState) => GlTexture | undefined) =>
     textureUniform(
       getter,
       ({ textureWhite }) => textureWhite,
-      WebGL2RenderingContext["TEXTURE_2D"]
+      WebGL2RenderingContext["TEXTURE_2D"],
     ),
 
   tex3d: <TState>(getter: (state: TState) => GlTexture | undefined) =>
@@ -384,11 +384,11 @@ const uniform = {
       () => {
         throw new Error("undefined cube texture");
       },
-      WebGL2RenderingContext["TEXTURE_CUBE_MAP"]
+      WebGL2RenderingContext["TEXTURE_CUBE_MAP"],
     ),
 
   vector2f: <TState>(
-    getter: (state: TState) => Vector2
+    getter: (state: TState) => Vector2,
   ): GlShaderUniform<TState, Float32Array> => ({
     allocateTexture: false,
     createValue: () => new Float32Array(2),
@@ -404,7 +404,7 @@ const uniform = {
   }),
 
   vector3f: <TState>(
-    getter: (state: TState) => Vector3
+    getter: (state: TState) => Vector3,
   ): GlShaderUniform<TState, Float32Array> => ({
     allocateTexture: false,
     createValue: () => new Float32Array(3),
@@ -421,7 +421,7 @@ const uniform = {
   }),
 
   vector4f: <TState>(
-    getter: (state: TState) => Vector4
+    getter: (state: TState) => Vector4,
   ): GlShaderUniform<TState, Float32Array> => ({
     allocateTexture: false,
     createValue: () => new Float32Array(4),
