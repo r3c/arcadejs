@@ -1,4 +1,4 @@
-import { TextureSampler, defaultSampler } from "./mesh";
+import { Interpolation, TextureSampler, Wrap, defaultSampler } from "./mesh";
 import { Vector4 } from "../math/vector";
 import { GlContext } from "./webgl/resource";
 import { Releasable } from "../io/resource";
@@ -17,16 +17,21 @@ const createRuntime = (context: GlContext): GlRuntime => {
       GlMap.Quad,
       { x: 1, y: 1 },
       GlFormat.RGBA8,
-      defaultSampler,
+      {
+        magnifier: Interpolation.Nearest,
+        minifier: Interpolation.Nearest,
+        mipmap: false,
+        wrap: Wrap.Clamp,
+      },
       new ImageData(
         new Uint8ClampedArray(
           Vector4.toArray(
-            Vector4.fromSource(color, ["scale", 255], ["map", Math.floor])
-          )
+            Vector4.fromSource(color, ["scale", 255], ["map", Math.floor]),
+          ),
         ),
         1,
-        1
-      )
+        1,
+      ),
     );
 
   const textureBlack = createConstantTexture({ x: 0, y: 0, z: 0, w: 0 });
@@ -34,10 +39,10 @@ const createRuntime = (context: GlContext): GlRuntime => {
   const textureWhite = createConstantTexture({ x: 1, y: 1, z: 1, w: 1 });
   const shaderDefault = { textureBlack, textureNormal, textureWhite };
 
-  let currentProgram: WebGLProgram | undefined = undefined;
-
   // Forward call to `gl.useProgram` if given program is not already active
   // (may be premature optimization e.g. duplicate of underlying implementation)
+  let currentProgram: WebGLProgram | undefined = undefined;
+
   const useProgram = (program: WebGLProgram): void => {
     if (currentProgram !== program) {
       context.useProgram(program);
@@ -64,14 +69,14 @@ const loadTextureCube = (
   faceNegativeY: ImageData,
   facePositiveZ: ImageData,
   faceNegativeZ: ImageData,
-  filter?: TextureSampler
+  sampler?: TextureSampler,
 ): GlTexture => {
   return createTexture(
     gl,
     GlMap.Cube,
     { x: facePositiveX.width, y: facePositiveX.height },
     GlFormat.RGBA8,
-    filter ?? defaultSampler,
+    sampler ?? defaultSampler,
     [
       facePositiveX,
       faceNegativeX,
@@ -79,22 +84,22 @@ const loadTextureCube = (
       faceNegativeY,
       facePositiveZ,
       faceNegativeZ,
-    ]
+    ],
   );
 };
 
 const loadTextureQuad = (
   gl: GlContext,
   image: ImageData,
-  filter?: TextureSampler
+  sampler?: TextureSampler,
 ): GlTexture => {
   return createTexture(
     gl,
     GlMap.Quad,
     { x: image.width, y: image.height },
     GlFormat.RGBA8,
-    filter ?? defaultSampler,
-    image
+    sampler ?? defaultSampler,
+    image,
   );
 };
 
