@@ -36,6 +36,7 @@ import {
   GlEncodingRenderer,
   createGlEncodingRenderer,
 } from "../../engine/graphic/renderer";
+import { GlEncodingSource } from "../../engine/graphic/renderer/gl-encoding";
 
 /*
  ** What changed?
@@ -45,7 +46,7 @@ const configurator = {
   technique: createSelect(
     "technique",
     ["Deferred shading", "Deferred lighting"],
-    0
+    0,
   ),
   nbDirectionalLights: createSelect("dLights", ["0", "1", "2", "5"], 0),
   nbPointLights: createSelect("pLights", ["0", "20", "100", "500", "2000"], 1),
@@ -65,7 +66,7 @@ const configurator = {
       "Diffuse light (DL)",
       "Specular light (DL)",
     ],
-    0
+    0,
   ),
 };
 
@@ -117,15 +118,12 @@ const pointLightParameters = [
 
 type DeferredRenderer = DeferredLightingRenderer | DeferredShadingRenderer;
 
-type Configuration = typeof configurator extends ApplicationConfigurator<
-  infer T
->
-  ? T
-  : never;
+type Configuration =
+  typeof configurator extends ApplicationConfigurator<infer T> ? T : never;
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ): Promise<Application<Configuration>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -145,7 +143,7 @@ const createApplication = async (
         "scale",
         { x: 0.5, y: 0.5, z: 0.5 },
       ]),
-    }
+    },
   );
   const groundModel = await loadMeshFromJson("model/ground/mesh.json");
   const pointLightModel = await loadMeshFromJson("model/sphere/mesh.json", {
@@ -163,7 +161,7 @@ const createApplication = async (
       getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
-    Vector2.zero
+    Vector2.zero,
   );
   const allDirectionalLights = range(10).map((i) => ({
     color: brightColor(i),
@@ -205,6 +203,7 @@ const createApplication = async (
           ? createGlEncodingRenderer(runtime, {
               channel: debugConfigurations[configuration.debugMode - 1].channel,
               format: debugConfigurations[configuration.debugMode - 1].format,
+              source: GlEncodingSource.Sampler2d,
               zNear: 0.1,
               zFar: 100,
             })
@@ -299,11 +298,11 @@ const createApplication = async (
 
       directionalLights = allDirectionalLights.slice(
         0,
-        directionalLightParameter.count
+        directionalLightParameter.count,
       );
       directionalLightTransforms = range(directionalLights.length).map(() => {
         const { mesh, transform } = createDynamicMesh(
-          models.directionalLight.mesh
+          models.directionalLight.mesh,
         );
 
         newRenderer.addSubject({ mesh });
@@ -396,7 +395,7 @@ const process = declare(
   "Deferred rendering",
   createWebGLScreen,
   createApplication,
-  configurator
+  configurator,
 );
 
 export { process };

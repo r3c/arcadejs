@@ -8,6 +8,9 @@
 - Implement PBR lighting model for deferred {shading,lighting}
 - Extract model textures out of materials to factorize bitmaps
 - Support animated models and load animations from glTF files
+- In Application, have configure return a releasable object and create receive it (+ auto release)
+- In setUniform, have tex2d & tex3d (rename to texCube) receive both state & defaults
+- In GlShaderUniform, have rename createValue to acquire & use a different type than value
 
 ## Done
 

@@ -40,9 +40,20 @@ const enum GlEncodingFormat {
   Log2RGB,
 }
 
+const enum GlEncodingSource {
+  Sampler2d,
+  SamplerCubeNegativeX,
+  SamplerCubePositiveX,
+  SamplerCubeNegativeY,
+  SamplerCubePositiveY,
+  SamplerCubeNegativeZ,
+  SamplerCubePositiveZ,
+}
+
 type GlEncodingConfiguration = {
   channel: GlEncodingChannel;
   format: GlEncodingFormat;
+  source: GlEncodingSource;
   scale?: number;
   zFar: number;
   zNear: number;
@@ -58,7 +69,47 @@ type Scene = {
   source: GlTexture;
 };
 
-const createSource = (directive: GlEncodingConfiguration): GlShaderSource => ({
+const encodingSources = {
+  [GlEncodingSource.Sampler2d]: {
+    uniform: uniform.tex2dBlack<Scene>(({ source }) => source),
+    type: "sampler2D",
+    value: "coord",
+  },
+  [GlEncodingSource.SamplerCubeNegativeX]: {
+    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    type: "samplerCube",
+    value: "vec3(-1.0, coord.xy * 2.0 - 1.0)",
+  },
+  [GlEncodingSource.SamplerCubePositiveX]: {
+    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    type: "samplerCube",
+    value: "vec3(+1.0, coord.xy * 2.0 - 1.0)",
+  },
+  [GlEncodingSource.SamplerCubeNegativeY]: {
+    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    type: "samplerCube",
+    value: "vec3(coord.x * 2.0 - 1.0, -1.0, coord.y * 2.0 - 1.0)",
+  },
+  [GlEncodingSource.SamplerCubePositiveY]: {
+    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    type: "samplerCube",
+    value: "vec3(coord.x * 2.0 - 1.0, +1.0, coord.y * 2.0 - 1.0)",
+  },
+  [GlEncodingSource.SamplerCubeNegativeZ]: {
+    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    type: "samplerCube",
+    value: "vec3(coord.xy * 2.0 - 1.0, -1.0)",
+  },
+  [GlEncodingSource.SamplerCubePositiveZ]: {
+    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    type: "samplerCube",
+    value: "vec3(coord.xy * 2.0 - 1.0, +1.0)",
+  },
+};
+
+const createSource = (
+  configuration: GlEncodingConfiguration,
+): GlShaderSource => ({
   vertex: `
 uniform mat4 modelMatrix;
 
@@ -78,18 +129,17 @@ ${linearDepth.declare({})}
 ${linearToStandard.declare({})}
 ${normalDecode.declare({})}
 
-uniform sampler2D source;
+uniform ${encodingSources[configuration.source].type} source;
 
 in vec2 coord;
 
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
-  vec4 encoded;
-  vec4 raw = texture(source, coord);
+  vec4 raw = texture(source, ${encodingSources[configuration.source].value});
 
-  encoded = ${shaderCase(
-    directive.channel,
+  vec4 encoded = ${shaderCase(
+    configuration.channel,
 
     // Read 4 bytes, 1 possible configuration
     [GlEncodingChannel.Identity, `raw`],
@@ -107,11 +157,11 @@ void main(void) {
     [GlEncodingChannel.Red, `vec4(raw.r)`],
     [GlEncodingChannel.Green, `vec4(raw.g)`],
     [GlEncodingChannel.Blue, `vec4(raw.b)`],
-    [GlEncodingChannel.Alpha, `vec4(raw.a)`]
+    [GlEncodingChannel.Alpha, `vec4(raw.a)`],
   )};
 
   fragColor = ${shaderCase(
-    directive.format,
+    configuration.format,
     [GlEncodingFormat.Identity, `encoded`],
     [
       GlEncodingFormat.LinearRGB,
@@ -122,49 +172,46 @@ void main(void) {
       GlEncodingFormat.Depth,
       `vec4(${linearDepth.invoke({
         depth: "encoded.r",
-        zFar: `float(${directive.zFar})`,
-        zNear: `float(${directive.zNear})`,
+        zFar: `float(${configuration.zFar})`,
+        zNear: `float(${configuration.zNear})`,
       })}, 1.0)`,
     ],
     [
       GlEncodingFormat.Spheremap,
       `vec4(${normalDecode.invoke({ encoded: "encoded.rg" })}, 1.0)`,
     ],
-    [GlEncodingFormat.Log2RGB, `vec4(-log2(encoded.rgb), 1.0)`]
+    [GlEncodingFormat.Log2RGB, `vec4(-log2(encoded.rgb), 1.0)`],
   )};
 }`,
 });
 
-const createBinding = (shader: GlShader) => {
+const createBinding = (shader: GlShader, source: GlEncodingSource) => {
   const binding = shader.declare<Scene>();
 
   binding.setAttribute("coordinate", ({ coordinate }) => coordinate);
   binding.setAttribute("position", ({ position }) => position);
   binding.setUniform(
     "modelMatrix",
-    uniform.matrix4f(({ modelMatrix }) => modelMatrix)
+    uniform.matrix4f(({ modelMatrix }) => modelMatrix),
   );
-  binding.setUniform(
-    "source",
-    uniform.tex2dBlack(({ source }) => source)
-  );
+  binding.setUniform("source", encodingSources[source].uniform);
 
   return binding;
 };
 
 const createGlEncodingRenderer = (
   runtime: GlRuntime,
-  configuration: GlEncodingConfiguration
+  configuration: GlEncodingConfiguration,
 ): GlEncodingRenderer => {
   const shader = runtime.createShader(createSource(configuration));
-  const binding = createBinding(shader);
+  const binding = createBinding(shader, configuration.source);
   const quad = createModel(runtime.context, commonMesh.quad);
   const scale = configuration.scale ?? 0.4;
 
   const modelMatrix = Matrix4.fromSource(
     Matrix4.identity,
     ["translate", { x: 1 - scale, y: scale - 1, z: 0 }],
-    ["scale", { x: scale, y: scale, z: 0 }]
+    ["scale", { x: scale, y: scale, z: 0 }],
   );
 
   return {
@@ -211,5 +258,6 @@ export {
   type GlEncodingRenderer,
   GlEncodingChannel,
   GlEncodingFormat,
+  GlEncodingSource,
   createGlEncodingRenderer,
 };

@@ -24,12 +24,15 @@ import {
   ForwardLightingLightModel,
   ForwardLightingRenderer,
   ForwardLightingScene,
+  GlEncodingRenderer,
 } from "../../engine/graphic/renderer";
 import {
   createGlEncodingRenderer,
   GlEncodingChannel,
   GlEncodingFormat,
 } from "../../engine/graphic/renderer";
+import { GlTexture } from "../../engine/graphic/webgl/texture";
+import { GlEncodingSource } from "../../engine/graphic/renderer/gl-encoding";
 
 /*
  ** What changed?
@@ -37,6 +40,18 @@ import {
  ** - Shader supports tangent space transform for normal and height mapping
  ** - Scene uses two different shaders loaded from external files
  */
+
+const debugModes: {
+  name: string;
+  source: GlEncodingSource;
+  getTexture: (renderer: ForwardLightingRenderer) => GlTexture;
+}[] = [
+  {
+    name: "Directional",
+    source: GlEncodingSource.Sampler2d,
+    getTexture: (renderer) => renderer.directionalShadowBuffers[0],
+  },
+];
 
 const configurator = {
   nbDirectionalLights: createSelect("dLights", ["0", "1", "2", "3"], 0),
@@ -47,18 +62,19 @@ const configurator = {
   lightSpecular: createCheckbox("specular", true),
   useNormalMap: createCheckbox("nMap", true),
   useHeightMap: createCheckbox("hMap", true),
-  debugMode: createSelect("debug", ["None", "Shadow"], 0),
+  debugMode: createSelect(
+    "debug",
+    ["None", ...debugModes.map(({ name }) => name)],
+    0,
+  ),
 };
 
-type Configuration = typeof configurator extends ApplicationConfigurator<
-  infer T
->
-  ? T
-  : never;
+type Configuration =
+  typeof configurator extends ApplicationConfigurator<infer T> ? T : never;
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ): Promise<Application<Configuration>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -81,7 +97,7 @@ const createApplication = async (
       getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
-    Vector2.zero
+    Vector2.zero,
   );
   const directionalLights = range(3).map((i) => ({
     direction: Vector3.fromZero(),
@@ -91,12 +107,6 @@ const createApplication = async (
     mover: createOrbitMover(i, 2, 2, 1),
     position: Vector3.fromZero(),
   }));
-  const encodingRenderer = createGlEncodingRenderer(runtime, {
-    channel: GlEncodingChannel.Red,
-    format: GlEncodingFormat.Monochrome,
-    zNear: 0.1,
-    zFar: 100,
-  });
   const models = {
     cube: createModel(gl, cubeMesh),
     ground: createModel(gl, groundMesh),
@@ -104,8 +114,9 @@ const createApplication = async (
   };
   const projection = Matrix4.fromIdentity();
 
-  let debugMode = false;
+  let debugMode = 0;
   let directionalLightTransforms: MutableMatrix4[] = [];
+  let encodingRenderer: GlEncodingRenderer | undefined = undefined;
   let move = false;
   let pointLightTransforms: MutableMatrix4[] = [];
   let renderer: ForwardLightingRenderer | undefined = undefined;
@@ -113,6 +124,7 @@ const createApplication = async (
 
   return {
     async setConfiguration(configuration) {
+      encodingRenderer?.release();
       renderer?.release();
 
       const newRenderer = createForwardLightingRenderer(runtime, {
@@ -141,7 +153,7 @@ const createApplication = async (
           newRenderer.addSubject({ mesh, noShadow: true });
 
           return transform;
-        }
+        },
       );
       pointLightTransforms = range(configuration.nbPointLights).map(() => {
         const { mesh, transform } = createDynamicMesh(models.light.mesh);
@@ -151,13 +163,23 @@ const createApplication = async (
         return transform;
       });
 
-      debugMode = configuration.debugMode !== 0;
+      debugMode = configuration.debugMode;
+      encodingRenderer = createGlEncodingRenderer(runtime, {
+        channel: GlEncodingChannel.Red,
+        format: GlEncodingFormat.Monochrome,
+        source:
+          configuration.debugMode > 0
+            ? debugModes[configuration.debugMode - 1].source
+            : GlEncodingSource.Sampler2d,
+        zNear: 0.1,
+        zFar: 100,
+      });
       move = configuration.move;
       renderer = newRenderer;
     },
 
     release() {
-      encodingRenderer.release();
+      encodingRenderer?.release();
       models.cube.release();
       models.ground.release();
       models.light.release();
@@ -193,8 +215,15 @@ const createApplication = async (
       renderer?.render(target, scene);
 
       // Draw texture debug
-      if (debugMode && renderer !== undefined) {
-        encodingRenderer.render(target, renderer.directionalShadowBuffers[0]);
+      if (
+        debugMode > 0 &&
+        renderer !== undefined &&
+        encodingRenderer !== undefined
+      ) {
+        encodingRenderer.render(
+          target,
+          debugModes[debugMode - 1].getTexture(renderer),
+        );
       }
     },
 
@@ -240,7 +269,7 @@ const process = declare(
   "Forward Phong lighting",
   createWebGLScreen,
   createApplication,
-  configurator
+  configurator,
 );
 
 export { process };
