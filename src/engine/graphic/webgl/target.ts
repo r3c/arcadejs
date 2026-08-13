@@ -18,11 +18,6 @@ type GlAttachment = Releasable & {
   setTextures(textures: readonly GlTexture[]): void;
 };
 
-const enum GlAttachementTarget {
-  Color,
-  Depth,
-}
-
 type GlAttachmentTexture = {
   format: GlFormat;
   map: GlMap;
@@ -146,7 +141,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
         viewSize,
         framebuffer,
         format,
-        GlAttachementTarget.Color
+        WebGL2RenderingContext["COLOR_ATTACHMENT0"],
       );
 
       colorAttachment.setRenderbuffer(renderbuffer);
@@ -160,14 +155,14 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
         viewSize,
         framebuffer,
         attachmentTextures,
-        GlAttachementTarget.Color
+        WebGL2RenderingContext["COLOR_ATTACHMENT0"],
       );
 
       colorAttachment.setTextures(textures);
 
       // Configure draw buffers
       const buffers = range(textures.length).map(
-        (i) => gl.COLOR_ATTACHMENT0 + i
+        (i) => gl.COLOR_ATTACHMENT0 + i,
       );
 
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -187,7 +182,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
         viewSize,
         framebuffer,
         format,
-        GlAttachementTarget.Depth
+        WebGL2RenderingContext["DEPTH_ATTACHMENT"],
       );
 
       depthAttachment.setRenderbuffer(renderbuffer);
@@ -201,7 +196,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
         viewSize,
         framebuffer,
         [attachmentTexture],
-        GlAttachementTarget.Depth
+        WebGL2RenderingContext["DEPTH_ATTACHMENT"],
       );
 
       depthAttachment.setTextures(textures);
@@ -271,7 +266,7 @@ const attachRenderbuffer = (
   viewSize: Vector2,
   framebuffer: WebGLFramebuffer,
   format: GlFormat,
-  target: number
+  attachment: GLenum,
 ): GlRenderbuffer => {
   // Create renderbuffer attachment
   const renderbuffer = createRenderbuffer(gl, viewSize, format, 1);
@@ -280,9 +275,9 @@ const attachRenderbuffer = (
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
   gl.framebufferRenderbuffer(
     gl.FRAMEBUFFER,
-    target,
+    attachment,
     gl.RENDERBUFFER,
-    renderbuffer.handle
+    renderbuffer.handle,
   );
 
   checkFramebuffer(gl);
@@ -297,7 +292,7 @@ const attachTextures = (
   size: Vector2,
   framebuffer: WebGLFramebuffer,
   attachmentTextures: GlAttachmentTexture[],
-  target: GlAttachementTarget
+  attachment: GLenum,
 ) => {
   // Create new texture attachment
   const filter = {
@@ -309,10 +304,7 @@ const attachTextures = (
 
   const textures: GlTexture[] = [];
 
-  let attachmentIndex = 0;
-
   for (const { format, map } of attachmentTextures) {
-    const attachmentTarget = getAttachment(target, attachmentIndex++);
     const texture = createTexture(gl, map, size, format, filter, undefined);
 
     // Generate texture targets
@@ -321,7 +313,7 @@ const attachTextures = (
     switch (map) {
       case GlMap.Cube:
         textureTargets = range(6).map(
-          (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i
+          (i) => gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
         );
 
         break;
@@ -340,10 +332,10 @@ const attachTextures = (
       gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
       gl.framebufferTexture2D(
         gl.FRAMEBUFFER,
-        attachmentTarget,
+        attachment,
         textureTarget,
         texture.handle,
-        0
+        0,
       );
 
       checkFramebuffer(gl);
@@ -355,19 +347,6 @@ const attachTextures = (
   }
 
   return textures;
-};
-
-const getAttachment = (target: GlAttachementTarget, index: number) => {
-  switch (target) {
-    case GlAttachementTarget.Color:
-      return WebGL2RenderingContext["COLOR_ATTACHMENT0"] + index;
-
-    case GlAttachementTarget.Depth:
-      return WebGL2RenderingContext["DEPTH_ATTACHMENT"] + index;
-
-    default:
-      throw Error(`invalid attachment target ${target}`);
-  }
 };
 
 export {
