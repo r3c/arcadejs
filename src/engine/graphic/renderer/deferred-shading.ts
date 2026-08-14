@@ -183,7 +183,7 @@ void main(void) {
 });
 
 const createAmbientLightSource = (
-  directive: AmbientLightDirective
+  directive: AmbientLightDirective,
 ): GlShaderSource => {
   const header = `
 uniform vec3 ambientLightColor;`;
@@ -222,7 +222,7 @@ void main(void) {
   fragColor = vec4(ambient * ${shaderWhen(
     directive.lightModelPhongAmbient,
     "1.0",
-    "0.0"
+    "0.0",
   )}, 1.0);
 }`,
   };
@@ -263,7 +263,7 @@ out vec3 lightPositionCamera;
 out vec3 pointLightColor;
 out vec3 pointLightPosition;
 out float pointLightRadius;`,
-  ]
+  ],
 )}
 
 vec3 toCameraDirection(in vec3 worldDirection) {
@@ -289,7 +289,7 @@ ${shaderCase(
   pointLightColor = lightColor;
   pointLightPosition = lightPosition;
   pointLightRadius = lightRadius;`,
-  ]
+  ],
 )}
 
   gl_Position =
@@ -330,7 +330,7 @@ in vec3 pointLightColor;
 in vec3 pointLightPosition;
 in float pointLightRadius;
 `,
-  ]
+  ],
 )}
 
 layout(location=0) out vec4 fragColor;
@@ -371,9 +371,9 @@ ${shaderCase(
     DeferredShadingLightType.Directional,
     `
   ${resultLightType} light = ${directionalLight.invoke({
-      distanceCamera: "lightDistanceCamera",
-      light: "directionalLight",
-    })};`,
+    distanceCamera: "lightDistanceCamera",
+    light: "directionalLight",
+  })};`,
   ],
   [
     DeferredShadingLightType.Point,
@@ -381,18 +381,18 @@ ${shaderCase(
   vec3 lightDistanceCamera = lightPositionCamera - point;
   ${pointLightType} pointLight = ${pointLightType}(pointLightColor, pointLightPosition, pointLightRadius);
   ${resultLightType} light = ${pointLight.invoke({
-      distanceCamera: "lightDistanceCamera",
-      light: "pointLight",
-    })};`,
-  ]
+    distanceCamera: "lightDistanceCamera",
+    light: "pointLight",
+  })};`,
+  ],
 )}
 
   ${phongLightType} phongLight = ${phongLightCast.invoke({
-      eye: "eye",
-      light: "light",
-      normal: "normal",
-      shininess: "shininess",
-    })};
+    eye: "eye",
+    light: "light",
+    normal: "normal",
+    shininess: "shininess",
+  })};
 
   vec3 color = ${phongLightApply.invoke({
     lightCast: "phongLight",
@@ -492,13 +492,13 @@ type PostScene = {
 
 const createAmbientLightBinder = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
+  configuration: DeferredShadingConfiguration,
 ): GlMeshBinder<AmbientLightScene> => {
   return () => {
     const shader = runtime.createShader(
       createAmbientLightSource({
         lightModelPhongAmbient: !configuration.lightModelPhongNoAmbient,
-      })
+      }),
     );
 
     const polygonBinding = shader.declare<GlPolygon>();
@@ -509,26 +509,26 @@ const createAmbientLightBinder = (
 
     matrixBinding.setUniform(
       "modelMatrix",
-      uniform.matrix4f(({ model }) => model)
+      uniform.matrix4f(({ model }) => model),
     );
 
     const sceneBinding = shader.declare<AmbientLightScene>();
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      uniform.matrix4f(({ projection }) => projection)
+      uniform.matrix4f(({ projection }) => projection),
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      uniform.matrix4f(({ view }) => view)
+      uniform.matrix4f(({ view }) => view),
     );
     sceneBinding.setUniform(
       "diffuseAndShininess",
-      uniform.tex2dBlack((state) => state.diffuseAndShininessBuffer)
+      uniform.textureQuad((state) => state.diffuseAndShininessBuffer),
     );
     sceneBinding.setUniform(
       "ambientLightColor",
-      uniform.vector3f(({ ambientLightColor }) => ambientLightColor)
+      uniform.vector3f(({ ambientLightColor }) => ambientLightColor),
     );
 
     const materialBinding = shader.declare<GlMaterial>();
@@ -545,7 +545,7 @@ const createAmbientLightBinder = (
 
 const createGeometryBinder = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
+  configuration: DeferredShadingConfiguration,
 ): GlMeshBinder<GeometryScene> => {
   return (feature) => {
     const shader = runtime.createShader(createGeometrySource());
@@ -556,7 +556,7 @@ const createGeometryBinder = (
     if (feature.hasCoordinate) {
       polygonBinding.setAttribute(
         "coordinates",
-        ({ coordinate }) => coordinate
+        ({ coordinate }) => coordinate,
       );
     }
 
@@ -578,69 +578,78 @@ const createGeometryBinder = (
 
     matrixBinding.setUniform(
       "modelMatrix",
-      uniform.matrix4f(({ model }) => model)
+      uniform.matrix4f(({ model }) => model),
     );
     matrixBinding.setUniform(
       "normalMatrix",
-      uniform.matrix3f(({ normal }) => normal)
+      uniform.matrix3f(({ normal }) => normal),
     );
 
     const sceneBinding = shader.declare<GeometryScene>();
 
     sceneBinding.setUniform(
       "projectionMatrix",
-      uniform.matrix4f(({ projection }) => projection)
+      uniform.matrix4f(({ projection }) => projection),
     );
     sceneBinding.setUniform(
       "viewMatrix",
-      uniform.matrix4f(({ view }) => view)
+      uniform.matrix4f(({ view }) => view),
     );
 
     const materialBinding = shader.declare<GlMaterial>();
 
     materialBinding.setUniform(
       "diffuseColor",
-      uniform.vector4f(({ diffuseColor }) => diffuseColor)
+      uniform.vector4f(({ diffuseColor }) => diffuseColor),
     );
     materialBinding.setUniform(
       "diffuseMap",
-      uniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
+      uniform.textureQuad(
+        ({ diffuseMap }, { textureWhite }) => diffuseMap ?? textureWhite,
+      ),
     );
 
     if (configuration.lightModel === DeferredShadingLightModel.Phong) {
       materialBinding.setUniform(
         "shininess",
-        uniform.number(({ shininess }) => shininess)
+        uniform.number(({ shininess }) => shininess),
       );
       materialBinding.setUniform(
         "specularColor",
-        uniform.vector4f(({ specularColor }) => specularColor)
+        uniform.vector4f(({ specularColor }) => specularColor),
       );
       materialBinding.setUniform(
         "specularMap",
-        uniform.tex2dWhite(({ diffuseMap: a, specularMap: s }) => s ?? a)
+        uniform.textureQuad(
+          ({ diffuseMap: a, specularMap: s }, { textureWhite }) =>
+            s ?? a ?? textureWhite,
+        ),
       );
     }
 
     materialBinding.setUniform(
       "heightMap",
-      !configuration.noHeightMap
-        ? uniform.tex2dBlack(({ heightMap }) => heightMap)
-        : uniform.tex2dBlack(() => undefined)
+      uniform.textureQuad(
+        !configuration.noHeightMap
+          ? ({ heightMap }, { textureBlack }) => heightMap ?? textureBlack
+          : (_, { textureBlack }) => textureBlack,
+      ),
     );
     materialBinding.setUniform(
       "heightParallaxBias",
-      uniform.number(({ heightParallaxBias }) => heightParallaxBias)
+      uniform.number(({ heightParallaxBias }) => heightParallaxBias),
     );
     materialBinding.setUniform(
       "heightParallaxScale",
-      uniform.number(({ heightParallaxScale }) => heightParallaxScale)
+      uniform.number(({ heightParallaxScale }) => heightParallaxScale),
     );
     materialBinding.setUniform(
       "normalMap",
-      !configuration.noNormalMap
-        ? uniform.tex2dNormal(({ normalMap }) => normalMap)
-        : uniform.tex2dNormal(() => undefined)
+      uniform.textureQuad(
+        !configuration.noNormalMap
+          ? ({ normalMap }, { textureNormal }) => normalMap ?? textureNormal
+          : (_, { textureNormal }) => textureNormal,
+      ),
     );
 
     return {
@@ -656,7 +665,7 @@ const createGeometryBinder = (
 const loadLightBinding = <TScene extends LightScene>(
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration,
-  type: DeferredShadingLightType
+  type: DeferredShadingLightType,
 ) => {
   // Setup light shader
   // FIXME: should be released
@@ -666,14 +675,14 @@ const loadLightBinding = <TScene extends LightScene>(
       lightModelPhongDiffuse: !configuration.lightModelPhongNoDiffuse,
       lightModelPhongSpecular: !configuration.lightModelPhongNoSpecular,
       type,
-    })
+    }),
   );
 
   const binding = shader.declare<TScene>();
 
   binding.setUniform(
     "modelMatrix",
-    uniform.matrix4f(({ model }) => model)
+    uniform.matrix4f(({ model }) => model),
   );
   binding.setUniform(
     "inverseProjectionMatrix",
@@ -683,31 +692,31 @@ const loadLightBinding = <TScene extends LightScene>(
       inverseProjectionMatrix.invert();
 
       return inverseProjectionMatrix;
-    })
+    }),
   );
   binding.setUniform(
     "projectionMatrix",
-    uniform.matrix4f(({ projection }) => projection)
+    uniform.matrix4f(({ projection }) => projection),
   );
   binding.setUniform(
     "viewMatrix",
-    uniform.matrix4f(({ view }) => view)
+    uniform.matrix4f(({ view }) => view),
   );
   binding.setUniform(
     "viewportSize",
-    uniform.vector2f(({ viewport }) => viewport)
+    uniform.vector2f(({ viewport }) => viewport),
   );
   binding.setUniform(
     "diffuseAndShininess",
-    uniform.tex2dBlack((state) => state.diffuseAndShininessBuffer)
+    uniform.textureQuad((state) => state.diffuseAndShininessBuffer),
   );
   binding.setUniform(
     "depth",
-    uniform.tex2dBlack(({ depthBuffer }) => depthBuffer)
+    uniform.textureQuad(({ depthBuffer }) => depthBuffer),
   );
   binding.setUniform(
     "normalAndSpecular",
-    uniform.tex2dBlack((state) => state.normalAndSpecularBuffer)
+    uniform.textureQuad((state) => state.normalAndSpecularBuffer),
   );
 
   return binding;
@@ -715,22 +724,22 @@ const loadLightBinding = <TScene extends LightScene>(
 
 const loadDirectionalLightBinding = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
+  configuration: DeferredShadingConfiguration,
 ) => {
   const binding = loadLightBinding<DirectionalLightScene>(
     runtime,
     configuration,
-    DeferredShadingLightType.Directional
+    DeferredShadingLightType.Directional,
   );
 
   // FIXME: use attributes for all
   binding.setUniform(
     "directionalLight.color",
-    uniform.vector3f(({ directionalLight }) => directionalLight.color)
+    uniform.vector3f(({ directionalLight }) => directionalLight.color),
   );
   binding.setUniform(
     "directionalLight.direction",
-    uniform.vector3f(({ directionalLight }) => directionalLight.direction)
+    uniform.vector3f(({ directionalLight }) => directionalLight.direction),
   );
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
 
@@ -739,17 +748,17 @@ const loadDirectionalLightBinding = (
 
 const loadPointLightBinding = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
+  configuration: DeferredShadingConfiguration,
 ) => {
   const binding = loadLightBinding<PointLightScene>(
     runtime,
     configuration,
-    DeferredShadingLightType.Point
+    DeferredShadingLightType.Point,
   );
 
   binding.setUniform(
     "billboardMatrix",
-    uniform.matrix4f(({ billboard }) => billboard)
+    uniform.matrix4f(({ billboard }) => billboard),
   );
   binding.setAttribute("lightColor", ({ polygon: p }) => p.lightColor);
   binding.setAttribute("lightPosition", ({ polygon: p }) => p.lightPosition);
@@ -766,7 +775,7 @@ const loadPostBinding = (runtime: GlRuntime) => {
   binding.setAttribute("positions", ({ position }) => position);
   binding.setUniform(
     "source",
-    uniform.tex2dBlack(({ source }) => source)
+    uniform.textureQuad(({ source }) => source),
   );
 
   return binding;
@@ -774,7 +783,7 @@ const loadPostBinding = (runtime: GlRuntime) => {
 
 const createDeferredShadingRenderer = (
   runtime: GlRuntime,
-  configuration: DeferredShadingConfiguration
+  configuration: DeferredShadingConfiguration,
 ): DeferredShadingRenderer => {
   const gl = runtime.context;
   const geometryTarget = createFramebufferTarget(gl);
@@ -784,7 +793,7 @@ const createDeferredShadingRenderer = (
   const ambientLightRenderer = createGlMeshRenderer(
     GlPencil.Triangle,
     ambientLightBinder,
-    {}
+    {},
   );
   ambientLightRenderer.addSubject(ambientLightQuad.mesh);
   const depthBuffer = geometryTarget.setDepthTexture({
@@ -794,7 +803,7 @@ const createDeferredShadingRenderer = (
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightBinding = loadDirectionalLightBinding(
     runtime,
-    configuration
+    configuration,
   );
   const fullscreenProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -809,7 +818,7 @@ const createDeferredShadingRenderer = (
   const geometryRenderer = createGlMeshRenderer(
     GlPencil.Triangle,
     geometryBinder,
-    {}
+    {},
   );
   const pointLightBillboard = createPointLightBillboard(gl);
   const pointLightBinding = loadPointLightBinding(runtime, configuration);
@@ -923,7 +932,7 @@ const createDeferredShadingRenderer = (
           });
           sceneTarget.draw(
             GlPencil.Triangle,
-            directionalLightBillboard.indexBuffer
+            directionalLightBillboard.indexBuffer,
           );
         }
       }
