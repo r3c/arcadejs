@@ -3,17 +3,17 @@
 ## ToDo
 
 - Implement directional light shadow maps for deferred {shading,lighting}
-- Implement point light shadow maps
 - Implement smooth shadows
 - Implement PBR lighting model for deferred {shading,lighting}
 - Extract model textures out of materials to factorize bitmaps
 - Support animated models and load animations from glTF files
 - In Application, have configure return a releasable object and create receive it (+ auto release)
-- In setUniform, have tex2d & tex3d (rename to texCube) receive both state & defaults
-- In GlShaderUniform, have rename createValue to acquire & use a different type than value
 
 ## Done
 
+- In GlShaderUniform, have rename createValue to acquire & use a different type than value
+- In setUniform, have tex2d & tex3d (rename to texCube) receive both state & defaults
+- Implement point light shadow maps
 - Implement feature-level attributes (e.g. no texture) in forward lighting renderer [forward-lighting-feature]
 - Factorize materials when merging meshes [material-factorize]
 - Improve typing of application configuration [application-configuration-typing]
