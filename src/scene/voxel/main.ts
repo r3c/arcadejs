@@ -285,6 +285,7 @@ const createApplication = async (
           color: { x: 0.8, y: 0.8, z: 0.8 },
           position,
           radius,
+          shadow: true,
         })),
         projection,
         view: camera.viewMatrix,
