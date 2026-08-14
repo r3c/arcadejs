@@ -9,12 +9,12 @@ type Screen<TContext> = {
 };
 
 type ScreenConstructor<TContext> = (
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
 ) => Screen<TContext>;
 
 const createScreen = <TContext>(
   canvas: HTMLCanvasElement,
-  context: TContext
+  context: TContext,
 ): Screen<TContext> => {
   canvas.tabIndex = 0;
   canvas.focus();
@@ -61,7 +61,7 @@ const createScreen = <TContext>(
 };
 
 const createCanvasScreen = (
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
 ): Screen<CanvasRenderingContext2D> => {
   const context = canvas.getContext("2d");
 
@@ -73,7 +73,7 @@ const createCanvasScreen = (
 };
 
 const createWebGLScreen = (
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
 ): Screen<WebGL2RenderingContext> => {
   const context = canvas.getContext("webgl2", {
     premultipliedAlpha: false,

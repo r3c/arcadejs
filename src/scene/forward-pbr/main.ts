@@ -49,15 +49,12 @@ const configurator = {
   useNormalMap: createCheckbox("nMap", true),
 };
 
-type Configuration = typeof configurator extends ApplicationConfigurator<
-  infer T
->
-  ? T
-  : never;
+type Configuration =
+  typeof configurator extends ApplicationConfigurator<infer T> ? T : never;
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ): Promise<Application<Configuration>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -72,9 +69,9 @@ const createApplication = async (
       transform: Matrix4.fromSource(
         Matrix4.identity,
         ["rotate", { x: 0, y: 1, z: 0 }, Math.PI],
-        ["rotate", { x: 1, y: 0, z: 0 }, -Math.PI * 0.5]
+        ["rotate", { x: 1, y: 0, z: 0 }, -Math.PI * 0.5],
       ),
-    }
+    },
   );
 
   const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
@@ -92,7 +89,7 @@ const createApplication = async (
   // Load textures
   const brdf = loadTextureQuad(
     gl,
-    await loadFromURL("model/ibl/ibl_brdf_lut.webp")
+    await loadFromURL("model/ibl/ibl_brdf_lut.webp"),
   );
 
   const diffuse = loadTextureCube(
@@ -102,7 +99,7 @@ const createApplication = async (
     await loadFromURL("model/papermill/diffuse_top_0.jpg"),
     await loadFromURL("model/papermill/diffuse_bottom_0.jpg"),
     await loadFromURL("model/papermill/diffuse_front_0.jpg"),
-    await loadFromURL("model/papermill/diffuse_back_0.jpg")
+    await loadFromURL("model/papermill/diffuse_back_0.jpg"),
   );
 
   const specular = loadTextureCube(
@@ -112,7 +109,7 @@ const createApplication = async (
     await loadFromURL("model/papermill/specular_top_0.jpg"),
     await loadFromURL("model/papermill/specular_bottom_0.jpg"),
     await loadFromURL("model/papermill/specular_front_0.jpg"),
-    await loadFromURL("model/papermill/specular_back_0.jpg")
+    await loadFromURL("model/papermill/specular_back_0.jpg"),
   );
 
   // Create state
@@ -123,7 +120,7 @@ const createApplication = async (
       getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
-    Vector2.zero
+    Vector2.zero,
   );
   const models = {
     ground: createModel(gl, groundMesh),
@@ -243,7 +240,7 @@ const process = declare(
   "Forward PBR lighting",
   createWebGLScreen,
   createApplication,
-  configurator
+  configurator,
 );
 
 export { process };

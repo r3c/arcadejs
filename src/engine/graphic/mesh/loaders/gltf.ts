@@ -130,7 +130,7 @@ const convertArrayOf = <TValue>(
   url: string,
   source: string,
   array: any,
-  converter: (value: any, index: number) => TValue
+  converter: (value: any, index: number) => TValue,
 ) => {
   if (array === undefined) {
     throw invalidData(url, `${source} is not a value array`);
@@ -143,7 +143,7 @@ const convertReferenceTo = <TValue>(
   url: string,
   source: string,
   reference: any,
-  pool: TValue[]
+  pool: TValue[],
 ) => {
   if (typeof reference !== "number") {
     throw invalidData(url, `${source} is not a valid reference`);
@@ -152,7 +152,7 @@ const convertReferenceTo = <TValue>(
   if (reference < 0 || reference >= pool.length) {
     throw invalidData(
       url,
-      `${source} references out-of-bound entry #${reference}`
+      `${source} references out-of-bound entry #${reference}`,
     );
   }
 
@@ -164,7 +164,7 @@ const expandAccessor = <T>(
   accessor: TfAccessor,
   cardinality: number,
   converter: (buffer: number[]) => T,
-  type: string
+  type: string,
 ): T[] => {
   const stride =
     accessor.stride !== undefined
@@ -174,14 +174,14 @@ const expandAccessor = <T>(
   if (cardinality > stride) {
     throw invalidData(
       url,
-      `accessor[${accessor.index}] has a smaller stride size (${stride}) than required for a ${type} buffer (${cardinality})`
+      `accessor[${accessor.index}] has a smaller stride size (${stride}) than required for a ${type} buffer (${cardinality})`,
     );
   }
 
   const buffer = new accessor.arrayConstructor(
     accessor.arrayBuffer,
     accessor.offset,
-    accessor.elements * stride
+    accessor.elements * stride,
   );
 
   const result: T[] = [];
@@ -195,11 +195,11 @@ const expandAccessor = <T>(
 
 const expandMaterial = async (
   material: TfMaterial,
-  library: Library
+  library: Library,
 ): Promise<Material> => {
   const toMap = async (
     textureOrUndefined: TfTexture | undefined,
-    channels?: Channel[]
+    channels?: Channel[],
   ): Promise<Texture | undefined> => {
     if (textureOrUndefined === undefined) {
       return undefined;
@@ -207,7 +207,7 @@ const expandMaterial = async (
 
     const texture = await library.getOrLoadTexture(
       textureOrUndefined.imagePath,
-      textureOrUndefined.sampler
+      textureOrUndefined.sampler,
     );
 
     return channels !== undefined
@@ -231,7 +231,7 @@ const expandMaterial = async (
     normalMap: await toMap(material.normalTexture),
     occlusionMap: await toMap(material.occlusionTexture),
     occlusionStrength: mapOptional(material.occlusionFactor, (factor) =>
-      Math.max(factor.x, factor.y, factor.z, factor.w)
+      Math.max(factor.x, factor.y, factor.z, factor.w),
     ),
     roughnessMap: await toMap(material.metallicRoughnessTexture, [
       Channel.Green,
@@ -243,7 +243,7 @@ const expandMaterial = async (
 const expandMesh = (
   url: string,
   mesh: TfMesh,
-  materials: Map<string, Material>
+  materials: Map<string, Material>,
 ): Polygon[] => {
   return mesh.primitives.map((primitive) => {
     const {
@@ -265,8 +265,8 @@ const expandMesh = (
           coordinates,
           2,
           (array) => Vector2.fromZero(["setFromArray", array]),
-          "coordinates"
-        )
+          "coordinates",
+        ),
       ),
       indices: range(Math.floor(indexValues.length / 3)).map((i) => ({
         x: indexValues[i * 3 + 0],
@@ -281,15 +281,15 @@ const expandMesh = (
           normals,
           3,
           (array) => Vector3.fromZero(["setFromArray", array]),
-          "normals"
-        )
+          "normals",
+        ),
       ),
       positions: expandAccessor(
         url,
         positions,
         3,
         (array) => Vector3.fromZero(["setFromArray", array]),
-        "positions"
+        "positions",
       ),
       tangents: mapOptional(tangents, (tangents) =>
         expandAccessor(
@@ -297,8 +297,8 @@ const expandMesh = (
           tangents,
           3,
           (array) => Vector3.fromZero(["setFromArray", array]),
-          "tangents"
-        )
+          "tangents",
+        ),
       ),
       tints: mapOptional(tints, (tints) =>
         expandAccessor(
@@ -306,8 +306,8 @@ const expandMesh = (
           tints,
           4,
           (array) => Vector4.fromZero(["setFromArray", array]),
-          "tints"
-        )
+          "tints",
+        ),
       ),
     };
   });
@@ -316,7 +316,7 @@ const expandMesh = (
 const expandNode = (
   url: string,
   node: TfNode,
-  materials: Map<string, Material>
+  materials: Map<string, Material>,
 ): Mesh => ({
   children: node.children.map((child) => expandNode(url, child, materials)),
   polygons:
@@ -331,7 +331,7 @@ const loadAccessor = (
   url: string,
   bufferViews: TfBufferView[],
   accessor: any,
-  index: number
+  index: number,
 ): TfAccessor => {
   const source = `accessor[${index}]`;
   const byteOffset = <number | undefined>accessor.byteOffset ?? 0;
@@ -339,7 +339,7 @@ const loadAccessor = (
     url,
     source + ".bufferView",
     accessor.bufferView,
-    bufferViews
+    bufferViews,
   );
   const componentType = <number | undefined>accessor.componentType ?? 0;
   const count = <number | undefined>accessor.count ?? 0;
@@ -383,7 +383,7 @@ const loadAccessor = (
     default:
       throw invalidData(
         url,
-        source + ` has unsupported component type ${componentType}`
+        source + ` has unsupported component type ${componentType}`,
       );
   }
 
@@ -424,7 +424,7 @@ const loadAccessor = (
       source +
         ` overflows underlying buffer view #${accessor.bufferView} by ${
           stop - bufferView.length
-        } byte(s)`
+        } byte(s)`,
     );
 
   return {
@@ -442,14 +442,14 @@ const loadBuffer = async (
   url: string,
   embedded: ArrayBuffer | undefined,
   buffer: any,
-  index: number
+  index: number,
 ): Promise<TfBuffer> => {
   let arrayBuffer: ArrayBuffer;
 
   if (buffer.uri !== undefined)
     arrayBuffer = await readURL(
       BinaryFormat,
-      combinePath(getPathDirectory(url), buffer.uri)
+      combinePath(getPathDirectory(url), buffer.uri),
     );
   else if (embedded !== undefined) arrayBuffer = embedded;
   else
@@ -465,14 +465,14 @@ const loadBufferView = (
   url: string,
   buffers: TfBuffer[],
   bufferView: any,
-  index: number
+  index: number,
 ): TfBufferView => {
   const source = `bufferView[${index}]`;
   const buffer = convertReferenceTo(
     url,
     source + ".buffer",
     bufferView.buffer,
-    buffers
+    buffers,
   );
   const byteLength = <number | undefined>bufferView.byteLength ?? 0;
   const byteOffset = <number | undefined>bufferView.byteOffset ?? 0;
@@ -484,7 +484,7 @@ const loadBufferView = (
       source +
         ` overflows underlying buffer ${bufferView.buffer} by ${
           stop - buffer.length
-        } byte(s)`
+        } byte(s)`,
     );
 
   return {
@@ -499,7 +499,7 @@ const loadImagePath = (
   url: string,
   bufferViews: TfBufferView[],
   definition: any,
-  index: number
+  index: number,
 ): string => {
   if (definition.uri !== undefined) {
     return combinePath(getPathDirectory(url), definition.uri);
@@ -515,7 +515,7 @@ const loadImagePath = (
       url,
       source + ".bufferView",
       definition.bufferView,
-      bufferViews
+      bufferViews,
     );
     const blob = new Blob([bufferView.buffer], { type: definition.mimeType });
 
@@ -529,7 +529,7 @@ const loadMaterial = (
   url: string,
   textures: TfTexture[],
   material: any,
-  index: number
+  index: number,
 ): TfMaterial => {
   const pbr = material.pbrMetallicRoughness || {};
   const source = `material[${index}]`;
@@ -544,7 +544,7 @@ const loadMaterial = (
 
   const toTexture = (property: any, name: string) =>
     mapOptional(property, (texture) =>
-      convertReferenceTo(url, source + "." + name, texture.index, textures)
+      convertReferenceTo(url, source + "." + name, texture.index, textures),
     );
 
   return {
@@ -555,7 +555,7 @@ const loadMaterial = (
     metallicFactor: pbr.metallicFactor ?? 1.0,
     metallicRoughnessTexture: toTexture(
       pbr.metallicRoughnessTexture,
-      "metallicRoughnessTexture"
+      "metallicRoughnessTexture",
     ),
     name: material.name || `_${index}`,
     normalFactor: toFactor(material.normalFactor),
@@ -571,13 +571,13 @@ const loadMesh = (
   accessors: TfAccessor[],
   materials: TfMaterial[],
   mesh: any,
-  index: number
+  index: number,
 ): TfMesh => ({
   primitives: convertArrayOf(
     url,
     `mesh[${index}].primitives`,
     mesh.primitives,
-    (value, index) => loadPrimitive(url, accessors, materials, value, index)
+    (value, index) => loadPrimitive(url, accessors, materials, value, index),
   ),
 });
 
@@ -587,7 +587,7 @@ const loadNode = (
   nodes: TfNode[],
   siblings: any,
   node: any,
-  index: number
+  index: number,
 ): TfNode => {
   if (nodes[index] === undefined) {
     const source = `node[${index}]`;
@@ -598,7 +598,7 @@ const loadNode = (
       transform = Matrix4.fromIdentity([
         "setFromArray",
         convertArrayOf(url, source + ".matrix", node.matrix, (value) =>
-          parseFloat(value)
+          parseFloat(value),
         ),
       ]);
     } else if (
@@ -628,7 +628,7 @@ const loadNode = (
             y: node.scale[1],
             z: node.scale[2],
           },
-        ]
+        ],
       );
     } else {
       transform = Matrix4.identity;
@@ -638,7 +638,7 @@ const loadNode = (
       url,
       source + ".children",
       node.children || [],
-      (value) => parseInt(value)
+      (value) => parseInt(value),
     );
     const children = [];
 
@@ -646,18 +646,25 @@ const loadNode = (
       if (siblings[childIndex] === undefined)
         throw invalidData(
           url,
-          `invalid reference to child node ${childIndex} from node ${index}`
+          `invalid reference to child node ${childIndex} from node ${index}`,
         );
 
       children.push(
-        loadNode(url, meshes, nodes, siblings, siblings[childIndex], childIndex)
+        loadNode(
+          url,
+          meshes,
+          nodes,
+          siblings,
+          siblings[childIndex],
+          childIndex,
+        ),
       );
     }
 
     nodes[index] = {
       children,
       mesh: mapOptional(node.mesh, (mesh) =>
-        convertReferenceTo(url, source + ".mesh", mesh, meshes)
+        convertReferenceTo(url, source + ".mesh", mesh, meshes),
       ),
       transform,
     };
@@ -671,7 +678,7 @@ const loadPrimitive = (
   accessors: TfAccessor[],
   materials: TfMaterial[],
   primitive: any,
-  index: number
+  index: number,
 ): TfPrimitive => {
   const attributes = primitive.attributes;
   const material = <number | undefined>primitive.material;
@@ -687,7 +694,7 @@ const loadPrimitive = (
             url,
             source + ".attributes.COLOR_0",
             parseInt(attributes.COLOR_0),
-            accessors
+            accessors,
           )
         : undefined,
     coordinates:
@@ -696,14 +703,14 @@ const loadPrimitive = (
             url,
             source + ".attributes.TEXCOORD_0",
             parseInt(attributes.TEXCOORD_0),
-            accessors
+            accessors,
           )
         : undefined,
     indices: convertReferenceTo(
       url,
       source + ".indices",
       parseInt(primitive.indices),
-      accessors
+      accessors,
     ),
     normals:
       attributes.NORMAL !== undefined
@@ -711,7 +718,7 @@ const loadPrimitive = (
             url,
             source + ".attributes.NORMAL",
             parseInt(attributes.NORMAL),
-            accessors
+            accessors,
           )
         : undefined,
     materialName:
@@ -723,7 +730,7 @@ const loadPrimitive = (
       url,
       source + ".attributes.POSITION",
       parseInt(attributes.POSITION),
-      accessors
+      accessors,
     ),
     tangents:
       attributes.TANGENT !== undefined
@@ -731,7 +738,7 @@ const loadPrimitive = (
             url,
             source + ".attributes.TANGENT",
             parseInt(attributes.TANGENT),
-            accessors
+            accessors,
           )
         : undefined,
   };
@@ -741,7 +748,7 @@ const loadRoot = async (
   url: string,
   structure: any,
   embedded: ArrayBuffer | undefined,
-  library: Library
+  library: Library,
 ): Promise<Mesh> => {
   const defaultScene = <number | undefined>structure.scene;
   const version: string =
@@ -755,20 +762,20 @@ const loadRoot = async (
   // Accessors
   const buffers: TfBuffer[] = await Promise.all(
     convertArrayOf(url, "buffers", structure.buffers || [], (value, index) =>
-      loadBuffer(url, embedded, value, index)
-    )
+      loadBuffer(url, embedded, value, index),
+    ),
   );
   const bufferViews: TfBufferView[] = convertArrayOf(
     url,
     "bufferViews",
     structure.bufferViews || [],
-    (value, index) => loadBufferView(url, buffers, value, index)
+    (value, index) => loadBufferView(url, buffers, value, index),
   );
   const accessors: TfAccessor[] = convertArrayOf(
     url,
     "accessors",
     structure.accessors || [],
-    (value, index) => loadAccessor(url, bufferViews, value, index)
+    (value, index) => loadAccessor(url, bufferViews, value, index),
   );
 
   // Materials
@@ -776,25 +783,25 @@ const loadRoot = async (
     url,
     "images",
     structure.images || [],
-    (value, index) => loadImagePath(url, bufferViews, value, index)
+    (value, index) => loadImagePath(url, bufferViews, value, index),
   );
   const samplers: TextureSampler[] = convertArrayOf(
     url,
     "samplers",
     structure.samplers || [],
-    (value, index) => loadSampler(url, value, index)
+    (value, index) => loadSampler(url, value, index),
   );
   const textures: TfTexture[] = convertArrayOf(
     url,
     "textures",
     structure.textures || [],
-    (value, index) => loadTexture(url, imagePaths, samplers, value, index)
+    (value, index) => loadTexture(url, imagePaths, samplers, value, index),
   );
   const materials: TfMaterial[] = convertArrayOf(
     url,
     "materials",
     structure.materials || [],
-    (value, index) => loadMaterial(url, textures, value, index)
+    (value, index) => loadMaterial(url, textures, value, index),
   );
 
   // Meshes
@@ -802,7 +809,7 @@ const loadRoot = async (
     url,
     "meshes",
     structure.meshes || [],
-    (value, index) => loadMesh(url, accessors, materials, value, index)
+    (value, index) => loadMesh(url, accessors, materials, value, index),
   );
 
   // Scenes
@@ -812,13 +819,13 @@ const loadRoot = async (
     url,
     "nodes",
     nodesRaw,
-    (value, index) => loadNode(url, meshes, nodesCache, nodesRaw, value, index)
+    (value, index) => loadNode(url, meshes, nodesCache, nodesRaw, value, index),
   );
   const scenes: TfScene[] = convertArrayOf(
     url,
     "scenes",
     structure.scenes || [],
-    (value, index) => loadScene(url, nodes, value, index)
+    (value, index) => loadScene(url, nodes, value, index),
   );
 
   if (scenes[defaultScene] === undefined) {
@@ -834,7 +841,7 @@ const loadRoot = async (
 
   return {
     children: scenes[defaultScene].nodes.map((node) =>
-      expandNode(url, node, outputMaterials)
+      expandNode(url, node, outputMaterials),
     ),
     polygons: [],
     transform: Matrix4.identity,
@@ -844,13 +851,13 @@ const loadRoot = async (
 const loadSampler = (
   _url: string,
   sampler: any,
-  _index: number
+  _index: number,
 ): TextureSampler => {
   const magFilter = parseInt(sampler.magFilter || 9729);
   const minFilter = parseInt(sampler.minFilter || 9729);
   const wrap = Math.min(
     parseInt(sampler.wrapS || 10497),
-    parseInt(sampler.wrapT || 10497)
+    parseInt(sampler.wrapT || 10497),
   );
 
   return {
@@ -873,8 +880,8 @@ const loadSampler = (
       wrap === 10497 /* REPEAT */
         ? Wrap.Repeat
         : wrap === 33648 /* MIRRORED_REPEAT */
-        ? Wrap.Mirror
-        : Wrap.Clamp,
+          ? Wrap.Mirror
+          : Wrap.Clamp,
   };
 };
 
@@ -882,13 +889,13 @@ const loadScene = (
   url: string,
   nodes: TfNode[],
   scene: any,
-  index: number
+  index: number,
 ): TfScene => {
   const nodeIndices = <any[]>(scene.nodes || []);
 
   return {
     nodes: nodeIndices.map((node, i) =>
-      convertReferenceTo(url, `scene[${index}].nodes[${i}]`, node, nodes)
+      convertReferenceTo(url, `scene[${index}].nodes[${i}]`, node, nodes),
     ),
   };
 };
@@ -898,7 +905,7 @@ const loadTexture = (
   imagePaths: string[],
   samplers: TextureSampler[],
   texture: any,
-  index: number
+  index: number,
 ): TfTexture => {
   const source = `texture[${index}]`;
 
@@ -906,14 +913,14 @@ const loadTexture = (
     url,
     source + ".source",
     texture.source,
-    imagePaths
+    imagePaths,
   );
 
   const sampler = convertReferenceTo(
     url,
     source + ".sampler",
     texture.sampler,
-    samplers
+    samplers,
   );
 
   return { imagePath, sampler };
@@ -932,7 +939,9 @@ const load = async (url: string, library: Library): Promise<Mesh> => {
   if (first === "{") {
     structure = JSON.parse(
       first +
-        codec.decode(reader.readBuffer(reader.getLength() - reader.getOffset()))
+        codec.decode(
+          reader.readBuffer(reader.getLength() - reader.getOffset()),
+        ),
     );
   }
 

@@ -13,7 +13,7 @@ type FlexibleArray<TBuffer extends FlexibleArrayBuffer> = {
  */
 const createFlexibleArray = <TArray extends FlexibleArrayBuffer>(
   constructor: { new (length: number): TArray },
-  recycle: number
+  recycle: number,
 ): FlexibleArray<TArray> => {
   const instance: FlexibleArray<TArray> = {
     resize: (length) => {

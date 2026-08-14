@@ -21,7 +21,7 @@ type BehindCameraInput = {
 
 const createBehindCamera = (
   input: BehindCameraInput,
-  configuration?: Partial<BehindCameraConfiguration>
+  configuration?: Partial<BehindCameraConfiguration>,
 ): Camera => {
   const positionCurrent = Vector3.fromZero();
   const rotationCurrent = Quaternion.fromSource(input.getRotation());
@@ -76,7 +76,7 @@ const createOrbitCamera = (
   input: OrbitCameraInput,
   initialPosition: Vector3,
   initialRotation: Vector2,
-  configuration?: Partial<OrbitCameraConfiguration>
+  configuration?: Partial<OrbitCameraConfiguration>,
 ): Camera => {
   const easing = getEasing(configuration?.easingType ?? EasingType.Linear);
   const easingDuration = configuration?.easingDuration ?? 100;

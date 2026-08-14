@@ -62,7 +62,7 @@ float phongLightSpecularStrength(in ${resultLightType} light, in float shininess
   vec3 specularReflection = normalize(normal * clamp(lightNormalCosine, 0.0, 1.0) * 2.0 - light.direction);
 
   float lightCosine = max(dot(specularReflection, eye), 0.0);`,
-    ]
+    ],
   )}
 
   return pow(lightCosine, shininess) * lightVisible;

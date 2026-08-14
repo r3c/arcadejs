@@ -12,7 +12,7 @@ type Application<TConfiguration> = Releasable & {
 
 type ApplicationConstructor<TContext, TConfiguration> = (
   screen: Screen<TContext>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ) => Promise<Application<TConfiguration>>;
 
 type ApplicationConfigurator<T> = {
@@ -41,7 +41,7 @@ const canonicalize = (name: string): string => {
 
 const configure = <T>(
   configurator: ApplicationConfigurator<T>,
-  change: (configuration: T) => void
+  change: (configuration: T) => void,
 ): T => {
   const container = document.getElementById("configuration");
 
@@ -87,7 +87,7 @@ const createButton = (caption: string): ApplicationWidget<void> => ({
 
 const createCheckbox = (
   caption: string,
-  defaultValue: boolean
+  defaultValue: boolean,
 ): ApplicationWidget<boolean> => ({
   createElement: (onChange) => {
     const checkbox = document.createElement("input");
@@ -111,7 +111,7 @@ const createCheckbox = (
 const createSelect = (
   caption: string | undefined,
   options: string[],
-  defaultValue: number
+  defaultValue: number,
 ): ApplicationWidget<number> => ({
   createElement: (onChange) => {
     const element = document.createElement("span");
@@ -146,7 +146,7 @@ const declare = <TContext, TConfiguration>(
   title: string,
   screenConstructor: ScreenConstructor<TContext>,
   createApplication: ApplicationConstructor<TContext, TConfiguration>,
-  configurator: ApplicationConfigurator<TConfiguration>
+  configurator: ApplicationConfigurator<TConfiguration>,
 ): Process => {
   let runtime:
     | {
@@ -183,7 +183,7 @@ const declare = <TContext, TConfiguration>(
       const application = await createApplication(screen, gamepad);
       const configuration = configure(
         configurator,
-        application.setConfiguration
+        application.setConfiguration,
       );
 
       await application.setConfiguration(configuration);
@@ -238,7 +238,7 @@ const run = (applications: Process[]) => {
   const hashTitle = decodeURIComponent(location.hash.substring(1));
   const hashValue = Math.max(
     applications.findIndex(({ title }) => canonicalize(title) === hashTitle),
-    0
+    0,
   );
 
   // Initialize application lifecycle
@@ -293,7 +293,7 @@ const run = (applications: Process[]) => {
   // Initialize control elements
   const fullscreenWidget = createButton("Fullscreen");
   const fullscreen = fullscreenWidget.createElement(() =>
-    current?.fullscreen()
+    current?.fullscreen(),
   );
 
   const sceneOptions = applications.map(({ title }) => title);

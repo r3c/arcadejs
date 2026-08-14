@@ -23,7 +23,7 @@ const loadFromURL = async (url: string) => {
 
       if (context === null)
         return reject(
-          `image loaded failed (cannot get canvas 2d context) on URL "${url}"`
+          `image loaded failed (cannot get canvas 2d context) on URL "${url}"`,
         );
 
       context.drawImage(
@@ -35,7 +35,7 @@ const loadFromURL = async (url: string) => {
         0,
         0,
         canvas.width,
-        canvas.height
+        canvas.height,
       );
 
       resolve(context.getImageData(0, 0, canvas.width, canvas.height));
@@ -51,8 +51,8 @@ const mapChannels = (imageData: ImageData, channels: Channel[]): ImageData => {
 
   const indices = channels.concat(
     [Channel.Red, Channel.Green, Channel.Blue, Channel.Alpha].slice(
-      channels.length
-    )
+      channels.length,
+    ),
   );
   const output = new ImageData(imageData.width, imageData.height);
 

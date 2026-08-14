@@ -62,7 +62,7 @@ const createLightUpdater = (): Updater => {
   return (state, dt) => {
     const { lights, player } = state;
 
-    for (let i = lights.length; i-- > 0; ) {
+    for (let i = lights.length; i-- > 0;) {
       const { mover, position } = lights[i];
 
       position.set(mover(player.position, time * 0.001));
@@ -107,7 +107,7 @@ const createPlayerUpdater = (): Updater => {
       const collision = intersectLineWithPlane(
         player.position,
         target,
-        surface.plane
+        surface.plane,
       );
 
       if (collision !== undefined) {
@@ -129,7 +129,7 @@ const createPlayerUpdater = (): Updater => {
       const collision = intersectLineWithPlane(
         player.position,
         target,
-        surface.plane
+        surface.plane,
       );
 
       if (collision !== undefined) {
@@ -143,7 +143,7 @@ const createPlayerUpdater = (): Updater => {
     // Reflect into subject
     sphereTransform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
-      player.position
+      player.position,
     );
   };
 };
@@ -153,7 +153,7 @@ const createPlayerUpdater = (): Updater => {
 const intersectLineWithPlane = (
   start: Vector3,
   stop: Vector3,
-  plane: Plane
+  plane: Plane,
 ): number | undefined => {
   const ray = Vector3.fromSource(stop, ["sub", start]);
   const normalDotRay = Vector3.getDot(plane.normal, ray);
@@ -170,7 +170,7 @@ const intersectLineWithPlane = (
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -228,7 +228,7 @@ const createApplication = async (
     const t0 = Vector3.fromSource(
       plane.normal,
       ["cross", { x: 1, y: 0, z: 0 }],
-      ["normalize"]
+      ["normalize"],
     );
 
     const t2 = Vector3.fromSource(plane.normal, ["cross", t0], ["normalize"]);
@@ -277,7 +277,7 @@ const createApplication = async (
       getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
-    Vector2.zero
+    Vector2.zero,
   );
   const projection = Matrix4.fromIdentity();
   const state: ApplicationState = {

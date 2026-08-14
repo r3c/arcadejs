@@ -40,7 +40,7 @@ ${shaderWhen(
   hasShadow,
   `
   bool castShadow;
-  mat4 shadowViewMatrix;`
+  mat4 shadowViewMatrix;`,
 )}
 };
 
@@ -70,7 +70,7 @@ struct ${pointLightType} {
 ${shaderWhen(
   hasShadow,
   `
-  bool castShadow;`
+  bool castShadow;`,
 )}
 };
 

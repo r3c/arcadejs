@@ -139,9 +139,9 @@ class Quaternion {
     return invokeOnObject(
       new MutableQuaternion(
         Quaternion.identity.scalar,
-        Vector3.fromSource(Quaternion.identity.vector)
+        Vector3.fromSource(Quaternion.identity.vector),
       ),
-      invokes
+      invokes,
     );
   }
 
@@ -153,7 +153,7 @@ class Quaternion {
 
     return invokeOnObject(
       new MutableQuaternion(scalar, Vector3.fromSource(vector)),
-      invokes
+      invokes,
     );
   }
 

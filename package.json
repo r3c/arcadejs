@@ -11,14 +11,16 @@
     "vite": "^8.0.0"
   },
   "scripts": {
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && prettier --check src",
     "build": "vite build",
+    "format": "prettier --write src",
     "install": "node script/install.js",
     "start": "vite build && node script/start.js",
     "test": "vitest",
     "watch": "vite"
   },
   "devDependencies": {
+    "prettier": "3.9.6",
     "vitest": "^4.0.1"
   }
 }

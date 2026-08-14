@@ -18,7 +18,7 @@ const createOrbitMover = (
   index: number,
   minRadius: number,
   maxRadius: number,
-  height: number
+  height: number,
 ): Mover => {
   const angle = generateAngle(index);
   const radius = minRadius + (maxRadius - minRadius) * generateWeight(index);

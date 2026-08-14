@@ -53,7 +53,7 @@ const invalidChunk = (file: string, chunk: number, description: string) => {
 const load = async (url: string, library: Library): Promise<Mesh> => {
   const reader = new BinaryReader(
     await readURL(BinaryFormat, url),
-    Endian.Little
+    Endian.Little,
   );
 
   const context = {
@@ -70,7 +70,7 @@ const load = async (url: string, library: Library): Promise<Mesh> => {
     {
       materials: new Map(),
       polygons: [],
-    }
+    },
   );
 
   return {
@@ -82,7 +82,7 @@ const load = async (url: string, library: Library): Promise<Mesh> => {
         material:
           materialName !== undefined ? materials.get(materialName) : undefined,
         positions,
-      })
+      }),
     ),
     transform: Matrix4.identity,
   };
@@ -92,7 +92,7 @@ const readColor = async (
   context: Context,
   _end: number,
   chunk: number,
-  state: Vector4
+  state: Vector4,
 ): Promise<Vector4> => {
   switch (chunk) {
     case 0x0010: // COL_RGB
@@ -121,7 +121,7 @@ const readEdit = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawModel
+  state: RawModel,
 ) => {
   switch (chunk) {
     case 0x4000: // DIT_OBJECT
@@ -151,7 +151,7 @@ const readMain = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawModel
+  state: RawModel,
 ) => {
   switch (chunk) {
     case 0x3d3d: // EDIT3DS
@@ -165,7 +165,7 @@ const readMaterial = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawMaterial
+  state: RawMaterial,
 ) => {
   switch (chunk) {
     case 0xa000: // Material name
@@ -178,7 +178,7 @@ const readMaterial = async (
         context,
         end,
         readColor,
-        defaultColor
+        defaultColor,
       );
 
       break;
@@ -188,7 +188,7 @@ const readMaterial = async (
         context,
         end,
         readColor,
-        defaultColor
+        defaultColor,
       );
 
       break;
@@ -203,7 +203,7 @@ const readMaterial = async (
         context,
         end,
         readMaterialMap,
-        undefined
+        undefined,
       );
 
       break;
@@ -213,7 +213,7 @@ const readMaterial = async (
         context,
         end,
         readMaterialMap,
-        undefined
+        undefined,
       );
 
       break;
@@ -223,7 +223,7 @@ const readMaterial = async (
         context,
         end,
         readMaterialMap,
-        undefined
+        undefined,
       );
 
       break;
@@ -236,7 +236,7 @@ const readMaterialMap = async (
   context: Context,
   _end: number,
   chunk: number,
-  state: string | undefined
+  state: string | undefined,
 ) => {
   switch (chunk) {
     case 0xa300:
@@ -244,7 +244,7 @@ const readMaterialMap = async (
 
       return combinePath(
         getPathDirectory(url),
-        codec.decode(reader.readBufferZero())
+        codec.decode(reader.readBufferZero()),
       );
   }
 
@@ -255,7 +255,7 @@ const readObject = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawPolygon[]
+  state: RawPolygon[],
 ): Promise<RawPolygon[]> => {
   switch (chunk) {
     case 0x4100: // OBJ_TRIMESH
@@ -278,7 +278,7 @@ const readPolygon = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawPolygon
+  state: RawPolygon,
 ) => {
   switch (chunk) {
     case 0x4110: // TRI_VERTEXL
@@ -330,7 +330,7 @@ const readPolygonMaterial = async (
   context: Context,
   _end: number,
   chunk: number,
-  state: string
+  state: string,
 ): Promise<string> => {
   switch (chunk) {
     case 0x4130: // TRI_MATERIAL
@@ -348,7 +348,7 @@ const readRoot = async (
   context: Context,
   end: number,
   chunk: number,
-  state: RawModel
+  state: RawModel,
 ) => {
   switch (chunk) {
     case 0x4d4d: // MAIN3DS
@@ -358,7 +358,7 @@ const readRoot = async (
       throw invalidChunk(
         context.url,
         chunk,
-        "only main chunk 0x4d4d is accepted at top-level"
+        "only main chunk 0x4d4d is accepted at top-level",
       );
   }
 };
@@ -374,9 +374,9 @@ const scan = async <T>(
     context: Context,
     end: number,
     section: number,
-    state: T
+    state: T,
   ) => Promise<T>,
-  state: T
+  state: T,
 ) => {
   while (context.reader.getOffset() < end) {
     const begin = context.reader.getOffset();

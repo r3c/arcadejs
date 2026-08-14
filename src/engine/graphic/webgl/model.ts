@@ -10,12 +10,7 @@ import {
   createStaticIndexBuffer,
 } from "./resource";
 import { GlShaderAttribute, createAttribute } from "./shader";
-import {
-  GlTexture,
-  GlFormat,
-  GlMap,
-  createTexture,
-} from "./texture";
+import { GlTexture, GlFormat, GlMap, createTexture } from "./texture";
 
 type GlDynamicMesh = {
   mesh: GlMesh;
@@ -131,7 +126,7 @@ const createLibrary = (gl: GlContext, mesh: Mesh): GlLibrary => {
 const loadMaterial = (
   gl: GlContext,
   textures: Map<Texture, GlTexture>,
-  material: Material
+  material: Material,
 ): GlMaterial => {
   const toColorMap = (texture: Texture) => {
     let glTexture = textures.get(texture);
@@ -143,7 +138,7 @@ const loadMaterial = (
         { x: texture.imageData.width, y: texture.imageData.height },
         GlFormat.RGBA8,
         texture.sampler,
-        texture.imageData
+        texture.imageData,
       );
 
       textures.set(texture, glTexture);
@@ -201,7 +196,7 @@ const loadMesh = (gl: GlContext, mesh: Mesh, library: GlLibrary): GlMesh => {
   const children = mesh.children.map((child) => loadMesh(gl, child, library));
 
   const primitives = mesh.polygons.map((polygon) =>
-    loadPrimitive(gl, library, polygon)
+    loadPrimitive(gl, library, polygon),
   );
 
   return {
@@ -247,7 +242,7 @@ const createDynamicMesh = (mesh: GlMesh): GlDynamicMesh => {
 const createModel = (
   gl: GlContext,
   mesh: Mesh,
-  config?: GlModelConfiguration
+  config?: GlModelConfiguration,
 ): GlModel => {
   let ownedLibrary: GlLibrary | undefined;
   let usedLibrary: GlLibrary;
@@ -280,7 +275,7 @@ const createModel = (
 const loadPrimitive = (
   gl: GlContext,
   library: GlLibrary,
-  source: Polygon
+  source: Polygon,
 ): GlPrimitive => {
   const { materials } = library;
 
@@ -288,7 +283,7 @@ const loadPrimitive = (
 
   index.set(
     new Uint32Array(source.indices.flatMap(Vector3.toArray)),
-    source.indices.length * 3
+    source.indices.length * 3,
   );
 
   const coordinate = mapOptional(source.coordinates, (coordinates) => {
@@ -296,7 +291,7 @@ const loadPrimitive = (
 
     buffer.set(
       new Float32Array(coordinates.flatMap(Vector2.toArray)),
-      coordinates.length * 2
+      coordinates.length * 2,
     );
 
     return createAttribute(buffer, 2);
@@ -307,7 +302,7 @@ const loadPrimitive = (
 
     buffer.set(
       new Float32Array(normals.flatMap(Vector3.toArray)),
-      normals.length * 3
+      normals.length * 3,
     );
 
     return createAttribute(buffer, 3);
@@ -317,7 +312,7 @@ const loadPrimitive = (
 
   positionBuffer.set(
     new Float32Array(source.positions.flatMap(Vector3.toArray)),
-    source.positions.length * 3
+    source.positions.length * 3,
   );
 
   const position = createAttribute(positionBuffer, 3);
@@ -327,7 +322,7 @@ const loadPrimitive = (
 
     buffer.set(
       new Float32Array(tangents.flatMap(Vector3.toArray)),
-      tangents.length * 3
+      tangents.length * 3,
     );
 
     return createAttribute(buffer, 3);
@@ -338,7 +333,7 @@ const loadPrimitive = (
 
     buffer.set(
       new Float32Array(tints.flatMap(Vector4.toArray)),
-      tints.length * 4
+      tints.length * 4,
     );
 
     return createAttribute(buffer, 4);

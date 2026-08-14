@@ -61,7 +61,7 @@ const drawMesh = (
   image: Image,
   mesh: Mesh,
   modelViewProjection: Matrix4,
-  drawMode: SoftwareDrawMode
+  drawMode: SoftwareDrawMode,
 ) => {
   const halfWidth = image.size.x * 0.5;
   const halfHeight = image.size.y * 0.5;
@@ -85,7 +85,7 @@ const drawMesh = (
         positions,
         tints,
         coordinates,
-        indices[i].x
+        indices[i].x,
       );
 
       const vertex1 = projectVertexToScreen(
@@ -95,7 +95,7 @@ const drawMesh = (
         positions,
         tints,
         coordinates,
-        indices[i].y
+        indices[i].y,
       );
 
       const vertex2 = projectVertexToScreen(
@@ -105,7 +105,7 @@ const drawMesh = (
         positions,
         tints,
         coordinates,
-        indices[i].z
+        indices[i].z,
       );
 
       drawTriangle(image, vertex0, vertex1, vertex2, material);
@@ -120,7 +120,7 @@ const drawScanline = (
   vb: Vertex,
   vc: Vertex,
   vd: Vertex,
-  material: Material | undefined
+  material: Material | undefined,
 ) => {
   if (y < 0 || y >= image.size.y) {
     return;
@@ -212,7 +212,7 @@ const drawTriangleTexture = (
   v1: Vertex,
   v2: Vertex,
   v3: Vertex,
-  material: Material | undefined
+  material: Material | undefined,
 ) => {
   // Reorder p1, p2 and p3 so that p1.y <= p2.y <= p3.y
   if (v1.point.y > v2.point.y) {
@@ -261,7 +261,7 @@ const drawTriangleWireframe = (
   image: Image,
   v1: Vertex,
   v2: Vertex,
-  v3: Vertex
+  v3: Vertex,
 ) => {
   drawLine(image, v1.point, v2.point);
   drawLine(image, v1.point, v3.point);
@@ -292,7 +292,7 @@ const projectPointToScreen = (
   modelViewProjection: Matrix4,
   halfWidth: number,
   halfHeight: number,
-  position: Vector3
+  position: Vector3,
 ) => {
   const point = Vector4.fromSource(
     {
@@ -301,7 +301,7 @@ const projectPointToScreen = (
       z: position.z,
       w: 1,
     },
-    ["transform", modelViewProjection]
+    ["transform", modelViewProjection],
   );
 
   /*
@@ -324,7 +324,7 @@ const projectVertexToScreen = (
   points: Vector3[],
   colors: Vector4[] | undefined,
   coords: Vector2[] | undefined,
-  index: number
+  index: number,
 ) => {
   return {
     color: colors !== undefined ? colors[index] : defaultColor,
@@ -333,7 +333,7 @@ const projectVertexToScreen = (
       modelViewProjection,
       halfWidth,
       halfHeight,
-      points[index]
+      points[index],
     ),
   };
 };
@@ -354,7 +354,7 @@ type SoftwareSubject = {
 };
 
 const createSoftwareRenderer = (
-  drawMode: SoftwareDrawMode
+  drawMode: SoftwareDrawMode,
 ): SoftwareRenderer => {
   const meshes = new Map<Symbol, Mesh>();
   const screenSize = Vector2.fromZero();
@@ -395,7 +395,7 @@ const createSoftwareRenderer = (
       target.putImageData(
         new ImageData(image.colors, image.size.x, image.size.y),
         0,
-        0
+        0,
       );
     },
 

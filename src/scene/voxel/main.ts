@@ -27,7 +27,7 @@ const timeFactor = 20;
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -53,10 +53,10 @@ const createApplication = async (
             library,
             format: { variables: { level: level.toString() } },
             transform,
-          })
-        )
-      )
-    )
+          }),
+        ),
+      ),
+    ),
   );
 
   worldScaleVector.set(worldScale);
@@ -81,7 +81,7 @@ const createApplication = async (
     worldChunkCount,
     worldChunkSize,
     worldScale,
-    levelModels
+    levelModels,
   );
 
   const worldPhysic = createWorldPhysic(worldGraphic.offsetSize, {
@@ -90,7 +90,7 @@ const createApplication = async (
         offset,
         voxel !== undefined
           ? getModelIndex(offset.y / worldGraphic.offsetSize.y)
-          : undefined
+          : undefined,
       );
     },
     onCreate(offset) {
@@ -104,7 +104,7 @@ const createApplication = async (
 
       worldGraphic.setVoxel(
         offset,
-        getModelIndex(offset.y / worldGraphic.offsetSize.y)
+        getModelIndex(offset.y / worldGraphic.offsetSize.y),
       );
 
       return {
@@ -135,7 +135,7 @@ const createApplication = async (
   const maxWorldRenderSize = Math.max(
     worldGraphic.renderSize.x,
     worldGraphic.renderSize.y,
-    worldGraphic.renderSize.z
+    worldGraphic.renderSize.z,
   );
 
   const camera = createOrbitCamera(
@@ -145,7 +145,7 @@ const createApplication = async (
       getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -maxWorldRenderSize * 2 },
-    { x: -Math.PI / 8, y: (5 * Math.PI) / 4 }
+    { x: -Math.PI / 8, y: (5 * Math.PI) / 4 },
   );
   const lights = range(maxLights).map((i) => ({
     mover: createOrbitMover(i, 1, maxWorldRenderSize, 1),
@@ -175,7 +175,7 @@ const createApplication = async (
       const viewMatrixInverse = Matrix4.fromSource(
         Matrix4.identity,
         ["set", camera.viewMatrix],
-        ["invert"]
+        ["invert"],
       );
 
       const cameraDirection = {
@@ -231,7 +231,7 @@ const createApplication = async (
               y: sourceOffset.y + 1,
               z: sourceOffset.z,
             },
-            Vector3.zero
+            Vector3.zero,
           );
         }
       }
@@ -246,7 +246,7 @@ const createApplication = async (
         const direction = Vector3.fromZero(
           Math.abs(cameraDirection.x) > Math.abs(cameraDirection.z)
             ? ["setFromXYZ", Math.sign(cameraDirection.x), 0, 0]
-            : ["setFromXYZ", 0, 0, Math.sign(cameraDirection.z)]
+            : ["setFromXYZ", 0, 0, Math.sign(cameraDirection.z)],
         );
 
         direction.scale(-0.5);
@@ -306,7 +306,7 @@ const process = declare(
   "Voxel Simulation",
   createWebGLScreen,
   createApplication,
-  {}
+  {},
 );
 
 export { process };

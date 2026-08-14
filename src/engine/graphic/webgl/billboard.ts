@@ -55,7 +55,7 @@ const nbCubeVertices = 8;
  * Build simple quad intended to be displayed full screen.
  */
 const createDirectionalLightBillboard = (
-  gl: GlContext
+  gl: GlContext,
 ): GlDirectionalLightBillboard => {
   const indexBuffer = createDynamicIndexBuffer(gl, Uint32Array, 10);
 
@@ -68,7 +68,7 @@ const createDirectionalLightBillboard = (
     new Float32Array([
       -1.0, -1.0, 0.0, 1.0, -1.0, 0.0, 1.0, 1.0, 0.0, -1.0, 1.0, 0.0,
     ]),
-    12
+    12,
   );
 
   return {
@@ -137,13 +137,13 @@ const createPointLightBillboard = (gl: GlContext): GlPointLightBillboard => {
           radiusArray.buffer[start1] = radius;
         }
 
-        for (let j = indexOffsets.length; j-- > 0; ) {
+        for (let j = indexOffsets.length; j-- > 0;) {
           indexArray.buffer[indexStart + j] = vertexStart + indexOffsets[j];
         }
 
         const start3 = vertexStart * 3;
 
-        for (let j = shiftFactors.length; j-- > 0; ) {
+        for (let j = shiftFactors.length; j-- > 0;) {
           shiftArray.buffer[start3 + j] = shiftFactors[j] * radius;
         }
       }
