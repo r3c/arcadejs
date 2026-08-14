@@ -81,7 +81,12 @@ const createApplication = async (
   const target = createScreenTarget(gl);
 
   // Load models
-  const cubeMesh = await loadMeshFromJson("model/cube/mesh.json");
+  const cubeMesh = await loadMeshFromJson("model/cube/mesh.json", {
+    transform: Matrix4.fromSource(Matrix4.identity, [
+      "scale",
+      { x: 0.5, y: 0.5, z: 0.5 },
+    ]),
+  });
   const groundMesh = await loadMeshFromJson("model/ground/mesh.json");
   const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
     transform: Matrix4.fromSource(Matrix4.identity, [
@@ -138,7 +143,14 @@ const createApplication = async (
         noNormalMap: !configuration.useNormalMap,
       });
 
-      newRenderer.addSubject({ mesh: models.cube.mesh });
+      const cube1 = createDynamicMesh(models.cube.mesh);
+      const cube2 = createDynamicMesh(models.cube.mesh);
+
+      cube1.transform.translate({ x: -1, y: 0, z: 0 });
+      cube2.transform.translate({ x: 1, y: 0, z: 0 });
+
+      newRenderer.addSubject({ mesh: cube1.mesh });
+      newRenderer.addSubject({ mesh: cube2.mesh });
 
       const ground = createDynamicMesh(models.ground.mesh);
 
