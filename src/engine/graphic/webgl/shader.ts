@@ -24,9 +24,9 @@ type GlShaderBinding<TState> = {
     name: string,
     getter: (state: TState) => GlShaderAttribute | undefined,
   ) => void;
-  setUniform: <TValue>(
+  setUniform: <TValue, TUniform>(
     name: string,
-    accessor: GlShaderUniform<TState, TValue>,
+    accessor: GlShaderUniform<TState, TValue, TUniform>,
   ) => void;
 };
 
@@ -49,18 +49,18 @@ type GlShaderSource = {
   vertex: string;
 };
 
-type GlShaderUniform<TState, TValue> = {
+type GlShaderUniform<TState, TValue, TUniform> = {
   allocateTexture: boolean;
-  createValue: (gl: GlContext) => TValue;
-  readValue: (
+  allocateValue: (gl: GlContext) => TValue;
+  readUniform: (
     state: TState,
-    currentValue: TValue,
+    buffer: TValue,
     fallback: GlShaderFallback,
-  ) => TValue;
+  ) => TUniform;
   setUniform: (
     gl: GlContext,
     location: WebGLUniformLocation,
-    value: TValue,
+    value: TUniform,
     textureIndex: number,
   ) => void;
 };
@@ -216,10 +216,10 @@ const createShader = (
             throw new Error(`cannot set uniform "${name}" twice`);
           }
 
-          const { allocateTexture, createValue, readValue, setUniform } =
+          const { allocateTexture, allocateValue, readUniform, setUniform } =
             accessor;
-          const currentValue = createValue(gl);
           const textureIndex = allocateTexture ? allocateTextureIndex() : 0;
+          const value = allocateValue(gl);
 
           const location = gl.getUniformLocation(program, name);
 
@@ -228,7 +228,7 @@ const createShader = (
           }
 
           uniforms.set(name, (state: TState) => {
-            const uniform = readValue(state, currentValue, shaderDefault);
+            const uniform = readUniform(state, value, shaderDefault);
 
             setUniform(gl, location, uniform, textureIndex);
           });
@@ -240,26 +240,6 @@ const createShader = (
     },
   };
 };
-
-const textureUniform = <TState>(
-  getter: (state: TState, fallback: GlShaderFallback) => GlTexture,
-  target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"],
-): GlShaderUniform<TState, { target: number; texture: GlTexture }> => ({
-  allocateTexture: true,
-  createValue: () => ({
-    target,
-    texture: { release: () => {}, setSize: () => {}, handle: {} },
-  }),
-  readValue: (state, { target }, defaultValue) => ({
-    target,
-    texture: getter(state, defaultValue),
-  }),
-  setUniform: (gl, location, { target, texture }, textureIndex) => {
-    gl.activeTexture(gl.TEXTURE0 + textureIndex);
-    gl.bindTexture(target, texture.handle);
-    gl.uniform1i(location, textureIndex);
-  },
-});
 
 const shaderCase = <T>(value: T, ...cases: [T, string][]): string => {
   const match = cases.find(([comparand]) => comparand === value);
@@ -282,23 +262,37 @@ const shaderWhen = (
   whenFalse?: string,
 ): string => (condition ? whenTrue : (whenFalse ?? ""));
 
+const textureUniform = <TState>(
+  getter: (state: TState, fallback: GlShaderFallback) => GlTexture,
+  target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"],
+): GlShaderUniform<TState, undefined, GlTexture> => ({
+  allocateTexture: true,
+  allocateValue: () => undefined,
+  readUniform: (state, _, defaultValue) => getter(state, defaultValue),
+  setUniform: (gl, location, texture, textureIndex) => {
+    gl.activeTexture(gl.TEXTURE0 + textureIndex);
+    gl.bindTexture(target, texture.handle);
+    gl.uniform1i(location, textureIndex);
+  },
+});
+
 const uniform = {
   boolean: <TState>(
     getter: (state: TState) => boolean,
-  ): GlShaderUniform<TState, number> => ({
+  ): GlShaderUniform<TState, number, number> => ({
     allocateTexture: false,
-    createValue: () => 0,
-    readValue: (state) => (getter(state) ? 1 : 0),
+    allocateValue: () => 0,
+    readUniform: (state) => (getter(state) ? 1 : 0),
     setUniform: (g, l, v) => g.uniform1i(l, v),
   }),
 
   matrix3f: <TState>(
     getter: (state: TState) => Matrix3,
-  ): GlShaderUniform<TState, Float32Array> => {
+  ): GlShaderUniform<TState, Float32Array, Float32Array> => {
     return {
       allocateTexture: false,
-      createValue: () => new Float32Array(9),
-      readValue: (state, value) => {
+      allocateValue: () => new Float32Array(9),
+      readUniform: (state, value) => {
         const matrix = getter(state);
 
         value[0] = matrix.v00;
@@ -319,10 +313,10 @@ const uniform = {
 
   matrix4f: <TState>(
     getter: (state: TState) => Matrix4,
-  ): GlShaderUniform<TState, Float32Array> => ({
+  ): GlShaderUniform<TState, Float32Array, Float32Array> => ({
     allocateTexture: false,
-    createValue: () => new Float32Array(16),
-    readValue: (state, value) => {
+    allocateValue: () => new Float32Array(16),
+    readUniform: (state, value) => {
       const matrix = getter(state);
 
       value[0] = matrix.v00;
@@ -349,10 +343,10 @@ const uniform = {
 
   number: <TState>(
     getter: (state: TState) => number,
-  ): GlShaderUniform<TState, number> => ({
+  ): GlShaderUniform<TState, number, number> => ({
     allocateTexture: false,
-    createValue: () => 0,
-    readValue: (state) => getter(state),
+    allocateValue: () => 0,
+    readUniform: (state) => getter(state),
     setUniform: (g, l, v) => g.uniform1f(l, v),
   }),
 
@@ -366,10 +360,10 @@ const uniform = {
 
   vector2f: <TState>(
     getter: (state: TState) => Vector2,
-  ): GlShaderUniform<TState, Float32Array> => ({
+  ): GlShaderUniform<TState, Float32Array, Float32Array> => ({
     allocateTexture: false,
-    createValue: () => new Float32Array(2),
-    readValue: (state, value) => {
+    allocateValue: () => new Float32Array(2),
+    readUniform: (state, value) => {
       const vector = getter(state);
 
       value[0] = vector.x;
@@ -382,10 +376,10 @@ const uniform = {
 
   vector3f: <TState>(
     getter: (state: TState) => Vector3,
-  ): GlShaderUniform<TState, Float32Array> => ({
+  ): GlShaderUniform<TState, Float32Array, Float32Array> => ({
     allocateTexture: false,
-    createValue: () => new Float32Array(3),
-    readValue: (state, value) => {
+    allocateValue: () => new Float32Array(3),
+    readUniform: (state, value) => {
       const vector = getter(state);
 
       value[0] = vector.x;
@@ -399,10 +393,10 @@ const uniform = {
 
   vector4f: <TState>(
     getter: (state: TState) => Vector4,
-  ): GlShaderUniform<TState, Float32Array> => ({
+  ): GlShaderUniform<TState, Float32Array, Float32Array> => ({
     allocateTexture: false,
-    createValue: () => new Float32Array(4),
-    readValue: (state, value) => {
+    allocateValue: () => new Float32Array(4),
+    readUniform: (state, value) => {
       const vector = getter(state);
 
       value[0] = vector.x;
