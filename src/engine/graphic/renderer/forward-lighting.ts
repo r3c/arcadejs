@@ -626,9 +626,11 @@ const createLightBinder = (
     );
     materialBinding.setUniform(
       "diffuseMap",
-      !configuration.noDiffuseMap
-        ? uniform.tex2dWhite(({ diffuseMap }) => diffuseMap)
-        : uniform.tex2dWhite(() => undefined),
+      uniform.textureQuad(
+        !configuration.noDiffuseMap
+          ? ({ diffuseMap }, { textureWhite }) => diffuseMap ?? textureWhite
+          : (_, { textureWhite }) => textureWhite,
+      ),
     );
 
     switch (directive.lightModel) {
@@ -643,9 +645,12 @@ const createLightBinder = (
         );
         materialBinding.setUniform(
           "specularMap",
-          !configuration.noSpecularMap
-            ? uniform.tex2dWhite(({ diffuseMap: d, specularMap: s }) => s ?? d)
-            : uniform.tex2dWhite(() => undefined),
+          uniform.textureQuad(
+            !configuration.noSpecularMap
+              ? ({ diffuseMap, specularMap }, { textureWhite }) =>
+                  specularMap ?? diffuseMap ?? textureWhite
+              : (_, { textureWhite }) => textureWhite,
+          ),
         );
 
         break;
@@ -654,31 +659,50 @@ const createLightBinder = (
         if (directive.lightModelPhysicalIBL) {
           sceneBinding.setUniform(
             "environmentBrdfMap",
-            uniform.tex2dBlack(
-              ({ environmentLight }) => environmentLight?.brdf,
+            uniform.textureQuad(
+              ({ environmentLight }, { textureBlack }) =>
+                environmentLight?.brdf ?? textureBlack,
             ),
           );
           sceneBinding.setUniform(
             "environmentDiffuseMap",
-            uniform.tex3d(({ environmentLight }) => environmentLight?.diffuse),
+            uniform.textureCube(({ environmentLight }) => {
+              if (environmentLight?.diffuse === undefined) {
+                throw new Error("undefined cube texture");
+              }
+
+              return environmentLight.diffuse;
+            }),
           );
           sceneBinding.setUniform(
             "environmentSpecularMap",
-            uniform.tex3d(({ environmentLight }) => environmentLight?.specular),
+            uniform.textureCube(({ environmentLight }) => {
+              if (environmentLight?.specular === undefined) {
+                throw new Error("undefined cube texture");
+              }
+
+              return environmentLight.specular;
+            }),
           );
         }
 
         materialBinding.setUniform(
           "metalnessMap",
-          !configuration.noMetalnessMap
-            ? uniform.tex2dBlack(({ metalnessMap }) => metalnessMap)
-            : uniform.tex2dBlack(() => undefined),
+          uniform.textureQuad(
+            !configuration.noMetalnessMap
+              ? ({ metalnessMap }, { textureBlack }) =>
+                  metalnessMap ?? textureBlack
+              : (_, { textureBlack }) => textureBlack,
+          ),
         );
         materialBinding.setUniform(
           "roughnessMap",
           !configuration.noRoughnessMap
-            ? uniform.tex2dBlack(({ roughnessMap }) => roughnessMap)
-            : uniform.tex2dBlack(() => undefined),
+            ? uniform.textureQuad(
+                ({ roughnessMap }, { textureBlack }) =>
+                  roughnessMap ?? textureBlack,
+              )
+            : uniform.textureQuad((_, { textureBlack }) => textureBlack),
         );
         materialBinding.setUniform(
           "metalnessStrength",
@@ -694,9 +718,11 @@ const createLightBinder = (
 
     materialBinding.setUniform(
       "emissiveMap",
-      !configuration.noEmissiveMap
-        ? uniform.tex2dBlack(({ emissiveMap }) => emissiveMap)
-        : uniform.tex2dBlack(() => undefined),
+      uniform.textureQuad(
+        !configuration.noEmissiveMap
+          ? ({ emissiveMap }, { textureBlack }) => emissiveMap ?? textureBlack
+          : (_, { textureBlack }) => textureBlack,
+      ),
     );
     materialBinding.setUniform(
       "emissiveColor",
@@ -704,9 +730,11 @@ const createLightBinder = (
     );
     materialBinding.setUniform(
       "heightMap",
-      !configuration.noHeightMap
-        ? uniform.tex2dBlack(({ heightMap }) => heightMap)
-        : uniform.tex2dBlack(() => undefined),
+      uniform.textureQuad(
+        !configuration.noHeightMap
+          ? ({ heightMap }, { textureBlack }) => heightMap ?? textureBlack
+          : (_, { textureBlack }) => textureBlack,
+      ),
     );
     materialBinding.setUniform(
       "heightParallaxBias",
@@ -718,15 +746,19 @@ const createLightBinder = (
     );
     materialBinding.setUniform(
       "normalMap",
-      !configuration.noNormalMap
-        ? uniform.tex2dNormal(({ normalMap }) => normalMap)
-        : uniform.tex2dNormal(() => undefined),
+      uniform.textureQuad(
+        !configuration.noNormalMap
+          ? ({ normalMap }, { textureNormal }) => normalMap ?? textureNormal
+          : (_, { textureNormal }) => textureNormal,
+      ),
     );
     materialBinding.setUniform(
       "occlusionMap",
-      !configuration.noOcclusionMap
-        ? uniform.tex2dBlack(({ occlusionMap }) => occlusionMap)
-        : uniform.tex2dBlack(() => undefined),
+      uniform.textureQuad(
+        !configuration.noOcclusionMap
+          ? ({ occlusionMap }, { textureBlack }) => occlusionMap ?? textureBlack
+          : (_, { textureBlack }) => textureBlack,
+      ),
     );
     materialBinding.setUniform(
       "occlusionStrength",
@@ -765,10 +797,11 @@ const createLightBinder = (
         );
         sceneBinding.setUniform(
           `directionalLightShadowMaps[${index}]`,
-          uniform.tex2dBlack(({ directionalShadowLights }) =>
-            index < directionalShadowLights.length
-              ? directionalShadowLights[index].shadowMap
-              : undefined,
+          uniform.textureQuad(
+            ({ directionalShadowLights }, { textureBlack }) =>
+              (index < directionalShadowLights.length
+                ? directionalShadowLights[index].shadowMap
+                : undefined) ?? textureBlack,
           ),
         );
       }
@@ -805,7 +838,7 @@ const createLightBinder = (
         );
         sceneBinding.setUniform(
           `pointLightShadowMaps[${index}]`,
-          uniform.tex3d(
+          uniform.textureCube(
             ({ pointShadowLights }) =>
               index < pointShadowLights.length
                 ? pointShadowLights[index].shadowMap

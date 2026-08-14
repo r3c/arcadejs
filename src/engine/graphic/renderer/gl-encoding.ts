@@ -71,37 +71,37 @@ type Scene = {
 
 const encodingSources = {
   [GlEncodingSource.Sampler2d]: {
-    uniform: uniform.tex2dBlack<Scene>(({ source }) => source),
+    uniform: uniform.textureQuad<Scene>(({ source }) => source),
     type: "sampler2D",
     value: "coord",
   },
   [GlEncodingSource.SamplerCubeNegativeX]: {
-    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(-1.0, coord.yx * 2.0 - 1.0)",
   },
   [GlEncodingSource.SamplerCubePositiveX]: {
-    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(+1.0, coord.yx * 2.0 - 1.0)",
   },
   [GlEncodingSource.SamplerCubeNegativeY]: {
-    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(coord.x * 2.0 - 1.0, -1.0, 1.0 - coord.y * 2.0)",
   },
   [GlEncodingSource.SamplerCubePositiveY]: {
-    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(coord.x * 2.0 - 1.0, +1.0, coord.y * 2.0 - 1.0)",
   },
   [GlEncodingSource.SamplerCubeNegativeZ]: {
-    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(1.0 - coord.x * 2.0, coord.y * 2.0 - 1.0, -1.0)",
   },
   [GlEncodingSource.SamplerCubePositiveZ]: {
-    uniform: uniform.tex3d<Scene>(({ source }) => source),
+    uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(coord.x * 2.0 - 1.0, coord.y * 2.0 - 1.0, +1.0)",
   },

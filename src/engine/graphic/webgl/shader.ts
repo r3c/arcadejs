@@ -30,7 +30,7 @@ type GlShaderBinding<TState> = {
   ) => void;
 };
 
-type GlShaderDefault = {
+type GlShaderFallback = {
   textureBlack: GlTexture;
   textureNormal: GlTexture;
   textureWhite: GlTexture;
@@ -55,7 +55,7 @@ type GlShaderUniform<TState, TValue> = {
   readValue: (
     state: TState,
     currentValue: TValue,
-    defaultValue: GlShaderDefault,
+    fallback: GlShaderFallback,
   ) => TValue;
   setUniform: (
     gl: GlContext,
@@ -123,7 +123,7 @@ const createAttribute = (
 const createShader = (
   gl: GlContext,
   useProgram: (program: WebGLProgram) => void,
-  shaderDefault: GlShaderDefault,
+  shaderDefault: GlShaderFallback,
   source: GlShaderSource,
 ): GlShader => {
   const program = gl.createProgram();
@@ -242,8 +242,7 @@ const createShader = (
 };
 
 const textureUniform = <TState>(
-  primaryGetter: (state: TState) => GlTexture | undefined,
-  defaultGetter: (defaultValue: GlShaderDefault) => GlTexture,
+  getter: (state: TState, fallback: GlShaderFallback) => GlTexture,
   target: GlContext["TEXTURE_2D"] | GlContext["TEXTURE_CUBE_MAP"],
 ): GlShaderUniform<TState, { target: number; texture: GlTexture }> => ({
   allocateTexture: true,
@@ -253,7 +252,7 @@ const textureUniform = <TState>(
   }),
   readValue: (state, { target }, defaultValue) => ({
     target,
-    texture: primaryGetter(state) ?? defaultGetter(defaultValue),
+    texture: getter(state, defaultValue),
   }),
   setUniform: (gl, location, { target, texture }, textureIndex) => {
     gl.activeTexture(gl.TEXTURE0 + textureIndex);
@@ -357,35 +356,13 @@ const uniform = {
     setUniform: (g, l, v) => g.uniform1f(l, v),
   }),
 
-  tex2dBlack: <TState>(getter: (state: TState) => GlTexture | undefined) =>
-    textureUniform(
-      getter,
-      ({ textureBlack }) => textureBlack,
-      WebGL2RenderingContext["TEXTURE_2D"],
-    ),
+  textureCube: <TState>(
+    getter: (state: TState, fallback: GlShaderFallback) => GlTexture,
+  ) => textureUniform(getter, WebGL2RenderingContext["TEXTURE_CUBE_MAP"]),
 
-  tex2dNormal: <TState>(getter: (state: TState) => GlTexture | undefined) =>
-    textureUniform(
-      getter,
-      ({ textureNormal }) => textureNormal,
-      WebGL2RenderingContext["TEXTURE_2D"],
-    ),
-
-  tex2dWhite: <TState>(getter: (state: TState) => GlTexture | undefined) =>
-    textureUniform(
-      getter,
-      ({ textureWhite }) => textureWhite,
-      WebGL2RenderingContext["TEXTURE_2D"],
-    ),
-
-  tex3d: <TState>(getter: (state: TState) => GlTexture | undefined) =>
-    textureUniform(
-      getter,
-      () => {
-        throw new Error("undefined cube texture");
-      },
-      WebGL2RenderingContext["TEXTURE_CUBE_MAP"],
-    ),
+  textureQuad: <TState>(
+    getter: (state: TState, fallback: GlShaderFallback) => GlTexture,
+  ) => textureUniform(getter, WebGL2RenderingContext["TEXTURE_2D"]),
 
   vector2f: <TState>(
     getter: (state: TState) => Vector2,

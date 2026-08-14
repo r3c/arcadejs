@@ -275,7 +275,7 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
 
   billboardBinding.setUniform(
     "sprite",
-    uniform.tex2dWhite(({ sprite }) => sprite)
+    uniform.textureQuad(({ sprite }, { textureWhite }) => sprite ?? textureWhite)
   );
 
   // Declare scene binding (shared by all particle sources)
