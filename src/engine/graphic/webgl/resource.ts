@@ -55,7 +55,7 @@ const createBuffer = (
   bufferTarget: GlBufferTarget,
   arrayConstructor: GlArrayConstructor,
   recycleRatio: number,
-  usage: GlBufferUsage
+  usage: GlBufferUsage,
 ): GlBuffer => {
   const buffer = gl.createBuffer();
 
@@ -89,13 +89,13 @@ const createBuffer = (
     update: (offset: number, data: GlArray, length: number) => {
       if (data.BYTES_PER_ELEMENT !== self.bytesPerElement) {
         throw Error(
-          `cannot change buffer with ${self.bytesPerElement} byte(s) per element to ${data.BYTES_PER_ELEMENT}`
+          `cannot change buffer with ${self.bytesPerElement} byte(s) per element to ${data.BYTES_PER_ELEMENT}`,
         );
       }
 
       if (offset + length > self.capacity) {
         throw Error(
-          `cannot write at offset ${offset} + length ${length} into a buffer of capacity ${self.capacity}`
+          `cannot write at offset ${offset} + length ${length} into a buffer of capacity ${self.capacity}`,
         );
       }
 
@@ -105,7 +105,7 @@ const createBuffer = (
         self.bytesPerElement * offset,
         data,
         0,
-        length
+        length,
       );
     },
     bytesPerElement: arrayConstructor.BYTES_PER_ELEMENT,
@@ -121,45 +121,45 @@ const createBuffer = (
 const createDynamicArrayBuffer = (
   gl: GlContext,
   arrayConstructor: GlArrayConstructor,
-  recycleRatio: number
+  recycleRatio: number,
 ): GlBuffer =>
   createBuffer(
     gl,
     gl.ARRAY_BUFFER,
     arrayConstructor,
     recycleRatio,
-    gl.DYNAMIC_DRAW
+    gl.DYNAMIC_DRAW,
   );
 
 const createDynamicIndexBuffer = (
   gl: GlContext,
   arrayConstructor: GlArrayConstructor,
-  recycleRatio: number
+  recycleRatio: number,
 ): GlBuffer =>
   createBuffer(
     gl,
     gl.ELEMENT_ARRAY_BUFFER,
     arrayConstructor,
     recycleRatio,
-    gl.DYNAMIC_DRAW
+    gl.DYNAMIC_DRAW,
   );
 
 const createStaticArrayBuffer = (
   gl: GlContext,
-  arrayConstructor: GlArrayConstructor
+  arrayConstructor: GlArrayConstructor,
 ): GlBuffer =>
   createBuffer(gl, gl.ARRAY_BUFFER, arrayConstructor, 1, gl.STATIC_DRAW);
 
 const createStaticIndexBuffer = (
   gl: GlContext,
-  arrayConstructor: GlArrayConstructor
+  arrayConstructor: GlArrayConstructor,
 ): GlBuffer =>
   createBuffer(
     gl,
     gl.ELEMENT_ARRAY_BUFFER,
     arrayConstructor,
     1,
-    gl.STATIC_DRAW
+    gl.STATIC_DRAW,
   );
 
 /*

@@ -7,7 +7,7 @@ import {
 import { Matrix4 } from "../../engine/math/matrix";
 
 const createApplication = async (
-  screen: Screen<CanvasRenderingContext2D>
+  screen: Screen<CanvasRenderingContext2D>,
 ): Promise<Application<unknown>> => {
   const context = screen.getContext();
   const renderer = createSoftwareRenderer(SoftwareDrawMode.Default);
@@ -34,7 +34,7 @@ const process = declare(
   "Blank screen",
   createCanvasScreen,
   createApplication,
-  {}
+  {},
 );
 
 export { process };

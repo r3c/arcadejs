@@ -48,7 +48,7 @@ vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentD
 
   return diffuse + specular;`,
     `
-  return material.diffuseColor.rgb;`
+  return material.diffuseColor.rgb;`,
   )}
 }`,
 

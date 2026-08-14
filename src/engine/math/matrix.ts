@@ -79,7 +79,7 @@ class MutableMatrix3 implements Matrix3 {
       rhs.v12,
       rhs.v20,
       rhs.v21,
-      rhs.v22
+      rhs.v22,
     );
   }
 
@@ -116,7 +116,7 @@ class MutableMatrix3 implements Matrix3 {
       yCos * z - xSin,
       xCos * z - ySin,
       yCos * z + xSin,
-      zCos * z + cos
+      zCos * z + cos,
     );
   }
 
@@ -182,7 +182,7 @@ class MutableMatrix3 implements Matrix3 {
     v12: number,
     v20: number,
     v21: number,
-    v22: number
+    v22: number,
   ): void {
     const t00 = this.v00 * v00 + this.v10 * v01 + this.v20 * v02;
     const t01 = this.v01 * v00 + this.v11 * v01 + this.v21 * v02;
@@ -463,7 +463,7 @@ class MutableMatrix4 implements Matrix4 {
       rhs.v30,
       rhs.v31,
       rhs.v32,
-      rhs.v33
+      rhs.v33,
     );
   }
 
@@ -507,7 +507,7 @@ class MutableMatrix4 implements Matrix4 {
       0,
       0,
       0,
-      1
+      1,
     );
   }
 
@@ -528,7 +528,7 @@ class MutableMatrix4 implements Matrix4 {
       0,
       0,
       0,
-      1
+      1,
     );
   }
 
@@ -612,7 +612,7 @@ class MutableMatrix4 implements Matrix4 {
     yMin: number,
     yMax: number,
     zMin: number,
-    zMax: number
+    zMax: number,
   ): void {
     const dx = xMax - xMin;
     const dy = yMax - yMin;
@@ -644,7 +644,7 @@ class MutableMatrix4 implements Matrix4 {
     fieldOfView: number,
     aspectRatio: number,
     zMin: number,
-    zMax: number
+    zMax: number,
   ): void {
     var f = 1.0 / Math.tan(fieldOfView * 0.5);
     var q = 1 / (zMin - zMax);
@@ -703,7 +703,7 @@ class MutableMatrix4 implements Matrix4 {
       vector.x,
       vector.y,
       vector.z,
-      1
+      1,
     );
   }
 
@@ -723,7 +723,7 @@ class MutableMatrix4 implements Matrix4 {
     v30: number,
     v31: number,
     v32: number,
-    v33: number
+    v33: number,
   ): void {
     const t00 =
       this.v00 * v00 + this.v10 * v01 + this.v20 * v02 + this.v30 * v03;

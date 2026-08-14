@@ -140,11 +140,11 @@ type Gamepad = {
 
 const createGamepad = (
   eventSource: HTMLElement,
-  mouseOrigin?: HTMLElement
+  mouseOrigin?: HTMLElement,
 ): Gamepad => {
   if (eventSource.tabIndex < 0) {
     throw Error(
-      "eventSource element requires a 'tabindex' attribute to capture key events"
+      "eventSource element requires a 'tabindex' attribute to capture key events",
     );
   }
 
@@ -257,7 +257,7 @@ const createGamepad = (
   const processKeyPress = (
     keyCode: string,
     keyByCode: Map<string, Key>,
-    pressed: boolean
+    pressed: boolean,
   ) => {
     const key = keyByCode.get(keyCode);
 
@@ -420,7 +420,7 @@ const createGamepad = (
         Vector2.fromSource({
           x: touch.pageX,
           y: touch.pageY,
-        })
+        }),
       );
     }
   };
@@ -472,7 +472,7 @@ const createGamepad = (
 
     clear(button) {
       for (const [key, buttonSetups] of buttonStatesByKey.entries()) {
-        for (let i = buttonSetups.length; i-- > 0; ) {
+        for (let i = buttonSetups.length; i-- > 0;) {
           if (buttonSetups[i].button === button) {
             buttonSetups.splice(i, 1);
           }

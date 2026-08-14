@@ -38,7 +38,7 @@ const changeMeshCenter = (mesh: Mesh): Mesh => {
 
   reduceMesh(mesh, Matrix4.identity, false, (_, polygon) => {
     polygon.positions = polygon.positions.map((position) =>
-      Vector3.fromSource(position, ["sub", center])
+      Vector3.fromSource(position, ["sub", center]),
     );
 
     return false;
@@ -69,7 +69,7 @@ const computeBoundingBox = (mesh: Mesh): BoundingBox => {
       yMin: Math.min(previous.yMin, position.y),
       zMax: Math.max(previous.zMax, position.z),
       zMin: Math.min(previous.zMin, position.z),
-    })
+    }),
   );
 };
 
@@ -85,7 +85,7 @@ const computeCenter = (mesh: Mesh): Vector3 => {
       sum.add(position);
 
       return { count: count + 1, sum };
-    }
+    },
   );
 
   sum.scale(1 / count);
@@ -127,7 +127,7 @@ const computeTangents = (
   indices: Vector3[],
   points: Vector3[],
   coords: Vector2[],
-  normals: Vector3[]
+  normals: Vector3[],
 ): Vector3[] => {
   const tangents = range(points.length).map(() => Vector3.fromZero());
 
@@ -176,7 +176,7 @@ const createFlatMesh = (mesh: Mesh): Mesh => {
 const createFlatPolygons = (
   flatPolygons: Map<Material | undefined, Polygon>,
   mesh: Mesh,
-  parentTransform: Matrix4
+  parentTransform: Matrix4,
 ): void => {
   const transform = Matrix4.fromSource(parentTransform, [
     "multiply",
@@ -209,8 +209,8 @@ const createFlatPolygons = (
       flatPolygon.positions.push(
         Vector4.fromSource(
           { x: position.x, y: position.y, z: position.z, w: 1 },
-          ["transform", transform]
-        )
+          ["transform", transform],
+        ),
       );
     }
 
@@ -264,13 +264,13 @@ const createLibrary = (): Library => {
   const texturePromises = new Map<string, Promise<Texture>>();
 
   const getOrLoadMaterial = async (
-    reference: MaterialReference
+    reference: MaterialReference,
   ): Promise<Material> => {
     const hashCode = getHashCode(reference);
 
     const materialMatches = materialMatchesByHashCode.get(hashCode) ?? [];
     const materialMatch = materialMatches.find((match) =>
-      isEqual(match.reference, reference)
+      isEqual(match.reference, reference),
     );
 
     let materialPromise = materialMatch?.materialPromise;
@@ -281,43 +281,43 @@ const createLibrary = (): Library => {
           diffuseColor: reference.diffuseColor,
           diffuseMap: await getOrLoadOptionalTexture(
             reference.diffusePath,
-            reference.diffuseSampler
+            reference.diffuseSampler,
           ),
           emissiveColor: reference.emissiveColor,
           emissiveMap: await getOrLoadOptionalTexture(
             reference.emissivePath,
-            reference.emissiveSampler
+            reference.emissiveSampler,
           ),
           heightMap: await getOrLoadOptionalTexture(
             reference.heightPath,
-            reference.heightSampler
+            reference.heightSampler,
           ),
           heightParallaxBias: reference.heightParallaxBias,
           heightParallaxScale: reference.heightParallaxScale,
           metalnessMap: await getOrLoadOptionalTexture(
             reference.metalnessPath,
-            reference.metalnessSampler
+            reference.metalnessSampler,
           ),
           metalnessStrength: reference.metalnessStrength,
           normalMap: await getOrLoadOptionalTexture(
             reference.normalPath,
-            reference.normalSampler
+            reference.normalSampler,
           ),
           occlusionMap: await getOrLoadOptionalTexture(
             reference.occlusionPath,
-            reference.occlusionSampler
+            reference.occlusionSampler,
           ),
           occlusionStrength: reference.occlusionStrength,
           roughnessMap: await getOrLoadOptionalTexture(
             reference.roughnessPath,
-            reference.roughnessSampler
+            reference.roughnessSampler,
           ),
           roughnessStrength: reference.roughnessStrength,
           shininess: reference.shininess,
           specularColor: reference.specularColor,
           specularMap: await getOrLoadOptionalTexture(
             reference.specularPath,
-            reference.specularSampler
+            reference.specularSampler,
           ),
         };
 
@@ -333,7 +333,7 @@ const createLibrary = (): Library => {
 
   const getOrLoadTexture = async (
     path: string,
-    sampler: TextureSampler
+    sampler: TextureSampler,
   ): Promise<Texture> => {
     let texturePromise = texturePromises.get(path);
 
@@ -352,7 +352,7 @@ const createLibrary = (): Library => {
 
   const getOrLoadOptionalTexture = async (
     path: string | undefined,
-    sampler: TextureSampler | undefined
+    sampler: TextureSampler | undefined,
   ): Promise<Texture | undefined> => {
     return path !== undefined
       ? await getOrLoadTexture(path, sampler ?? defaultSampler)
@@ -381,11 +381,11 @@ const createMeshLoader = <TSource, TFormat>(
   loadCallback: (
     source: TSource,
     library: Library,
-    formatConfiguration: TFormat | undefined
-  ) => Promise<Mesh>
+    formatConfiguration: TFormat | undefined,
+  ) => Promise<Mesh>,
 ): ((
   source: TSource,
-  configurationOrUndefined?: Partial<Configuration<TFormat>>
+  configurationOrUndefined?: Partial<Configuration<TFormat>>,
 ) => Promise<Mesh>) => {
   return async (source, configurationOrUndefined) => {
     // Load mesh using underlying loading callback
@@ -439,7 +439,7 @@ const finalizePolygon = (polygon: Polygon): void => {
       polygon.indices,
       polygon.positions,
       polygon.coordinates,
-      polygon.normals
+      polygon.normals,
     );
   }
 };
@@ -453,7 +453,7 @@ const reduceMesh = <TState>(
   mesh: Mesh,
   parent: Matrix4,
   state: TState,
-  reduce: (previous: TState, geometry: Polygon, transform: Matrix4) => TState
+  reduce: (previous: TState, geometry: Polygon, transform: Matrix4) => TState,
 ): TState => {
   const transform = Matrix4.fromSource(parent, ["multiply", mesh.transform]);
 
@@ -472,7 +472,7 @@ const reduceMeshPositions = <TState>(
   mesh: Mesh,
   parent: Matrix4,
   state: TState,
-  reduce: (previous: TState, position: Vector3) => TState
+  reduce: (previous: TState, position: Vector3) => TState,
 ): TState => {
   return reduceMesh(
     mesh,
@@ -486,13 +486,13 @@ const reduceMeshPositions = <TState>(
           current,
           Vector4.fromSource(
             { x: position.x, y: position.y, z: position.z, w: 1 },
-            ["transform", transform]
-          )
+            ["transform", transform],
+          ),
         );
       }
 
       return current;
-    }
+    },
   );
 };
 

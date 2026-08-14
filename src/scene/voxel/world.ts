@@ -41,7 +41,7 @@ interface WorldEvent {
   onChange: (
     this: WorldPhysic,
     offset: Vector3,
-    voxel: Voxel | undefined
+    voxel: Voxel | undefined,
   ) => void;
   onCreate: (this: WorldPhysic, offset: Vector3) => Voxel | undefined;
 }
@@ -111,7 +111,7 @@ const createWorldGraphic = (
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,
-  meshes: Mesh[][]
+  meshes: Mesh[][],
 ): WorldGraphic => {
   const offsetSize = {
     x: chunkCount.x * chunkSize.x,
@@ -128,7 +128,7 @@ const createWorldGraphic = (
   const shift = Vector3.fromSource(renderSize, ["scale", -0.5]);
 
   const chunks = range(
-    chunkCount.x * chunkCount.y * chunkCount.z
+    chunkCount.x * chunkCount.y * chunkCount.z,
   ).map<WorldChunk>(() => ({
     cubes: new Map<number, WorldCube>(),
   }));
@@ -142,7 +142,7 @@ const createWorldGraphic = (
         transform: Matrix4.identity,
       },
       noShadow: false,
-    })
+    }),
   );
 
   const chunkUpdates = new Set<number>();
@@ -198,9 +198,9 @@ const createWorldGraphic = (
         faces.map((face) => ({
           mesh: face,
           transform: Matrix4.identity,
-        }))
-      )
-    )
+        })),
+      ),
+    ),
   );
 
   const worldGraphic: WorldGraphic = {
@@ -305,7 +305,7 @@ const createWorldGraphic = (
 
 function createWorldPhysic(
   worldSize: Vector3,
-  worldEvent: WorldEvent
+  worldEvent: WorldEvent,
 ): WorldPhysic {
   const { onChange, onCreate } = worldEvent;
 
@@ -448,7 +448,7 @@ function createWorldPhysic(
             velocity,
             "shift",
             state.shift,
-            "no move this turn"
+            "no move this turn",
           );
         } else {
           const activeOffset = offsetOf(activeIndex);
@@ -489,7 +489,7 @@ function createWorldPhysic(
               "move at",
               activeOffset,
               "to",
-              nextOffset
+              nextOffset,
             );
           } else {
             // Transfer momentum to next block if any
@@ -527,7 +527,7 @@ function createWorldPhysic(
               velocity,
               "shift",
               state.shift,
-              "blocked"
+              "blocked",
             );
           }
         }

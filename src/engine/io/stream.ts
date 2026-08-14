@@ -51,7 +51,7 @@ class BinaryReader {
     buffer: ArrayBuffer,
     endian: Endian,
     offset?: number,
-    length?: number
+    length?: number,
   ) {
     this.little = endian === Endian.Little;
     this.offset = 0;
@@ -111,7 +111,7 @@ class BinaryReader {
 
 const readURL = async <T>(
   format: FormatConstructor<Format<T>>,
-  url: string
+  url: string,
 ): Promise<T> => {
   return new Promise<T>((resolve, reject) => {
     const request = new XMLHttpRequest();

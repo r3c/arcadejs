@@ -91,7 +91,7 @@ const createLightUpdater = (): Updater => {
   return (state, dt) => {
     const { lights, lightTransforms, player } = state;
 
-    for (let i = lights.length; i-- > 0; ) {
+    for (let i = lights.length; i-- > 0;) {
       const { mover, position } = lights[i];
       const transform = lightTransforms[i];
 
@@ -180,7 +180,7 @@ const createPlayerUpdater = (): Updater => {
 
     shipTransform.setFromRotationPosition(
       Matrix3.fromIdentity(["setFromQuaternion", player.rotation]),
-      player.position
+      player.position,
     );
   };
 };
@@ -190,7 +190,7 @@ const createStarUpdater = (): Updater => {
   return (state, dt) => {
     const { player, stars, starTransforms } = state;
 
-    for (let i = stars.length; i-- > 0; ) {
+    for (let i = stars.length; i-- > 0;) {
       const star = stars[i];
       const { position, rotationAxis } = star;
       const transform = starTransforms[i];
@@ -217,7 +217,7 @@ const warp = (position: number, center: number, radius: number): number => {
 
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ): Promise<Application<unknown>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
@@ -240,11 +240,11 @@ const createApplication = async (
 
   const starMesh = await loadMeshFromObj(
     "model/asteroid/Asteroid_Asset_Pack.obj",
-    { format: { variables: { type: "rock_0005" } } }
+    { format: { variables: { type: "rock_0005" } } },
   );
 
   const starMeshes: Mesh[] = starMesh.children.map((child) =>
-    changeMeshCenter(child)
+    changeMeshCenter(child),
   );
 
   // Load textures

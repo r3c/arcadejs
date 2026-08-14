@@ -62,7 +62,7 @@ type GlMeshShader<TScene> = {
 const createGlMeshRenderer = <TScene extends GlMeshScene>(
   mode: GlPencil,
   binder: GlMeshBinder<TScene>,
-  configuration: GlMeshConfiguration
+  configuration: GlMeshConfiguration,
 ): GlMeshRenderer<TScene> => {
   const autoReleaseShader = configuration.autoReleaseShader ?? false;
   const releasable = createCompositeReleasable();
@@ -78,7 +78,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
     polygonBinding: GlShaderBinding<GlPolygon>,
     mesh: GlMeshNode,
     view: Matrix4,
-    parent: Matrix4
+    parent: Matrix4,
   ): void => {
     const model = Matrix4.fromSource(parent, ["multiply", mesh.transform]);
     const normal = Matrix3.fromSource(view, ["multiply", model], ["invert"]);
@@ -240,7 +240,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
               binding.polygon,
               mesh,
               scene.view,
-              Matrix4.identity
+              Matrix4.identity,
             );
           }
         }

@@ -29,7 +29,7 @@ const createBooleansIndexer = (nbBooleans: number): Indexer<boolean[]> => ({
 
 const createCompositeIndexer = <T1, T2>(
   indexer1: Indexer<T1>,
-  indexer2: Indexer<T2>
+  indexer2: Indexer<T2>,
 ): Indexer<[T1, T2]> => ({
   bitsize: indexer1.bitsize + indexer2.bitsize,
   index: ([key1, key2]) =>
@@ -43,7 +43,7 @@ const createNumberIndexer = (min: number, max: number): Indexer<number> => ({
 
 const memoize = <TKey, TValue extends Releasable>(
   indexer: Indexer<TKey>,
-  constructor: (key: TKey) => TValue
+  constructor: (key: TKey) => TValue,
 ): Memo<TKey, TValue> => {
   let lastIndex: number | undefined = undefined;
   let lastValue: TValue | undefined;

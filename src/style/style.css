@@ -23,7 +23,7 @@ html {
   gap: 8px;
   padding: 4px 10px;
   margin: 16px;
-  background: #8AC;
+  background: #8ac;
   border-radius: 8px;
 }
 
@@ -57,8 +57,8 @@ html {
 .control select {
   padding: 4px 8px;
   margin: 4px 4px 4px 0;
-  background: #ACE;
-  border-color: #CEF #8AC #8AC #CEF;
+  background: #ace;
+  border-color: #cef #8ac #8ac #cef;
   border-radius: 4px;
   border-style: solid;
   border-width: 1px;
@@ -68,12 +68,12 @@ html {
 
 .control input:active,
 .control select:active {
-  border-color: #8AC #CEF #CEF #8AC;
+  border-color: #8ac #cef #cef #8ac;
 }
 
 .control input:hover,
 .control select:hover {
-  background: #BDF;
+  background: #bdf;
 }
 
 .display {

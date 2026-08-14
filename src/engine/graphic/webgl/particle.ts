@@ -80,13 +80,13 @@ type ParticleSpark = {
 type ParticleSpawn<TSeed> = (
   count: number,
   center: Vector3,
-  seed: TSeed
+  seed: TSeed,
 ) => void;
 
 type ParticleUpdater = (
   spark: ParticleSpark,
   rankSpan: number,
-  timeSpan: number
+  timeSpan: number,
 ) => void;
 
 type SceneState = ParticleScene & {
@@ -134,7 +134,7 @@ void main(void) {
 const createBillboard = (
   gl: GlContext,
   sprite: GlTexture | undefined,
-  nbVariants: number
+  nbVariants: number,
 ): ParticleBillboard => {
   const nbQuadIndices = 6;
   const nbQuadVertices = 4;
@@ -258,24 +258,26 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
 
   billboardBinding.setAttribute(
     "particleCoordinate",
-    ({ polygon }) => polygon.coordinate
+    ({ polygon }) => polygon.coordinate,
   );
 
   billboardBinding.setAttribute(
     "particleCorner",
-    ({ polygon }) => polygon.corner
+    ({ polygon }) => polygon.corner,
   );
 
   billboardBinding.setAttribute(
     "particlePosition",
-    ({ polygon }) => polygon.position
+    ({ polygon }) => polygon.position,
   );
 
   billboardBinding.setAttribute("particleTint", ({ polygon }) => polygon.tint);
 
   billboardBinding.setUniform(
     "sprite",
-    uniform.textureQuad(({ sprite }, { textureWhite }) => sprite ?? textureWhite)
+    uniform.textureQuad(
+      ({ sprite }, { textureWhite }) => sprite ?? textureWhite,
+    ),
   );
 
   // Declare scene binding (shared by all particle sources)
@@ -283,17 +285,17 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
 
   sceneBinding.setUniform(
     "billboardMatrix",
-    uniform.matrix4f(({ billboard }) => billboard)
+    uniform.matrix4f(({ billboard }) => billboard),
   );
 
   sceneBinding.setUniform(
     "projectionMatrix",
-    uniform.matrix4f(({ projection }) => projection)
+    uniform.matrix4f(({ projection }) => projection),
   );
 
   sceneBinding.setUniform(
     "viewMatrix",
-    uniform.matrix4f(({ view }) => view)
+    uniform.matrix4f(({ view }) => view),
   );
 
   const billboards: ParticleBillboard[] = [];
@@ -377,7 +379,7 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
         // Update all sources and remove expired ones
         let nbSparks = 0;
 
-        for (let sourceIndex = 0; sourceIndex < sources.length; ) {
+        for (let sourceIndex = 0; sourceIndex < sources.length;) {
           const source = sources[sourceIndex];
 
           source.elapsed += dt;
@@ -402,7 +404,7 @@ const createParticleEmitter = (runtime: GlRuntime): ParticleEmitter => {
           const source = sources[sourceIndex];
           const { center, count, duration, elapsed, update } = source;
 
-          for (let i = count; i-- > 0; ) {
+          for (let i = count; i-- > 0;) {
             update(spark, i / count, elapsed / duration);
 
             spark.position.add(center);

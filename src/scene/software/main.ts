@@ -29,15 +29,12 @@ const configurator = {
   mode: createSelect("render", ["Wire", "Color", "Texture"], 1),
 };
 
-type Configuration = typeof configurator extends ApplicationConfigurator<
-  infer T
->
-  ? T
-  : never;
+type Configuration =
+  typeof configurator extends ApplicationConfigurator<infer T> ? T : never;
 
 const createApplication = async (
   screen: Screen<CanvasRenderingContext2D>,
-  gamepad: Gamepad
+  gamepad: Gamepad,
 ): Promise<Application<Configuration>> => {
   const camera = createOrbitCamera(
     {
@@ -46,7 +43,7 @@ const createApplication = async (
       getZoom: () => gamepad.fetchZoom(),
     },
     { x: 0, y: 0, z: -5 },
-    Vector2.zero
+    Vector2.zero,
   );
   const context = screen.getContext();
   const cubeWithColor = await loadMeshFromJson("model/cube-color/mesh.json");
@@ -61,7 +58,7 @@ const createApplication = async (
       const mesh = mode === 2 ? cubeWithTexture : cubeWithColor;
 
       renderer = createSoftwareRenderer(
-        mode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default
+        mode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default,
       );
 
       renderer.addSubject({ mesh });
@@ -91,7 +88,7 @@ const process = declare(
   "Software rendering",
   createCanvasScreen,
   createApplication,
-  configurator
+  configurator,
 );
 
 export { process };

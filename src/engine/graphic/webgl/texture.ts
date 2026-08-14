@@ -63,7 +63,7 @@ const createRenderbuffer = (
   gl: GlContext,
   size: Vector2,
   format: GlFormat,
-  samples: number
+  samples: number,
 ): GlRenderbuffer => {
   const encoding = encodings.get(format);
 
@@ -88,7 +88,7 @@ const createRenderbuffer = (
         samples,
         storage,
         size.x,
-        size.y
+        size.y,
       );
     } else {
       gl.renderbufferStorage(gl.RENDERBUFFER, storage, size.x, size.y);
@@ -112,7 +112,7 @@ const createTexture = (
   size: Vector2,
   format: GlFormat,
   sampler: TextureSampler,
-  image: ImageData | ImageData[] | undefined
+  image: ImageData | ImageData[] | undefined,
 ): GlTexture => {
   const encoding = encodings.get(format);
 

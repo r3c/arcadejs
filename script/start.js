@@ -2,10 +2,10 @@
 
 "use strict";
 
-import express from 'express';
-import url from 'url';
+import express from "express";
+import url from "url";
 
-const base = url.fileURLToPath(new URL('.', import.meta.url));
+const base = url.fileURLToPath(new URL(".", import.meta.url));
 const port = process.env.PORT || 8080;
 const app = express();
 

@@ -218,7 +218,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
         gl.DEPTH_ATTACHMENT,
         gl.TEXTURE_CUBE_MAP_POSITIVE_X + face,
         texture.handle,
-        0
+        0,
       );
 
       checkFramebuffer(gl);

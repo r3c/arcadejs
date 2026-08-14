@@ -21,7 +21,7 @@ type JsonPolygonState = {
 const load = async (
   urlOrData: any,
   library: Library,
-  configuration: Partial<JsonConfiguration> | undefined
+  configuration: Partial<JsonConfiguration> | undefined,
 ): Promise<Mesh> => {
   let directory: string;
   let root: any;
@@ -61,7 +61,7 @@ const load = async (
 
 const invalid = (name: string, instance: unknown, expected: string) => {
   return new Error(
-    `value "${instance}" of property "${name}" is not a valid ${expected}`
+    `value "${instance}" of property "${name}" is not a valid ${expected}`,
   );
 };
 
@@ -69,7 +69,7 @@ const toArrayOf = <TValue, TState>(
   name: string,
   instance: unknown,
   converter: (name: string, item: unknown, state: TState) => TValue,
-  state: TState
+  state: TState,
 ) => {
   if (!(instance instanceof Array)) {
     throw invalid(name, instance, "array");
@@ -129,7 +129,7 @@ const toMapOf = async <TValue, TState>(
   name: string,
   instance: unknown,
   converter: (name: string, item: unknown, state: TState) => Promise<TValue>,
-  state: TState
+  state: TState,
 ): Promise<Map<string, TValue>> => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "map");
@@ -147,7 +147,7 @@ const toMapOf = async <TValue, TState>(
 const toMaterial = async (
   name: string,
   instance: unknown,
-  state: JsonMaterialState
+  state: JsonMaterialState,
 ): Promise<Material> => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "material");
@@ -159,75 +159,75 @@ const toMaterial = async (
     diffuseColor: toOptional(
       `${name}.diffuseColor`,
       material.diffuseColor,
-      toColor
+      toColor,
     ),
     diffusePath: toPathOptional(
       `${name}.diffuseMap`,
       material.diffuseMap,
-      state
+      state,
     ),
     emissiveColor: toOptional(
       `${name}.emissiveColor`,
       material.emissiveColor,
-      toColor
+      toColor,
     ),
     emissivePath: toPathOptional(
       `${name}.emissiveMap`,
       material.emissiveMap,
-      state
+      state,
     ),
     heightPath: toPathOptional(`${name}.heightMap`, material.heightMap, state),
     heightParallaxBias: toOptional(
       `${name}.heightParallaxBias`,
       material.heightParallaxBias,
-      toDecimal
+      toDecimal,
     ),
     heightParallaxScale: toOptional(
       `${name}.heightParallaxScale`,
       material.heightParallaxScale,
-      toDecimal
+      toDecimal,
     ),
     metalnessPath: toPathOptional(
       `${name}.metalnessMap`,
       material.metalnessMap,
-      state
+      state,
     ),
     metalnessStrength: toOptional(
       `${name}.metalnessStrength`,
       material.metalnessStrength,
-      toDecimal
+      toDecimal,
     ),
     normalPath: toPathOptional(`${name}.normalMap`, material.normalMap, state),
     occlusionPath: toPathOptional(
       `${name}.occlusionMap`,
       material.occlusionMap,
-      state
+      state,
     ),
     occlusionStrength: toOptional(
       `${name}.occlusionStrength`,
       material.occlusionStrength,
-      toDecimal
+      toDecimal,
     ),
     roughnessPath: toPathOptional(
       `${name}.roughnessMap`,
       material.roughnessMap,
-      state
+      state,
     ),
     roughnessStrength: toOptional(
       `${name}.roughnessStrength`,
       material.roughnessStrength,
-      toDecimal
+      toDecimal,
     ),
     shininess: toOptional(`${name}.shininess`, material.shininess, toInteger),
     specularColor: toOptional(
       `${name}.specularColor`,
       material.specularColor,
-      toColor
+      toColor,
     ),
     specularPath: toPathOptional(
       `${name}.specularMap`,
       material.specularMap,
-      state
+      state,
     ),
   });
 };
@@ -235,7 +235,7 @@ const toMaterial = async (
 const toOptional = <TValue>(
   name: string,
   instance: unknown,
-  converter: (name: string, source: unknown) => TValue
+  converter: (name: string, source: unknown) => TValue,
 ): TValue | undefined => {
   return instance !== undefined ? converter(name, instance) : undefined;
 };
@@ -243,7 +243,7 @@ const toOptional = <TValue>(
 const toPath = (
   name: string,
   instance: unknown,
-  state: JsonMaterialState
+  state: JsonMaterialState,
 ): string => {
   if (typeof instance !== "string") {
     throw invalid(name, instance, "path");
@@ -251,7 +251,7 @@ const toPath = (
 
   const tail = Object.entries(state.variables).reduce(
     (tail, [name, value]) => tail.replaceAll(`{{${name}}}`, value),
-    instance
+    instance,
   );
 
   return combinePath(state.directory, tail);
@@ -260,17 +260,17 @@ const toPath = (
 const toPathOptional = (
   name: string,
   instance: unknown,
-  state: JsonMaterialState
+  state: JsonMaterialState,
 ): string | undefined => {
   return toOptional(name, instance, (name, instance) =>
-    toPath(name, instance, state)
+    toPath(name, instance, state),
   );
 };
 
 const toPolygon = (
   name: string,
   instance: unknown,
-  state: JsonPolygonState
+  state: JsonPolygonState,
 ): Polygon => {
   if (instance === null || typeof instance !== "object") {
     throw invalid(name, instance, "polygon");
@@ -289,7 +289,7 @@ const toPolygon = (
             `${name}.coordinates`,
             polygon.coordinates,
             toCoordinate,
-            state
+            state,
           )
         : undefined,
     indices: toArrayOf(`${name}.indices`, polygon.indices, toVertex, state),
@@ -305,7 +305,7 @@ const toPolygon = (
       `${name}.positions`,
       polygon.positions,
       toVertex,
-      state
+      state,
     ),
     tints:
       polygon.tints !== undefined

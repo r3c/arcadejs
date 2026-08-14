@@ -41,7 +41,7 @@ const invalidLine = (file: string, lineIndex: number, description: string) => {
 const load = async (
   url: string,
   library: Library,
-  configuration: Partial<WavefrontOBJConfiguration> | undefined
+  configuration: Partial<WavefrontOBJConfiguration> | undefined,
 ): Promise<Mesh> => {
   const data = await readURL(StringFormat, url);
 
@@ -53,7 +53,7 @@ const loadMaterial = async (
   data: string,
   fileName: string,
   library: Library,
-  variables: Record<string, string>
+  variables: Record<string, string>,
 ) => {
   const directory = getPathDirectory(fileName);
 
@@ -174,7 +174,7 @@ const loadObject = async (
   data: string,
   fileName: string,
   library: Library,
-  variables: Record<string, string>
+  variables: Record<string, string>,
 ): Promise<Mesh> => {
   const allCoordinates: Vector2[] = [];
   const allMaterials = new Map<string | undefined, Material>();
@@ -223,7 +223,7 @@ const loadObject = async (
           libraryData,
           libraryPath,
           library,
-          variables
+          variables,
         );
 
         break;
@@ -328,14 +328,14 @@ const loadObject = async (
                 if (coordinate === undefined) {
                   throw invalidFile(
                     fileName,
-                    "faces must include texture coordinate index if file specify them"
+                    "faces must include texture coordinate index if file specify them",
                   );
                 }
 
                 if (coordinate < 0 || coordinate >= allCoordinates.length) {
                   throw invalidFile(
                     fileName,
-                    `invalid texture coordinate index ${coordinate}`
+                    `invalid texture coordinate index ${coordinate}`,
                   );
                 }
 
@@ -346,7 +346,7 @@ const loadObject = async (
                 if (normal === undefined) {
                   throw invalidFile(
                     fileName,
-                    "faces must include normal index if file specify them"
+                    "faces must include normal index if file specify them",
                   );
                 }
 
@@ -405,7 +405,7 @@ const parseFace = (face: string) => {
 function* parseFile(
   data: string,
   fileName: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
 ) {
   const regexp = /.*(?:\n\r|\r\n|\n|\r|$)/g;
 
@@ -430,7 +430,7 @@ function* parseFile(
       fields: Object.entries(variables)
         .reduce(
           (tail, [name, value]) => tail.replaceAll(`{{${name}}}`, value),
-          line
+          line,
         )
         .split(/[\t ]+/),
       lineIndex,

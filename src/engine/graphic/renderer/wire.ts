@@ -39,7 +39,7 @@ type WireScene = {
 };
 
 const createWireBinding = (
-  shader: GlShader
+  shader: GlShader,
 ): {
   sceneBinding: GlShaderBinding<WireScene>;
   subjectBinding: GlShaderBinding<WireSubject>;
@@ -48,24 +48,24 @@ const createWireBinding = (
 
   sceneBinding.setUniform(
     "projectionMatrix",
-    uniform.matrix4f(({ projectionMatrix }) => projectionMatrix)
+    uniform.matrix4f(({ projectionMatrix }) => projectionMatrix),
   );
 
   sceneBinding.setUniform(
     "viewMatrix",
-    uniform.matrix4f(({ viewMatrix }) => viewMatrix)
+    uniform.matrix4f(({ viewMatrix }) => viewMatrix),
   );
 
   const subjectBinding = shader.declare<WireSubject>();
 
   subjectBinding.setUniform(
     "modelMatrix",
-    uniform.matrix4f(({ modelMatrix }) => modelMatrix)
+    uniform.matrix4f(({ modelMatrix }) => modelMatrix),
   );
 
   subjectBinding.setAttribute(
     "position",
-    ({ wireModel }) => wireModel.position
+    ({ wireModel }) => wireModel.position,
   );
   subjectBinding.setAttribute("tint", ({ wireModel }) => wireModel.tint);
 
@@ -75,27 +75,27 @@ const createWireBinding = (
 const extractMeshNormals = (
   gl: WebGL2RenderingContext,
   mesh: Mesh,
-  lineLength: number
+  lineLength: number,
 ): WireModel =>
   extractLines(
     gl,
     mesh,
     (polygon) => polygon.normals,
     (n) => Vector3.fromSource(n, ["normalize"], ["scale", lineLength]),
-    () => ({ x: 0, y: 1, z: 0 })
+    () => ({ x: 0, y: 1, z: 0 }),
   );
 
 const extractMeshTangents = (
   gl: WebGL2RenderingContext,
   mesh: Mesh,
-  lineLength: number
+  lineLength: number,
 ): WireModel =>
   extractLines(
     gl,
     mesh,
     (polygon) => polygon.tangents,
     (t) => Vector3.fromSource(t, ["normalize"], ["scale", lineLength]),
-    () => ({ x: 1, y: 0, z: 0 })
+    () => ({ x: 1, y: 0, z: 0 }),
   );
 
 const extractLines = (
@@ -103,7 +103,7 @@ const extractLines = (
   mesh: Mesh,
   extractor: (polygon: Polygon) => Vector3[] | undefined,
   wireLength: (input: Vector3) => Vector3,
-  wireTint: (input: Vector3) => Vector3
+  wireTint: (input: Vector3) => Vector3,
 ): WireModel => {
   const index = createStaticIndexBuffer(gl, Uint32Array);
   const positionBuffer = createStaticArrayBuffer(gl, Float32Array);
