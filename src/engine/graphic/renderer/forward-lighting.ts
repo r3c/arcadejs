@@ -42,7 +42,7 @@ import { GlTexture } from "../webgl/texture";
 import {
   GlFeatureMeshBinder,
   GlFeatureMeshFlag,
-  GlFeatureMeshTransform,
+  GlFeatureMeshSubject,
   GlFeatureMeshScene,
   createGlFeatureMeshRenderer,
 } from "./gl-feature-mesh";
@@ -586,14 +586,14 @@ const createLightBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    // Bind matrix uniforms
-    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
+    // Bind subject uniforms
+    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
 
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "modelMatrix",
       uniform.matrix4f(({ model }) => model),
     );
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "normalMatrix",
       uniform.matrix3f(({ normal }) => normal),
     );
@@ -875,10 +875,10 @@ const createLightBinder = (
 
     return {
       release: shader.release,
-      material: materialBinding,
-      transform: matrixBinding,
-      polygon: polygonBinding,
-      scene: sceneBinding,
+      materialBinding: materialBinding,
+      subjectBinding: subjectBinding,
+      polygonBinding: polygonBinding,
+      sceneBinding: sceneBinding,
     };
   };
 };
@@ -893,9 +893,9 @@ const createDirectionalShadowBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
+    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
 
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "modelMatrix",
       uniform.matrix4f(({ model }) => model),
     );
@@ -915,10 +915,10 @@ const createDirectionalShadowBinder = (
 
     return {
       release: shader.release,
-      material: materialBinding,
-      transform: matrixBinding,
-      polygon: polygonBinding,
-      scene: sceneBinding,
+      materialBinding: materialBinding,
+      subjectBinding: subjectBinding,
+      polygonBinding: polygonBinding,
+      sceneBinding: sceneBinding,
     };
   };
 };
@@ -933,9 +933,9 @@ const createPointShadowBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
+    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
 
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "modelMatrix",
       uniform.matrix4f(({ model }) => model),
     );
@@ -963,10 +963,10 @@ const createPointShadowBinder = (
 
     return {
       release: shader.release,
-      material: materialBinding,
-      transform: matrixBinding,
-      polygon: polygonBinding,
-      scene: sceneBinding,
+      materialBinding: materialBinding,
+      subjectBinding: subjectBinding,
+      polygonBinding: polygonBinding,
+      sceneBinding: sceneBinding,
     };
   };
 };
