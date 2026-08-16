@@ -40,12 +40,12 @@ import {
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
 import {
-  GlMeshBinder,
-  GlMeshFeature,
-  GlMeshMatrix,
-  GlMeshScene,
-  createGlMeshRenderer,
-} from "./gl-mesh";
+  GlFeatureMeshBinder,
+  GlFeatureMeshFlag,
+  GlFeatureMeshTransform,
+  GlFeatureMeshScene,
+  createGlFeatureMeshRenderer,
+} from "./gl-feature-mesh";
 import { Renderer } from "./definition";
 
 type ForwardLightingConfiguration = {
@@ -92,7 +92,7 @@ type ForwardLightingRenderer = Releasable &
     pointShadowMaps: GlTexture[];
   };
 
-type ForwardLightingScene = GlMeshScene & {
+type ForwardLightingScene = GlFeatureMeshScene & {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   environmentLight?: EnvironmentLight;
@@ -105,7 +105,7 @@ type ForwardLightingSubject = {
   noShadow?: boolean;
 };
 
-type LightScene = GlMeshScene & {
+type LightScene = GlFeatureMeshScene & {
   ambientLightColor: Vector3;
   directionalShadowLights: DirectionalShadowLight[];
   environmentLight?: {
@@ -122,11 +122,11 @@ type PointShadowLight = PointLight & {
   shadowMap: GlTexture;
 };
 
-type DirectionalShadowScene = GlMeshScene & {
+type DirectionalShadowScene = GlFeatureMeshScene & {
   projection: Matrix4;
 };
 
-type PointShadowScene = GlMeshScene & {
+type PointShadowScene = GlFeatureMeshScene & {
   lightPosition: Vector3;
   lightRadius: number;
   projection: Matrix4;
@@ -147,7 +147,7 @@ type Directive = {
 
 const createLightSource = (
   directive: Directive,
-  feature: GlMeshFeature,
+  feature: GlFeatureMeshFlag,
 ): GlShaderSource => {
   const maxDirectionalLights = Math.max(directive.maxDirectionalLights, 1);
   const maxPointLights = Math.max(directive.maxPointLights, 1);
@@ -558,7 +558,7 @@ const createLightBinder = (
     | "noSpecularMap"
   >,
   pointShadowBuffers: GlTexture[],
-): GlMeshBinder<LightScene> => {
+): GlFeatureMeshBinder<LightScene> => {
   return (feature) => {
     const shader = runtime.createShader(createLightSource(directive, feature));
 
@@ -587,7 +587,7 @@ const createLightBinder = (
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
     // Bind matrix uniforms
-    const matrixBinding = shader.declare<GlMeshMatrix>();
+    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
 
     matrixBinding.setUniform(
       "modelMatrix",
@@ -876,7 +876,7 @@ const createLightBinder = (
     return {
       release: shader.release,
       material: materialBinding,
-      matrix: matrixBinding,
+      transform: matrixBinding,
       polygon: polygonBinding,
       scene: sceneBinding,
     };
@@ -885,7 +885,7 @@ const createLightBinder = (
 
 const createDirectionalShadowBinder = (
   runtime: GlRuntime,
-): GlMeshBinder<DirectionalShadowScene> => {
+): GlFeatureMeshBinder<DirectionalShadowScene> => {
   return () => {
     const shader = runtime.createShader(createShadowDirectionalSource());
 
@@ -893,7 +893,7 @@ const createDirectionalShadowBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const matrixBinding = shader.declare<GlMeshMatrix>();
+    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
 
     matrixBinding.setUniform(
       "modelMatrix",
@@ -916,7 +916,7 @@ const createDirectionalShadowBinder = (
     return {
       release: shader.release,
       material: materialBinding,
-      matrix: matrixBinding,
+      transform: matrixBinding,
       polygon: polygonBinding,
       scene: sceneBinding,
     };
@@ -925,7 +925,7 @@ const createDirectionalShadowBinder = (
 
 const createPointShadowBinder = (
   runtime: GlRuntime,
-): GlMeshBinder<PointShadowScene> => {
+): GlFeatureMeshBinder<PointShadowScene> => {
   return () => {
     const shader = runtime.createShader(createShadowPointSource());
 
@@ -933,7 +933,7 @@ const createPointShadowBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const matrixBinding = shader.declare<GlMeshMatrix>();
+    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
 
     matrixBinding.setUniform(
       "modelMatrix",
@@ -964,7 +964,7 @@ const createPointShadowBinder = (
     return {
       release: shader.release,
       material: materialBinding,
-      matrix: matrixBinding,
+      transform: matrixBinding,
       polygon: polygonBinding,
       scene: sceneBinding,
     };
@@ -1018,14 +1018,14 @@ const createForwardLightingRenderer = (
     configuration,
     pointShadowMaps,
   );
-  const lightRenderer = createGlMeshRenderer(
+  const lightRenderer = createGlFeatureMeshRenderer(
     GlPencil.Triangle,
     lightBinder,
     {},
   );
 
   const directionalShadowBinder = createDirectionalShadowBinder(runtime);
-  const directionalShadowRenderer = createGlMeshRenderer(
+  const directionalShadowRenderer = createGlFeatureMeshRenderer(
     GlPencil.Triangle,
     directionalShadowBinder,
     {},
@@ -1042,7 +1042,7 @@ const createForwardLightingRenderer = (
   const shadowDirection = Vector3.fromZero();
 
   const pointShadowBinder = createPointShadowBinder(runtime);
-  const pointShadowRenderer = createGlMeshRenderer(
+  const pointShadowRenderer = createGlFeatureMeshRenderer(
     GlPencil.Triangle,
     pointShadowBinder,
     {},

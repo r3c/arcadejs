@@ -6,27 +6,36 @@ import { GlBuffer } from "../webgl/resource";
 import { GlShaderBinding } from "../webgl/shader";
 import { Renderer } from "../renderer";
 
-type GlMeshBinder<TScene> = (feature: GlMeshFeature) => GlMeshBinding<TScene>;
+type GlFeatureMeshBinder<TScene> = (
+  flag: GlFeatureMeshFlag,
+) => GlFeatureMeshBinding<TScene>;
 
-type GlMeshBinding<TScene> = Releasable & {
+type GlFeatureMeshBinding<TScene> = Releasable & {
   material: GlShaderBinding<GlMaterial>;
-  matrix: GlShaderBinding<GlMeshMatrix>;
   polygon: GlShaderBinding<GlPolygon>;
   scene: GlShaderBinding<TScene>;
+  transform: GlShaderBinding<GlFeatureMeshTransform>;
 };
 
-type GlMeshConfiguration = {
+type GlFeatureMeshConfiguration = {
   autoReleaseShader?: boolean;
 };
 
-type GlMeshFeature = {
+type GlFeatureMeshFlag = {
   hasCoordinate: boolean;
   hasNormal: boolean;
   hasTangent: boolean;
   hasTint: boolean;
 };
 
-type GlMeshMatrix = {
+type GlFeatureMeshRenderer<TScene extends GlFeatureMeshScene> = Releasable &
+  Renderer<GlTarget, TScene, GlMesh>;
+
+type GlFeatureMeshScene = {
+  view: Matrix4;
+};
+
+type GlFeatureMeshTransform = {
   model: Matrix4;
   normal: Matrix3;
 };
@@ -42,15 +51,8 @@ type GlMeshPrimitive = {
   polygon: GlPolygon;
 };
 
-type GlMeshRenderer<TScene extends GlMeshScene> = Releasable &
-  Renderer<GlTarget, TScene, GlMesh>;
-
-type GlMeshScene = {
-  view: Matrix4;
-};
-
 type GlMeshShader<TScene> = {
-  binding: GlMeshBinding<TScene>;
+  binding: GlFeatureMeshBinding<TScene>;
   nodesByMaterial: Map<GlMaterial, Map<Symbol, GlMeshNode>>;
 };
 
@@ -59,11 +61,11 @@ type GlMeshShader<TScene> = {
  ** reuse bindings as much as possible:
  ** Renderer > Shader feature > Material > Nested objects > Polygons
  */
-const createGlMeshRenderer = <TScene extends GlMeshScene>(
+const createGlFeatureMeshRenderer = <TScene extends GlFeatureMeshScene>(
   mode: GlPencil,
-  binder: GlMeshBinder<TScene>,
-  configuration: GlMeshConfiguration,
-): GlMeshRenderer<TScene> => {
+  binder: GlFeatureMeshBinder<TScene>,
+  configuration: GlFeatureMeshConfiguration,
+): GlFeatureMeshRenderer<TScene> => {
   const autoReleaseShader = configuration.autoReleaseShader ?? false;
   const releasable = createCompositeReleasable();
   const shaders = new Map<number, GlMeshShader<TScene>>();
@@ -74,7 +76,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
    */
   const renderMesh = (
     target: GlTarget,
-    matrixBinding: GlShaderBinding<GlMeshMatrix>,
+    matrixBinding: GlShaderBinding<GlFeatureMeshTransform>,
     polygonBinding: GlShaderBinding<GlPolygon>,
     mesh: GlMeshNode,
     view: Matrix4,
@@ -164,7 +166,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
         let nodesByMaterial: Map<GlMaterial, Map<Symbol, GlMeshNode>>;
 
         if (shader === undefined) {
-          const binding = binder(keyToFeature(featureKey));
+          const binding = binder(keyToFlag(featureKey));
 
           releasable.register(binding);
 
@@ -236,7 +238,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
           for (const mesh of meshes.values()) {
             renderMesh(
               target,
-              binding.matrix,
+              binding.transform,
               binding.polygon,
               mesh,
               scene.view,
@@ -251,7 +253,7 @@ const createGlMeshRenderer = <TScene extends GlMeshScene>(
   };
 };
 
-const keyToFeature = (key: number): GlMeshFeature => ({
+const keyToFlag = (key: number): GlFeatureMeshFlag => ({
   hasCoordinate: (key & 1) !== 0,
   hasNormal: (key & 2) !== 0,
   hasTangent: (key & 4) !== 0,
@@ -268,12 +270,12 @@ const polygonToKey = (polygon: GlPolygon): number => {
 };
 
 export {
-  type GlMeshBinder,
-  type GlMeshBinding,
-  type GlMeshConfiguration,
-  type GlMeshFeature,
-  type GlMeshMatrix,
-  type GlMeshRenderer,
-  type GlMeshScene,
-  createGlMeshRenderer,
+  type GlFeatureMeshBinder,
+  type GlFeatureMeshBinding,
+  type GlFeatureMeshConfiguration,
+  type GlFeatureMeshFlag,
+  type GlFeatureMeshRenderer,
+  type GlFeatureMeshScene,
+  type GlFeatureMeshTransform,
+  createGlFeatureMeshRenderer,
 };
