@@ -6,52 +6,52 @@ import { GlBuffer } from "../webgl/resource";
 import { GlShaderBinding } from "../webgl/shader";
 import { Renderer } from "../renderer";
 
-type GlFeatureMeshBinder<TScene> = (
-  flag: GlFeatureMeshFlag,
-) => GlFeatureMeshBinding<TScene>;
+type GlMaterialBinder<TScene> = (
+  flag: GlMaterialFlag,
+) => GlMaterialBinding<TScene>;
 
-type GlFeatureMeshBinding<TScene> = Releasable & {
+type GlMaterialBinding<TScene> = Releasable & {
   materialBinding: GlShaderBinding<GlMaterial>;
   polygonBinding: GlShaderBinding<GlPolygon>;
   sceneBinding: GlShaderBinding<TScene>;
-  subjectBinding: GlShaderBinding<GlFeatureMeshSubject>;
+  subjectBinding: GlShaderBinding<GlMaterialSubject>;
 };
 
-type GlFeatureMeshConfiguration = {
+type GlMaterialConfiguration = {
   autoReleaseShader?: boolean;
 };
 
-type GlFeatureMeshFlag = {
+type GlMaterialFlag = {
   hasCoordinate: boolean;
   hasNormal: boolean;
   hasTangent: boolean;
   hasTint: boolean;
 };
 
-type GlFeatureMeshNode = {
-  children: GlFeatureMeshNode[];
-  primitives: GlFeaturePrimitive[];
+type GlMaterialNode = {
+  children: GlMaterialNode[];
+  primitives: GlMaterialPrimitive[];
   transform: Matrix4;
 };
 
-type GlFeaturePrimitive = {
+type GlMaterialPrimitive = {
   indexBuffer: GlBuffer;
   polygon: GlPolygon;
 };
 
-type GlFeatureMeshShader<TScene> = {
-  binding: GlFeatureMeshBinding<TScene>;
-  nodesByMaterial: Map<GlMaterial, Map<Symbol, GlFeatureMeshNode>>;
+type GlMaterialShader<TScene> = {
+  binding: GlMaterialBinding<TScene>;
+  nodesByMaterial: Map<GlMaterial, Map<Symbol, GlMaterialNode>>;
 };
 
-type GlFeatureMeshRenderer<TScene extends GlFeatureMeshScene> = Releasable &
+type GlMaterialRenderer<TScene extends GlMaterialScene> = Releasable &
   Renderer<GlTarget, TScene, GlMesh>;
 
-type GlFeatureMeshScene = {
+type GlMaterialScene = {
   view: Matrix4;
 };
 
-type GlFeatureMeshSubject = {
+type GlMaterialSubject = {
   model: Matrix4;
   normal: Matrix3;
 };
@@ -61,14 +61,14 @@ type GlFeatureMeshSubject = {
  ** reuse bindings as much as possible:
  ** Renderer > Shader feature > Material > Nested objects > Polygons
  */
-const createGlFeatureMeshRenderer = <TScene extends GlFeatureMeshScene>(
+const createGlMaterialRenderer = <TScene extends GlMaterialScene>(
   mode: GlPencil,
-  binder: GlFeatureMeshBinder<TScene>,
-  configuration: GlFeatureMeshConfiguration,
-): GlFeatureMeshRenderer<TScene> => {
+  binder: GlMaterialBinder<TScene>,
+  configuration: GlMaterialConfiguration,
+): GlMaterialRenderer<TScene> => {
   const autoReleaseShader = configuration.autoReleaseShader ?? false;
   const releasable = createCompositeReleasable();
-  const shaders = new Map<number, GlFeatureMeshShader<TScene>>();
+  const shaders = new Map<number, GlMaterialShader<TScene>>();
 
   /**
    * Recursive mesh drawing function, recursively draw exploded meshes. When
@@ -76,9 +76,9 @@ const createGlFeatureMeshRenderer = <TScene extends GlFeatureMeshScene>(
    */
   const renderMesh = (
     target: GlTarget,
-    subjectBinding: GlShaderBinding<GlFeatureMeshSubject>,
+    subjectBinding: GlShaderBinding<GlMaterialSubject>,
     polygonBinding: GlShaderBinding<GlPolygon>,
-    mesh: GlFeatureMeshNode,
+    mesh: GlMaterialNode,
     view: Matrix4,
     parent: Matrix4,
   ): void => {
@@ -104,17 +104,16 @@ const createGlFeatureMeshRenderer = <TScene extends GlFeatureMeshScene>(
    */
   const explode = (
     mesh: GlMesh,
-  ): Map<number, Map<GlMaterial, GlFeatureMeshNode>> => {
+  ): Map<number, Map<GlMaterial, GlMaterialNode>> => {
     const { children, primitives, transform } = mesh;
-    const results = new Map<number, Map<GlMaterial, GlFeatureMeshNode>>();
+    const results = new Map<number, Map<GlMaterial, GlMaterialNode>>();
 
     for (const child of children) {
       const result = explode(child);
 
       for (const [key, childNodes] of result) {
         // Get or register by polygon feature key
-        const nodes =
-          results.get(key) ?? new Map<GlMaterial, GlFeatureMeshNode>();
+        const nodes = results.get(key) ?? new Map<GlMaterial, GlMaterialNode>();
 
         results.set(key, nodes);
 
@@ -138,8 +137,7 @@ const createGlFeatureMeshRenderer = <TScene extends GlFeatureMeshScene>(
       const key = polygonToKey(polygon);
 
       // Get or register by polygon feature key
-      const nodes =
-        results.get(key) ?? new Map<GlMaterial, GlFeatureMeshNode>();
+      const nodes = results.get(key) ?? new Map<GlMaterial, GlMaterialNode>();
 
       results.set(key, nodes);
 
@@ -167,7 +165,7 @@ const createGlFeatureMeshRenderer = <TScene extends GlFeatureMeshScene>(
 
       for (const [featureKey, nodeByMaterial] of results) {
         let shader = shaders.get(featureKey);
-        let nodesByMaterial: Map<GlMaterial, Map<Symbol, GlFeatureMeshNode>>;
+        let nodesByMaterial: Map<GlMaterial, Map<Symbol, GlMaterialNode>>;
 
         if (shader === undefined) {
           const binding = binder(keyToFlag(featureKey));
@@ -264,7 +262,7 @@ const createGlFeatureMeshRenderer = <TScene extends GlFeatureMeshScene>(
   };
 };
 
-const keyToFlag = (key: number): GlFeatureMeshFlag => ({
+const keyToFlag = (key: number): GlMaterialFlag => ({
   hasCoordinate: (key & 1) !== 0,
   hasNormal: (key & 2) !== 0,
   hasTangent: (key & 4) !== 0,
@@ -281,12 +279,12 @@ const polygonToKey = (polygon: GlPolygon): number => {
 };
 
 export {
-  type GlFeatureMeshBinder,
-  type GlFeatureMeshBinding,
-  type GlFeatureMeshConfiguration,
-  type GlFeatureMeshFlag,
-  type GlFeatureMeshRenderer,
-  type GlFeatureMeshScene,
-  type GlFeatureMeshSubject,
-  createGlFeatureMeshRenderer,
+  type GlMaterialBinder,
+  type GlMaterialBinding,
+  type GlMaterialConfiguration,
+  type GlMaterialFlag,
+  type GlMaterialRenderer,
+  type GlMaterialScene,
+  type GlMaterialSubject,
+  createGlMaterialRenderer,
 };

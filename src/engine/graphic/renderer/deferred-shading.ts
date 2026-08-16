@@ -54,11 +54,11 @@ import {
 import { commonMesh } from "../mesh";
 import { Renderer } from "./definition";
 import {
-  GlFeatureMeshBinder,
-  GlFeatureMeshSubject,
-  GlFeatureMeshScene,
-  createGlFeatureMeshRenderer,
-} from "./gl-feature-mesh";
+  GlMaterialBinder,
+  GlMaterialSubject,
+  GlMaterialScene,
+  createGlMaterialRenderer,
+} from "./gl-material";
 
 const enum DeferredShadingLightModel {
   None,
@@ -445,7 +445,7 @@ type DeferredShadingRenderer = Releasable &
     normalAndSpecularBuffer: GlTexture;
   };
 
-type DeferredShadingScene = GlFeatureMeshScene & {
+type DeferredShadingScene = GlMaterialScene & {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   pointLights?: PointLight[];
@@ -456,17 +456,17 @@ type DeferredShadingSubject = {
   mesh: GlMesh;
 };
 
-type AmbientLightScene = GlFeatureMeshScene & {
+type AmbientLightScene = GlMaterialScene & {
   diffuseAndShininessBuffer: GlTexture;
   ambientLightColor: Vector3;
   projection: Matrix4;
 };
 
-type GeometryScene = GlFeatureMeshScene & {
+type GeometryScene = GlMaterialScene & {
   projection: Matrix4;
 };
 
-type LightScene = GlFeatureMeshScene & {
+type LightScene = GlMaterialScene & {
   diffuseAndShininessBuffer: GlTexture;
   depthBuffer: GlTexture;
   model: Matrix4;
@@ -493,7 +493,7 @@ type PostScene = {
 const createAmbientLightBinder = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration,
-): GlFeatureMeshBinder<AmbientLightScene> => {
+): GlMaterialBinder<AmbientLightScene> => {
   return () => {
     const shader = runtime.createShader(
       createAmbientLightSource({
@@ -505,7 +505,7 @@ const createAmbientLightBinder = (
 
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
+    const subjectBinding = shader.declare<GlMaterialSubject>();
 
     subjectBinding.setUniform(
       "modelMatrix",
@@ -546,7 +546,7 @@ const createAmbientLightBinder = (
 const createGeometryBinder = (
   runtime: GlRuntime,
   configuration: DeferredShadingConfiguration,
-): GlFeatureMeshBinder<GeometryScene> => {
+): GlMaterialBinder<GeometryScene> => {
   return (feature) => {
     const shader = runtime.createShader(createGeometrySource());
 
@@ -574,7 +574,7 @@ const createGeometryBinder = (
       // FIXME: missing support for tints
     }
 
-    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
+    const subjectBinding = shader.declare<GlMaterialSubject>();
 
     subjectBinding.setUniform(
       "modelMatrix",
@@ -790,7 +790,7 @@ const createDeferredShadingRenderer = (
   const sceneTarget = createFramebufferTarget(gl);
   const ambientLightBinder = createAmbientLightBinder(runtime, configuration);
   const ambientLightQuad = createModel(gl, commonMesh.quad);
-  const ambientLightRenderer = createGlFeatureMeshRenderer(
+  const ambientLightRenderer = createGlMaterialRenderer(
     GlPencil.Triangle,
     ambientLightBinder,
     {},
@@ -815,7 +815,7 @@ const createDeferredShadingRenderer = (
     1,
   ]);
   const geometryBinder = createGeometryBinder(runtime, configuration);
-  const geometryRenderer = createGlFeatureMeshRenderer(
+  const geometryRenderer = createGlMaterialRenderer(
     GlPencil.Triangle,
     geometryBinder,
     {},
