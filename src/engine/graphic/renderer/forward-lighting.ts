@@ -47,6 +47,11 @@ import {
   createGlFeatureMeshRenderer,
 } from "./gl-feature-mesh";
 import { Renderer } from "./definition";
+import {
+  createGlVolumeMeshRenderer,
+  GlVolumeMeshBinding,
+  GlVolumeMeshSubject,
+} from "./gl-volume-mesh";
 
 type ForwardLightingConfiguration = {
   lightModel?: ForwardLightingLightModel;
@@ -883,91 +888,81 @@ const createLightBinder = (
   };
 };
 
-const createDirectionalShadowBinder = (
+const createDirectionalShadowBinding = (
   runtime: GlRuntime,
-): GlFeatureMeshBinder<DirectionalShadowScene> => {
-  return () => {
-    const shader = runtime.createShader(createShadowDirectionalSource());
+): GlVolumeMeshBinding<DirectionalShadowScene> => {
+  const shader = runtime.createShader(createShadowDirectionalSource());
 
-    const polygonBinding = shader.declare<GlPolygon>();
+  const polygonBinding = shader.declare<GlPolygon>();
 
-    polygonBinding.setAttribute("positions", ({ position }) => position);
+  polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
+  const subjectBinding = shader.declare<GlVolumeMeshSubject>();
 
-    subjectBinding.setUniform(
-      "modelMatrix",
-      uniform.matrix4f(({ model }) => model),
-    );
+  subjectBinding.setUniform(
+    "modelMatrix",
+    uniform.matrix4f(({ model }) => model),
+  );
 
-    const sceneBinding = shader.declare<DirectionalShadowScene>();
+  const sceneBinding = shader.declare<DirectionalShadowScene>();
 
-    sceneBinding.setUniform(
-      "projectionMatrix",
-      uniform.matrix4f(({ projection }) => projection),
-    );
-    sceneBinding.setUniform(
-      "viewMatrix",
-      uniform.matrix4f(({ view }) => view),
-    );
+  sceneBinding.setUniform(
+    "projectionMatrix",
+    uniform.matrix4f(({ projection }) => projection),
+  );
+  sceneBinding.setUniform(
+    "viewMatrix",
+    uniform.matrix4f(({ view }) => view),
+  );
 
-    const materialBinding = shader.declare<GlMaterial>();
-
-    return {
-      release: shader.release,
-      materialBinding: materialBinding,
-      subjectBinding: subjectBinding,
-      polygonBinding: polygonBinding,
-      sceneBinding: sceneBinding,
-    };
+  return {
+    release: shader.release,
+    subjectBinding: subjectBinding,
+    polygonBinding: polygonBinding,
+    sceneBinding: sceneBinding,
   };
 };
 
-const createPointShadowBinder = (
+const createPointShadowBinding = (
   runtime: GlRuntime,
-): GlFeatureMeshBinder<PointShadowScene> => {
-  return () => {
-    const shader = runtime.createShader(createShadowPointSource());
+): GlVolumeMeshBinding<PointShadowScene> => {
+  const shader = runtime.createShader(createShadowPointSource());
 
-    const polygonBinding = shader.declare<GlPolygon>();
+  const polygonBinding = shader.declare<GlPolygon>();
 
-    polygonBinding.setAttribute("positions", ({ position }) => position);
+  polygonBinding.setAttribute("positions", ({ position }) => position);
 
-    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
+  const subjectBinding = shader.declare<GlVolumeMeshSubject>();
 
-    subjectBinding.setUniform(
-      "modelMatrix",
-      uniform.matrix4f(({ model }) => model),
-    );
+  subjectBinding.setUniform(
+    "modelMatrix",
+    uniform.matrix4f(({ model }) => model),
+  );
 
-    const sceneBinding = shader.declare<PointShadowScene>();
+  const sceneBinding = shader.declare<PointShadowScene>();
 
-    sceneBinding.setUniform(
-      "projectionMatrix",
-      uniform.matrix4f(({ projection }) => projection),
-    );
-    sceneBinding.setUniform(
-      "viewMatrix",
-      uniform.matrix4f(({ view }) => view),
-    );
-    sceneBinding.setUniform(
-      "lightPosition",
-      uniform.vector3f(({ lightPosition }) => lightPosition),
-    );
-    sceneBinding.setUniform(
-      "lightRadius",
-      uniform.number(({ lightRadius }) => lightRadius),
-    );
+  sceneBinding.setUniform(
+    "projectionMatrix",
+    uniform.matrix4f(({ projection }) => projection),
+  );
+  sceneBinding.setUniform(
+    "viewMatrix",
+    uniform.matrix4f(({ view }) => view),
+  );
+  sceneBinding.setUniform(
+    "lightPosition",
+    uniform.vector3f(({ lightPosition }) => lightPosition),
+  );
+  sceneBinding.setUniform(
+    "lightRadius",
+    uniform.number(({ lightRadius }) => lightRadius),
+  );
 
-    const materialBinding = shader.declare<GlMaterial>();
-
-    return {
-      release: shader.release,
-      materialBinding: materialBinding,
-      subjectBinding: subjectBinding,
-      polygonBinding: polygonBinding,
-      sceneBinding: sceneBinding,
-    };
+  return {
+    release: shader.release,
+    subjectBinding: subjectBinding,
+    polygonBinding: polygonBinding,
+    sceneBinding: sceneBinding,
   };
 };
 
@@ -1024,11 +1019,9 @@ const createForwardLightingRenderer = (
     {},
   );
 
-  const directionalShadowBinder = createDirectionalShadowBinder(runtime);
-  const directionalShadowRenderer = createGlFeatureMeshRenderer(
-    GlPencil.Triangle,
-    directionalShadowBinder,
-    {},
+  const directionalShadowBinding = createDirectionalShadowBinding(runtime);
+  const directionalShadowRenderer = createGlVolumeMeshRenderer(
+    directionalShadowBinding,
   );
   const directionalShadowProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
@@ -1041,12 +1034,8 @@ const createForwardLightingRenderer = (
   ]);
   const shadowDirection = Vector3.fromZero();
 
-  const pointShadowBinder = createPointShadowBinder(runtime);
-  const pointShadowRenderer = createGlFeatureMeshRenderer(
-    GlPencil.Triangle,
-    pointShadowBinder,
-    {},
-  );
+  const pointShadowBinding = createPointShadowBinding(runtime);
+  const pointShadowRenderer = createGlVolumeMeshRenderer(pointShadowBinding);
   const pointShadowProjection = Matrix4.fromIdentity([
     "setFromPerspective",
     Math.PI / 2,
@@ -1075,7 +1064,9 @@ const createForwardLightingRenderer = (
     pointShadowMaps,
 
     release: () => {
+      directionalShadowBinding.release();
       directionalShadowRenderer.release();
+      pointShadowBinding.release();
       pointShadowRenderer.release();
       lightRenderer.release();
     },
