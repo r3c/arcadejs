@@ -48,37 +48,37 @@ const debugModes: {
 }[] = [
   {
     name: "Directional",
-    source: GlEncodingSource.Sampler2d,
+    source: GlEncodingSource.Quad,
     getTexture: (renderer) => renderer.directionalShadowMaps[0],
   },
   {
     name: "Point -X",
-    source: GlEncodingSource.SamplerCubeNegativeX,
+    source: GlEncodingSource.CubeNegativeX,
     getTexture: (renderer) => renderer.pointShadowMaps[0],
   },
   {
     name: "Point +X",
-    source: GlEncodingSource.SamplerCubePositiveX,
+    source: GlEncodingSource.CubePositiveX,
     getTexture: (renderer) => renderer.pointShadowMaps[0],
   },
   {
     name: "Point -Y",
-    source: GlEncodingSource.SamplerCubeNegativeY,
+    source: GlEncodingSource.CubeNegativeY,
     getTexture: (renderer) => renderer.pointShadowMaps[0],
   },
   {
     name: "Point +Y",
-    source: GlEncodingSource.SamplerCubePositiveY,
+    source: GlEncodingSource.CubePositiveY,
     getTexture: (renderer) => renderer.pointShadowMaps[0],
   },
   {
     name: "Point -Z",
-    source: GlEncodingSource.SamplerCubeNegativeZ,
+    source: GlEncodingSource.CubeNegativeZ,
     getTexture: (renderer) => renderer.pointShadowMaps[0],
   },
   {
     name: "Point +Z",
-    source: GlEncodingSource.SamplerCubePositiveZ,
+    source: GlEncodingSource.CubePositiveZ,
     getTexture: (renderer) => renderer.pointShadowMaps[0],
   },
 ];
@@ -212,7 +212,7 @@ const createApplication = async (
         source:
           configuration.debugMode > 0
             ? debugModes[configuration.debugMode - 1].source
-            : GlEncodingSource.Sampler2d,
+            : GlEncodingSource.Quad,
         zNear: 0.1,
         zFar: 100,
       });

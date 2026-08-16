@@ -204,7 +204,7 @@ const createApplication = async (
           ? createGlEncodingRenderer(runtime, {
               channel: debugConfigurations[configuration.debugMode - 1].channel,
               format: debugConfigurations[configuration.debugMode - 1].format,
-              source: GlEncodingSource.Sampler2d,
+              source: GlEncodingSource.Quad,
               zNear: 0.1,
               zFar: 100,
             })

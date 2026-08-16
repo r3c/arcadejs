@@ -41,13 +41,13 @@ const enum GlEncodingFormat {
 }
 
 const enum GlEncodingSource {
-  Sampler2d,
-  SamplerCubeNegativeX,
-  SamplerCubePositiveX,
-  SamplerCubeNegativeY,
-  SamplerCubePositiveY,
-  SamplerCubeNegativeZ,
-  SamplerCubePositiveZ,
+  CubeNegativeX,
+  CubePositiveX,
+  CubeNegativeY,
+  CubePositiveY,
+  CubeNegativeZ,
+  CubePositiveZ,
+  Quad,
 }
 
 type GlEncodingConfiguration = {
@@ -70,40 +70,40 @@ type Scene = {
 };
 
 const encodingSources = {
-  [GlEncodingSource.Sampler2d]: {
-    uniform: uniform.textureQuad<Scene>(({ source }) => source),
-    type: "sampler2D",
-    value: "coord",
-  },
-  [GlEncodingSource.SamplerCubeNegativeX]: {
+  [GlEncodingSource.CubeNegativeX]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(-1.0, coord.yx * 2.0 - 1.0)",
   },
-  [GlEncodingSource.SamplerCubePositiveX]: {
+  [GlEncodingSource.CubePositiveX]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(+1.0, coord.yx * 2.0 - 1.0)",
   },
-  [GlEncodingSource.SamplerCubeNegativeY]: {
+  [GlEncodingSource.CubeNegativeY]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(coord.x * 2.0 - 1.0, -1.0, 1.0 - coord.y * 2.0)",
   },
-  [GlEncodingSource.SamplerCubePositiveY]: {
+  [GlEncodingSource.CubePositiveY]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(coord.x * 2.0 - 1.0, +1.0, coord.y * 2.0 - 1.0)",
   },
-  [GlEncodingSource.SamplerCubeNegativeZ]: {
+  [GlEncodingSource.CubeNegativeZ]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(1.0 - coord.x * 2.0, coord.y * 2.0 - 1.0, -1.0)",
   },
-  [GlEncodingSource.SamplerCubePositiveZ]: {
+  [GlEncodingSource.CubePositiveZ]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
     value: "vec3(coord.x * 2.0 - 1.0, coord.y * 2.0 - 1.0, +1.0)",
+  },
+  [GlEncodingSource.Quad]: {
+    uniform: uniform.textureQuad<Scene>(({ source }) => source),
+    type: "sampler2D",
+    value: "coord",
   },
 };
 
