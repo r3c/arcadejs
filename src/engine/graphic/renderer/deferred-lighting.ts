@@ -54,7 +54,7 @@ import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { Renderer } from "./definition";
 import {
   GlFeatureMeshBinder,
-  GlFeatureMeshTransform,
+  GlFeatureMeshSubject,
   GlFeatureMeshScene,
   createGlFeatureMeshRenderer,
 } from "./gl-feature-mesh";
@@ -523,13 +523,13 @@ const createGeometryBinder = (
       // FIXME: missing support for tints
     }
 
-    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
+    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
 
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "modelMatrix",
       uniform.matrix4f(({ model }) => model),
     );
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "normalMatrix",
       uniform.matrix3f(({ normal }) => normal),
     );
@@ -581,10 +581,10 @@ const createGeometryBinder = (
 
     return {
       release: shader.release,
-      material: materialBinding,
-      transform: matrixBinding,
-      polygon: polygonBinding,
-      scene: sceneBinding,
+      materialBinding: materialBinding,
+      subjectBinding: subjectBinding,
+      polygonBinding: polygonBinding,
+      sceneBinding: sceneBinding,
     };
   };
 };
@@ -723,13 +723,13 @@ const createMaterialBinder = (
       // FIXME: missing support for  tints
     }
 
-    const matrixBinding = shader.declare<GlFeatureMeshTransform>();
+    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
 
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "modelMatrix",
       uniform.matrix4f(({ model }) => model),
     );
-    matrixBinding.setUniform(
+    subjectBinding.setUniform(
       "normalMatrix",
       uniform.matrix3f(({ normal }) => normal),
     );
@@ -799,10 +799,10 @@ const createMaterialBinder = (
 
     return {
       release: shader.release,
-      material: materialBinding,
-      transform: matrixBinding,
-      polygon: polygonBinding,
-      scene: sceneBinding,
+      materialBinding: materialBinding,
+      subjectBinding: subjectBinding,
+      polygonBinding: polygonBinding,
+      sceneBinding: sceneBinding,
     };
   };
 };
