@@ -34,7 +34,6 @@ import {
   GlPencil,
   GlTarget,
   GlFormat,
-  GlMap,
 } from "../webgl/target";
 import {
   GlDirectionalLightPolygon,
@@ -842,21 +841,16 @@ const createDeferredLightingRenderer = (
   );
   const pointLightBillboard = createPointLightBillboard(gl);
   const pointLightBinding = loadPointLightBinding(runtime, configuration);
-  const depthBuffer = geometryTarget.setDepthTexture({
-    format: GlFormat.Depth16,
-    map: GlMap.Quad,
-  });
-  const [normalAndGlossBuffer] = geometryTarget.setColorTextures([
-    { format: GlFormat.RGBA8, map: GlMap.Quad },
+  const depth = geometryTarget.setDepthQuadTexture(GlFormat.Depth16);
+  const [normalAndGloss] = geometryTarget.setColorQuadTextures([
+    GlFormat.RGBA8,
   ]);
-  const [lightBuffer] = lightTarget.setColorTextures([
-    { format: GlFormat.RGBA8, map: GlMap.Quad },
-  ]);
+  const [light] = lightTarget.setColorQuadTextures([GlFormat.RGBA8]);
 
   return {
-    depthBuffer,
-    lightBuffer,
-    normalAndGlossBuffer,
+    depthBuffer: depth.texture,
+    lightBuffer: light.texture,
+    normalAndGlossBuffer: normalAndGloss.texture,
 
     release() {
       materialRenderer.release();
@@ -936,10 +930,10 @@ const createDeferredLightingRenderer = (
 
         for (const directionalLight of directionalLights) {
           directionalLightBinding.bind({
-            depthBuffer: depthBuffer,
+            depthBuffer: depth.texture,
             directionalLight,
             model,
-            normalAndGlossBuffer: normalAndGlossBuffer,
+            normalAndGlossBuffer: normalAndGloss.texture,
             polygon: directionalLightBillboard.polygon,
             projection: fullscreenProjection,
             view,
@@ -958,9 +952,9 @@ const createDeferredLightingRenderer = (
         pointLightBillboard.set(pointLights);
         pointLightBinding.bind({
           billboard,
-          depthBuffer: depthBuffer,
+          depthBuffer: depth.texture,
           model: Matrix4.identity, // FIXME: remove from shader
-          normalAndGlossBuffer: normalAndGlossBuffer,
+          normalAndGlossBuffer: normalAndGloss.texture,
           polygon: pointLightBillboard.polygon,
           projection,
           view,
@@ -978,7 +972,7 @@ const createDeferredLightingRenderer = (
 
       materialRenderer.render(target, {
         ambientLightColor: ambientLightColor ?? Vector3.zero,
-        lightBuffer,
+        lightBuffer: light.texture,
         projection,
         view,
       });

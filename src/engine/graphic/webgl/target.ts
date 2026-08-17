@@ -18,9 +18,13 @@ type GlAttachment = Releasable & {
   setTextures(textures: readonly GlTexture[]): void;
 };
 
-type GlAttachmentTexture = {
-  format: GlFormat;
-  map: GlMap;
+type GlCubeTextureAttachment = {
+  activateFace(face: number): void;
+  texture: GlTexture;
+};
+
+type GlQuadTextureAttachment = {
+  texture: GlTexture;
 };
 
 const enum GlPencil {
@@ -38,11 +42,12 @@ type GlTarget = {
 
 type GlFramebufferTarget = GlTarget &
   Releasable & {
+    setColorCubeTextures(formats: GlFormat[]): GlCubeTextureAttachment[];
+    setColorQuadTextures(formats: GlFormat[]): GlQuadTextureAttachment[];
     setColorRenderbuffer(format: GlFormat): GlRenderbuffer;
-    setColorTextures(attachmentTextures: GlAttachmentTexture[]): GlTexture[];
+    setDepthCubeTexture(format: GlFormat): GlCubeTextureAttachment;
+    setDepthQuadTexture(format: GlFormat): GlQuadTextureAttachment;
     setDepthRenderbuffer(format: GlFormat): GlRenderbuffer;
-    setDepthTexture(attachmentTextures: GlAttachmentTexture): GlTexture;
-    setDepthTextureFace(texture: GlTexture, face: number): void;
   };
 
 type GlScreenTarget = GlTarget;
@@ -51,12 +56,6 @@ const drawModes = new Map<GlPencil, number>([
   [GlPencil.Triangle, WebGL2RenderingContext["TRIANGLES"]],
   [GlPencil.Wire, WebGL2RenderingContext["LINES"]],
 ]);
-
-const cubeTextureTargets = range(6).map(
-  (i) => WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_X"] + i,
-);
-
-const quadTextureTargets = [WebGL2RenderingContext["TEXTURE_2D"]];
 
 const createAttachment = (): GlAttachment => {
   let currentRenderbuffer: GlRenderbuffer | undefined = undefined;
@@ -142,6 +141,59 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       colorClear.set(color);
     },
 
+    setColorCubeTextures(formats) {
+      const attachment = WebGL2RenderingContext["COLOR_ATTACHMENT0"];
+      const textures = createTextures(gl, viewSize, formats, GlMap.Cube);
+
+      colorAttachment.setTextures(textures);
+
+      // Configure draw buffers
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.drawBuffers(range(textures.length).map((i) => attachment + i));
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      // Return attachments
+      return textures.map((texture, textureIndex) => {
+        const activateFace = (faceIndex: number) =>
+          activateTexture(
+            gl,
+            framebuffer,
+            attachment + textureIndex,
+            WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_X"] + faceIndex,
+            texture,
+          );
+
+        activateFace(0);
+
+        return { activateFace, texture };
+      });
+    },
+
+    setColorQuadTextures(formats) {
+      const attachment = WebGL2RenderingContext["COLOR_ATTACHMENT0"];
+      const textures = createTextures(gl, viewSize, formats, GlMap.Quad);
+
+      colorAttachment.setTextures(textures);
+
+      // Configure & activate draw buffers
+      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+      gl.drawBuffers(range(textures.length).map((i) => attachment + i));
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+      for (let i = 0; i < textures.length; ++i) {
+        activateTexture(
+          gl,
+          framebuffer,
+          attachment + i,
+          WebGL2RenderingContext["TEXTURE_2D"],
+          textures[i],
+        );
+      }
+
+      // Return attachments
+      return textures.map((texture) => ({ texture }));
+    },
+
     setColorRenderbuffer(format) {
       const renderbuffer = attachRenderbuffer(
         gl,
@@ -156,31 +208,49 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       return renderbuffer;
     },
 
-    setColorTextures(attachmentTextures) {
-      const textures = attachTextures(
-        gl,
-        viewSize,
-        framebuffer,
-        attachmentTextures,
-        WebGL2RenderingContext["COLOR_ATTACHMENT0"],
-      );
-
-      colorAttachment.setTextures(textures);
-
-      // Configure draw buffers
-      const buffers = range(textures.length).map(
-        (i) => gl.COLOR_ATTACHMENT0 + i,
-      );
-
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-      gl.drawBuffers(buffers);
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-      return textures;
-    },
-
     setDepthClear(depth: number) {
       depthClear = depth;
+    },
+
+    setDepthCubeTexture(format) {
+      const attachment = WebGL2RenderingContext["DEPTH_ATTACHMENT"];
+      const textures = createTextures(gl, viewSize, [format], GlMap.Cube);
+      const texture = textures[0];
+
+      depthAttachment.setTextures(textures);
+
+      // Activate first face and return attachment
+      const activateFace = (faceIndex: number) =>
+        activateTexture(
+          gl,
+          framebuffer,
+          attachment,
+          WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_X"] + faceIndex,
+          texture,
+        );
+
+      activateFace(0);
+
+      return { activateFace, texture };
+    },
+
+    setDepthQuadTexture(format) {
+      const attachment = WebGL2RenderingContext["DEPTH_ATTACHMENT"];
+      const textures = createTextures(gl, viewSize, [format], GlMap.Quad);
+      const texture = textures[0];
+
+      depthAttachment.setTextures(textures);
+
+      // Activate and return attachment
+      activateTexture(
+        gl,
+        framebuffer,
+        attachment,
+        WebGL2RenderingContext["TEXTURE_2D"],
+        texture,
+      );
+
+      return { texture };
     },
 
     setDepthRenderbuffer(format) {
@@ -195,35 +265,6 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
       depthAttachment.setRenderbuffer(renderbuffer);
 
       return renderbuffer;
-    },
-
-    setDepthTexture(attachmentTexture) {
-      const textures = attachTextures(
-        gl,
-        viewSize,
-        framebuffer,
-        [attachmentTexture],
-        WebGL2RenderingContext["DEPTH_ATTACHMENT"],
-      );
-
-      depthAttachment.setTextures(textures);
-
-      return textures[0];
-    },
-
-    setDepthTextureFace(texture, face) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-      gl.framebufferTexture2D(
-        gl.FRAMEBUFFER,
-        gl.DEPTH_ATTACHMENT,
-        gl.TEXTURE_CUBE_MAP_POSITIVE_X + face,
-        texture.handle,
-        0,
-      );
-
-      checkFramebuffer(gl);
-
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     },
 
     setSize(size) {
@@ -309,12 +350,32 @@ const attachRenderbuffer = (
   return renderbuffer;
 };
 
-const attachTextures = (
+const activateTexture = (
+  gl: WebGL2RenderingContext,
+  framebuffer: WebGLFramebuffer,
+  attachment: GLenum,
+  textureTarget: GLenum,
+  texture: GlTexture,
+): void => {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+  gl.framebufferTexture2D(
+    gl.FRAMEBUFFER,
+    attachment,
+    textureTarget,
+    texture.handle,
+    0,
+  );
+
+  checkFramebuffer(gl);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+};
+
+const createTextures = (
   gl: WebGL2RenderingContext,
   size: Vector2,
-  framebuffer: WebGLFramebuffer,
-  attachmentTextures: GlAttachmentTexture[],
-  attachment: GLenum,
+  formats: GlFormat[],
+  map: GlMap,
 ) => {
   // Create new texture attachment
   const filter = {
@@ -324,54 +385,15 @@ const attachTextures = (
     wrap: Wrap.Clamp,
   };
 
-  const textures: GlTexture[] = [];
-
-  for (const { format, map } of attachmentTextures) {
-    const texture = createTexture(gl, map, size, format, filter, undefined);
-
-    // Generate texture targets
-    let textureTargets: number[];
-
-    switch (map) {
-      case GlMap.Cube:
-        textureTargets = cubeTextureTargets;
-
-        break;
-
-      case GlMap.Quad:
-        textureTargets = quadTextureTargets;
-
-        break;
-
-      default:
-        throw Error(`invalid map ${map}`);
-    }
-
-    // Bind attachment to framebuffer
-    for (const textureTarget of textureTargets) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-      gl.framebufferTexture2D(
-        gl.FRAMEBUFFER,
-        attachment + textures.length,
-        textureTarget,
-        texture.handle,
-        0,
-      );
-
-      checkFramebuffer(gl);
-
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
-
-    textures.push(texture);
-  }
-
-  return textures;
+  return formats.map((format) =>
+    createTexture(gl, map, size, format, filter, undefined),
+  );
 };
 
 export {
-  type GlAttachmentTexture,
+  type GlCubeTextureAttachment,
   type GlFramebufferTarget,
+  type GlQuadTextureAttachment,
   type GlScreenTarget,
   type GlTarget,
   GlFormat,
