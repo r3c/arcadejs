@@ -561,7 +561,6 @@ const createLightBinder = (
     | "noRoughnessMap"
     | "noSpecularMap"
   >,
-  pointShadowBuffers: GlTexture[],
 ): GlMaterialBinder<LightScene> => {
   return (feature) => {
     const shader = runtime.createShader(createLightSource(directive, feature));
@@ -632,8 +631,8 @@ const createLightBinder = (
       "diffuseMap",
       uniform.textureQuad(
         !configuration.noDiffuseMap
-          ? ({ diffuseMap }, { textureWhite }) => diffuseMap ?? textureWhite
-          : (_, { textureWhite }) => textureWhite,
+          ? ({ diffuseMap }, { quadWhite }) => diffuseMap ?? quadWhite
+          : (_, { quadWhite }) => quadWhite,
       ),
     );
 
@@ -651,9 +650,9 @@ const createLightBinder = (
           "specularMap",
           uniform.textureQuad(
             !configuration.noSpecularMap
-              ? ({ diffuseMap, specularMap }, { textureWhite }) =>
-                  specularMap ?? diffuseMap ?? textureWhite
-              : (_, { textureWhite }) => textureWhite,
+              ? ({ diffuseMap, specularMap }, { quadWhite }) =>
+                  specularMap ?? diffuseMap ?? quadWhite
+              : (_, { quadWhite }) => quadWhite,
           ),
         );
 
@@ -664,8 +663,8 @@ const createLightBinder = (
           sceneBinding.setUniform(
             "environmentBrdfMap",
             uniform.textureQuad(
-              ({ environmentLight }, { textureBlack }) =>
-                environmentLight?.brdf ?? textureBlack,
+              ({ environmentLight }, { quadBlack }) =>
+                environmentLight?.brdf ?? quadBlack,
             ),
           );
           sceneBinding.setUniform(
@@ -694,19 +693,17 @@ const createLightBinder = (
           "metalnessMap",
           uniform.textureQuad(
             !configuration.noMetalnessMap
-              ? ({ metalnessMap }, { textureBlack }) =>
-                  metalnessMap ?? textureBlack
-              : (_, { textureBlack }) => textureBlack,
+              ? ({ metalnessMap }, { quadBlack }) => metalnessMap ?? quadBlack
+              : (_, { quadBlack }) => quadBlack,
           ),
         );
         materialBinding.setUniform(
           "roughnessMap",
           !configuration.noRoughnessMap
             ? uniform.textureQuad(
-                ({ roughnessMap }, { textureBlack }) =>
-                  roughnessMap ?? textureBlack,
+                ({ roughnessMap }, { quadBlack }) => roughnessMap ?? quadBlack,
               )
-            : uniform.textureQuad((_, { textureBlack }) => textureBlack),
+            : uniform.textureQuad((_, { quadBlack }) => quadBlack),
         );
         materialBinding.setUniform(
           "metalnessStrength",
@@ -724,8 +721,8 @@ const createLightBinder = (
       "emissiveMap",
       uniform.textureQuad(
         !configuration.noEmissiveMap
-          ? ({ emissiveMap }, { textureBlack }) => emissiveMap ?? textureBlack
-          : (_, { textureBlack }) => textureBlack,
+          ? ({ emissiveMap }, { quadBlack }) => emissiveMap ?? quadBlack
+          : (_, { quadBlack }) => quadBlack,
       ),
     );
     materialBinding.setUniform(
@@ -736,8 +733,8 @@ const createLightBinder = (
       "heightMap",
       uniform.textureQuad(
         !configuration.noHeightMap
-          ? ({ heightMap }, { textureBlack }) => heightMap ?? textureBlack
-          : (_, { textureBlack }) => textureBlack,
+          ? ({ heightMap }, { quadBlack }) => heightMap ?? quadBlack
+          : (_, { quadBlack }) => quadBlack,
       ),
     );
     materialBinding.setUniform(
@@ -752,16 +749,16 @@ const createLightBinder = (
       "normalMap",
       uniform.textureQuad(
         !configuration.noNormalMap
-          ? ({ normalMap }, { textureNormal }) => normalMap ?? textureNormal
-          : (_, { textureNormal }) => textureNormal,
+          ? ({ normalMap }, { quadNormal }) => normalMap ?? quadNormal
+          : (_, { quadNormal }) => quadNormal,
       ),
     );
     materialBinding.setUniform(
       "occlusionMap",
       uniform.textureQuad(
         !configuration.noOcclusionMap
-          ? ({ occlusionMap }, { textureBlack }) => occlusionMap ?? textureBlack
-          : (_, { textureBlack }) => textureBlack,
+          ? ({ occlusionMap }, { quadBlack }) => occlusionMap ?? quadBlack
+          : (_, { quadBlack }) => quadBlack,
       ),
     );
     materialBinding.setUniform(
@@ -802,10 +799,10 @@ const createLightBinder = (
         sceneBinding.setUniform(
           `directionalLightShadowMaps[${index}]`,
           uniform.textureQuad(
-            ({ directionalShadowLights }, { textureBlack }) =>
+            ({ directionalShadowLights }, { quadBlack }) =>
               (index < directionalShadowLights.length
                 ? directionalShadowLights[index].shadowMap
-                : undefined) ?? textureBlack,
+                : undefined) ?? quadBlack,
           ),
         );
       }
@@ -842,11 +839,10 @@ const createLightBinder = (
         );
         sceneBinding.setUniform(
           `pointLightShadowMaps[${index}]`,
-          uniform.textureCube(
-            ({ pointShadowLights }) =>
-              index < pointShadowLights.length
-                ? pointShadowLights[index].shadowMap
-                : pointShadowBuffers[index], // FIXME: return undefined
+          uniform.textureCube(({ pointShadowLights }, { cubeBlack }) =>
+            index < pointShadowLights.length
+              ? pointShadowLights[index].shadowMap
+              : cubeBlack,
           ),
         );
       }
@@ -1006,12 +1002,7 @@ const createForwardLightingRenderer = (
     target.setDepthCubeTexture(GlFormat.Depth16),
   );
 
-  const lightBinder = createLightBinder(
-    runtime,
-    directive,
-    configuration,
-    pointShadows.map(({ texture }) => texture),
-  );
+  const lightBinder = createLightBinder(runtime, directive, configuration);
   const lightRenderer = createGlMaterialRenderer(
     GlPencil.Triangle,
     lightBinder,
