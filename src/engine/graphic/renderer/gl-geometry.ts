@@ -5,36 +5,36 @@ import { GlMesh, GlPolygon } from "../webgl/model";
 import { GlShaderBinding } from "../webgl/shader";
 import { Renderer } from "../renderer";
 
-type GlVolumeMeshBinding<TScene> = Releasable & {
+type GlGeometryBinding<TScene> = Releasable & {
   polygonBinding: GlShaderBinding<GlPolygon>;
   sceneBinding: GlShaderBinding<TScene>;
-  subjectBinding: GlShaderBinding<GlVolumeMeshSubject>;
+  subjectBinding: GlShaderBinding<GlGeometrySubject>;
 };
 
-type GlVolumeMeshRenderer<TScene extends GlVolumeMeshScene> = Releasable &
+type GlGeometryRenderer<TScene extends GlGeometryScene> = Releasable &
   Renderer<GlTarget, TScene, GlMesh>;
 
-type GlVolumeMeshScene = {
+type GlGeometryScene = {
   projection: Matrix4;
   view: Matrix4;
 };
 
-type GlVolumeMeshSubject = {
+type GlGeometrySubject = {
   model: Matrix4;
 };
 
 /*
- ** Create a simple volume mesh renderer with no material support.
+ ** Create a simple geometry mesh renderer with no material support.
  */
-const createGlVolumeMeshRenderer = <TScene extends GlVolumeMeshScene>(
-  binding: GlVolumeMeshBinding<TScene>,
-): GlVolumeMeshRenderer<TScene> => {
+const createGlGeometryRenderer = <TScene extends GlGeometryScene>(
+  binding: GlGeometryBinding<TScene>,
+): GlGeometryRenderer<TScene> => {
   const { polygonBinding, sceneBinding, subjectBinding } = binding;
   const subjects = new Map<Symbol, GlMesh>();
 
   const renderMesh = (
     target: GlTarget,
-    subjectBinding: GlShaderBinding<GlVolumeMeshSubject>,
+    subjectBinding: GlShaderBinding<GlGeometrySubject>,
     polygonBinding: GlShaderBinding<GlPolygon>,
     mesh: GlMesh,
     view: Matrix4,
@@ -87,9 +87,9 @@ const createGlVolumeMeshRenderer = <TScene extends GlVolumeMeshScene>(
 };
 
 export {
-  type GlVolumeMeshBinding,
-  type GlVolumeMeshRenderer,
-  type GlVolumeMeshScene,
-  type GlVolumeMeshSubject,
-  createGlVolumeMeshRenderer,
+  type GlGeometryBinding,
+  type GlGeometryRenderer,
+  type GlGeometryScene,
+  type GlGeometrySubject,
+  createGlGeometryRenderer,
 };

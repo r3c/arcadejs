@@ -40,18 +40,18 @@ import {
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
 import {
-  GlFeatureMeshBinder,
-  GlFeatureMeshFlag,
-  GlFeatureMeshSubject,
-  GlFeatureMeshScene,
-  createGlFeatureMeshRenderer,
-} from "./gl-feature-mesh";
+  GlMaterialBinder,
+  GlMaterialFlag,
+  GlMaterialSubject,
+  GlMaterialScene,
+  createGlMaterialRenderer,
+} from "./gl-material";
 import { Renderer } from "./definition";
 import {
-  createGlVolumeMeshRenderer,
-  GlVolumeMeshBinding,
-  GlVolumeMeshSubject,
-} from "./gl-volume-mesh";
+  createGlGeometryRenderer,
+  GlGeometryBinding,
+  GlGeometrySubject,
+} from "./gl-geometry";
 
 type ForwardLightingConfiguration = {
   lightModel?: ForwardLightingLightModel;
@@ -97,7 +97,7 @@ type ForwardLightingRenderer = Releasable &
     pointShadowMaps: GlTexture[];
   };
 
-type ForwardLightingScene = GlFeatureMeshScene & {
+type ForwardLightingScene = GlMaterialScene & {
   ambientLightColor?: Vector3;
   directionalLights?: DirectionalLight[];
   environmentLight?: EnvironmentLight;
@@ -110,7 +110,7 @@ type ForwardLightingSubject = {
   noShadow?: boolean;
 };
 
-type LightScene = GlFeatureMeshScene & {
+type LightScene = GlMaterialScene & {
   ambientLightColor: Vector3;
   directionalShadowLights: DirectionalShadowLight[];
   environmentLight?: {
@@ -127,11 +127,11 @@ type PointShadowLight = PointLight & {
   shadowMap: GlTexture;
 };
 
-type DirectionalShadowScene = GlFeatureMeshScene & {
+type DirectionalShadowScene = GlMaterialScene & {
   projection: Matrix4;
 };
 
-type PointShadowScene = GlFeatureMeshScene & {
+type PointShadowScene = GlMaterialScene & {
   lightPosition: Vector3;
   lightRadius: number;
   projection: Matrix4;
@@ -152,7 +152,7 @@ type Directive = {
 
 const createLightSource = (
   directive: Directive,
-  feature: GlFeatureMeshFlag,
+  feature: GlMaterialFlag,
 ): GlShaderSource => {
   const maxDirectionalLights = Math.max(directive.maxDirectionalLights, 1);
   const maxPointLights = Math.max(directive.maxPointLights, 1);
@@ -563,7 +563,7 @@ const createLightBinder = (
     | "noSpecularMap"
   >,
   pointShadowBuffers: GlTexture[],
-): GlFeatureMeshBinder<LightScene> => {
+): GlMaterialBinder<LightScene> => {
   return (feature) => {
     const shader = runtime.createShader(createLightSource(directive, feature));
 
@@ -592,7 +592,7 @@ const createLightBinder = (
     polygonBinding.setAttribute("positions", ({ position }) => position);
 
     // Bind subject uniforms
-    const subjectBinding = shader.declare<GlFeatureMeshSubject>();
+    const subjectBinding = shader.declare<GlMaterialSubject>();
 
     subjectBinding.setUniform(
       "modelMatrix",
@@ -890,14 +890,14 @@ const createLightBinder = (
 
 const createDirectionalShadowBinding = (
   runtime: GlRuntime,
-): GlVolumeMeshBinding<DirectionalShadowScene> => {
+): GlGeometryBinding<DirectionalShadowScene> => {
   const shader = runtime.createShader(createShadowDirectionalSource());
 
   const polygonBinding = shader.declare<GlPolygon>();
 
   polygonBinding.setAttribute("positions", ({ position }) => position);
 
-  const subjectBinding = shader.declare<GlVolumeMeshSubject>();
+  const subjectBinding = shader.declare<GlGeometrySubject>();
 
   subjectBinding.setUniform(
     "modelMatrix",
@@ -925,14 +925,14 @@ const createDirectionalShadowBinding = (
 
 const createPointShadowBinding = (
   runtime: GlRuntime,
-): GlVolumeMeshBinding<PointShadowScene> => {
+): GlGeometryBinding<PointShadowScene> => {
   const shader = runtime.createShader(createShadowPointSource());
 
   const polygonBinding = shader.declare<GlPolygon>();
 
   polygonBinding.setAttribute("positions", ({ position }) => position);
 
-  const subjectBinding = shader.declare<GlVolumeMeshSubject>();
+  const subjectBinding = shader.declare<GlGeometrySubject>();
 
   subjectBinding.setUniform(
     "modelMatrix",
@@ -1013,14 +1013,14 @@ const createForwardLightingRenderer = (
     configuration,
     pointShadowMaps,
   );
-  const lightRenderer = createGlFeatureMeshRenderer(
+  const lightRenderer = createGlMaterialRenderer(
     GlPencil.Triangle,
     lightBinder,
     {},
   );
 
   const directionalShadowBinding = createDirectionalShadowBinding(runtime);
-  const directionalShadowRenderer = createGlVolumeMeshRenderer(
+  const directionalShadowRenderer = createGlGeometryRenderer(
     directionalShadowBinding,
   );
   const directionalShadowProjection = Matrix4.fromIdentity([
@@ -1035,7 +1035,7 @@ const createForwardLightingRenderer = (
   const shadowDirection = Vector3.fromZero();
 
   const pointShadowBinding = createPointShadowBinding(runtime);
-  const pointShadowRenderer = createGlVolumeMeshRenderer(pointShadowBinding);
+  const pointShadowRenderer = createGlGeometryRenderer(pointShadowBinding);
   const pointShadowProjection = Matrix4.fromIdentity([
     "setFromPerspective",
     Math.PI / 2,
