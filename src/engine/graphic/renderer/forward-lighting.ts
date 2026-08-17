@@ -28,7 +28,6 @@ import {
   GlPencil,
   GlTarget,
   GlFormat,
-  GlMap,
 } from "../webgl/target";
 import {
   shaderWhen,
@@ -993,8 +992,8 @@ const createForwardLightingRenderer = (
 
     return target;
   });
-  const directionalShadowMaps = directionalTargets.map((target) =>
-    target.setDepthTexture({ format: GlFormat.Depth16, map: GlMap.Quad }),
+  const directionalShadows = directionalTargets.map((target) =>
+    target.setDepthQuadTexture(GlFormat.Depth16),
   );
   const pointTargets = range(directive.maxPointLights).map(() => {
     const target = createFramebufferTarget(gl);
@@ -1003,15 +1002,15 @@ const createForwardLightingRenderer = (
 
     return target;
   });
-  const pointShadowMaps = pointTargets.map((target) =>
-    target.setDepthTexture({ format: GlFormat.Depth16, map: GlMap.Cube }),
+  const pointShadows = pointTargets.map((target) =>
+    target.setDepthCubeTexture(GlFormat.Depth16),
   );
 
   const lightBinder = createLightBinder(
     runtime,
     directive,
     configuration,
-    pointShadowMaps,
+    pointShadows.map(({ texture }) => texture),
   );
   const lightRenderer = createGlMaterialRenderer(
     GlPencil.Triangle,
@@ -1060,8 +1059,8 @@ const createForwardLightingRenderer = (
 
   return {
     // FIXME: debug
-    directionalShadowMaps,
-    pointShadowMaps,
+    directionalShadowMaps: directionalShadows.map(({ texture }) => texture),
+    pointShadowMaps: pointShadows.map(({ texture }) => texture),
 
     release: () => {
       directionalShadowBinding.release();
@@ -1153,7 +1152,7 @@ const createForwardLightingRenderer = (
           color: light.color,
           direction: light.direction,
           shadow: light.shadow,
-          shadowMap: directionalShadowMaps[i],
+          shadowMap: directionalShadows[i].texture,
           shadowView: directionalShadowView,
         });
       }
@@ -1169,7 +1168,7 @@ const createForwardLightingRenderer = (
 
       for (let i = 0; i < nbPointLights; ++i) {
         const light = pointLights[i];
-        const shadowMap = pointShadowMaps[i];
+        const shadow = pointShadows[i];
         const target = pointTargets[i];
         const pointShadowTranslation = {
           x: -light.position.x,
@@ -1184,7 +1183,7 @@ const createForwardLightingRenderer = (
             ["translate", pointShadowTranslation],
           );
 
-          target.setDepthTextureFace(shadowMap, face);
+          shadow.activateFace(face);
           target.clear();
 
           pointShadowRenderer.render(target, {
@@ -1200,7 +1199,7 @@ const createForwardLightingRenderer = (
           position: light.position,
           radius: light.radius,
           shadow: light.shadow,
-          shadowMap,
+          shadowMap: shadow.texture,
         });
       }
 

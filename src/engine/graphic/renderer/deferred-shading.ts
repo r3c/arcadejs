@@ -29,7 +29,6 @@ import {
   GlPencil,
   GlTarget,
   GlFormat,
-  GlMap,
 } from "../webgl/target";
 import {
   GlDirectionalLightPolygon,
@@ -786,8 +785,8 @@ const createDeferredShadingRenderer = (
   configuration: DeferredShadingConfiguration,
 ): DeferredShadingRenderer => {
   const gl = runtime.context;
+  const composeTarget = createFramebufferTarget(gl);
   const geometryTarget = createFramebufferTarget(gl);
-  const sceneTarget = createFramebufferTarget(gl);
   const ambientLightBinder = createAmbientLightBinder(runtime, configuration);
   const ambientLightQuad = createModel(gl, commonMesh.quad);
   const ambientLightRenderer = createGlMaterialRenderer(
@@ -796,10 +795,7 @@ const createDeferredShadingRenderer = (
     {},
   );
   ambientLightRenderer.addSubject(ambientLightQuad.mesh);
-  const depthBuffer = geometryTarget.setDepthTexture({
-    format: GlFormat.Depth16,
-    map: GlMap.Quad,
-  });
+  const depth = geometryTarget.setDepthQuadTexture(GlFormat.Depth16);
   const directionalLightBillboard = createDirectionalLightBillboard(gl);
   const directionalLightBinding = loadDirectionalLightBinding(
     runtime,
@@ -823,19 +819,14 @@ const createDeferredShadingRenderer = (
   const pointLightBillboard = createPointLightBillboard(gl);
   const pointLightBinding = loadPointLightBinding(runtime, configuration);
   const sceneBinding = loadPostBinding(runtime);
-  const [diffuseAndShininessBuffer, normalAndSpecularBuffer] =
-    geometryTarget.setColorTextures([
-      { format: GlFormat.RGBA8, map: GlMap.Quad },
-      { format: GlFormat.RGBA8, map: GlMap.Quad },
-    ]);
-  const [sceneBuffer] = sceneTarget.setColorTextures([
-    { format: GlFormat.RGBA8, map: GlMap.Quad },
-  ]);
+  const [diffuseAndShininess, normalAndSpecular] =
+    geometryTarget.setColorQuadTextures([GlFormat.RGBA8, GlFormat.RGBA8]);
+  const [compose] = composeTarget.setColorQuadTextures([GlFormat.RGBA8]);
 
   return {
-    depthBuffer,
-    diffuseAndShininessBuffer,
-    normalAndSpecularBuffer,
+    depthBuffer: depth.texture,
+    diffuseAndShininessBuffer: diffuseAndShininess.texture,
+    normalAndSpecularBuffer: normalAndSpecular.texture,
 
     release() {
       ambientLightRenderer.release();
@@ -896,12 +887,12 @@ const createDeferredShadingRenderer = (
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.ONE, gl.ONE);
 
-      sceneTarget.clear();
+      composeTarget.clear();
 
       // Draw ambient light using fullscreen quad
       if (ambientLightColor !== undefined) {
-        ambientLightRenderer.render(sceneTarget, {
-          diffuseAndShininessBuffer: diffuseAndShininessBuffer,
+        ambientLightRenderer.render(composeTarget, {
+          diffuseAndShininessBuffer: diffuseAndShininess.texture,
           ambientLightColor,
           projection: fullscreenProjection,
           view: Matrix4.identity,
@@ -920,17 +911,17 @@ const createDeferredShadingRenderer = (
 
         for (const directionalLight of directionalLights) {
           directionalLightBinding.bind({
-            diffuseAndShininessBuffer: diffuseAndShininessBuffer,
-            depthBuffer: depthBuffer,
+            diffuseAndShininessBuffer: diffuseAndShininess.texture,
+            depthBuffer: depth.texture,
             directionalLight,
             model,
-            normalAndSpecularBuffer: normalAndSpecularBuffer,
+            normalAndSpecularBuffer: normalAndSpecular.texture,
             polygon: directionalLightBillboard.polygon,
             projection: fullscreenProjection,
             view,
             viewport,
           });
-          sceneTarget.draw(
+          composeTarget.draw(
             GlPencil.Triangle,
             directionalLightBillboard.indexBuffer,
           );
@@ -942,30 +933,30 @@ const createDeferredShadingRenderer = (
         pointLightBillboard.set(pointLights);
 
         pointLightBinding.bind({
-          diffuseAndShininessBuffer: diffuseAndShininessBuffer,
+          diffuseAndShininessBuffer: diffuseAndShininess.texture,
           billboard,
-          depthBuffer,
+          depthBuffer: depth.texture,
           model: Matrix4.identity, // FIXME: remove from shader
-          normalAndSpecularBuffer: normalAndSpecularBuffer,
+          normalAndSpecularBuffer: normalAndSpecular.texture,
           polygon: pointLightBillboard.polygon,
           projection,
           view,
           viewport,
         });
-        sceneTarget.draw(GlPencil.Triangle, pointLightBillboard.indexBuffer);
+        composeTarget.draw(GlPencil.Triangle, pointLightBillboard.indexBuffer);
       }
 
       // Draw scene
       sceneBinding.bind({
         position: directionalLightBillboard.polygon.lightPosition,
-        source: sceneBuffer,
+        source: compose.texture,
       });
       target.draw(GlPencil.Triangle, directionalLightBillboard.indexBuffer);
     },
 
     setSize(size: Vector2) {
       geometryTarget.setSize(size);
-      sceneTarget.setSize(size);
+      composeTarget.setSize(size);
     },
   };
 };
