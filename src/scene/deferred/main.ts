@@ -145,7 +145,7 @@ const createApplication = async (
       ]),
     },
   );
-  const groundModel = await loadMeshFromJson("model/ground/mesh.json");
+  const groundModel = await loadMeshFromJson("model/stand/ground.json");
   const pointLightModel = await loadMeshFromJson("model/sphere/mesh.json", {
     transform: Matrix4.fromSource(Matrix4.identity, [
       "scale",

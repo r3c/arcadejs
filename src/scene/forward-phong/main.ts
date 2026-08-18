@@ -111,13 +111,13 @@ const createApplication = async (
   const target = createScreenTarget(gl);
 
   // Load models
+  const boxMesh = await loadMeshFromJson("model/stand/box.json");
   const cubeMesh = await loadMeshFromJson("model/cube/mesh.json", {
     transform: Matrix4.fromSource(Matrix4.identity, [
       "scale",
       { x: 0.5, y: 0.5, z: 0.5 },
     ]),
   });
-  const groundMesh = await loadMeshFromJson("model/ground/mesh.json");
   const lightMesh = await loadMeshFromJson("model/sphere/mesh.json", {
     transform: Matrix4.fromSource(Matrix4.identity, [
       "scale",
@@ -143,8 +143,8 @@ const createApplication = async (
     position: Vector3.fromZero(),
   }));
   const models = {
+    box: createModel(gl, boxMesh),
     cube: createModel(gl, cubeMesh),
-    ground: createModel(gl, groundMesh),
     light: createModel(gl, lightMesh),
   };
   const projection = Matrix4.fromIdentity();
@@ -182,11 +182,11 @@ const createApplication = async (
       newRenderer.addSubject({ mesh: cube1.mesh });
       newRenderer.addSubject({ mesh: cube2.mesh });
 
-      const ground = createDynamicMesh(models.ground.mesh);
+      const box = createDynamicMesh(models.box.mesh);
 
-      newRenderer.addSubject({ mesh: ground.mesh });
+      newRenderer.addSubject({ mesh: box.mesh });
 
-      ground.transform.translate({ x: 0, y: -1.5, z: 0 });
+      box.transform.scale({ x: 2.5, y: 2.5, z: 2.5 });
 
       directionalLightTransforms = range(configuration.nbDirectionalLights).map(
         () => {
@@ -222,8 +222,8 @@ const createApplication = async (
 
     release() {
       encodingRenderer?.release();
+      models.box.release();
       models.cube.release();
-      models.ground.release();
       models.light.release();
       renderer?.release();
       runtime.release();

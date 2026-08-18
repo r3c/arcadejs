@@ -61,7 +61,7 @@ const createApplication = async (
   const target = createScreenTarget(gl);
 
   // Load meshes
-  const groundMesh = await loadMeshFromJson("model/ground/mesh.json");
+  const groundMesh = await loadMeshFromJson("model/stand/ground.json");
 
   const helmetMesh = await loadMeshFromGltf(
     "model/damaged-helmet/DamagedHelmet.gltf",
