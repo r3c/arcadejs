@@ -604,7 +604,7 @@ const createGeometryBinder = (
     materialBinding.setUniform(
       "diffuseMap",
       uniform.textureQuad(
-        ({ diffuseMap }, { textureWhite }) => diffuseMap ?? textureWhite,
+        ({ diffuseMap }, { quadWhite }) => diffuseMap ?? quadWhite,
       ),
     );
 
@@ -620,8 +620,8 @@ const createGeometryBinder = (
       materialBinding.setUniform(
         "specularMap",
         uniform.textureQuad(
-          ({ diffuseMap: a, specularMap: s }, { textureWhite }) =>
-            s ?? a ?? textureWhite,
+          ({ diffuseMap: a, specularMap: s }, { quadWhite }) =>
+            s ?? a ?? quadWhite,
         ),
       );
     }
@@ -630,8 +630,8 @@ const createGeometryBinder = (
       "heightMap",
       uniform.textureQuad(
         !configuration.noHeightMap
-          ? ({ heightMap }, { textureBlack }) => heightMap ?? textureBlack
-          : (_, { textureBlack }) => textureBlack,
+          ? ({ heightMap }, { quadBlack }) => heightMap ?? quadBlack
+          : (_, { quadBlack }) => quadBlack,
       ),
     );
     materialBinding.setUniform(
@@ -646,8 +646,8 @@ const createGeometryBinder = (
       "normalMap",
       uniform.textureQuad(
         !configuration.noNormalMap
-          ? ({ normalMap }, { textureNormal }) => normalMap ?? textureNormal
-          : (_, { textureNormal }) => textureNormal,
+          ? ({ normalMap }, { quadNormal }) => normalMap ?? quadNormal
+          : (_, { quadNormal }) => quadNormal,
       ),
     );
 

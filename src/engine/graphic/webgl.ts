@@ -10,34 +10,51 @@ type GlRuntime = Releasable & {
   context: GlContext;
 };
 
-const createRuntime = (context: GlContext): GlRuntime => {
-  const createConstantTexture = (color: Vector4) =>
-    createTexture(
-      context,
-      GlMap.Quad,
-      { x: 1, y: 1 },
-      GlFormat.RGBA8,
-      {
-        magnifier: Interpolation.Nearest,
-        minifier: Interpolation.Nearest,
-        mipmap: false,
-        wrap: Wrap.Clamp,
-      },
-      new ImageData(
-        new Uint8ClampedArray(
-          Vector4.toArray(
-            Vector4.fromSource(color, ["scale", 255], ["map", Math.floor]),
-          ),
+const createRuntime = (gl: GlContext): GlRuntime => {
+  const sampler = {
+    magnifier: Interpolation.Nearest,
+    minifier: Interpolation.Nearest,
+    mipmap: false,
+    wrap: Wrap.Clamp,
+  };
+
+  const createPixelImageData = (color: Vector4) =>
+    new ImageData(
+      new Uint8ClampedArray(
+        Vector4.toArray(
+          Vector4.fromSource(color, ["scale", 255], ["map", Math.floor]),
         ),
-        1,
-        1,
       ),
+      1,
+      1,
     );
 
-  const textureBlack = createConstantTexture({ x: 0, y: 0, z: 0, w: 0 });
-  const textureNormal = createConstantTexture({ x: 0.5, y: 0.5, z: 1, w: 1 });
-  const textureWhite = createConstantTexture({ x: 1, y: 1, z: 1, w: 1 });
-  const shaderDefault = { textureBlack, textureNormal, textureWhite };
+  const createColorCubeTexture = (color: Vector4) => {
+    const imageData = createPixelImageData(color);
+
+    return loadTextureCube(
+      gl,
+      imageData,
+      imageData,
+      imageData,
+      imageData,
+      imageData,
+      imageData,
+      sampler,
+    );
+  };
+
+  const createColorQuadTexture = (color: Vector4) => {
+    const imageData = createPixelImageData(color);
+
+    return loadTextureQuad(gl, imageData, sampler);
+  };
+
+  const cubeBlack = createColorCubeTexture({ x: 0, y: 0, z: 0, w: 0 });
+  const quadBlack = createColorQuadTexture({ x: 0, y: 0, z: 0, w: 0 });
+  const quadNormal = createColorQuadTexture({ x: 0.5, y: 0.5, z: 1, w: 1 });
+  const quadWhite = createColorQuadTexture({ x: 1, y: 1, z: 1, w: 1 });
+  const fallback = { cubeBlack, quadBlack, quadNormal, quadWhite };
 
   // Forward call to `gl.useProgram` if given program is not already active
   // (may be premature optimization e.g. duplicate of underlying implementation)
@@ -45,19 +62,19 @@ const createRuntime = (context: GlContext): GlRuntime => {
 
   const useProgram = (program: WebGLProgram): void => {
     if (currentProgram !== program) {
-      context.useProgram(program);
+      gl.useProgram(program);
     }
   };
 
   return {
     release: () => {
-      textureBlack.release();
-      textureNormal.release();
-      textureWhite.release();
+      cubeBlack.release();
+      quadBlack.release();
+      quadNormal.release();
+      quadWhite.release();
     },
-    createShader: (source) =>
-      createShader(context, useProgram, shaderDefault, source),
-    context,
+    createShader: (source) => createShader(gl, useProgram, fallback, source),
+    context: gl,
   };
 };
 

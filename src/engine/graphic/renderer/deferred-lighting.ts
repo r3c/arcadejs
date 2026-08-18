@@ -557,9 +557,9 @@ const createGeometryBinder = (
       "heightMap",
       !configuration.noHeightMap
         ? uniform.textureQuad(
-            ({ heightMap }, { textureBlack }) => heightMap ?? textureBlack,
+            ({ heightMap }, { quadBlack }) => heightMap ?? quadBlack,
           )
-        : uniform.textureQuad((_, { textureBlack }) => textureBlack),
+        : uniform.textureQuad((_, { quadBlack }) => quadBlack),
     );
     materialBinding.setUniform(
       "heightParallaxBias",
@@ -573,9 +573,9 @@ const createGeometryBinder = (
       "normalMap",
       !configuration.noNormalMap
         ? uniform.textureQuad(
-            ({ normalMap }, { textureNormal }) => normalMap ?? textureNormal,
+            ({ normalMap }, { quadNormal }) => normalMap ?? quadNormal,
           )
-        : uniform.textureQuad((_, { textureNormal }) => textureNormal),
+        : uniform.textureQuad((_, { quadNormal }) => quadNormal),
     );
 
     return {
@@ -762,7 +762,7 @@ const createMaterialBinder = (
     materialBinding.setUniform(
       "diffuseMap",
       uniform.textureQuad(
-        ({ diffuseMap }, { textureWhite }) => diffuseMap ?? textureWhite,
+        ({ diffuseMap }, { quadWhite }) => diffuseMap ?? quadWhite,
       ),
     );
 
@@ -774,7 +774,7 @@ const createMaterialBinder = (
       materialBinding.setUniform(
         "specularMap",
         uniform.textureQuad(
-          ({ specularMap }, { textureBlack }) => specularMap ?? textureBlack,
+          ({ specularMap }, { quadBlack }) => specularMap ?? quadBlack,
         ),
       );
     }
@@ -783,8 +783,8 @@ const createMaterialBinder = (
       "heightMap",
       uniform.textureQuad(
         !configuration.noHeightMap
-          ? ({ heightMap }, { textureBlack }) => heightMap ?? textureBlack
-          : (_, { textureBlack }) => textureBlack,
+          ? ({ heightMap }, { quadBlack }) => heightMap ?? quadBlack
+          : (_, { quadBlack }) => quadBlack,
       ),
     );
     materialBinding.setUniform(

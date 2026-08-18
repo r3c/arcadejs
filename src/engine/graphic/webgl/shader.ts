@@ -31,9 +31,10 @@ type GlShaderBinding<TState> = {
 };
 
 type GlShaderFallback = {
-  textureBlack: GlTexture;
-  textureNormal: GlTexture;
-  textureWhite: GlTexture;
+  cubeBlack: GlTexture;
+  quadBlack: GlTexture;
+  quadNormal: GlTexture;
+  quadWhite: GlTexture;
 };
 
 type GlShaderFunction<
@@ -123,7 +124,7 @@ const createAttribute = (
 const createShader = (
   gl: GlContext,
   useProgram: (program: WebGLProgram) => void,
-  shaderDefault: GlShaderFallback,
+  fallback: GlShaderFallback,
   source: GlShaderSource,
 ): GlShader => {
   const program = gl.createProgram();
@@ -228,7 +229,7 @@ const createShader = (
           }
 
           uniforms.set(name, (state: TState) => {
-            const uniform = readUniform(state, value, shaderDefault);
+            const uniform = readUniform(state, value, fallback);
 
             setUniform(gl, location, uniform, textureIndex);
           });
