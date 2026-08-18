@@ -43,14 +43,14 @@ import {
  */
 
 const configurator = {
-  nbLights: createSelect("nbLights", ["0", "1", "2", "3"], 1),
-  move: createCheckbox("move", true),
-  lightAmbient: createCheckbox("ambient", true),
-  lightEmissive: createCheckbox("emissive", true),
-  useOcclusion: createCheckbox("occlusion", true),
+  nbLights: createSelect("Nb Lights", ["0", "1", "2", "3"], 1),
+  move: createCheckbox("Move", true),
+  lightAmbient: createCheckbox("Ambient Light", true),
+  lightEmissive: createCheckbox("Emissive Light", true),
+  useOcclusion: createCheckbox("Occlusion Light", true),
   useIBL: createCheckbox("IBL", true),
-  useHeightMap: createCheckbox("hMap", true),
-  useNormalMap: createCheckbox("nMap", true),
+  useHeightMap: createCheckbox("Height Map", true),
+  useNormalMap: createCheckbox("Normal Map", true),
 };
 
 type Configuration =

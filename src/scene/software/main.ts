@@ -26,7 +26,7 @@ import {
  */
 
 const configurator = {
-  mode: createSelect("render", ["Wire", "Color", "Texture"], 1),
+  mode: createSelect("Pencil Mode", ["Wire", "Color", "Texture"], 1),
 };
 
 type Configuration =
