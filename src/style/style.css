@@ -3,7 +3,7 @@ body {
   padding: 0;
   margin: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 body,
@@ -18,9 +18,10 @@ html {
 
 .console {
   display: flex;
+  flex-direction: column;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
   padding: 4px 10px;
   margin: 16px;
   background: #8ac;
@@ -29,13 +30,6 @@ html {
 
 .console .configuration {
   flex: auto;
-}
-
-.control .container {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
 }
 
 .console .frame {
@@ -48,9 +42,9 @@ html {
 
 .control {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
 }
 
 .control input,
@@ -74,6 +68,13 @@ html {
 .control input:hover,
 .control select:hover {
   background: #bdf;
+}
+
+.control .container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
 }
 
 .display {

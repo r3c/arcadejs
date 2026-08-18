@@ -94,8 +94,8 @@ const createCheckbox = (
     const element = document.createElement("span");
     const update = () => onChange(checkbox.checked);
 
-    element.appendChild(checkbox);
     element.appendChild(document.createTextNode(caption));
+    element.appendChild(checkbox);
     element.className = "container";
 
     checkbox.checked = defaultValue;
@@ -118,11 +118,11 @@ const createSelect = (
     const select = document.createElement("select");
     const update = () => onChange(select.selectedIndex);
 
-    element.appendChild(select);
-
     if (caption !== undefined) {
       element.appendChild(document.createTextNode(caption));
     }
+
+    element.appendChild(select);
 
     element.className = "container";
     select.onchange = update;
@@ -229,6 +229,12 @@ const run = (applications: Process[]) => {
     throw Error("missing frame container");
   }
 
+  const fullscreenContainer = document.getElementById("fullscreen");
+
+  if (fullscreenContainer === null) {
+    throw Error("missing fullscreen container");
+  }
+
   const sceneContainer = document.getElementById("scene");
 
   if (sceneContainer === null) {
@@ -296,11 +302,12 @@ const run = (applications: Process[]) => {
     current?.fullscreen(),
   );
 
+  fullscreenContainer.appendChild(fullscreen);
+
   const sceneOptions = applications.map(({ title }) => title);
   const sceneWidget = createSelect(undefined, sceneOptions, hashValue);
   const scene = sceneWidget.createElement(start);
 
-  sceneContainer.appendChild(fullscreen);
   sceneContainer.appendChild(scene);
 
   // Start scene

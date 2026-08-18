@@ -44,18 +44,26 @@ import { GlEncodingSource } from "../../engine/graphic/renderer/gl-encoding";
 
 const configurator = {
   technique: createSelect(
-    "technique",
+    "Technique",
     ["Deferred shading", "Deferred lighting"],
     0,
   ),
-  nbDirectionalLights: createSelect("dLights", ["0", "1", "2", "5"], 0),
-  nbPointLights: createSelect("pLights", ["0", "20", "100", "500", "2000"], 1),
-  move: createCheckbox("move", true),
-  lightAmbient: createCheckbox("ambient", true),
-  lightDiffuse: createCheckbox("diffuse", true),
-  lightSpecular: createCheckbox("specular", true),
+  nbDirectionalLights: createSelect(
+    "Directional Lights",
+    ["0", "1", "2", "5"],
+    0,
+  ),
+  nbPointLights: createSelect(
+    "Point Lights",
+    ["0", "20", "100", "500", "2000"],
+    1,
+  ),
+  move: createCheckbox("Move", true),
+  lightAmbient: createCheckbox("Ambient Light", true),
+  lightDiffuse: createCheckbox("Diffuse Light", true),
+  lightSpecular: createCheckbox("Specular Light", true),
   debugMode: createSelect(
-    "debug",
+    "Debug",
     [
       "None",
       "Depth",
