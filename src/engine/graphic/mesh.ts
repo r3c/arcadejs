@@ -11,8 +11,8 @@ import {
   Texture,
   TextureSampler,
   Wrap,
-  defaultColor,
-  defaultSampler,
+  color,
+  sampler,
 } from "./mesh/definition";
 import { range } from "../language/iterable";
 import { load as loadFrom3ds } from "./mesh/loaders/3ds";
@@ -352,10 +352,10 @@ const createLibrary = (): Library => {
 
   const getOrLoadOptionalTexture = async (
     path: string | undefined,
-    sampler: TextureSampler | undefined,
+    samplerOrUndefined: TextureSampler | undefined,
   ): Promise<Texture | undefined> => {
     return path !== undefined
-      ? await getOrLoadTexture(path, sampler ?? defaultSampler)
+      ? await getOrLoadTexture(path, samplerOrUndefined ?? sampler.smooth)
       : undefined;
   };
 
@@ -535,8 +535,8 @@ export {
   Interpolation,
   Wrap,
   commonMesh,
-  defaultColor,
-  defaultSampler,
+  color,
+  sampler,
   changeMeshCenter,
   computeBoundingBox,
   computeCenter,

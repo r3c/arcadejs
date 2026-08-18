@@ -1,8 +1,14 @@
-import { Interpolation, TextureSampler, Wrap, defaultSampler } from "./mesh";
+import { TextureSampler, color, sampler } from "./mesh";
 import { Vector4 } from "../math/vector";
 import { GlContext } from "./webgl/resource";
 import { Releasable } from "../io/resource";
-import { GlFormat, GlMap, GlTexture, createTexture } from "./webgl/texture";
+import {
+  GlFormat,
+  GlTexture,
+  createColorPixels,
+  createCubeTextureFromPixels,
+  createQuadTextureFromPixels,
+} from "./webgl/texture";
 import { GlShader, GlShaderSource, createShader } from "./webgl/shader";
 
 type GlRuntime = Releasable & {
@@ -10,50 +16,44 @@ type GlRuntime = Releasable & {
   context: GlContext;
 };
 
+const createColorCubeTexture = (gl: GlContext, color: Vector4) => {
+  const format = GlFormat.RGBA8;
+  const size = { x: 1, y: 1 };
+  const pixels = createColorPixels(size, format, color);
+
+  return createCubeTextureFromPixels(
+    gl,
+    size,
+    format,
+    sampler.pixelized,
+    pixels,
+    pixels,
+    pixels,
+    pixels,
+    pixels,
+    pixels,
+  );
+};
+
+const createColorQuadTexture = (gl: GlContext, color: Vector4) => {
+  const format = GlFormat.RGBA8;
+  const size = { x: 1, y: 1 };
+  const pixels = createColorPixels(size, format, color);
+
+  return createQuadTextureFromPixels(
+    gl,
+    size,
+    format,
+    sampler.pixelized,
+    pixels,
+  );
+};
+
 const createRuntime = (gl: GlContext): GlRuntime => {
-  const sampler = {
-    magnifier: Interpolation.Nearest,
-    minifier: Interpolation.Nearest,
-    mipmap: false,
-    wrap: Wrap.Clamp,
-  };
-
-  const createPixelImageData = (color: Vector4) =>
-    new ImageData(
-      new Uint8ClampedArray(
-        Vector4.toArray(
-          Vector4.fromSource(color, ["scale", 255], ["map", Math.floor]),
-        ),
-      ),
-      1,
-      1,
-    );
-
-  const createColorCubeTexture = (color: Vector4) => {
-    const imageData = createPixelImageData(color);
-
-    return loadTextureCube(
-      gl,
-      imageData,
-      imageData,
-      imageData,
-      imageData,
-      imageData,
-      imageData,
-      sampler,
-    );
-  };
-
-  const createColorQuadTexture = (color: Vector4) => {
-    const imageData = createPixelImageData(color);
-
-    return loadTextureQuad(gl, imageData, sampler);
-  };
-
-  const cubeBlack = createColorCubeTexture({ x: 0, y: 0, z: 0, w: 0 });
-  const quadBlack = createColorQuadTexture({ x: 0, y: 0, z: 0, w: 0 });
-  const quadNormal = createColorQuadTexture({ x: 0.5, y: 0.5, z: 1, w: 1 });
-  const quadWhite = createColorQuadTexture({ x: 1, y: 1, z: 1, w: 1 });
+  const cubeBlack = createColorCubeTexture(gl, color.black);
+  const quadBlack = createColorQuadTexture(gl, color.black);
+  const quadNormal = createColorQuadTexture(gl, { x: 0.5, y: 0.5, z: 1, w: 1 });
+  const quadWhite = createColorQuadTexture(gl, color.white);
   const fallback = { cubeBlack, quadBlack, quadNormal, quadWhite };
 
   // Forward call to `gl.useProgram` if given program is not already active
@@ -78,53 +78,48 @@ const createRuntime = (gl: GlContext): GlRuntime => {
   };
 };
 
-const loadTextureCube = (
+const loadCubeTextureFromImage = (
   gl: GlContext,
-  facePositiveX: ImageData,
-  faceNegativeX: ImageData,
-  facePositiveY: ImageData,
-  faceNegativeY: ImageData,
-  facePositiveZ: ImageData,
-  faceNegativeZ: ImageData,
-  sampler?: TextureSampler,
+  sampler: TextureSampler,
+  xPositiveImage: ImageData,
+  xNegativeImage: ImageData,
+  yPositiveImage: ImageData,
+  yNegativeImage: ImageData,
+  zPositiveImage: ImageData,
+  zNegativeImage: ImageData,
 ): GlTexture => {
-  return createTexture(
+  return createCubeTextureFromPixels(
     gl,
-    GlMap.Cube,
-    { x: facePositiveX.width, y: facePositiveX.height },
+    { x: xPositiveImage.width, y: xPositiveImage.height },
     GlFormat.RGBA8,
-    sampler ?? defaultSampler,
-    [
-      facePositiveX,
-      faceNegativeX,
-      facePositiveY,
-      faceNegativeY,
-      facePositiveZ,
-      faceNegativeZ,
-    ],
+    sampler,
+    xPositiveImage.data,
+    xNegativeImage.data,
+    yPositiveImage.data,
+    yNegativeImage.data,
+    zPositiveImage.data,
+    zNegativeImage.data,
   );
 };
 
-const loadTextureQuad = (
+const loadQuadTextureFromImage = (
   gl: GlContext,
+  sampler: TextureSampler,
   image: ImageData,
-  sampler?: TextureSampler,
 ): GlTexture => {
-  return createTexture(
+  return createQuadTextureFromPixels(
     gl,
-    GlMap.Quad,
     { x: image.width, y: image.height },
     GlFormat.RGBA8,
-    sampler ?? defaultSampler,
-    image,
+    sampler,
+    image.data,
   );
 };
 
 export {
   type GlRuntime,
   GlFormat,
-  GlMap,
   createRuntime,
-  loadTextureCube,
-  loadTextureQuad,
+  loadCubeTextureFromImage,
+  loadQuadTextureFromImage,
 };

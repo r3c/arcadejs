@@ -1,16 +1,16 @@
 import { range } from "../../language/iterable";
-import { Interpolation, Wrap } from "../mesh";
 import { Vector2, Vector4 } from "../../math/vector";
 import { GlBuffer, GlContext } from "./resource";
 import { Releasable } from "../../io/resource";
 import {
   GlFormat,
-  GlMap,
   GlRenderbuffer,
   GlTexture,
+  createCubeTexture,
+  createQuadTexture,
   createRenderbuffer,
-  createTexture,
 } from "./texture";
+import { sampler } from "../mesh";
 
 type GlAttachment = Releasable & {
   setRenderbuffer(renderbuffer: GlRenderbuffer): void;
@@ -143,7 +143,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
 
     setColorCubeTextures(formats) {
       const attachment = WebGL2RenderingContext["COLOR_ATTACHMENT0"];
-      const textures = createTextures(gl, viewSize, formats, GlMap.Cube);
+      const textures = createCubeTextures(gl, viewSize, formats);
 
       colorAttachment.setTextures(textures);
 
@@ -171,7 +171,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
 
     setColorQuadTextures(formats) {
       const attachment = WebGL2RenderingContext["COLOR_ATTACHMENT0"];
-      const textures = createTextures(gl, viewSize, formats, GlMap.Quad);
+      const textures = createQuadTextures(gl, viewSize, formats);
 
       colorAttachment.setTextures(textures);
 
@@ -214,7 +214,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
 
     setDepthCubeTexture(format) {
       const attachment = WebGL2RenderingContext["DEPTH_ATTACHMENT"];
-      const textures = createTextures(gl, viewSize, [format], GlMap.Cube);
+      const textures = createCubeTextures(gl, viewSize, [format]);
       const texture = textures[0];
 
       depthAttachment.setTextures(textures);
@@ -236,7 +236,7 @@ const createFramebufferTarget = (gl: GlContext): GlFramebufferTarget => {
 
     setDepthQuadTexture(format) {
       const attachment = WebGL2RenderingContext["DEPTH_ATTACHMENT"];
-      const textures = createTextures(gl, viewSize, [format], GlMap.Quad);
+      const textures = createQuadTextures(gl, viewSize, [format]);
       const texture = textures[0];
 
       depthAttachment.setTextures(textures);
@@ -371,22 +371,23 @@ const activateTexture = (
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 };
 
-const createTextures = (
+const createCubeTextures = (
   gl: WebGL2RenderingContext,
   size: Vector2,
   formats: GlFormat[],
-  map: GlMap,
-) => {
-  // Create new texture attachment
-  const filter = {
-    magnifier: Interpolation.Nearest,
-    minifier: Interpolation.Nearest,
-    mipmap: false,
-    wrap: Wrap.Clamp,
-  };
-
+): GlTexture[] => {
   return formats.map((format) =>
-    createTexture(gl, map, size, format, filter, undefined),
+    createCubeTexture(gl, size, format, sampler.pixelized),
+  );
+};
+
+const createQuadTextures = (
+  gl: WebGL2RenderingContext,
+  size: Vector2,
+  formats: GlFormat[],
+): GlTexture[] => {
+  return formats.map((format) =>
+    createQuadTexture(gl, size, format, sampler.pixelized),
   );
 };
 
@@ -397,7 +398,6 @@ export {
   type GlScreenTarget,
   type GlTarget,
   GlFormat,
-  GlMap,
   GlPencil,
   createFramebufferTarget,
   createScreenTarget,

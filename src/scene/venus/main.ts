@@ -8,10 +8,14 @@ import {
   loadMeshFrom3ds,
   loadMeshFromJson,
   loadMeshFromObj,
+  sampler,
 } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector3 } from "../../engine/math/vector";
-import { createRuntime, loadTextureQuad } from "../../engine/graphic/webgl";
+import {
+  createRuntime,
+  loadQuadTextureFromImage,
+} from "../../engine/graphic/webgl";
 import { createScreenTarget } from "../../engine/graphic/webgl/target";
 import {
   ForwardLightingScene,
@@ -249,7 +253,7 @@ const createApplication = async (
 
   // Load textures
   const spriteImage = await loadFromURL("model/particle/fire.png");
-  const sprite = loadTextureQuad(gl, spriteImage);
+  const sprite = loadQuadTextureFromImage(gl, sampler.smooth, spriteImage);
 
   // Particle effects
   const particleEmitter = createParticleEmitter(runtime);

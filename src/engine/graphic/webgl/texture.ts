@@ -1,5 +1,6 @@
 import { Releasable } from "../../io/resource";
-import { Vector2 } from "../../math/vector";
+import { range } from "../../language/iterable";
+import { Vector2, Vector4 } from "../../math/vector";
 import { TextureSampler, Interpolation, Wrap } from "../mesh";
 import { GlContext } from "./resource";
 
@@ -14,11 +15,6 @@ const enum GlFormat {
   RGBA8,
 }
 
-const enum GlMap {
-  Quad,
-  Cube,
-}
-
 type GlRenderbuffer = Releasable & {
   handle: WebGLRenderbuffer;
   setSize: (size: Vector2) => void;
@@ -27,6 +23,11 @@ type GlRenderbuffer = Releasable & {
 type GlTexture = Releasable & {
   handle: WebGLTexture;
   setSize: (size: Vector2) => void;
+};
+
+type TextureImage = {
+  pixels: ArrayBufferView<ArrayBufferLike> | undefined;
+  target: GLenum;
 };
 
 const encodings = new Map<GlFormat, GlEncoding>([
@@ -48,16 +49,49 @@ const encodings = new Map<GlFormat, GlEncoding>([
   ],
 ]);
 
-const targets = new Map([
-  [GlMap.Cube, WebGL2RenderingContext["TEXTURE_CUBE_MAP"]],
-  [GlMap.Quad, WebGL2RenderingContext["TEXTURE_2D"]],
-]);
-
 const wraps = new Map([
   [Wrap.Clamp, WebGL2RenderingContext["CLAMP_TO_EDGE"]],
   [Wrap.Mirror, WebGL2RenderingContext["MIRRORED_REPEAT"]],
   [Wrap.Repeat, WebGL2RenderingContext["REPEAT"]],
 ]);
+
+const createColorPixels = (
+  size: Vector2,
+  format: GlFormat,
+  color: Vector4,
+): ArrayBufferView<ArrayBufferLike> => {
+  switch (format) {
+    case GlFormat.RGBA8:
+      return new Uint8ClampedArray(
+        range(size.x * size.y).flatMap(() =>
+          Vector4.toArray(
+            Vector4.fromSource(color, ["scale", 255], ["map", Math.floor]),
+          ),
+        ),
+      );
+
+    default:
+      throw new Error(`Unsupported format ${format}`);
+  }
+};
+
+const createEmptyPixels = (
+  size: Vector2,
+  format: GlFormat,
+): ArrayBufferView<ArrayBufferLike> => {
+  switch (format) {
+    case GlFormat.Depth16:
+      return new Uint16Array(range(size.x * size.y).map(() => 0));
+
+    case GlFormat.RGBA8:
+      return new Uint8ClampedArray(
+        range(size.x * size.y).flatMap(() => [0, 0, 0, 0]),
+      );
+
+    default:
+      throw new Error(`Unsupported format ${format}`);
+  }
+};
 
 const createRenderbuffer = (
   gl: GlContext,
@@ -106,24 +140,23 @@ const createRenderbuffer = (
   };
 };
 
-const createTexture = (
+/**
+ * Shared function for creating empty OpenGL textures or loading them from
+ * existing data. Returned object supports a resizing function that only works
+ * when creating empty textures: loaded ones must always match size from data.
+ */
+const createOrLoadTexture = (
   gl: GlContext,
-  type: GlMap,
+  textureTarget: GLenum,
   size: Vector2,
   format: GlFormat,
   sampler: TextureSampler,
-  image: ImageData | ImageData[] | undefined,
+  images: TextureImage[],
 ): GlTexture => {
   const encoding = encodings.get(format);
 
   if (encoding === undefined) {
     throw Error(`unknown texture format ${format}`);
-  }
-
-  const target = targets.get(type);
-
-  if (target === undefined) {
-    throw Error(`unknown texture type ${type}`);
   }
 
   const wrap = wraps.get(sampler.wrap);
@@ -138,58 +171,68 @@ const createTexture = (
     throw Error("could not create texture");
   }
 
+  const { magnifier, minifier, mipmap } = sampler;
+
   const setSize = (size: Vector2): void => {
-    gl.bindTexture(target, handle);
+    gl.bindTexture(textureTarget, handle);
 
     // Define texture format, filtering & wrapping parameters
-    const magnifierFilter =
-      sampler.magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
     const minifierMipmapFilter =
-      sampler.minifier === Interpolation.Linear
+      minifier === Interpolation.Linear
         ? gl.NEAREST_MIPMAP_LINEAR
         : gl.NEAREST_MIPMAP_NEAREST;
     const minifierSingleFilter =
-      sampler.minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
-    const minifierFilter = sampler.mipmap
-      ? minifierMipmapFilter
-      : minifierSingleFilter;
+      minifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST;
 
-    gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magnifierFilter);
-    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minifierFilter);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap);
-    gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap);
+    gl.texParameteri(
+      textureTarget,
+      WebGL2RenderingContext["TEXTURE_MAG_FILTER"],
+      magnifier === Interpolation.Linear ? gl.LINEAR : gl.NEAREST,
+    );
+    gl.texParameteri(
+      textureTarget,
+      WebGL2RenderingContext["TEXTURE_MIN_FILTER"],
+      mipmap ? minifierMipmapFilter : minifierSingleFilter,
+    );
+    gl.texParameteri(
+      textureTarget,
+      WebGL2RenderingContext["TEXTURE_WRAP_S"],
+      wrap,
+    );
+    gl.texParameteri(
+      textureTarget,
+      WebGL2RenderingContext["TEXTURE_WRAP_T"],
+      wrap,
+    );
 
+    // Assign images to targets
     const { layout, storage, type } = encoding;
     const { x, y } = size;
-    const imageArray = image as ImageData[];
-    const imageData = image as ImageData;
 
-    if (image === undefined) {
-      if (target === gl.TEXTURE_CUBE_MAP) {
-        for (let i = 0; i < 6; ++i) {
-          const face = gl.TEXTURE_CUBE_MAP_POSITIVE_X + i;
+    let emptyPixels: ArrayBufferView<ArrayBufferLike> | undefined = undefined;
 
-          gl.texImage2D(face, 0, storage, x, y, 0, layout, type, null);
-        }
+    for (const { pixels, target } of images) {
+      let imagePixels: ArrayBufferView<ArrayBufferLike>;
+
+      if (pixels !== undefined) {
+        imagePixels = pixels;
       } else {
-        gl.texImage2D(target, 0, storage, x, y, 0, layout, type, null);
-      }
-    } else if (imageData.data !== undefined) {
-      gl.texImage2D(target, 0, storage, x, y, 0, layout, type, imageData.data);
-    } else if (imageArray.length !== undefined) {
-      for (let i = 0; i < 6; ++i) {
-        const pixels = new Uint8Array(imageArray[i].data);
-        const face = gl.TEXTURE_CUBE_MAP_POSITIVE_X + i;
+        if (emptyPixels === undefined) {
+          emptyPixels = createEmptyPixels(size, format);
+        }
 
-        gl.texImage2D(face, 0, storage, x, y, 0, layout, type, pixels);
+        imagePixels = emptyPixels;
       }
+
+      gl.texImage2D(target, 0, storage, x, y, 0, layout, type, imagePixels);
     }
 
-    if (sampler.mipmap) {
-      gl.generateMipmap(target);
+    // Generate mipmap if requested
+    if (mipmap) {
+      gl.generateMipmap(textureTarget);
     }
 
-    gl.bindTexture(target, null);
+    gl.bindTexture(textureTarget, null);
   };
 
   setSize(size);
@@ -201,11 +244,145 @@ const createTexture = (
   };
 };
 
+/**
+ * Create empty cube map texture with resize support.
+ */
+const createCubeTexture = (
+  gl: GlContext,
+  size: Vector2,
+  format: GlFormat,
+  sampler: TextureSampler,
+) => {
+  return createOrLoadTexture(
+    gl,
+    WebGL2RenderingContext["TEXTURE_CUBE_MAP"],
+    size,
+    format,
+    sampler,
+    [
+      {
+        pixels: undefined,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_X"],
+      },
+      {
+        pixels: undefined,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_NEGATIVE_X"],
+      },
+      {
+        pixels: undefined,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_Y"],
+      },
+      {
+        pixels: undefined,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_NEGATIVE_Y"],
+      },
+      {
+        pixels: undefined,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_Z"],
+      },
+      {
+        pixels: undefined,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_NEGATIVE_Z"],
+      },
+    ],
+  );
+};
+
+/**
+ * Create cube map texture from pixels ; can't be resized.
+ */
+const createCubeTextureFromPixels = (
+  gl: GlContext,
+  size: Vector2,
+  format: GlFormat,
+  sampler: TextureSampler,
+  xPositivePixels: ArrayBufferView<ArrayBufferLike>,
+  xNegativePixels: ArrayBufferView<ArrayBufferLike>,
+  yPositivePixels: ArrayBufferView<ArrayBufferLike>,
+  yNegativePixels: ArrayBufferView<ArrayBufferLike>,
+  zPositivePixels: ArrayBufferView<ArrayBufferLike>,
+  zNegativePixels: ArrayBufferView<ArrayBufferLike>,
+) =>
+  createOrLoadTexture(
+    gl,
+    WebGL2RenderingContext["TEXTURE_CUBE_MAP"],
+    size,
+    format,
+    sampler,
+    [
+      {
+        pixels: xPositivePixels,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_X"],
+      },
+      {
+        pixels: xNegativePixels,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_NEGATIVE_X"],
+      },
+      {
+        pixels: yPositivePixels,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_Y"],
+      },
+      {
+        pixels: yNegativePixels,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_NEGATIVE_Y"],
+      },
+      {
+        pixels: zPositivePixels,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_POSITIVE_Z"],
+      },
+      {
+        pixels: zNegativePixels,
+        target: WebGL2RenderingContext["TEXTURE_CUBE_MAP_NEGATIVE_Z"],
+      },
+    ],
+  );
+
+/**
+ * Create empty quad texture with resize support.
+ */
+const createQuadTexture = (
+  gl: GlContext,
+  size: Vector2,
+  format: GlFormat,
+  sampler: TextureSampler,
+) =>
+  createOrLoadTexture(
+    gl,
+    WebGL2RenderingContext["TEXTURE_2D"],
+    size,
+    format,
+    sampler,
+    [{ pixels: undefined, target: WebGL2RenderingContext["TEXTURE_2D"] }],
+  );
+
+/**
+ * Create quad texture from pixels ; can't be resized.
+ */
+const createQuadTextureFromPixels = (
+  gl: GlContext,
+  size: Vector2,
+  format: GlFormat,
+  sampler: TextureSampler,
+  pixels: ArrayBufferView<ArrayBufferLike>,
+) =>
+  createOrLoadTexture(
+    gl,
+    WebGL2RenderingContext["TEXTURE_2D"],
+    size,
+    format,
+    sampler,
+    [{ pixels, target: WebGL2RenderingContext["TEXTURE_2D"] }],
+  );
+
 export {
   type GlRenderbuffer,
   type GlTexture,
   GlFormat,
-  GlMap,
+  createColorPixels,
+  createCubeTexture,
+  createCubeTextureFromPixels,
+  createEmptyPixels,
+  createQuadTexture,
+  createQuadTextureFromPixels,
   createRenderbuffer,
-  createTexture,
 };
