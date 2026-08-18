@@ -149,6 +149,24 @@ type Directive = {
   maxPointLights: number;
 };
 
+// Origin point of directional shadow
+const directionalShadowOrigin = Matrix4.fromIdentity([
+  "translate",
+  { x: 0, y: 0, z: -10 },
+]);
+
+// Rotation-only view matrix for each cube face
+const pointShadowFaceRotations = [
+  { direction: { x: 1, y: 0, z: 0 }, up: { x: 0, y: -1, z: 0 } },
+  { direction: { x: -1, y: 0, z: 0 }, up: { x: 0, y: -1, z: 0 } },
+  { direction: { x: 0, y: 1, z: 0 }, up: { x: 0, y: 0, z: 1 } },
+  { direction: { x: 0, y: -1, z: 0 }, up: { x: 0, y: 0, z: -1 } },
+  { direction: { x: 0, y: 0, z: 1 }, up: { x: 0, y: -1, z: 0 } },
+  { direction: { x: 0, y: 0, z: -1 }, up: { x: 0, y: -1, z: 0 } },
+].map(({ direction, up }) =>
+  Matrix4.fromIdentity(["setFromDirection", direction, up]),
+);
+
 const createLightSource = (
   directive: Directive,
   feature: GlMaterialFlag,
@@ -1013,6 +1031,7 @@ const createForwardLightingRenderer = (
   const directionalShadowRenderer = createGlGeometryRenderer(
     directionalShadowBinding,
   );
+  const directionalShadowDirection = Vector3.fromZero();
   const directionalShadowProjection = Matrix4.fromIdentity([
     "setFromOrthographic",
     -10,
@@ -1022,7 +1041,7 @@ const createForwardLightingRenderer = (
     -10,
     20,
   ]);
-  const shadowDirection = Vector3.fromZero();
+  const directionalShadowView = Matrix4.fromIdentity();
 
   const pointShadowBinding = createPointShadowBinding(runtime);
   const pointShadowRenderer = createGlGeometryRenderer(pointShadowBinding);
@@ -1033,18 +1052,8 @@ const createForwardLightingRenderer = (
     1,
     25,
   ]);
-
-  // Rotation-only view matrix for each cube face
-  const pointShadowFaceRotations = [
-    { direction: { x: 1, y: 0, z: 0 }, up: { x: 0, y: -1, z: 0 } },
-    { direction: { x: -1, y: 0, z: 0 }, up: { x: 0, y: -1, z: 0 } },
-    { direction: { x: 0, y: 1, z: 0 }, up: { x: 0, y: 0, z: 1 } },
-    { direction: { x: 0, y: -1, z: 0 }, up: { x: 0, y: 0, z: -1 } },
-    { direction: { x: 0, y: 0, z: 1 }, up: { x: 0, y: -1, z: 0 } },
-    { direction: { x: 0, y: 0, z: -1 }, up: { x: 0, y: -1, z: 0 } },
-  ].map(({ direction, up }) =>
-    Matrix4.fromIdentity(["setFromDirection", direction, up]),
-  );
+  const pointShadowTranslation = Vector3.fromZero();
+  const pointShadowView = Matrix4.fromIdentity();
 
   const noLights: never[] = [];
 
@@ -1110,24 +1119,17 @@ const createForwardLightingRenderer = (
       for (let i = 0; i < nbDirectionalLights; ++i) {
         const light = directionalLights[i];
 
-        shadowDirection.setFromXYZ(
-          -light.direction.x,
-          -light.direction.y,
-          -light.direction.z,
-        );
+        directionalShadowDirection.set(light.direction);
+        directionalShadowDirection.negate();
 
         // FIXME: can be pre-allocated?
-        const directionalShadowView = Matrix4.fromSource(
-          Matrix4.identity,
-          ["translate", { x: 0, y: 0, z: -10 }],
-          [
-            "multiply",
-            Matrix4.fromIdentity([
-              "setFromDirection",
-              shadowDirection,
-              { x: 0, y: 1, z: 0 },
-            ]),
-          ],
+        directionalShadowView.set(directionalShadowOrigin);
+        directionalShadowView.multiply(
+          Matrix4.fromIdentity([
+            "setFromDirection",
+            directionalShadowDirection,
+            { x: 0, y: 1, z: 0 },
+          ]),
         );
 
         const target = directionalTargets[i];
@@ -1161,18 +1163,13 @@ const createForwardLightingRenderer = (
         const light = pointLights[i];
         const shadow = pointShadows[i];
         const target = pointTargets[i];
-        const pointShadowTranslation = {
-          x: -light.position.x,
-          y: -light.position.y,
-          z: -light.position.z,
-        };
+
+        pointShadowTranslation.set(light.position);
+        pointShadowTranslation.negate();
 
         for (let face = 0; face < 6; ++face) {
-          const pointShadowView = Matrix4.fromSource(
-            Matrix4.identity,
-            ["multiply", pointShadowFaceRotations[face]],
-            ["translate", pointShadowTranslation],
-          );
+          pointShadowView.set(pointShadowFaceRotations[face]);
+          pointShadowView.translate(pointShadowTranslation);
 
           shadow.activateFace(face);
           target.clear();
