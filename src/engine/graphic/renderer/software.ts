@@ -1,5 +1,5 @@
 import { Matrix4 } from "../../math/matrix";
-import { Material, Mesh, defaultColor } from "../mesh";
+import { Material, Mesh, color } from "../mesh";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { Renderer } from "./definition";
 
@@ -327,7 +327,7 @@ const projectVertexToScreen = (
   index: number,
 ) => {
   return {
-    color: colors !== undefined ? colors[index] : defaultColor,
+    color: colors !== undefined ? colors[index] : color.white,
     coord: coords !== undefined ? coords[index] : Vector2.zero,
     point: projectPointToScreen(
       modelViewProjection,

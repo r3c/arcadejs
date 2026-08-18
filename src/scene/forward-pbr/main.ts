@@ -9,13 +9,17 @@ import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
 import { loadFromURL } from "../../engine/graphic/image";
-import { loadMeshFromGltf, loadMeshFromJson } from "../../engine/graphic/mesh";
+import {
+  loadMeshFromGltf,
+  loadMeshFromJson,
+  sampler,
+} from "../../engine/graphic/mesh";
 import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
 import {
   createRuntime,
-  loadTextureCube,
-  loadTextureQuad,
+  loadCubeTextureFromImage,
+  loadQuadTextureFromImage,
 } from "../../engine/graphic/webgl";
 import { createScreenTarget } from "../../engine/graphic/webgl/target";
 import { createOrbitMover } from "../move";
@@ -87,13 +91,15 @@ const createApplication = async (
   }));
 
   // Load textures
-  const brdf = loadTextureQuad(
+  const brdf = loadQuadTextureFromImage(
     gl,
+    sampler.smooth,
     await loadFromURL("model/ibl/ibl_brdf_lut.webp"),
   );
 
-  const diffuse = loadTextureCube(
+  const diffuse = loadCubeTextureFromImage(
     gl,
+    sampler.smooth,
     await loadFromURL("model/papermill/diffuse_right_0.jpg"),
     await loadFromURL("model/papermill/diffuse_left_0.jpg"),
     await loadFromURL("model/papermill/diffuse_top_0.jpg"),
@@ -102,8 +108,9 @@ const createApplication = async (
     await loadFromURL("model/papermill/diffuse_back_0.jpg"),
   );
 
-  const specular = loadTextureCube(
+  const specular = loadCubeTextureFromImage(
     gl,
+    sampler.smooth,
     await loadFromURL("model/papermill/specular_right_0.jpg"),
     await loadFromURL("model/papermill/specular_left_0.jpg"),
     await loadFromURL("model/papermill/specular_top_0.jpg"),

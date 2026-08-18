@@ -102,19 +102,25 @@ const enum Wrap {
   Mirror,
 }
 
-const defaultColor: Vector4 = {
-  x: 1,
-  y: 1,
-  z: 1,
-  w: 1,
-};
+const color = {
+  black: { x: 0, y: 0, z: 0, w: 0 },
+  white: { x: 1, y: 1, z: 1, w: 1 },
+} satisfies Record<string, Vector4>;
 
-const defaultSampler: TextureSampler = {
-  magnifier: Interpolation.Linear,
-  minifier: Interpolation.Linear,
-  mipmap: true,
-  wrap: Wrap.Repeat,
-};
+const sampler = {
+  pixelized: {
+    magnifier: Interpolation.Nearest,
+    minifier: Interpolation.Nearest,
+    mipmap: false,
+    wrap: Wrap.Clamp,
+  },
+  smooth: {
+    magnifier: Interpolation.Linear,
+    minifier: Interpolation.Linear,
+    mipmap: true,
+    wrap: Wrap.Repeat,
+  },
+} satisfies Record<string, TextureSampler>;
 
 export {
   type BoundingBox,
@@ -127,6 +133,6 @@ export {
   type TextureSampler,
   Interpolation,
   Wrap,
-  defaultColor,
-  defaultSampler,
+  color,
+  sampler,
 };

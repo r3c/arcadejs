@@ -10,7 +10,7 @@ import {
   createStaticIndexBuffer,
 } from "./resource";
 import { GlShaderAttribute, createAttribute } from "./shader";
-import { GlTexture, GlFormat, GlMap, createTexture } from "./texture";
+import { GlTexture, GlFormat, createQuadTextureFromPixels } from "./texture";
 
 type GlDynamicMesh = {
   mesh: GlMesh;
@@ -132,13 +132,12 @@ const loadMaterial = (
     let glTexture = textures.get(texture);
 
     if (glTexture === undefined) {
-      glTexture = createTexture(
+      glTexture = createQuadTextureFromPixels(
         gl,
-        GlMap.Quad,
         { x: texture.imageData.width, y: texture.imageData.height },
         GlFormat.RGBA8,
         texture.sampler,
-        texture.imageData,
+        texture.imageData.data,
       );
 
       textures.set(texture, glTexture);

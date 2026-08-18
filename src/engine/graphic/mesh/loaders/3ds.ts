@@ -1,11 +1,11 @@
 import { type Codec, asciiCodec } from "../../../text/encoding";
 import { Matrix4 } from "../../../math/matrix";
 import {
-  defaultColor,
   Library,
   Material,
   MaterialReference,
   Mesh,
+  color,
 } from "../definition";
 import { combinePath, getPathDirectory } from "../../../fs/path";
 import {
@@ -178,7 +178,7 @@ const readMaterial = async (
         context,
         end,
         readColor,
-        defaultColor,
+        color.white,
       );
 
       break;
@@ -188,7 +188,7 @@ const readMaterial = async (
         context,
         end,
         readColor,
-        defaultColor,
+        color.white,
       );
 
       break;
