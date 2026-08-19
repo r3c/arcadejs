@@ -2,6 +2,7 @@ import {
   type Application,
   ApplicationConfigurator,
   createCheckbox,
+  createRange,
   createSelect,
   declare,
 } from "../../engine/application";
@@ -84,13 +85,13 @@ const debugModes: {
 ];
 
 const configurator = {
+  speed: createRange("Speed", -3, 3, 3),
   nbDirectionalLights: createSelect(
     "Directional Lights",
     ["0", "1", "2", "3"],
     0,
   ),
   nbPointLights: createSelect("Point Lights", ["0", "1", "2", "3"], 1),
-  move: createCheckbox("Move", true),
   lightAmbient: createCheckbox("Ambient Light", true),
   lightDiffuse: createCheckbox("Diffuse Light", true),
   lightSpecular: createCheckbox("Specular Light", true),
@@ -156,9 +157,9 @@ const createApplication = async (
   let debugMode = 0;
   let directionalLightTransforms: MutableMatrix4[] = [];
   let encodingRenderer: GlEncodingRenderer | undefined = undefined;
-  let move = false;
   let pointLightTransforms: MutableMatrix4[] = [];
   let renderer: ForwardLightingRenderer | undefined = undefined;
+  let speed = 0;
   let time = 0;
 
   return {
@@ -220,8 +221,8 @@ const createApplication = async (
         zNear: 0.1,
         zFar: 100,
       });
-      move = configuration.move;
       renderer = newRenderer;
+      speed = configuration.speed;
     },
 
     release() {
@@ -286,7 +287,7 @@ const createApplication = async (
         const { direction, mover } = directionalLights[i];
         const transform = directionalLightTransforms[i];
 
-        direction.set(mover(Vector3.zero, -time * 0.0005));
+        direction.set(mover(Vector3.zero, -time * 0.0001));
         direction.normalize();
         direction.scale(10);
 
@@ -298,7 +299,7 @@ const createApplication = async (
         const { mover, position } = pointLights[i];
         const transform = pointLightTransforms[i];
 
-        position.set(mover(Vector3.zero, time * 0.0005));
+        position.set(mover(Vector3.zero, time * 0.0001));
 
         transform.set(Matrix4.identity);
         transform.translate(position);
@@ -307,7 +308,7 @@ const createApplication = async (
       // Move camera
       camera.update(dt);
 
-      time += move ? dt : 0;
+      time += dt * speed;
     },
   };
 };
