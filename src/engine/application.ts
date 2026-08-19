@@ -96,7 +96,7 @@ const createCheckbox = (
 
     element.appendChild(document.createTextNode(caption));
     element.appendChild(checkbox);
-    element.className = "container";
+    element.className = "field";
 
     checkbox.checked = defaultValue;
     checkbox.onchange = update;
@@ -124,7 +124,7 @@ const createSelect = (
 
     element.appendChild(select);
 
-    element.className = "container";
+    element.className = "field";
     select.onchange = update;
 
     for (let i = 0; i < options.length; ++i) {
