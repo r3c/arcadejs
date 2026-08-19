@@ -1049,8 +1049,8 @@ const createForwardLightingRenderer = (
     "setFromPerspective",
     Math.PI / 2,
     1,
-    1,
-    25,
+    0.1,
+    100,
   ]);
   const pointShadowTranslation = Vector3.fromZero();
   const pointShadowView = Matrix4.fromIdentity();
