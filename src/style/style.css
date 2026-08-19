@@ -1,6 +1,6 @@
 body {
-  height: 100%;
-  padding: 0;
+  flex: 1;
+  padding: 8px;
   margin: 0;
   display: flex;
   flex-direction: row;
@@ -9,23 +9,12 @@ body {
 body,
 input,
 select {
-  font: normal normal normal 12px "Trebuchet MS";
+  font: normal normal normal 12px Tahoma;
 }
 
 html {
-  height: 100%;
-}
-
-.console {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px 10px;
-  margin: 16px;
-  background: #8ac;
-  border-radius: 8px;
+  height: 100%;
 }
 
 .console .configuration {
@@ -40,15 +29,21 @@ html {
   flex: initial;
 }
 
-.control {
+.display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.form {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  width: 100%;
 }
 
-.control input,
-.control select {
+.form input,
+.form select {
   padding: 4px 8px;
   margin: 4px 4px 4px 0;
   background: #ace;
@@ -60,28 +55,54 @@ html {
   color: #404040;
 }
 
-.control input:active,
-.control select:active {
+.form input:active,
+.form select:active {
   border-color: #8ac #cef #cef #8ac;
 }
 
-.control input:hover,
-.control select:hover {
+.form input:hover,
+.form select:hover {
   background: #bdf;
 }
 
-.control .container {
+.form .field {
   display: flex;
   flex-direction: row;
+  justify-content: space-between;
   align-items: center;
-  gap: 4px;
 }
 
-.display {
+.panel {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  padding: 2px;
+  background: white;
+  border: 1px solid #9aadbe;
+  border-radius: 6px;
+  box-shadow: 0 3px 10px #c0c0c0;
+}
+
+.panel h2 {
+  padding: 2px 8px;
+  margin: 0;
+  background: #75a3d7;
+  border-color: #bcc3cb #6e8daa #6e8daa #b8c4d2;
+  border-radius: 4px;
+  border-style: solid;
+  border-width: 1px;
+  font-size: 140%;
+  font-variant: small-caps;
+  font-weight: bold;
+  color: white;
+}
+
+.panel .body {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  padding: 6px 8px;
+  margin: 2px 0 0 0;
+  background: #c3d3e5;
 }
 
 .screen {
