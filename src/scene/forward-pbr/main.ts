@@ -43,8 +43,8 @@ import {
  */
 
 const configurator = {
-  nbLights: createSelect("Nb Lights", ["0", "1", "2", "3"], 1),
-  move: createCheckbox("Move", true),
+  move: createCheckbox("Animate", true),
+  nbLights: createSelect("Nb of Lights", ["0", "1", "2", "3"], 1),
   lightAmbient: createCheckbox("Ambient Light", true),
   lightEmissive: createCheckbox("Emissive Light", true),
   useOcclusion: createCheckbox("Occlusion Light", true),

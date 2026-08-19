@@ -85,20 +85,20 @@ const debugModes: {
 ];
 
 const configurator = {
-  speed: createRange("Speed", -3, 3, 3),
+  speed: createRange("Animation speed", -3, 3, 3),
   nbDirectionalLights: createSelect(
-    "Directional Lights",
+    "Nb of Directional Lights",
     ["0", "1", "2", "3"],
     0,
   ),
-  nbPointLights: createSelect("Point Lights", ["0", "1", "2", "3"], 1),
+  nbPointLights: createSelect("Nb of Point Lights", ["0", "1", "2", "3"], 1),
   lightAmbient: createCheckbox("Ambient Light", true),
   lightDiffuse: createCheckbox("Diffuse Light", true),
   lightSpecular: createCheckbox("Specular Light", true),
   useNormalMap: createCheckbox("Normal Map", true),
   useHeightMap: createCheckbox("Height Map", true),
   debugMode: createSelect(
-    "Debug",
+    "Show debug buffer",
     ["None", ...debugModes.map(({ name }) => name)],
     0,
   ),
