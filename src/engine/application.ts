@@ -71,38 +71,75 @@ const configure = <T>(
   return configuration;
 };
 
-const createButton = (caption: string): ApplicationWidget<void> => ({
+const createButton = (
+  caption: string | undefined,
+  action: string,
+): ApplicationWidget<void> => ({
   createElement: (onChange) => {
-    const element = document.createElement("input");
+    const button = document.createElement("input");
 
-    element.onclick = () => onChange();
-    element.type = "button";
-    element.value = caption;
+    button.onclick = () => onChange();
+    button.type = "button";
+    button.value = action;
 
-    return element;
+    return createField(caption, button);
   },
 
   defaultValue: undefined,
 });
 
 const createCheckbox = (
-  caption: string,
+  caption: string | undefined,
   defaultValue: boolean,
 ): ApplicationWidget<boolean> => ({
   createElement: (onChange) => {
     const checkbox = document.createElement("input");
-    const element = document.createElement("span");
-    const update = () => onChange(checkbox.checked);
-
-    element.appendChild(document.createTextNode(caption));
-    element.appendChild(checkbox);
-    element.className = "field";
 
     checkbox.checked = defaultValue;
-    checkbox.onchange = update;
+    checkbox.onchange = () => onChange(checkbox.checked);
     checkbox.type = "checkbox";
 
-    return element;
+    return createField(caption, checkbox);
+  },
+
+  defaultValue,
+});
+
+const createField = (
+  caption: string | undefined,
+  widget: HTMLElement,
+): HTMLElement => {
+  const field = document.createElement("span");
+
+  if (caption !== undefined) {
+    const label = document.createElement("label");
+
+    label.innerText = caption;
+    field.appendChild(label);
+  }
+
+  field.appendChild(widget);
+  field.className = "field";
+
+  return field;
+};
+
+const createRange = (
+  caption: string | undefined,
+  min: number,
+  max: number,
+  defaultValue: number,
+): ApplicationWidget<number> => ({
+  createElement: (onChange) => {
+    const range = document.createElement("input");
+
+    range.onchange = () => onChange(Number(range.value));
+    range.max = max.toString();
+    range.min = min.toString();
+    range.type = "range";
+    range.value = defaultValue.toString();
+
+    return createField(caption, range);
   },
 
   defaultValue,
@@ -114,18 +151,9 @@ const createSelect = (
   defaultValue: number,
 ): ApplicationWidget<number> => ({
   createElement: (onChange) => {
-    const element = document.createElement("span");
     const select = document.createElement("select");
-    const update = () => onChange(select.selectedIndex);
 
-    if (caption !== undefined) {
-      element.appendChild(document.createTextNode(caption));
-    }
-
-    element.appendChild(select);
-
-    element.className = "field";
-    select.onchange = update;
+    select.onchange = () => onChange(select.selectedIndex);
 
     for (let i = 0; i < options.length; ++i) {
       const option = document.createElement("option");
@@ -136,7 +164,7 @@ const createSelect = (
       select.options.add(option);
     }
 
-    return element;
+    return createField(caption, select);
   },
 
   defaultValue,
@@ -297,7 +325,7 @@ const run = (applications: Process[]) => {
   };
 
   // Initialize control elements
-  const fullscreenWidget = createButton("Fullscreen");
+  const fullscreenWidget = createButton(undefined, "Fullscreen");
   const fullscreen = fullscreenWidget.createElement(() =>
     current?.fullscreen(),
   );
@@ -320,6 +348,7 @@ export {
   type ApplicationConfigurator,
   type ApplicationWidget,
   createCheckbox,
+  createRange,
   createSelect,
   declare,
   run,

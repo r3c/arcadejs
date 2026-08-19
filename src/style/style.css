@@ -17,12 +17,18 @@ html {
   height: 100%;
 }
 
+.console {
+  flex: 1;
+}
+
 .console .configuration {
   flex: auto;
 }
 
-.console .frame {
+.console .counter {
   flex: initial;
+  flex-direction: row;
+  align-items: center;
 }
 
 .console .scene {
@@ -33,7 +39,7 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
+  flex: 4;
 }
 
 .form {
@@ -103,6 +109,10 @@ html {
   padding: 6px 8px;
   margin: 2px 0 0 0;
   background: #c3d3e5;
+}
+
+.scene select {
+  flex: 1;
 }
 
 .screen {
