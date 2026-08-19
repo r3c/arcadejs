@@ -62,6 +62,7 @@ const createApplication = async (
       );
 
       renderer.addSubject({ mesh });
+      renderer.setSize(screen.getSize());
     },
 
     release() {},

@@ -41,7 +41,7 @@ const canonicalize = (name: string): string => {
 
 const configure = <T>(
   configurator: ApplicationConfigurator<T>,
-  change: (configuration: T) => void,
+  setConfiguration: (configuration: T) => void,
 ): T => {
   const container = document.getElementById("configuration");
 
@@ -62,7 +62,7 @@ const configure = <T>(
     const element = createElement((value: any) => {
       configuration[key] = value;
 
-      change(configuration);
+      setConfiguration(configuration);
     });
 
     container.appendChild(element);
@@ -152,7 +152,7 @@ const declare = <TContext, TConfiguration>(
     | {
         application: Application<TConfiguration>;
         configuration: TConfiguration;
-        handle: number | undefined;
+        frame: number | undefined;
         screen: Screen<TContext>;
       }
     | undefined = undefined;
@@ -191,7 +191,7 @@ const declare = <TContext, TConfiguration>(
       screen.onResize(application.setSize);
       screen.setSize();
 
-      runtime = { application, configuration, handle: undefined, screen };
+      runtime = { application, configuration, frame: undefined, screen };
     },
     step: (dt: number) => {
       if (runtime === undefined) {
@@ -203,15 +203,15 @@ const declare = <TContext, TConfiguration>(
       screen.setSize();
       application.update(dt);
 
-      runtime.handle = requestAnimationFrame(application.render);
+      runtime.frame = requestAnimationFrame(application.render);
     },
     stop: () => {
       if (runtime === undefined) {
         return;
       }
 
-      if (runtime.handle !== undefined) {
-        cancelAnimationFrame(runtime.handle);
+      if (runtime.frame !== undefined) {
+        cancelAnimationFrame(runtime.frame);
       }
 
       runtime.application.release();
