@@ -34,6 +34,10 @@ import {
 } from "../../engine/graphic/renderer";
 import { GlTexture } from "../../engine/graphic/webgl/texture";
 import { GlEncodingSource } from "../../engine/graphic/renderer/gl-encoding";
+import {
+  DirectionalLight,
+  PointLight,
+} from "../../engine/graphic/webgl/shaders/light";
 
 /*
  ** What changed?
@@ -139,11 +143,11 @@ const createApplication = async (
     { x: 0, y: 0, z: -5 },
     Vector2.zero,
   );
-  const directionalLights = range(3).map((i) => ({
+  const directionalLightParameters = range(3).map((i) => ({
     direction: Vector3.fromZero(),
     mover: createCircleMover(i),
   }));
-  const pointLights = range(3).map((i) => ({
+  const pointLightParameters = range(3).map((i) => ({
     mover: createOrbitMover(i, 2, 2, 1),
     position: Vector3.fromZero(),
   }));
@@ -155,9 +159,10 @@ const createApplication = async (
   const projection = Matrix4.fromIdentity();
 
   let debugMode = 0;
-  let directionalLightTransforms: MutableMatrix4[] = [];
+  let directionalLights: (DirectionalLight & { transform: MutableMatrix4 })[] =
+    [];
   let encodingRenderer: GlEncodingRenderer | undefined = undefined;
-  let pointLightTransforms: MutableMatrix4[] = [];
+  let pointLights: (PointLight & { transform: MutableMatrix4 })[] = [];
   let renderer: ForwardLightingRenderer | undefined = undefined;
   let speed = 0;
   let time = 0;
@@ -193,21 +198,39 @@ const createApplication = async (
 
       box.transform.scale({ x: 2.5, y: 2.5, z: 2.5 });
 
-      directionalLightTransforms = range(configuration.nbDirectionalLights).map(
-        () => {
-          const { mesh, transform } = createDynamicMesh(models.light.mesh);
-
-          newRenderer.addSubject({ mesh, noShadow: true });
-
-          return transform;
-        },
-      );
-      pointLightTransforms = range(configuration.nbPointLights).map(() => {
+      directionalLights = range(configuration.nbDirectionalLights).map((i) => {
+        const { direction } = directionalLightParameters[i];
         const { mesh, transform } = createDynamicMesh(models.light.mesh);
 
         newRenderer.addSubject({ mesh, noShadow: true });
 
-        return transform;
+        return {
+          color: Vector3.fromSource({ x: 0.8, y: 0.8, z: 0.8 }, [
+            "scale",
+            1 / configuration.nbDirectionalLights,
+          ]),
+          direction,
+          shadow: true,
+          transform,
+        };
+      });
+
+      pointLights = range(configuration.nbPointLights).map((i) => {
+        const { position } = pointLightParameters[i];
+        const { mesh, transform } = createDynamicMesh(models.light.mesh);
+
+        newRenderer.addSubject({ mesh, noShadow: true });
+
+        return {
+          color: Vector3.fromSource({ x: 0.8, y: 0.8, z: 0.8 }, [
+            "scale",
+            1 / configuration.nbPointLights,
+          ]),
+          position,
+          radius: 5,
+          shadow: true,
+          transform,
+        };
       });
 
       debugMode = configuration.debugMode;
@@ -240,22 +263,9 @@ const createApplication = async (
 
       // Draw scene
       const scene: ForwardLightingScene = {
-        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-        directionalLights: directionalLights
-          .slice(0, directionalLightTransforms.length)
-          .map(({ direction }) => ({
-            color: { x: 0.8, y: 0.8, z: 0.8 },
-            direction,
-            shadow: true,
-          })),
-        pointLights: pointLights
-          .slice(0, pointLightTransforms.length)
-          .map(({ position }) => ({
-            color: { x: 0.8, y: 0.8, z: 0.8 },
-            position,
-            radius: 5,
-            shadow: true,
-          })),
+        ambientLightColor: { x: 0.1, y: 0.1, z: 0.1 },
+        directionalLights,
+        pointLights,
         projection,
         view: camera.viewMatrix,
       };
@@ -283,9 +293,9 @@ const createApplication = async (
 
     update(dt) {
       // Update light positions
-      for (let i = 0; i < directionalLightTransforms.length; ++i) {
-        const { direction, mover } = directionalLights[i];
-        const transform = directionalLightTransforms[i];
+      for (let i = 0; i < directionalLights.length; ++i) {
+        const { direction, mover } = directionalLightParameters[i];
+        const { transform } = directionalLights[i];
 
         direction.set(mover(Vector3.zero, -time * 0.0001));
         direction.normalize();
@@ -295,9 +305,9 @@ const createApplication = async (
         transform.translate(direction);
       }
 
-      for (let i = 0; i < pointLightTransforms.length; ++i) {
-        const { mover, position } = pointLights[i];
-        const transform = pointLightTransforms[i];
+      for (let i = 0; i < pointLights.length; ++i) {
+        const { mover, position } = pointLightParameters[i];
+        const { transform } = pointLights[i];
 
         position.set(mover(Vector3.zero, time * 0.0001));
 
