@@ -73,7 +73,7 @@ const encodingSources = {
   [GlEncodingSource.CubeNegativeX]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
-    value: "vec3(-1.0, coord.yx * 2.0 - 1.0)",
+    value: "vec3(-1.0, coord.y * 2.0 - 1.0, 1.0 - coord.x * 2.0)",
   },
   [GlEncodingSource.CubePositiveX]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
@@ -83,22 +83,22 @@ const encodingSources = {
   [GlEncodingSource.CubeNegativeY]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
-    value: "vec3(coord.x * 2.0 - 1.0, -1.0, 1.0 - coord.y * 2.0)",
+    value: "vec3(coord.y * 2.0 - 1.0, -1.0, coord.x * 2.0 - 1.0)",
   },
   [GlEncodingSource.CubePositiveY]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
-    value: "vec3(coord.x * 2.0 - 1.0, +1.0, coord.y * 2.0 - 1.0)",
+    value: "vec3(1.0 - coord.y * 2.0, +1.0, coord.x * 2.0 - 1.0)",
   },
   [GlEncodingSource.CubeNegativeZ]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
-    value: "vec3(1.0 - coord.x * 2.0, coord.y * 2.0 - 1.0, -1.0)",
+    value: "vec3(coord.xy * 2.0 - 1.0, -1.0)",
   },
   [GlEncodingSource.CubePositiveZ]: {
     uniform: uniform.textureCube<Scene>(({ source }) => source),
     type: "samplerCube",
-    value: "vec3(coord.x * 2.0 - 1.0, coord.y * 2.0 - 1.0, +1.0)",
+    value: "vec3(1.0 - coord.x * 2.0, coord.y * 2.0 - 1.0, +1.0)",
   },
   [GlEncodingSource.Quad]: {
     uniform: uniform.textureQuad<Scene>(({ source }) => source),
