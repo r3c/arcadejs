@@ -4,10 +4,7 @@ import {
   createFlatMesh,
   createMergedMesh,
 } from "../../engine/graphic/mesh";
-import {
-  ForwardLightingSubject,
-  Renderer,
-} from "../../engine/graphic/renderer";
+import { ForwardLightingRenderer } from "../../engine/graphic/renderer";
 import { GlRuntime } from "../../engine/graphic/webgl";
 import { createLibrary, createModel } from "../../engine/graphic/webgl/model";
 import { range } from "../../engine/language/iterable";
@@ -104,10 +101,7 @@ const cubeFaces: WorldCubeFace[] = [
 
 const createWorldGraphic = (
   runtime: GlRuntime,
-  renderer: Pick<
-    Renderer<unknown, unknown, ForwardLightingSubject>,
-    "addSubject"
-  >,
+  renderer: Pick<ForwardLightingRenderer, "addSubject">,
   chunkCount: Vector3,
   chunkSize: Vector3,
   scale: Vector3,

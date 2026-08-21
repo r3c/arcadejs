@@ -59,7 +59,7 @@ type GlEncodingConfiguration = {
   zNear: number;
 };
 
-type GlEncodingRenderer = Releasable & Renderer<GlTarget, GlTexture, void>;
+type GlEncodingRenderer = Releasable & Renderer<GlTarget, GlTexture>;
 
 type Scene = {
   coordinate: GlShaderAttribute;
@@ -215,10 +215,6 @@ const createGlEncodingRenderer = (
   );
 
   return {
-    addSubject() {
-      return () => {};
-    },
-
     release() {
       quad.release();
       shader.release();

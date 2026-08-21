@@ -45,7 +45,9 @@ type GlMaterialShader<TScene> = {
 };
 
 type GlMaterialRenderer<TScene extends GlMaterialScene> = Releasable &
-  Renderer<GlTarget, TScene, GlMesh>;
+  Renderer<GlTarget, TScene> & {
+    addSubject: (subject: GlMesh) => () => void;
+  };
 
 type GlMaterialScene = {
   view: Matrix4;

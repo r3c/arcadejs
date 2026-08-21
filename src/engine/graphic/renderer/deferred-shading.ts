@@ -437,7 +437,9 @@ type DeferredShadingConfiguration = {
 };
 
 type DeferredShadingRenderer = Releasable &
-  Renderer<GlTarget, DeferredShadingScene, DeferredShadingSubject> & {
+  Renderer<GlTarget, DeferredShadingScene> & {
+    addSubject: (subject: DeferredShadingSubject) => () => void;
+
     // FIXME: debug
     depthBuffer: GlTexture;
     diffuseAndShininessBuffer: GlTexture;

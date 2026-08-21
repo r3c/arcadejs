@@ -12,7 +12,9 @@ type GlGeometryBinding<TScene> = Releasable & {
 };
 
 type GlGeometryRenderer<TScene extends GlGeometryScene> = Releasable &
-  Renderer<GlTarget, TScene, GlMesh>;
+  Renderer<GlTarget, TScene> & {
+    addSubject: (subject: GlMesh) => () => void;
+  };
 
 type GlGeometryScene = {
   projection: Matrix4;
