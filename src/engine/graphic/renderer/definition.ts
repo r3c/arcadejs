@@ -1,11 +1,6 @@
 import { Vector2 } from "../../math/vector";
 
-type Renderer<TTarget, TScene, TSubject> = {
-  /**
-   * Register subject to renderer.
-   */
-  addSubject: (subject: TSubject) => () => void;
-
+type Renderer<TTarget, TScene> = {
   /**
    * Render scene.
    */

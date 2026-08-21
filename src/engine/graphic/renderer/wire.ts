@@ -26,7 +26,10 @@ type WireModel = {
   tint: GlShaderAttribute;
 };
 
-type WireRenderer = Releasable & Renderer<GlTarget, WireScene, WireSubject>;
+type WireRenderer = Releasable &
+  Renderer<GlTarget, WireScene> & {
+    addSubject: (subject: WireSubject) => () => void;
+  };
 
 type WireSubject = {
   modelMatrix: Matrix4;

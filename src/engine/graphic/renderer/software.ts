@@ -338,11 +338,9 @@ const projectVertexToScreen = (
   };
 };
 
-type SoftwareRenderer = Renderer<
-  CanvasRenderingContext2D,
-  SoftwareScene,
-  SoftwareSubject
->;
+type SoftwareRenderer = Renderer<CanvasRenderingContext2D, SoftwareScene> & {
+  addSubject: (subject: SoftwareSubject) => () => void;
+};
 
 type SoftwareScene = {
   projection: Matrix4;

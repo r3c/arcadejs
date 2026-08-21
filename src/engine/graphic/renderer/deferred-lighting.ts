@@ -450,7 +450,9 @@ type DeferredLightingConfiguration = {
 };
 
 type DeferredLightingRenderer = Releasable &
-  Renderer<GlTarget, DeferredLightingScene, DeferredLightingSubject> & {
+  Renderer<GlTarget, DeferredLightingScene> & {
+    addSubject: (subject: DeferredLightingSubject) => () => void;
+
     // FIXME: debug
     depthBuffer: GlTexture;
     lightBuffer: GlTexture;

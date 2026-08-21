@@ -90,7 +90,9 @@ type EnvironmentLight = {
 };
 
 type ForwardLightingRenderer = Releasable &
-  Renderer<GlTarget, ForwardLightingScene, ForwardLightingSubject> & {
+  Renderer<GlTarget, ForwardLightingScene> & {
+    addSubject: (subject: ForwardLightingSubject) => () => void;
+
     // FIXME: debug
     directionalShadowMaps: GlTexture[];
     pointShadowMaps: GlTexture[];
