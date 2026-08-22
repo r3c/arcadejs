@@ -2,6 +2,7 @@ import { type Application, declare } from "../../engine/application";
 import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
+import { Releasable } from "../../engine/io/resource";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix3, Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { MutableVector3, Vector2, Vector3 } from "../../engine/math/vector";
@@ -37,7 +38,7 @@ type Light = {
 
 type Updater = (state: ApplicationState, dt: number) => void;
 
-type ApplicationState = {
+type ApplicationState = Releasable & {
   camera: Camera;
   gamepad: Gamepad;
   lights: Light[];
@@ -171,7 +172,7 @@ const intersectLineWithPlane = (
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   gamepad: Gamepad,
-): Promise<Application<unknown>> => {
+): Promise<Application<unknown, ApplicationState>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = createScreenTarget(gl);
@@ -295,6 +296,7 @@ const createApplication = async (
       ]),
       position: Vector3.fromZero(),
     },
+    release: () => {},
     sphereTransform: sphere.transform,
     surfaces,
   };
@@ -305,7 +307,9 @@ const createApplication = async (
   ];
 
   return {
-    async setConfiguration() {},
+    async configure() {
+      return state;
+    },
 
     release() {
       renderer.release();
@@ -314,7 +318,7 @@ const createApplication = async (
       sphereModel.release();
     },
 
-    render() {
+    render(state) {
       // Draw scene
       target.clear();
 
@@ -333,13 +337,13 @@ const createApplication = async (
       renderer.render(target, scene);
     },
 
-    setSize(size) {
+    resize(_, size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
       renderer.setSize(size);
       target.setSize(size);
     },
 
-    update(dt) {
+    update(state, dt) {
       for (const updater of updaters) {
         updater(state, dt);
       }

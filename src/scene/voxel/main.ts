@@ -2,6 +2,7 @@ import { Application, declare } from "../../engine/application";
 import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
+import { Releasable } from "../../engine/io/resource";
 import { createLibrary, loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import { Vector3 } from "../../engine/math/vector";
@@ -28,7 +29,7 @@ const timeFactor = 20;
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   gamepad: Gamepad,
-): Promise<Application<unknown>> => {
+): Promise<Application<unknown, Releasable>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = createScreenTarget(gl);
@@ -163,11 +164,39 @@ const createApplication = async (
   let time = 0;
 
   return {
-    async setConfiguration() {},
+    async configure() {
+      return { release: () => {} };
+    },
 
     release() {},
 
-    update(dt) {
+    render() {
+      // Clear screen
+      target.clear();
+
+      // Forward pass
+      const lightScene: ForwardLightingScene = {
+        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
+        pointLights: lights.map(({ position, radius }) => ({
+          color: { x: 0.8, y: 0.8, z: 0.8 },
+          position,
+          radius,
+          shadow: true,
+        })),
+        projection,
+        view: camera.viewMatrix,
+      };
+
+      renderer.render(target, lightScene);
+    },
+
+    resize(_, size) {
+      projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
+      renderer.setSize(size);
+      target.setSize(size);
+    },
+
+    update(_state, dt) {
       // Move camera & define view matrix accordingly
       camera.update(dt);
 
@@ -272,32 +301,6 @@ const createApplication = async (
       worldGraphic.update();
 
       move += dt;
-    },
-
-    render() {
-      // Clear screen
-      target.clear();
-
-      // Forward pass
-      const lightScene: ForwardLightingScene = {
-        ambientLightColor: { x: 0.2, y: 0.2, z: 0.2 },
-        pointLights: lights.map(({ position, radius }) => ({
-          color: { x: 0.8, y: 0.8, z: 0.8 },
-          position,
-          radius,
-          shadow: true,
-        })),
-        projection,
-        view: camera.viewMatrix,
-      };
-
-      renderer.render(target, lightScene);
-    },
-
-    setSize(size) {
-      projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      renderer.setSize(size);
-      target.setSize(size);
     },
   };
 };

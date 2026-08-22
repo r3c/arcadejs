@@ -4,11 +4,12 @@ import {
   SoftwareDrawMode,
   createSoftwareRenderer,
 } from "../../engine/graphic/renderer";
+import { Releasable } from "../../engine/io/resource";
 import { Matrix4 } from "../../engine/math/matrix";
 
 const createApplication = async (
   screen: Screen<CanvasRenderingContext2D>,
-): Promise<Application<unknown>> => {
+): Promise<Application<unknown, Releasable>> => {
   const context = screen.getContext();
   const renderer = createSoftwareRenderer(SoftwareDrawMode.Default);
   const scene = {
@@ -17,7 +18,9 @@ const createApplication = async (
   };
 
   return {
-    async setConfiguration() {},
+    async configure() {
+      return { release: () => {} };
+    },
 
     release() {},
 
@@ -25,7 +28,7 @@ const createApplication = async (
       renderer.render(context, scene);
     },
 
-    setSize() {},
+    resize() {},
     update() {},
   };
 };

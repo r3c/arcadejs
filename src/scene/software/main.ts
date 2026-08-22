@@ -6,6 +6,7 @@ import {
 } from "../../engine/application";
 import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { createCanvasScreen, Screen } from "../../engine/graphic/screen";
+import { Releasable } from "../../engine/io/resource";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4 } from "../../engine/math/matrix";
 import {} from "../../engine/graphic/mesh";
@@ -32,10 +33,14 @@ const configurator = {
 type Configuration =
   typeof configurator extends ApplicationConfigurator<infer T> ? T : never;
 
+type State = Releasable & {
+  renderer: SoftwareRenderer;
+};
+
 const createApplication = async (
   screen: Screen<CanvasRenderingContext2D>,
   gamepad: Gamepad,
-): Promise<Application<Configuration>> => {
+): Promise<Application<Configuration, State>> => {
   const camera = createOrbitCamera(
     {
       getRotate: () => gamepad.fetchMove(Pointer.Grab),
@@ -50,36 +55,39 @@ const createApplication = async (
   const cubeWithTexture = await loadMeshFromJson("model/cube/mesh.json");
   const projection = Matrix4.fromIdentity();
 
-  let renderer: SoftwareRenderer | undefined = undefined;
-
   return {
-    async setConfiguration(configuration) {
+    async configure(configuration) {
       const { mode } = configuration;
       const mesh = mode === 2 ? cubeWithTexture : cubeWithColor;
-
-      renderer = createSoftwareRenderer(
-        mode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default,
-      );
+      const drawMode =
+        mode === 0 ? SoftwareDrawMode.Wire : SoftwareDrawMode.Default;
+      const renderer = createSoftwareRenderer(drawMode);
 
       renderer.addSubject({ mesh });
       renderer.setSize(screen.getSize());
+
+      return {
+        renderer,
+        release: () => {},
+      };
     },
 
     release() {},
 
-    render() {
-      renderer?.render(context, {
+    render(state) {
+      state.renderer.render(context, {
         projection,
         view: camera.viewMatrix,
       });
     },
 
-    setSize(size) {
+    resize(state, size) {
+      state.renderer.setSize(size);
+
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      renderer?.setSize(size);
     },
 
-    update(dt) {
+    update(_state, dt) {
       camera.update(dt);
     },
   };

@@ -8,6 +8,7 @@ import {
 import { Gamepad, Pointer } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
+import { Releasable } from "../../engine/io/resource";
 import { loadFromURL } from "../../engine/graphic/image";
 import {
   loadMeshFromGltf,
@@ -56,10 +57,16 @@ const configurator = {
 type Configuration =
   typeof configurator extends ApplicationConfigurator<infer T> ? T : never;
 
+type State = Releasable & {
+  lightTransforms: MutableMatrix4[];
+  move: boolean;
+  renderer: ForwardLightingRenderer;
+};
+
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   gamepad: Gamepad,
-): Promise<Application<Configuration>> => {
+): Promise<Application<Configuration, State>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = createScreenTarget(gl);
@@ -141,16 +148,11 @@ const createApplication = async (
     specular,
   };
 
-  let lightTransforms: MutableMatrix4[] = [];
-  let move = false;
-  let renderer: ForwardLightingRenderer | undefined = undefined;
   let time = 0;
 
   return {
-    async setConfiguration(configuration) {
-      renderer?.release();
-
-      const newRenderer = createForwardLightingRenderer(runtime, {
+    async configure(configuration) {
+      const renderer = createForwardLightingRenderer(runtime, {
         maxPointLights: 3,
         lightModel: ForwardLightingLightModel.Physical,
         lightModelPhysicalNoAmbient: !configuration.lightAmbient,
@@ -162,35 +164,40 @@ const createApplication = async (
         noShadow: true,
       });
 
-      newRenderer.addSubject({ mesh: models.helmet.mesh });
+      renderer.addSubject({ mesh: models.helmet.mesh });
 
       const ground = createDynamicMesh(models.ground.mesh);
 
-      newRenderer.addSubject({ mesh: ground.mesh });
+      renderer.addSubject({ mesh: ground.mesh });
 
       ground.transform.translate({ x: 0, y: -1.5, z: 0 });
 
-      lightTransforms = range(configuration.nbLights).map(() => {
+      const lightTransforms = range(configuration.nbLights).map(() => {
         const { mesh, transform } = createDynamicMesh(models.light.mesh);
 
-        newRenderer.addSubject({ mesh, noShadow: true });
+        renderer.addSubject({ mesh, noShadow: true });
 
         return transform;
       });
 
-      move = configuration.move;
-      renderer = newRenderer;
+      return {
+        lightTransforms,
+        move: configuration.move,
+        renderer,
+        release: () => {
+          renderer.release();
+        },
+      };
     },
 
     release() {
       models.ground.release();
       models.helmet.release();
       models.light.release();
-      renderer?.release();
       runtime.release();
     },
 
-    render() {
+    render(state) {
       // Draw scene
       target.clear();
 
@@ -203,7 +210,7 @@ const createApplication = async (
           specular: textures.specular,
         },
         pointLights: lights
-          .slice(0, lightTransforms.length)
+          .slice(0, state.lightTransforms.length)
           .map(({ position }) => ({
             color: { x: 1, y: 1, z: 1 },
             position,
@@ -214,20 +221,21 @@ const createApplication = async (
         view: camera.viewMatrix,
       };
 
-      renderer?.render(target, scene);
+      state.renderer.render(target, scene);
     },
 
-    setSize(size) {
+    resize(state, size) {
+      state.renderer.setSize(size);
+
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      renderer?.setSize(size);
       target.setSize(size);
     },
 
-    update(dt) {
+    update(state, dt) {
       // Update light positions
-      for (let i = 0; i < lightTransforms.length; ++i) {
+      for (let i = 0; i < state.lightTransforms.length; ++i) {
         const { mover, position } = lights[i];
-        const transform = lightTransforms[i];
+        const transform = state.lightTransforms[i];
 
         position.set(mover(Vector3.zero, time * 0.0005));
 
@@ -238,7 +246,7 @@ const createApplication = async (
       // Move camera
       camera.update(dt);
 
-      time += move ? dt : 0;
+      time += state.move ? dt : 0;
     },
   };
 };
