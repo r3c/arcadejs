@@ -2,6 +2,7 @@ import { type Application, declare } from "../../engine/application";
 import { Gamepad } from "../../engine/io/gamepad";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
+import { Releasable } from "../../engine/io/resource";
 import {
   Mesh,
   changeMeshCenter,
@@ -58,7 +59,7 @@ type Star = {
 
 type Updater = (state: ApplicationState, dt: number) => void;
 
-type ApplicationState = {
+type ApplicationState = Releasable & {
   gamepad: Gamepad;
   lights: Light[];
   lightTransforms: MutableMatrix4[];
@@ -222,7 +223,7 @@ const warp = (position: number, center: number, radius: number): number => {
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   gamepad: Gamepad,
-): Promise<Application<unknown>> => {
+): Promise<Application<unknown, ApplicationState>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = createScreenTarget(gl);
@@ -367,6 +368,7 @@ const createApplication = async (
     player,
     particleEmitter,
     particleSpawn0,
+    release: () => {},
     shipTransform,
     stars,
     starTransforms,
@@ -380,7 +382,9 @@ const createApplication = async (
   ];
 
   return {
-    async setConfiguration() {},
+    async configure() {
+      return state;
+    },
 
     release() {
       for (const starModel of starModels) {
@@ -395,7 +399,7 @@ const createApplication = async (
       sprite.release();
     },
 
-    render() {
+    render(state) {
       // Draw scene
       target.clear();
 
@@ -415,13 +419,13 @@ const createApplication = async (
       particleEmitter.render(target, scene);
     },
 
-    setSize(size) {
+    resize(_, size) {
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 10000);
       sceneRenderer.setSize(size);
       target.setSize(size);
     },
 
-    update(dt) {
+    update(state, dt) {
       for (const updater of updaters) {
         updater(state, dt);
       }

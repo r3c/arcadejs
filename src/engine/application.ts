@@ -3,20 +3,20 @@ import { Screen, ScreenConstructor } from "./graphic/screen";
 import { Vector2 } from "./math/vector";
 import { createGamepad, Gamepad } from "./io/gamepad";
 
-type Application<TConfiguration> = Releasable & {
-  render: () => void;
-  setConfiguration: (configuration: TConfiguration) => Promise<void>;
-  setSize: (size: Vector2) => void;
-  update: (dt: number) => void;
+type Application<TConfiguration, TState> = Releasable & {
+  configure: (configuration: TConfiguration) => Promise<TState>;
+  render: (state: TState) => void;
+  resize: (state: TState, size: Vector2) => void;
+  update: (state: TState, dt: number) => void;
 };
 
-type ApplicationConstructor<TContext, TConfiguration> = (
+type ApplicationConstructor<TContext, TConfiguration, TState> = (
   screen: Screen<TContext>,
   gamepad: Gamepad,
-) => Promise<Application<TConfiguration>>;
+) => Promise<Application<TConfiguration, TState>>;
 
-type ApplicationConfigurator<T> = {
-  [key in keyof T]: ApplicationWidget<T[key]>;
+type ApplicationConfigurator<TConfiguration> = {
+  [key in keyof TConfiguration]: ApplicationWidget<TConfiguration[key]>;
 };
 
 type ApplicationWidget<T> = {
@@ -32,16 +32,9 @@ type Process = {
   title: string;
 };
 
-const canonicalize = (name: string): string => {
-  return name
-    .toLowerCase()
-    .replaceAll(/[^-0-9a-z]/g, "-")
-    .replaceAll(/^-+|-+$/g, "");
-};
-
-const configure = <T>(
+const bindConfigurator = <T>(
   configurator: ApplicationConfigurator<T>,
-  setConfiguration: (configuration: T) => void,
+  configure: (configuration: T) => Promise<void>,
 ): T => {
   const container = document.getElementById("configuration");
 
@@ -62,13 +55,20 @@ const configure = <T>(
     const element = createElement((value: any) => {
       configuration[key] = value;
 
-      setConfiguration(configuration);
+      configure(configuration);
     });
 
     container.appendChild(element);
   }
 
   return configuration;
+};
+
+const canonicalize = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replaceAll(/[^-0-9a-z]/g, "-")
+    .replaceAll(/^-+|-+$/g, "");
 };
 
 const createButton = (
@@ -170,25 +170,38 @@ const createSelect = (
   defaultValue,
 });
 
-const declare = <TContext, TConfiguration>(
+const declare = <TContext, TConfiguration, TState extends Releasable>(
   title: string,
   screenConstructor: ScreenConstructor<TContext>,
-  createApplication: ApplicationConstructor<TContext, TConfiguration>,
+  createApplication: ApplicationConstructor<TContext, TConfiguration, TState>,
   configurator: ApplicationConfigurator<TConfiguration>,
 ): Process => {
-  let runtime:
+  let active:
     | {
-        application: Application<TConfiguration>;
-        configuration: TConfiguration;
+        application: Application<TConfiguration, TState>;
         frame: number | undefined;
         screen: Screen<TContext>;
+        state: TState;
       }
     | undefined = undefined;
 
+  const configure = async (configuration: TConfiguration): Promise<void> => {
+    if (active === undefined) {
+      return;
+    }
+
+    const previousState = active.state;
+    const currentState = await active.application.configure(configuration);
+
+    active.state = currentState;
+
+    previousState.release();
+  };
+
   return {
-    fullscreen: () => runtime?.screen.fullscreen(),
+    fullscreen: () => active?.screen.fullscreen(),
     start: async () => {
-      if (runtime !== undefined) {
+      if (active !== undefined) {
         return;
       }
 
@@ -209,41 +222,46 @@ const declare = <TContext, TConfiguration>(
       const screen = screenConstructor(canvas);
       const gamepad = createGamepad(canvas);
       const application = await createApplication(screen, gamepad);
-      const configuration = configure(
-        configurator,
-        application.setConfiguration,
-      );
+      const configuration = bindConfigurator(configurator, configure);
+      const state = await application.configure(configuration);
 
-      await application.setConfiguration(configuration);
+      screen.onResize((size) => {
+        if (active !== undefined) {
+          application.resize(active.state, size);
+        }
+      });
 
-      screen.onResize(application.setSize);
       screen.setSize();
 
-      runtime = { application, configuration, frame: undefined, screen };
+      active = { application, frame: undefined, screen, state };
     },
     step: (dt: number) => {
-      if (runtime === undefined) {
+      if (active === undefined) {
         return;
       }
 
-      const { application, screen } = runtime;
+      const { application, screen, state } = active;
 
       screen.setSize();
-      application.update(dt);
+      application.update(state, dt);
 
-      runtime.frame = requestAnimationFrame(application.render);
+      active.frame = requestAnimationFrame(() => application.render(state));
     },
     stop: () => {
-      if (runtime === undefined) {
+      if (active === undefined) {
         return;
       }
 
-      if (runtime.frame !== undefined) {
-        cancelAnimationFrame(runtime.frame);
+      const { application, frame, state } = active;
+
+      active = undefined;
+
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
       }
 
-      runtime.application.release();
-      runtime = undefined;
+      application.release();
+      state.release();
     },
     title,
   };

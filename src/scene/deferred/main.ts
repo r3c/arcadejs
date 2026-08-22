@@ -17,6 +17,7 @@ import {
 } from "../../engine/graphic/renderer";
 import { type Screen, createWebGLScreen } from "../../engine/graphic/screen";
 import { range } from "../../engine/language/iterable";
+import { Releasable } from "../../engine/io/resource";
 import { loadMeshFromJson } from "../../engine/graphic/mesh";
 import { Matrix4, MutableMatrix4 } from "../../engine/math/matrix";
 import { Vector2, Vector3 } from "../../engine/math/vector";
@@ -129,10 +130,36 @@ type DeferredRenderer = DeferredLightingRenderer | DeferredShadingRenderer;
 type Configuration =
   typeof configurator extends ApplicationConfigurator<infer T> ? T : never;
 
+const allDirectionalLights = range(10).map((i) => ({
+  color: brightColor(i),
+  direction: Vector3.fromZero(),
+  mover: createCircleMover(i),
+  shadow: false,
+}));
+
+const allPointLights = range(2000).map((i) => ({
+  color: brightColor(i),
+  mover: createOrbitMover(i, 1, 5, 1),
+  position: Vector3.fromZero(),
+  radius: 0,
+  shadow: false,
+}));
+
+type State = Releasable & {
+  directionalLights: typeof allDirectionalLights;
+  directionalLightTransforms: MutableMatrix4[];
+  encodingRenderer: GlEncodingRenderer | undefined;
+  encodingTexture: GlTexture | undefined;
+  move: boolean;
+  pointLights: typeof allPointLights;
+  pointLightTransforms: MutableMatrix4[];
+  sceneRenderer: DeferredRenderer;
+};
+
 const createApplication = async (
   screen: Screen<WebGL2RenderingContext>,
   gamepad: Gamepad,
-): Promise<Application<Configuration>> => {
+): Promise<Application<Configuration, State>> => {
   const gl = screen.getContext();
   const runtime = createRuntime(gl);
   const target = createScreenTarget(gl);
@@ -171,43 +198,19 @@ const createApplication = async (
     { x: 0, y: 0, z: -5 },
     Vector2.zero,
   );
-  const allDirectionalLights = range(10).map((i) => ({
-    color: brightColor(i),
-    direction: Vector3.fromZero(),
-    mover: createCircleMover(i),
-    shadow: false,
-  }));
   const models = {
     cube: createModel(gl, cubeModel),
     directionalLight: createModel(gl, directionalLightModel),
     ground: createModel(gl, groundModel),
     pointLight: createModel(gl, pointLightModel),
   };
-  const allPointLights = range(2000).map((i) => ({
-    color: brightColor(i),
-    mover: createOrbitMover(i, 1, 5, 1),
-    position: Vector3.fromZero(),
-    radius: 0,
-    shadow: false,
-  }));
   const projection = Matrix4.fromIdentity();
 
-  let encodingRenderer: GlEncodingRenderer | undefined = undefined;
-  let encodingTexture: GlTexture | undefined = undefined;
-  let directionalLights: typeof allDirectionalLights;
-  let directionalLightTransforms: MutableMatrix4[] = [];
-  let move = false;
-  let pointLights: typeof allPointLights;
-  let pointLightTransforms: MutableMatrix4[] = [];
-  let sceneRenderer: DeferredRenderer | undefined = undefined;
   let time = 0;
 
   return {
-    async setConfiguration(configuration) {
-      encodingRenderer?.release();
-      sceneRenderer?.release();
-
-      encodingRenderer =
+    async configure(configuration) {
+      const encodingRenderer =
         configuration.debugMode !== 0
           ? createGlEncodingRenderer(runtime, {
               channel: debugConfigurations[configuration.debugMode - 1].channel,
@@ -218,7 +221,8 @@ const createApplication = async (
             })
           : undefined;
 
-      let newRenderer: DeferredRenderer;
+      let encodingTexture: GlTexture | undefined = undefined;
+      let sceneRenderer: DeferredRenderer;
 
       switch (configuration.technique) {
         case 0:
@@ -241,7 +245,7 @@ const createApplication = async (
                     renderer.normalAndSpecularBuffer,
                   ][configuration.debugMode - 1]
                 : undefined;
-            newRenderer = renderer;
+            sceneRenderer = renderer;
           }
 
           break;
@@ -267,19 +271,19 @@ const createApplication = async (
                     renderer.lightBuffer,
                   ][configuration.debugMode - 1]
                 : undefined;
-            newRenderer = renderer;
+            sceneRenderer = renderer;
           }
 
           break;
       }
 
-      newRenderer.setSize(screen.getSize());
+      sceneRenderer.setSize(screen.getSize());
 
       // Register cube subjects
       for (const i of range(16)) {
         const cube = createDynamicMesh(models.cube.mesh);
 
-        newRenderer.addSubject({ mesh: cube.mesh });
+        sceneRenderer.addSubject({ mesh: cube.mesh });
 
         cube.transform.translate({
           x: ((i % 4) - 1.5) * 2,
@@ -291,7 +295,7 @@ const createApplication = async (
       // Register ground subject
       const ground = createDynamicMesh(models.ground.mesh);
 
-      newRenderer.addSubject({ mesh: ground.mesh });
+      sceneRenderer.addSubject({ mesh: ground.mesh });
 
       ground.transform.translate({ x: 0, y: -1.5, z: 0 });
 
@@ -305,74 +309,87 @@ const createApplication = async (
         pointLight.radius = pointLightParameter.radius;
       }
 
-      directionalLights = allDirectionalLights.slice(
+      const directionalLights = allDirectionalLights.slice(
         0,
         directionalLightParameter.count,
       );
-      directionalLightTransforms = range(directionalLights.length).map(() => {
-        const { mesh, transform } = createDynamicMesh(
-          models.directionalLight.mesh,
-        );
+      const directionalLightTransforms = range(directionalLights.length).map(
+        () => {
+          const { mesh, transform } = createDynamicMesh(
+            models.directionalLight.mesh,
+          );
 
-        newRenderer.addSubject({ mesh });
+          sceneRenderer.addSubject({ mesh });
 
-        return transform;
-      });
-      pointLights = allPointLights.slice(0, pointLightParameter.count);
-      pointLightTransforms = range(pointLights.length).map(() => {
+          return transform;
+        },
+      );
+      const pointLights = allPointLights.slice(0, pointLightParameter.count);
+      const pointLightTransforms = range(pointLights.length).map(() => {
         const { mesh, transform } = createDynamicMesh(models.pointLight.mesh);
 
-        newRenderer.addSubject({ mesh });
+        sceneRenderer.addSubject({ mesh });
 
         return transform;
       });
 
-      move = configuration.move;
-      sceneRenderer = newRenderer;
+      return {
+        directionalLights,
+        directionalLightTransforms,
+        encodingRenderer,
+        encodingTexture,
+        move: configuration.move,
+        pointLights,
+        pointLightTransforms,
+        sceneRenderer,
+        release: () => {
+          encodingRenderer?.release();
+          encodingTexture?.release();
+          sceneRenderer.release();
+        },
+      };
     },
 
     release() {
-      encodingRenderer?.release();
-      encodingTexture?.release();
       models.cube.release();
       models.directionalLight.release();
       models.ground.release();
       models.pointLight.release();
       runtime.release();
-      sceneRenderer?.release();
     },
 
-    render() {
+    render(state) {
       // Clear screen
       target.clear();
 
       // Draw scene
       const scene: DeferredLightingScene = {
         ambientLightColor: { x: 0.3, y: 0.3, z: 0.3 },
-        directionalLights,
-        pointLights,
+        directionalLights: state.directionalLights,
+        pointLights: state.pointLights,
         projection,
         view: camera.viewMatrix,
       };
 
-      sceneRenderer?.render(target, scene);
+      state.sceneRenderer.render(target, scene);
 
       // Draw debug
-      if (encodingTexture !== undefined) {
-        encodingRenderer?.render(target, encodingTexture);
+      if (state.encodingTexture !== undefined) {
+        state.encodingRenderer?.render(target, state.encodingTexture);
       }
     },
 
-    setSize(size) {
+    resize(state, size) {
+      state.sceneRenderer.setSize(size);
+
       projection.setFromPerspective(Math.PI / 4, size.x / size.y, 0.1, 100);
-      sceneRenderer?.setSize(size);
       target.setSize(size);
     },
 
-    update(dt) {
-      for (let i = 0; i < directionalLights.length; ++i) {
-        const { direction, mover } = directionalLights[i];
-        const transform = directionalLightTransforms[i];
+    update(state, dt) {
+      for (let i = 0; i < state.directionalLights.length; ++i) {
+        const { direction, mover } = state.directionalLights[i];
+        const transform = state.directionalLightTransforms[i];
 
         direction.set(mover(Vector3.zero, time * 0.001));
         direction.normalize();
@@ -382,9 +399,9 @@ const createApplication = async (
         transform.translate(direction);
       }
 
-      for (let i = 0; i < pointLights.length; ++i) {
-        const { mover, position } = pointLights[i];
-        const transform = pointLightTransforms[i];
+      for (let i = 0; i < state.pointLights.length; ++i) {
+        const { mover, position } = state.pointLights[i];
+        const transform = state.pointLightTransforms[i];
 
         position.set(mover(Vector3.zero, time * 0.0002));
 
@@ -395,7 +412,7 @@ const createApplication = async (
       // Move camera
       camera.update(dt);
 
-      time += move ? dt : 0;
+      time += state.move ? dt : 0;
     },
   };
 };
