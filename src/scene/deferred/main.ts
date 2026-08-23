@@ -133,7 +133,7 @@ type Configuration =
 const allDirectionalLights = range(10).map((i) => ({
   color: brightColor(i),
   direction: Vector3.fromZero(),
-  mover: createCircleMover(i),
+  mover: createCircleMover(i, 1),
   shadow: false,
 }));
 

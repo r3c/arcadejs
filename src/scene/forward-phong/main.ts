@@ -127,7 +127,12 @@ const createApplication = async (
   const target = createScreenTarget(gl);
 
   // Load models
-  const boxMesh = await loadMeshFromJson("model/stand/box.json");
+  const boxMesh = await loadMeshFromJson("model/stand/box.json", {
+    transform: Matrix4.fromSource(Matrix4.identity, [
+      "scale",
+      { x: 2.5, y: 2.5, z: 2.5 },
+    ]),
+  });
   const cubeMesh = await loadMeshFromJson("model/cube/mesh.json", {
     transform: Matrix4.fromSource(Matrix4.identity, [
       "scale",
@@ -151,7 +156,7 @@ const createApplication = async (
   );
   const directionalLightParameters = range(3).map((i) => ({
     direction: Vector3.fromZero(),
-    mover: createCircleMover(i),
+    mover: createCircleMover(i, 2.25),
   }));
   const pointLightParameters = range(3).map((i) => ({
     mover: createOrbitMover(i, 2, 2, 1),
@@ -182,16 +187,12 @@ const createApplication = async (
       const cube1 = createDynamicMesh(models.cube.mesh);
       const cube2 = createDynamicMesh(models.cube.mesh);
 
-      cube1.transform.translate({ x: -1, y: 0, z: 0 });
+      cube1.transform.translate({ x: -1, y: 0.5, z: 0 });
       cube2.transform.translate({ x: 1, y: 0, z: 0 });
 
       renderer.addSubject({ mesh: cube1.mesh });
       renderer.addSubject({ mesh: cube2.mesh });
-
-      const box = createDynamicMesh(models.box.mesh);
-
-      renderer.addSubject({ mesh: box.mesh });
-      box.transform.scale({ x: 2.5, y: 2.5, z: 2.5 });
+      renderer.addSubject({ mesh: models.box.mesh, noShadow: true });
 
       const directionalLights = range(configuration.nbDirectionalLights).map(
         (i) => {
@@ -301,9 +302,6 @@ const createApplication = async (
         const { transform } = state.directionalLights[i];
 
         direction.set(mover(Vector3.zero, -time * 0.0001));
-        direction.normalize();
-        direction.scale(10);
-
         transform.set(Matrix4.identity);
         transform.translate(direction);
       }
@@ -313,7 +311,6 @@ const createApplication = async (
         const { transform } = state.pointLights[i];
 
         position.set(mover(Vector3.zero, time * 0.0001));
-
         transform.set(Matrix4.identity);
         transform.translate(position);
       }
