@@ -2,14 +2,14 @@ import { Vector3 } from "../engine/math/vector";
 
 type Mover = (reference: Vector3, time: number) => Vector3;
 
-const createCircleMover = (index: number): Mover => {
+const createCircleMover = (index: number, radius: number): Mover => {
   const angle = generateAngle(index);
 
   return (reference, time) => {
     return {
-      x: reference.x + Math.cos(angle + time),
+      x: reference.x + Math.cos(angle + time) * radius,
       y: reference.y + Math.PI / 6,
-      z: reference.z + Math.sin(angle + time),
+      z: reference.z + Math.sin(angle + time) * radius,
     };
   };
 };
