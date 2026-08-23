@@ -187,6 +187,7 @@ const mat4 texUnitConverter = mat4(
   0.5, 0.5, 0.5, 1.0
 );
 
+const float directionalShadowBias = 0.005;
 const float pointShadowBias = 0.005;
 
 uniform vec3 ambientLightColor;
@@ -457,7 +458,7 @@ void main(void) {
     directive.hasShadow,
     `
   float shadowMapSample = texture(directionalLightShadowMaps[${i}], directionalLightShadows[${i}].xy).r;
-  directionalLightApply = !directionalLights[${i}].castShadow || shadowMapSample >= directionalLightShadows[${i}].z;`,
+  directionalLightApply = !directionalLights[${i}].castShadow || shadowMapSample >= directionalLightShadows[${i}].z - directionalShadowBias;`,
     `
   directionalLightApply = true;`,
   )}
