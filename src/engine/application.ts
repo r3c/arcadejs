@@ -231,9 +231,9 @@ const declare = <TContext, TConfiguration, TState extends Releasable>(
         }
       });
 
-      screen.setSize();
-
       active = { application, frame: undefined, screen, state };
+
+      screen.setSize();
     },
     step: (dt: number) => {
       if (active === undefined) {
