@@ -2,8 +2,8 @@ name: Publish
 
 on:
   push:
-    tags:
-      - publish
+    branches:
+      - master
 
 jobs:
   build:
