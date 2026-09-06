@@ -13,6 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
+        with:
+          node-version: current
       - run: npm install
       - run: npm run build
       - uses: actions/upload-pages-artifact@v5
