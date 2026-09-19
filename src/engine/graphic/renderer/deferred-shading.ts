@@ -2,10 +2,10 @@ import { Releasable } from "../../io/resource";
 import {
   DirectionalLight,
   PointLight,
-  directionalLight,
-  directionalLightType,
-  pointLight,
-  pointLightType,
+  directionalLightCreateTemplate,
+  directionalLightTypeTemplate,
+  pointLightCreateTemplate,
+  pointLightTypeTemplate,
   resultLightType,
 } from "../webgl/shaders/light";
 import { Matrix4 } from "../../math/matrix";
@@ -16,8 +16,8 @@ import {
 } from "../webgl/shaders/normal";
 import { parallaxPerturb } from "../webgl/shaders/parallax";
 import {
-  phongLightApply,
-  phongLightCast,
+  phongLightApplyTemplate,
+  phongLightCastTemplate,
   phongLightType,
   PhongLightVariant,
 } from "../webgl/shaders/phong";
@@ -42,6 +42,7 @@ import {
   GlShaderAttribute,
   uniform,
   GlShaderSource,
+  shader,
 } from "../webgl/shader";
 import { GlMaterial, GlMesh, GlPolygon, createModel } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
@@ -81,7 +82,7 @@ type LocalLightDirective = {
 };
 
 const createGeometrySource = (): GlShaderSource => ({
-  vertex: `
+  vertex: shader`\
 uniform mat4 modelMatrix;
 uniform mat3 normalMatrix;
 uniform mat4 projectionMatrix;
@@ -111,7 +112,7 @@ void main(void) {
   gl_Position = projectionMatrix * pointCamera;
 }`,
 
-  fragment: `
+  fragment: shader`\
 uniform vec4 diffuseColor;
 uniform sampler2D diffuseMap;
 uniform sampler2D heightMap;
@@ -121,13 +122,6 @@ uniform vec4 specularColor;
 uniform sampler2D specularMap;
 uniform sampler2D normalMap;
 uniform float shininess;
-
-${luminance.declare({})}
-${normalEncode.declare({})}
-${normalPerturb.declare({})}
-${parallaxPerturb.declare({})}
-${shininessEncode.declare({})}
-${standardToLinear.declare({})}
 
 in vec3 bitangent;
 in vec2 coordinate;
@@ -142,7 +136,7 @@ void main(void) {
   mat3 tbn = mat3(tangent, bitangent, normal);
 
   vec3 eyeDirection = normalize(-point);
-  vec2 coordinateParallax = ${parallaxPerturb.invoke({
+  vec2 coordinateParallax = ${parallaxPerturb({
     coordinate: "coordinate",
     eyeDirection: "eyeDirection",
     parallaxBias: "heightParallaxBias",
@@ -153,27 +147,27 @@ void main(void) {
 
   // Color target 1: [diffuse.rgb, shininess]
   vec4 diffuseSample = texture(diffuseMap, coordinateParallax);
-  vec3 diffuseLinear = ${standardToLinear.invoke({
+  vec3 diffuseLinear = ${standardToLinear({
     standard: "diffuseSample.rgb",
   })};
   vec3 diffuse = diffuseColor.rgb * diffuseLinear;
-  float shininessPack = ${shininessEncode.invoke({ decoded: "shininess" })};
+  float shininessPack = ${shininessEncode({ decoded: "shininess" })};
 
   diffuseAndShininess = vec4(diffuse, shininessPack);
 
   // Color target 2: [normal.xy, zero, specular]
-  vec3 normalModified = ${normalPerturb.invoke({
+  vec3 normalModified = ${normalPerturb({
     coordinate: "coordinateParallax",
     sampler: "normalMap",
     tbn: "tbn",
   })};
-  vec2 normalPack = ${normalEncode.invoke({ decoded: "normalModified" })};
+  vec2 normalPack = ${normalEncode({ decoded: "normalModified" })};
 
   vec4 specularSample = texture(specularMap, coordinateParallax);
-  vec3 specularLinear = ${standardToLinear.invoke({
+  vec3 specularLinear = ${standardToLinear({
     standard: "specularSample.rgb",
   })};
-  float specular = ${luminance.invoke({
+  float specular = ${luminance({
     color: "specularColor.rgb * specularLinear",
   })};
 
@@ -188,7 +182,7 @@ const createAmbientLightSource = (
 uniform vec3 ambientLightColor;`;
 
   return {
-    vertex: `
+    vertex: shader`\
 ${header}
 
 uniform mat4 modelMatrix;
@@ -201,7 +195,7 @@ void main(void) {
   gl_Position = projectionMatrix * viewMatrix * modelMatrix * positions;
 }`,
 
-    fragment: `
+    fragment: shader`\
 ${header}
 
 uniform sampler2D diffuseAndShininess;
@@ -227,16 +221,27 @@ void main(void) {
   };
 };
 
-const createLocalLightSource = (directive: LocalLightDirective) => {
-  const header = `
-${directionalLight.declare(directive)}
-${pointLight.declare(directive)}
+const createLocalLightSource = (
+  directive: LocalLightDirective,
+): GlShaderSource => {
+  const hasShadow = directive.hasShadow;
+  const directionalLightCreate = directionalLightCreateTemplate({ hasShadow });
+  const directionalLightType = directionalLightTypeTemplate({ hasShadow });
+  const pointLightCreate = pointLightCreateTemplate({ hasShadow });
+  const pointLightType = pointLightTypeTemplate({ hasShadow });
 
-uniform ${directionalLightType} directionalLight;`;
+  const phongLightApply = phongLightApplyTemplate({
+    diffuse: directive.lightModelPhongDiffuse,
+    specular: directive.lightModelPhongSpecular,
+  });
+
+  const phongLightCast = phongLightCastTemplate({
+    variant: PhongLightVariant.Standard,
+  });
 
   return {
-    vertex: `
-${header}
+    vertex: shader`\
+uniform ${directionalLightType()} directionalLight;
 
 uniform mat4 billboardMatrix;
 uniform mat4 modelMatrix;
@@ -252,12 +257,12 @@ ${shaderCase(
   directive.type,
   [
     DeferredShadingLightType.Directional,
-    `
+    `\
 out vec3 lightDistanceCamera;`,
   ],
   [
     DeferredShadingLightType.Point,
-    `
+    `\
 out vec3 lightPositionCamera;
 out vec3 pointLightColor;
 out vec3 pointLightPosition;
@@ -278,12 +283,12 @@ ${shaderCase(
   directive.type,
   [
     DeferredShadingLightType.Directional,
-    `
+    `\
   lightDistanceCamera = toCameraDirection(directionalLight.direction);`,
   ],
   [
     DeferredShadingLightType.Point,
-    `
+    `\
   lightPositionCamera = toCameraPosition(lightPosition);
   pointLightColor = lightColor;
   pointLightPosition = lightPosition;
@@ -296,8 +301,8 @@ ${shaderCase(
     projectionMatrix * billboardMatrix * modelMatrix * vec4(lightShift, 0.0);
 }`,
 
-    fragment: `
-${header}
+    fragment: shader`\
+uniform ${directionalLightType()} directionalLight;
 
 uniform mat4 inverseProjectionMatrix;
 uniform vec2 viewportSize;
@@ -306,24 +311,16 @@ uniform sampler2D diffuseAndShininess;
 uniform sampler2D depth;
 uniform sampler2D normalAndSpecular;
 
-${normalDecode.declare({})}
-${phongLightApply.declare({
-  diffuse: directive.lightModelPhongDiffuse,
-  specular: directive.lightModelPhongSpecular,
-})}
-${phongLightCast.declare({ variant: PhongLightVariant.Standard })}
-${shininessDecode.declare({})}
-
 ${shaderCase(
   directive.type,
   [
     DeferredShadingLightType.Directional,
-    `
+    `\
 in vec3 lightDistanceCamera;`,
   ],
   [
     DeferredShadingLightType.Point,
-    `
+    `\
 in vec3 lightPositionCamera;
 in vec3 pointLightColor;
 in vec3 pointLightPosition;
@@ -351,13 +348,11 @@ void main(void) {
 
   // Decode geometry and material properties from samples
   vec3 diffuseColor = diffuseAndShininessSample.rgb;
-  vec3 normal = ${normalDecode.invoke({
+  vec3 normal = ${normalDecode({
     encoded: "normalAndSpecularSample.rg",
   })};
   vec3 specularColor = normalAndSpecularSample.bbb;
-  float shininess = ${shininessDecode.invoke({
-    encoded: "diffuseAndShininessSample.a",
-  })};
+  float shininess = ${shininessDecode({ encoded: "diffuseAndShininessSample.a" })};
 
   // Compute point in camera space from fragment coordinate and depth buffer
   vec3 point = getPoint(depthSample.r);
@@ -368,32 +363,32 @@ ${shaderCase(
   directive.type,
   [
     DeferredShadingLightType.Directional,
-    `
-  ${resultLightType} light = ${directionalLight.invoke({
+    shader`\
+  ${resultLightType()} light = ${directionalLightCreate({
     distanceCamera: "lightDistanceCamera",
     light: "directionalLight",
   })};`,
   ],
   [
     DeferredShadingLightType.Point,
-    `
+    shader`\
   vec3 lightDistanceCamera = lightPositionCamera - point;
-  ${pointLightType} pointLight = ${pointLightType}(pointLightColor, pointLightPosition, pointLightRadius);
-  ${resultLightType} light = ${pointLight.invoke({
+  ${pointLightType()} pointLight = ${pointLightType()}(pointLightColor, pointLightPosition, pointLightRadius);
+  ${resultLightType()} light = ${pointLightCreate({
     distanceCamera: "lightDistanceCamera",
     light: "pointLight",
   })};`,
   ],
 )}
 
-  ${phongLightType} phongLight = ${phongLightCast.invoke({
+  ${phongLightType()} phongLight = ${phongLightCast({
     eye: "eye",
     light: "light",
     normal: "normal",
     shininess: "shininess",
   })};
 
-  vec3 color = ${phongLightApply.invoke({
+  vec3 color = ${phongLightApply({
     lightCast: "phongLight",
     diffuseColor: "diffuseColor",
     specularColor: "specularColor",
@@ -405,16 +400,14 @@ ${shaderCase(
 };
 
 const createPostSource = (): GlShaderSource => ({
-  vertex: `
+  vertex: shader`\
 in vec3 positions;
 
 void main(void) {
   gl_Position = vec4(positions, 1.0);
 }`,
 
-  fragment: `
-${linearToStandard.declare({})}
-  
+  fragment: shader`\
 uniform sampler2D source;
 
 layout(location=0) out vec4 fragColor;
@@ -423,7 +416,7 @@ void main(void) {
   ivec2 bufferCoordinate = ivec2(gl_FragCoord.xy);
   vec3 scene = texelFetch(source, bufferCoordinate, 0).rgb;
 
-  fragColor = vec4(${linearToStandard.invoke({ linear: "scene" })}, 1.0);
+  fragColor = vec4(${linearToStandard({ linear: "scene" })}, 1.0);
 }`,
 });
 

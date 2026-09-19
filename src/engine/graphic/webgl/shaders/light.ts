@@ -1,5 +1,10 @@
 import { Vector3 } from "../../../math/vector";
-import { shaderWhen, GlShaderFunction } from "../shader";
+import {
+  shaderWhen,
+  createSingletonFunction,
+  createUniqueTemplate,
+  shader,
+} from "../shader";
 
 type DirectionalLight = {
   color: Vector3;
@@ -14,86 +19,100 @@ type PointLight = {
   shadow: boolean;
 };
 
-const directionalLightType = "DirectionalLight";
-const pointLightType = "PointLight";
-const resultLightType = "ResultLight";
-
-const resultLightTableDeclare = `
-#ifndef LIGHT_RESULT_TYPE
-#define LIGHT_RESULT_TYPE
-struct ${resultLightType} {
-  vec3 color;
-  vec3 direction;
-  float strength;
-};
-#endif`;
-
-const directionalLight: GlShaderFunction<
+const directionalLightTypeName = "DirectionalLight";
+const directionalLightTypeTemplate = createUniqueTemplate<
   { hasShadow: boolean },
-  { light: string; distanceCamera: string }
-> = {
-  declare: ({ hasShadow }) => `
-struct ${directionalLightType} {
+  void
+>(({ hasShadow }) => () => ({
+  require: shader`\
+struct ${directionalLightTypeName} {
   vec3 color;
   vec3 direction;
 ${shaderWhen(
   hasShadow,
-  `
+  `\
   bool castShadow;
   mat4 shadowViewMatrix;`,
 )}
-};
+};`,
 
-${resultLightTableDeclare}
+  source: shader`${directionalLightTypeName}`,
+}));
 
-${resultLightType} lightSourceDirectional(in ${directionalLightType} light, in vec3 distanceCamera) {
-  return ${resultLightType}(
-    light.color,
-    normalize(distanceCamera),
-    1.0
-  );
-}`,
-
-  invoke: ({ light, distanceCamera }) =>
-    `lightSourceDirectional(${light}, ${distanceCamera})`,
-};
-
-const pointLight: GlShaderFunction<
+const pointLightTypeName = "PointLight";
+const pointLightTypeTemplate = createUniqueTemplate<
   { hasShadow: boolean },
-  { light: string; distanceCamera: string }
-> = {
-  declare: ({ hasShadow }) => `
-struct ${pointLightType} {
+  void
+>(({ hasShadow }) => () => ({
+  require: shader`\
+  struct ${pointLightTypeName} {
   vec3 color;
   vec3 position;
   float radius;
 ${shaderWhen(
   hasShadow,
-  `
+  `\
   bool castShadow;`,
 )}
-};
+};`,
+  source: shader`${pointLightTypeName}`,
+}));
 
-${resultLightTableDeclare}
+const resultLightTypeName = "ResultLight";
+const resultLightType = createSingletonFunction<void>(
+  shader`\
+struct ${resultLightTypeName} {
+  vec3 color;
+  vec3 direction;
+  float strength;
+};`,
+  () => resultLightTypeName,
+);
 
-${resultLightType} lightSourcePoint(in ${pointLightType} light, in vec3 distanceCamera) {
-  return ${resultLightType}(
+const directionalLightCreateTemplate = createUniqueTemplate<
+  { hasShadow: boolean },
+  { light: string; distanceCamera: string }
+>((declare) => {
+  const directionalLightType = directionalLightTypeTemplate(declare);
+
+  return ({ light, distanceCamera }) => ({
+    require: shader`\
+${resultLightType()} lightSourceDirectional(in ${directionalLightType()} light, in vec3 distanceCamera) {
+  return ${resultLightType()}(
+    light.color,
+    normalize(distanceCamera),
+    1.0
+  );
+}`,
+    source: shader`lightSourceDirectional(${light}, ${distanceCamera})`,
+  });
+});
+
+const pointLightCreateTemplate = createUniqueTemplate<
+  { hasShadow: boolean },
+  { light: string; distanceCamera: string }
+>((declare) => {
+  const pointLightType = pointLightTypeTemplate(declare);
+
+  return ({ light, distanceCamera }) => ({
+    require: shader`\
+${resultLightType()} lightSourcePoint(in ${pointLightType()} light, in vec3 distanceCamera) {
+  return ${resultLightType()}(
     light.color,
     normalize(distanceCamera),
     max(1.0 - length(distanceCamera) / light.radius, 0.0)
   );
 }`,
-
-  invoke: ({ light, distanceCamera }) =>
-    `lightSourcePoint(${light}, ${distanceCamera})`,
-};
+    source: shader`lightSourcePoint(${light}, ${distanceCamera})`,
+  });
+});
 
 export {
   type DirectionalLight,
   type PointLight,
-  directionalLight,
-  directionalLightType,
-  pointLight,
-  pointLightType,
+  directionalLightCreateTemplate,
+  directionalLightTypeTemplate,
+  pointLightCreateTemplate,
+  pointLightTypeTemplate,
   resultLightType,
 };

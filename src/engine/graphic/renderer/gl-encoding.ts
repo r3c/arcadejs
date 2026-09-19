@@ -8,6 +8,7 @@ import {
   GlShaderAttribute,
   uniform,
   GlShaderSource,
+  shader,
 } from "../webgl/shader";
 import { GlBuffer } from "../webgl/resource";
 import { GlTexture } from "../webgl/texture";
@@ -110,7 +111,7 @@ const encodingSources = {
 const createSource = (
   configuration: GlEncodingConfiguration,
 ): GlShaderSource => ({
-  vertex: `
+  vertex: shader`\
 uniform mat4 modelMatrix;
 
 in vec2 coordinate;
@@ -124,11 +125,7 @@ void main(void) {
   gl_Position = modelMatrix * vec4(position, 1.0);
 }`,
 
-  fragment: `
-${linearDepth.declare({})}
-${linearToStandard.declare({})}
-${normalDecode.declare({})}
-
+  fragment: shader`\
 uniform ${encodingSources[configuration.source].type} source;
 
 in vec2 coord;
@@ -165,12 +162,12 @@ void main(void) {
     [GlEncodingFormat.Identity, `encoded`],
     [
       GlEncodingFormat.LinearRGB,
-      `vec4(${linearToStandard.invoke({ linear: "encoded.rgb" })}, 1.0)`,
+      `vec4(${linearToStandard({ linear: "encoded.rgb" })}, 1.0)`,
     ],
     [GlEncodingFormat.Monochrome, `vec4(encoded.rrr, 1.0)`],
     [
       GlEncodingFormat.Depth,
-      `vec4(${linearDepth.invoke({
+      `vec4(${linearDepth({
         depth: "encoded.r",
         zFar: `float(${configuration.zFar})`,
         zNear: `float(${configuration.zNear})`,
@@ -178,7 +175,7 @@ void main(void) {
     ],
     [
       GlEncodingFormat.Spheremap,
-      `vec4(${normalDecode.invoke({ encoded: "encoded.rg" })}, 1.0)`,
+      `vec4(${normalDecode({ encoded: "encoded.rg" })}, 1.0)`,
     ],
     [GlEncodingFormat.Log2RGB, `vec4(-log2(encoded.rgb), 1.0)`],
   )};
