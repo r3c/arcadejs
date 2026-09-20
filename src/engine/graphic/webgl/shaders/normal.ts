@@ -1,7 +1,7 @@
-import { GlShaderFunction } from "../shader";
+import { createSingletonFunction, shader } from "../shader";
 
-const normalDecode: GlShaderFunction<{}, { encoded: string }> = {
-  declare: (): string => `
+const normalDecode = createSingletonFunction<{ encoded: string }>(
+  shader`\
 vec3 normalDecode(in vec2 encoded) {
   // Spheremap transform
   // See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
@@ -12,33 +12,34 @@ vec3 normalDecode(in vec2 encoded) {
   return normalize(vec3(fenc * g, 1.0 - f * 0.5));
 }`,
 
-  invoke: ({ encoded }): string => `normalDecode(${encoded})`,
-};
+  ({ encoded }) => `normalDecode(${encoded})`,
+);
 
-const normalEncode: GlShaderFunction<{}, { decoded: string }> = {
-  declare: (): string => `
+const normalEncode = createSingletonFunction<{ decoded: string }>(
+  shader`\
 vec2 normalEncode(in vec3 decoded) {
   // Spheremap transform
   // See: https://aras-p.info/texts/CompactNormalStorage.html#method03spherical
   return normalize(decoded.xy) * sqrt(-decoded.z * 0.5 + 0.5) * 0.5 + 0.5;
 }`,
 
-  invoke: ({ decoded }): string => `normalEncode(${decoded})`,
-};
+  ({ decoded }) => `normalEncode(${decoded})`,
+);
 
-const normalPerturb: GlShaderFunction<
-  {},
-  { coordinate: string; sampler: string; tbn: string }
-> = {
-  declare: (): string => `
+const normalPerturb = createSingletonFunction<{
+  coordinate: string;
+  sampler: string;
+  tbn: string;
+}>(
+  shader`\
 vec3 normalPerturb(in sampler2D sampler, in vec2 coordinate, in mat3 tbn) {
   vec3 normal = 2.0 * texture(sampler, coordinate).rgb - 1.0;
 
   return normalize(tbn * normal);
 }`,
 
-  invoke: ({ coordinate, sampler, tbn }): string =>
+  ({ coordinate, sampler, tbn }) =>
     `normalPerturb(${sampler}, ${coordinate}, ${tbn})`,
-};
+);
 
 export { normalDecode, normalEncode, normalPerturb };

@@ -21,6 +21,7 @@ import {
   GlShaderAttribute,
   GlShaderSource,
   createAttribute,
+  shader,
   uniform,
 } from "./shader";
 import { GlTexture } from "./texture";
@@ -94,7 +95,7 @@ type SceneState = ParticleScene & {
 };
 
 const particleSource: GlShaderSource = {
-  vertex: `
+  vertex: shader`\
 uniform mat4 billboardMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -116,7 +117,7 @@ void main(void) {
       projectionMatrix * viewMatrix * vec4(particlePosition, 1.0);
 }`,
 
-  fragment: `
+  fragment: shader`\
 uniform sampler2D sprite;
 
 in vec2 coordinate;

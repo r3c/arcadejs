@@ -1,5 +1,5 @@
 import { Releasable } from "../../io/resource";
-import { range } from "../../language/iterable";
+import { createHashLookup } from "../../language/lookup";
 import { Matrix3, Matrix4 } from "../../math/matrix";
 import { Vector2, Vector3, Vector4 } from "../../math/vector";
 import { GlBuffer, GlContext } from "./resource";
@@ -37,19 +37,45 @@ type GlShaderFallback = {
   quadWhite: GlTexture;
 };
 
-type GlShaderFunction<
-  TDeclare extends Record<string, unknown>,
-  TInvoke extends Record<string, string>,
-> = {
-  declare: (parameters: TDeclare) => string;
-  invoke: (parameters: TInvoke) => string;
+/**
+ * Language-level invokable function.
+ */
+type GlShaderFunction<TInvoke> = (invoke: TInvoke) => GlShaderSnippet;
+
+/**
+ * Language-level source code reference within another source code element.
+ */
+type GlShaderRequire = {
+  source: string;
+  symbol: Symbol;
 };
 
+/**
+ * Language-level compilable source code.
+ */
+type GlShaderSnippet = {
+  requires: readonly GlShaderRequire[];
+  source: string;
+};
+
+/**
+ * Language-level program input with sources for each pipeline stage.
+ */
 type GlShaderSource = {
-  fragment: string;
-  vertex: string;
+  fragment: GlShaderSnippet;
+  vertex: GlShaderSnippet;
 };
 
+/**
+ * Language-level function template, create functions based on some compile-time arguments.
+ */
+type GlShaderTemplate<TDeclare, TInvoke> = (
+  declare: TDeclare,
+) => GlShaderFunction<TInvoke>;
+
+/**
+ * Program-level uniform accessor.
+ */
 type GlShaderUniform<TState, TValue, TUniform> = {
   allocateTexture: boolean;
   allocateValue: (gl: GlContext) => TValue;
@@ -65,6 +91,11 @@ type GlShaderUniform<TState, TValue, TUniform> = {
     textureIndex: number,
   ) => void;
 };
+
+/**
+ * Language-level element that can be embedded inside a snippet.
+ */
+type GlShaderVariable = GlShaderSnippet | number | string;
 
 const compileShader = (
   gl: GlContext,
@@ -134,10 +165,10 @@ const createShader = (
   }
 
   try {
-    const fragmentSource = shaderHeader + source.fragment;
+    const fragmentSource = shaderHeader + expandSnippet(source.fragment);
     const fragment = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
 
-    const vertexSource = shaderHeader + source.vertex;
+    const vertexSource = shaderHeader + expandSnippet(source.vertex);
     const vertex = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
 
     gl.attachShader(program, fragment);
@@ -242,7 +273,110 @@ const createShader = (
   };
 };
 
-const shaderCase = <T>(value: T, ...cases: [T, string][]): string => {
+/**
+ * Create a singleton shader function with no declaration parameter that can be
+ * directly invoked.
+ */
+const createSingletonFunction = <TInvoke>(
+  require: GlShaderSnippet,
+  invocation: (invoke: TInvoke) => string,
+): GlShaderFunction<TInvoke> => {
+  const requires = [
+    ...require.requires,
+    { source: require.source, symbol: Symbol() },
+  ];
+
+  return (invoke) => ({ requires, source: invocation(invoke) });
+};
+
+/**
+ * Create a shader function that can be instanciated multiple times with
+ * different declared parameters, each creating a unique function.
+ */
+const createUniqueTemplate = <TDeclare, TInvoke>(
+  template: (
+    declare: TDeclare,
+    unique: string,
+  ) => (invoke: TInvoke) => {
+    require: GlShaderSnippet;
+    source: GlShaderSnippet;
+  },
+): GlShaderTemplate<TDeclare, TInvoke> => {
+  const lookup = createHashLookup<
+    TDeclare,
+    { symbol: Symbol; unique: string }
+  >();
+
+  let counter = 0;
+
+  return (declare) => {
+    const { symbol, unique } = lookup.getOrSet(declare, () => ({
+      symbol: Symbol(),
+      unique: `${counter++}`,
+    }));
+
+    const invocation = template(declare, unique);
+
+    return (invoke) => {
+      const { require, source } = invocation(invoke);
+
+      return {
+        requires: [
+          ...require.requires,
+          ...source.requires,
+          { source: require.source, symbol },
+        ],
+        source: source.source,
+      };
+    };
+  };
+};
+
+const expandSnippet = (snippet: GlShaderSnippet): string => {
+  return [...snippet.requires.map(({ source }) => source), snippet.source].join(
+    "\n",
+  );
+};
+
+const shader = (
+  strings: TemplateStringsArray,
+  ...variables: GlShaderVariable[]
+): GlShaderSnippet => {
+  const requires: GlShaderRequire[] = [];
+  const symbols: Set<Symbol> = new Set();
+
+  let source = "";
+
+  for (let i = 0; i < variables.length; ++i) {
+    const variable = variables[i];
+
+    let append: string;
+
+    if (typeof variable === "number" || typeof variable === "string") {
+      append = `${variable}`;
+    } else {
+      for (const require of variable.requires) {
+        if (!symbols.has(require.symbol)) {
+          requires.push(require);
+          symbols.add(require.symbol);
+        }
+      }
+
+      append = variable.source;
+    }
+
+    source += strings[i] + append;
+  }
+
+  source += strings[strings.length - 1];
+
+  return { requires, source };
+};
+
+const shaderCase = <TKey>(
+  value: TKey,
+  ...cases: [TKey, GlShaderVariable][]
+): GlShaderVariable => {
   const match = cases.find(([comparand]) => comparand === value);
 
   if (match !== undefined) {
@@ -252,16 +386,26 @@ const shaderCase = <T>(value: T, ...cases: [T, string][]): string => {
   throw new Error(`no case found matching ${value}`);
 };
 
-const shaderLoop = (count: number, body: (i: number) => string): string =>
-  range(count)
-    .map((i) => `{ ${body(i)} }`)
-    .join("\n");
+const shaderLoop = (
+  count: number,
+  body: (i: number) => GlShaderVariable,
+): GlShaderVariable => {
+  let output = shader``;
+  let split = "";
+
+  for (let i = 0; i < count; ++i) {
+    output = shader`${output}${split}{ ${body(i)} }`;
+    split = "\n";
+  }
+
+  return output;
+};
 
 const shaderWhen = (
   condition: boolean,
-  whenTrue: string,
-  whenFalse?: string,
-): string => (condition ? whenTrue : (whenFalse ?? ""));
+  whenTrue: GlShaderVariable,
+  whenFalse?: GlShaderVariable,
+): GlShaderVariable => (condition ? whenTrue : (whenFalse ?? shader``));
 
 const textureUniform = <TState>(
   getter: (state: TState, fallback: GlShaderFallback) => GlTexture,
@@ -411,20 +555,28 @@ const uniform = {
   }),
 };
 
-const shaderHeader =
-  "#version 300 es\n" +
-  "#ifdef GL_ES\n" +
-  "precision highp float;\n" +
-  "#endif\n";
+const shaderHeader = `\
+#version 300 es
+#ifdef GL_ES
+precision highp float;
+#endif
+`;
 
 export {
   type GlShader,
   type GlShaderAttribute,
   type GlShaderBinding,
   type GlShaderFunction,
+  type GlShaderSnippet,
+  type GlShaderTemplate,
   type GlShaderSource,
+  type GlShaderVariable,
   createAttribute,
   createShader,
+  createSingletonFunction,
+  createUniqueTemplate,
+  expandSnippet,
+  shader,
   shaderCase,
   shaderLoop,
   shaderWhen,

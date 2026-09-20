@@ -16,6 +16,7 @@ import {
   GlShaderBinding,
   GlShaderSource,
   createAttribute,
+  shader,
   uniform,
 } from "../webgl/shader";
 import { Renderer } from "./definition";
@@ -166,7 +167,7 @@ const extractLines = (
 };
 
 const wireSource: GlShaderSource = {
-  vertex: `
+  vertex: shader`\
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -185,7 +186,7 @@ void main(void) {
   gl_Position = projectionMatrix * pointCamera;
 }`,
 
-  fragment: `
+  fragment: shader`\
 in vec3 lineTint;
 
 layout(location=0) out vec4 fragColor;

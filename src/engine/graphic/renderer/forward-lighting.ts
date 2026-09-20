@@ -3,20 +3,20 @@ import { range } from "../../language/iterable";
 import {
   DirectionalLight,
   PointLight,
-  directionalLight,
-  directionalLightType,
-  pointLight,
-  pointLightType,
+  directionalLightCreateTemplate,
+  directionalLightTypeTemplate,
+  pointLightCreateTemplate,
+  pointLightTypeTemplate,
   resultLightType,
 } from "../webgl/shaders/light";
 import { materialSample, materialType } from "../webgl/shaders/material";
 import { Matrix4 } from "../../math/matrix";
 import { normalPerturb } from "../webgl/shaders/normal";
 import { parallaxPerturb } from "../webgl/shaders/parallax";
-import { pbrEnvironment, pbrLight } from "../webgl/shaders/pbr";
+import { pbrEnvironmentTemplate, pbrLight } from "../webgl/shaders/pbr";
 import {
-  phongLightApply,
-  phongLightCast,
+  phongLightApplyTemplate,
+  phongLightCastTemplate,
   phongLightType,
   PhongLightVariant,
 } from "../webgl/shaders/phong";
@@ -35,6 +35,7 @@ import {
   uniform,
   GlShaderSource,
   shaderLoop,
+  shader,
 } from "../webgl/shader";
 import { GlMaterial, GlMesh, GlPolygon } from "../webgl/model";
 import { GlTexture } from "../webgl/texture";
@@ -173,13 +174,28 @@ const createLightSource = (
   directive: Directive,
   feature: GlMaterialFlag,
 ): GlShaderSource => {
+  const hasShadow = directive.hasShadow;
   const maxDirectionalLights = Math.max(directive.maxDirectionalLights, 1);
   const maxPointLights = Math.max(directive.maxPointLights, 1);
+  const directionalLightCreate = directionalLightCreateTemplate({ hasShadow });
+  const directionalLightType = directionalLightTypeTemplate({ hasShadow });
+  const pointLightCreate = pointLightCreateTemplate({ hasShadow });
+  const pointLightType = pointLightTypeTemplate({ hasShadow });
 
-  const header = `
-${directionalLight.declare(directive)}
-${pointLight.declare(directive)}
+  const pbrEnvironment = pbrEnvironmentTemplate({
+    environment: directive.lightModelPhysicalIBL,
+  });
 
+  const phongLightApply = phongLightApplyTemplate({
+    diffuse: directive.lightModelPhongDiffuse,
+    specular: directive.lightModelPhongSpecular,
+  });
+
+  const phongLightCast = phongLightCastTemplate({
+    variant: directive.lightModelPhongVariant,
+  });
+
+  const header = shader`\
 const mat4 texUnitConverter = mat4(
   0.5, 0.0, 0.0, 0.0,
   0.0, 0.5, 0.0, 0.0,
@@ -193,8 +209,8 @@ const float pointShadowBias = 0.005;
 uniform vec3 ambientLightColor;
 
 // Force length >= 1 to avoid precompilation checks, removed by compiler when unused
-uniform ${directionalLightType} directionalLights[${maxDirectionalLights}];
-uniform ${pointLightType} pointLights[${maxPointLights}];
+uniform ${directionalLightType()} directionalLights[${maxDirectionalLights}];
+uniform ${pointLightType()} pointLights[${maxPointLights}];
 
 // FIXME: adding shadowMap as field to {directional,point}Light structures doesn't work for some reason
 uniform sampler2D directionalLightShadowMaps[${maxDirectionalLights}];
@@ -202,7 +218,7 @@ uniform samplerCube pointLightShadowMaps[${maxPointLights}];
 `;
 
   return {
-    vertex: `
+    vertex: shader`\
 ${header}
 
 uniform mat4 modelMatrix;
@@ -246,7 +262,7 @@ void main(void) {
   for (int i = 0; i < ${directive.maxDirectionalLights}; ++i) {
     ${shaderWhen(
       directive.hasShadow,
-      `
+      `\
     if (directionalLights[i].castShadow) {
       vec4 pointShadow = texUnitConverter * shadowProjectionMatrix * directionalLights[i].shadowViewMatrix * pointWorld;
 
@@ -290,7 +306,7 @@ void main(void) {
   gl_Position = projectionMatrix * pointCamera;
 }`,
 
-    fragment: `
+    fragment: shader`\
 ${header}
 
 uniform vec4 diffuseColor;
@@ -315,33 +331,6 @@ uniform sampler2D environmentBrdfMap;
 uniform samplerCube environmentDiffuseMap;
 uniform samplerCube environmentSpecularMap;
 
-${linearToStandard.declare({})}
-${standardToLinear.declare({})}
-${materialSample.declare({})}
-${normalPerturb.declare({})}
-${parallaxPerturb.declare({})}
-
-${shaderCase(
-  directive.lightModel,
-  [
-    ForwardLightingLightModel.Phong,
-    `
-${phongLightApply.declare({
-  diffuse: directive.lightModelPhongDiffuse,
-  specular: directive.lightModelPhongSpecular,
-})}
-${phongLightCast.declare({ variant: directive.lightModelPhongVariant })}`,
-  ],
-  [
-    ForwardLightingLightModel.Physical,
-    `
-${pbrEnvironment.declare({
-  environment: directive.lightModelPhysicalIBL,
-})}
-${pbrLight.declare({})}`,
-  ],
-)}
-
 in vec3 bitangent;
 in vec2 coordinate;
 in vec3 eye;
@@ -356,20 +345,20 @@ in vec3 pointLightDistances[${maxPointLights}];
 
 layout(location=0) out vec4 fragColor;
 
-vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 normal, in vec3 eyeDirection) {
+vec3 getLight(in ${resultLightType()} light, in ${materialType()} material, in vec3 normal, in vec3 eyeDirection) {
   ${shaderCase(
     directive.lightModel,
     [
       ForwardLightingLightModel.Phong,
-      `
-  ${phongLightType} phongLight = ${phongLightCast.invoke({
+      shader`\
+  ${phongLightType()} phongLight = ${phongLightCast({
     eye: "eyeDirection",
     light: "light",
     normal: "normal",
     shininess: "material.shininess",
   })};
 
-  return ${phongLightApply.invoke({
+  return ${phongLightApply({
     lightCast: "phongLight",
     diffuseColor: "material.diffuseColor.rgb",
     specularColor: "material.specularColor.rgb",
@@ -377,8 +366,8 @@ vec3 getLight(in ${resultLightType} light, in ${materialType} material, in vec3 
     ],
     [
       ForwardLightingLightModel.Physical,
-      `
-  return ${pbrLight.invoke({
+      shader`\
+  return ${pbrLight({
     eyeDirection: "eyeDirection",
     light: "light",
     material: "material",
@@ -393,7 +382,7 @@ void main(void) {
   mat3 tbn = mat3(tangent, bitangent, normal);
 
   vec3 eyeDirection = normalize(eye);
-  vec2 coordinateParallax = ${parallaxPerturb.invoke({
+  vec2 coordinateParallax = ${parallaxPerturb({
     coordinate: "coordinate",
     eyeDirection: "eyeDirection",
     parallaxScale: "heightParallaxScale",
@@ -401,13 +390,13 @@ void main(void) {
     sampler: "heightMap",
     tbn: "tbn",
   })};
-  vec3 modifiedNormal = ${normalPerturb.invoke({
+  vec3 modifiedNormal = ${normalPerturb({
     coordinate: "coordinateParallax",
     sampler: "normalMap",
     tbn: "tbn",
   })};
 
-  ${materialType} material = ${materialSample.invoke({
+  ${materialType()} material = ${materialSample({
     coordinate: "coordinateParallax",
     diffuseColor: "diffuseColor * tint",
     diffuseMap: "diffuseMap",
@@ -425,7 +414,8 @@ void main(void) {
     directive.lightModel,
     [
       ForwardLightingLightModel.Phong,
-      `material.diffuseColor.rgb * ambientLightColor * ${shaderWhen(
+      shader`\
+      material.diffuseColor.rgb * ambientLightColor * ${shaderWhen(
         directive.lightModelPhongAmbient,
         "1.0",
         "0.0",
@@ -433,7 +423,8 @@ void main(void) {
     ],
     [
       ForwardLightingLightModel.Physical,
-      `${pbrEnvironment.invoke({
+      shader`\
+      ${pbrEnvironment({
         environmentBrdfMap: "environmentBrdfMap",
         environmentDiffuseMap: "environmentDiffuseMap",
         environmentSpecularMap: "environmentSpecularMap",
@@ -451,7 +442,7 @@ void main(void) {
   // Apply components from directional lights
   ${shaderLoop(
     directive.maxDirectionalLights,
-    (i) => `
+    (i) => shader`\
   bool directionalLightApply;
 
   ${shaderWhen(
@@ -464,7 +455,7 @@ void main(void) {
   )}
 
   if (directionalLightApply) {
-    ${resultLightType} directionalLight = ${directionalLight.invoke({
+    ${resultLightType()} directionalLight = ${directionalLightCreate({
       light: `directionalLights[${i}]`,
       distanceCamera: `directionalLightDistances[${i}]`,
     })};
@@ -476,7 +467,7 @@ void main(void) {
   // Apply components from point lights
   ${shaderLoop(
     directive.maxPointLights,
-    (i) => `
+    (i) => shader`\
   bool pointLightApply;
 
   ${shaderWhen(
@@ -492,7 +483,7 @@ void main(void) {
   )}
 
   if (pointLightApply) {
-    ${resultLightType} pointLight = ${pointLight.invoke({
+    ${resultLightType()} pointLight = ${pointLightCreate({
       light: `pointLights[${i}]`,
       distanceCamera: `pointLightDistances[${i}]`,
     })};
@@ -505,17 +496,17 @@ void main(void) {
   color = mix(color, color * texture(occlusionMap, coordinateParallax).r, occlusionStrength);
 
   // Apply emissive component
-  color += emissiveColor.rgb * ${standardToLinear.invoke({
+  color += emissiveColor.rgb * ${standardToLinear({
     standard: "texture(emissiveMap, coordinateParallax).rgb",
   })};
 
-  fragColor = vec4(${linearToStandard.invoke({ linear: "color" })}, 1.0);
+  fragColor = vec4(${linearToStandard({ linear: "color" })}, 1.0);
 }`,
   };
 };
 
 const createShadowDirectionalSource = (): GlShaderSource => ({
-  vertex: `
+  vertex: shader`\
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -526,7 +517,7 @@ void main(void) {
   gl_Position = projectionMatrix * viewMatrix * modelMatrix * positions;
 }`,
 
-  fragment: `
+  fragment: shader`\
 layout(location=0) out vec4 fragColor;
 
 void main(void) {
@@ -535,7 +526,7 @@ void main(void) {
 });
 
 const createShadowPointSource = (): GlShaderSource => ({
-  vertex: `
+  vertex: shader`\
 uniform mat4 modelMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -552,7 +543,7 @@ void main(void) {
   gl_Position = projectionMatrix * viewMatrix * pointWorld;
 }`,
 
-  fragment: `
+  fragment: shader`\
 uniform vec3 lightPosition;
 uniform float lightRadius;
 

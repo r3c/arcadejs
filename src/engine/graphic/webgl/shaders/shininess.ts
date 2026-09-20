@@ -1,21 +1,19 @@
-import { GlShaderFunction } from "../shader";
+import { createSingletonFunction, shader } from "../shader";
 
-const shininessDecode: GlShaderFunction<{}, { encoded: string }> = {
-  declare: (): string => `
+const shininessDecode = createSingletonFunction<{ encoded: string }>(
+  shader`\
 float shininessDecode(in float encoded) {
   return 1.0 / encoded - 1.0;
 }`,
+  ({ encoded }) => `shininessDecode(${encoded})`,
+);
 
-  invoke: ({ encoded }): string => `shininessDecode(${encoded})`,
-};
-
-const shininessEncode: GlShaderFunction<{}, { decoded: string }> = {
-  declare: (): string => `
+const shininessEncode = createSingletonFunction<{ decoded: string }>(
+  shader`\
 float shininessEncode(in float decoded) {
   return 1.0 / (max(decoded, 0.0) + 1.0);
 }`,
-
-  invoke: ({ decoded }): string => `shininessEncode(${decoded})`,
-};
+  ({ decoded }) => `shininessEncode(${decoded})`,
+);
 
 export { shininessDecode, shininessEncode };
