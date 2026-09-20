@@ -1,5 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { getHashCode, isEqual } from "./dynamic";
+import { createHashLookup, getHashCode, isEqual } from "./lookup";
+
+describe("createHashLookup", () => {
+  it("should get and set values", () => {
+    const lookup = createHashLookup<{ a: number; b: string }, string>();
+
+    expect(lookup.getOrElse({ a: 1, b: "one" }, "none")).toEqual("none");
+    expect(lookup.getOrElse({ a: 1, b: "two" }, "none")).toEqual("none");
+    expect(lookup.getOrElse({ a: 2, b: "one" }, "none")).toEqual("none");
+
+    expect(lookup.getOrSet({ a: 1, b: "one" }, () => "1-one")).toEqual("1-one");
+
+    expect(lookup.getOrElse({ a: 1, b: "one" }, "1-one")).toEqual("1-one");
+    expect(lookup.getOrElse({ a: 1, b: "two" }, "none")).toEqual("none");
+    expect(lookup.getOrElse({ a: 2, b: "one" }, "none")).toEqual("none");
+
+    lookup.set({ a: 1, b: "one" }, "1-one-2");
+    lookup.set({ a: 2, b: "one" }, "2-one");
+
+    expect(lookup.getOrElse({ a: 1, b: "one" }, "1-one")).toEqual("1-one-2");
+    expect(lookup.getOrElse({ a: 1, b: "two" }, "none")).toEqual("none");
+    expect(lookup.getOrElse({ a: 2, b: "one" }, "none")).toEqual("2-one");
+  });
+});
 
 describe("getHashCode", () => {
   const functionValue = function () {};
