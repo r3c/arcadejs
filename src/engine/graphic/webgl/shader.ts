@@ -40,7 +40,17 @@ type GlShaderFallback = {
 /**
  * Language-level invokable function.
  */
-type GlShaderFunction<TInvoke> = (invoke: TInvoke) => GlShaderSnippet;
+type GlShaderFunction<TInvoke extends unknown[]> = (
+  ...invoke: TInvoke
+) => GlShaderSnippet;
+
+/**
+ * Language-level function template, create functions based on some compile-time arguments.
+ */
+type GlShaderFunctionTemplate<
+  TInstance extends unknown[],
+  TInvoke extends unknown[],
+> = (...instance: TInstance) => GlShaderFunction<TInvoke>;
 
 /**
  * Language-level source code reference within another source code element.
@@ -65,13 +75,6 @@ type GlShaderSource = {
   fragment: GlShaderSnippet;
   vertex: GlShaderSnippet;
 };
-
-/**
- * Language-level function template, create functions based on some compile-time arguments.
- */
-type GlShaderTemplate<TDeclare, TInvoke> = (
-  declare: TDeclare,
-) => GlShaderFunction<TInvoke>;
 
 /**
  * Program-level uniform accessor.
@@ -277,48 +280,48 @@ const createShader = (
  * Create a singleton shader function with no declaration parameter that can be
  * directly invoked.
  */
-const createSingletonFunction = <TInvoke>(
+const createSingletonFunction = <TInvoke extends unknown[]>(
   require: GlShaderSnippet,
-  invocation: (invoke: TInvoke) => string,
+  invocation: (...invoke: TInvoke) => string,
 ): GlShaderFunction<TInvoke> => {
   const requires = [
     ...require.requires,
     { source: require.source, symbol: Symbol() },
   ];
 
-  return (invoke) => ({ requires, source: invocation(invoke) });
+  return (...invoke) => ({ requires, source: invocation(...invoke) });
 };
 
 /**
- * Create a shader function that can be instanciated multiple times with
- * different declared parameters, each creating a unique function.
+ * Create a shader function template instanciating unique functions depending on
+ * instanciation parameters, each creating a unique function.
  */
-const createUniqueTemplate = <TDeclare, TInvoke>(
+const createUniqueFunctionTemplate = <
+  TInstance extends unknown[],
+  TInvoke extends unknown[],
+>(
   template: (
-    declare: TDeclare,
     unique: string,
-  ) => (invoke: TInvoke) => {
+    ...instance: TInstance
+  ) => (...invoke: TInvoke) => {
     require: GlShaderSnippet;
     source: GlShaderSnippet;
   },
-): GlShaderTemplate<TDeclare, TInvoke> => {
-  const lookup = createHashLookup<
-    TDeclare,
-    { symbol: Symbol; unique: string }
-  >();
+): GlShaderFunctionTemplate<TInstance, TInvoke> => {
+  const lookup = createHashLookup<TInstance, [Symbol, string]>();
 
   let counter = 0;
 
-  return (declare) => {
-    const { symbol, unique } = lookup.getOrSet(declare, () => ({
-      symbol: Symbol(),
-      unique: `${counter++}`,
-    }));
+  return (...instance) => {
+    const [symbol, unique] = lookup.getOrSet(instance, () => [
+      Symbol(),
+      `${counter++}`,
+    ]);
 
-    const invocation = template(declare, unique);
+    const invocation = template(unique, ...instance);
 
-    return (invoke) => {
-      const { require, source } = invocation(invoke);
+    return (...invoke) => {
+      const { require, source } = invocation(...invoke);
 
       return {
         requires: [
@@ -567,14 +570,14 @@ export {
   type GlShaderAttribute,
   type GlShaderBinding,
   type GlShaderFunction,
+  type GlShaderFunctionTemplate,
   type GlShaderSnippet,
-  type GlShaderTemplate,
   type GlShaderSource,
   type GlShaderVariable,
   createAttribute,
   createShader,
   createSingletonFunction,
-  createUniqueTemplate,
+  createUniqueFunctionTemplate,
   expandSnippet,
   shader,
   shaderCase,

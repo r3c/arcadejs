@@ -3,7 +3,7 @@ import {
   shaderWhen,
   shaderCase,
   createSingletonFunction,
-  createUniqueTemplate,
+  createUniqueFunctionTemplate,
   shader,
 } from "../shader";
 
@@ -13,7 +13,7 @@ const enum PhongLightVariant {
 }
 
 const phongLightTypeName = "PhongLight";
-const phongLightType = createSingletonFunction<void>(
+const phongLightType = createSingletonFunction<[]>(
   shader`\
 struct ${phongLightTypeName} {
   vec3 color;
@@ -23,12 +23,14 @@ struct ${phongLightTypeName} {
   () => phongLightTypeName,
 );
 
-const phongLightApplyTemplate = createUniqueTemplate<
-  { diffuse: boolean; specular: boolean },
-  { lightCast: string; diffuseColor: string; specularColor: string }
->(({ diffuse, specular }) => ({ lightCast, diffuseColor, specularColor }) => ({
-  require: shader`\
-vec3 phongLightApply(in ${phongLightType()} lightCast, in vec3 diffuseColor, in vec3 specularColor) {
+const phongLightApplyTemplate = createUniqueFunctionTemplate<
+  [{ diffuse: boolean; specular: boolean }],
+  [{ lightCast: string; diffuseColor: string; specularColor: string }]
+>(
+  (unique, { diffuse, specular }) =>
+    ({ lightCast, diffuseColor, specularColor }) => ({
+      require: shader`\
+vec3 phongLightApply_${unique}(in ${phongLightType()} lightCast, in vec3 diffuseColor, in vec3 specularColor) {
   float diffuse = ${shaderWhen(diffuse, "1.0", "0.0")};
   float specular = ${shaderWhen(specular, "1.0", "0.0")};
 
@@ -37,21 +39,22 @@ vec3 phongLightApply(in ${phongLightType()} lightCast, in vec3 diffuseColor, in 
     lightCast.specularStrength * lightCast.color * specularColor * specular;
 }`,
 
-  source: shader`phongLightApply(${lightCast}, ${diffuseColor}, ${specularColor})`,
-}));
+      source: shader`phongLightApply_${unique}(${lightCast}, ${diffuseColor}, ${specularColor})`,
+    }),
+);
 
-const phongLightCastTemplate = createUniqueTemplate<
-  { variant: PhongLightVariant },
-  { light: string; shininess: string; normal: string; eye: string }
->(({ variant }) => ({ light, shininess, normal, eye }) => ({
+const phongLightCastTemplate = createUniqueFunctionTemplate<
+  [{ variant: PhongLightVariant }],
+  [{ light: string; shininess: string; normal: string; eye: string }]
+>((unique, { variant }) => ({ light, shininess, normal, eye }) => ({
   require: shader`\
-float phongLightDiffuseStrength(in ${resultLightType()} light, in vec3 normal) {
+float phongLightDiffuseStrength_${unique}(in ${resultLightType()} light, in vec3 normal) {
   float lightNormalCosine = dot(normal, light.direction);
 
   return clamp(lightNormalCosine, 0.0, 1.0);
 }
 
-float phongLightSpecularStrength(in ${resultLightType()} light, in float shininess, in vec3 normal, in vec3 eye) {
+float phongLightSpecularStrength_${unique}(in ${resultLightType()} light, in float shininess, in vec3 normal, in vec3 eye) {
   float lightNormalCosine = dot(normal, light.direction);
   float lightVisible = sqrt(max(lightNormalCosine, 0.0));
 
@@ -76,14 +79,14 @@ float phongLightSpecularStrength(in ${resultLightType()} light, in float shinine
   return pow(lightCosine, shininess) * lightVisible;
 }
 
-${phongLightType()} phongLightCast(in ${resultLightType()} light, in float shininess, in vec3 normal, in vec3 eye) {
-  float diffuseStrength = phongLightDiffuseStrength(light, normal);
-  float specularStrength = phongLightSpecularStrength(light, shininess, normal, eye);
+${phongLightType()} phongLightCast_${unique}(in ${resultLightType()} light, in float shininess, in vec3 normal, in vec3 eye) {
+  float diffuseStrength = phongLightDiffuseStrength_${unique}(light, normal);
+  float specularStrength = phongLightSpecularStrength_${unique}(light, shininess, normal, eye);
 
   return ${phongLightType()}(light.color, diffuseStrength * light.strength, specularStrength * light.strength);
 }`,
 
-  source: shader`phongLightCast(${light}, ${shininess}, ${normal}, ${eye})`,
+  source: shader`phongLightCast_${unique}(${light}, ${shininess}, ${normal}, ${eye})`,
 }));
 
 export {
