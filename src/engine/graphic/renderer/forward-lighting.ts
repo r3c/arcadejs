@@ -496,11 +496,9 @@ void main(void) {
   color = mix(color, color * texture(occlusionMap, coordinateParallax).r, occlusionStrength);
 
   // Apply emissive component
-  color += emissiveColor.rgb * ${standardToLinear({
-    standard: "texture(emissiveMap, coordinateParallax).rgb",
-  })};
+  color += emissiveColor.rgb * ${standardToLinear("texture(emissiveMap, coordinateParallax).rgb")};
 
-  fragColor = vec4(${linearToStandard({ linear: "color" })}, 1.0);
+  fragColor = vec4(${linearToStandard("color")}, 1.0);
 }`,
   };
 };

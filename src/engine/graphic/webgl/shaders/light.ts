@@ -2,7 +2,7 @@ import { Vector3 } from "../../../math/vector";
 import {
   shaderWhen,
   createSingletonFunction,
-  createUniqueTemplate,
+  createUniqueFunctionTemplate,
   shader,
 } from "../shader";
 
@@ -20,12 +20,12 @@ type PointLight = {
 };
 
 const directionalLightTypeName = "DirectionalLight";
-const directionalLightTypeTemplate = createUniqueTemplate<
-  { hasShadow: boolean },
-  void
->(({ hasShadow }) => () => ({
+const directionalLightTypeTemplate = createUniqueFunctionTemplate<
+  [{ hasShadow: boolean }],
+  []
+>((unique, { hasShadow }) => () => ({
   require: shader`\
-struct ${directionalLightTypeName} {
+struct ${directionalLightTypeName}_${unique} {
   vec3 color;
   vec3 direction;
 ${shaderWhen(
@@ -36,16 +36,16 @@ ${shaderWhen(
 )}
 };`,
 
-  source: shader`${directionalLightTypeName}`,
+  source: shader`${directionalLightTypeName}_${unique}`,
 }));
 
 const pointLightTypeName = "PointLight";
-const pointLightTypeTemplate = createUniqueTemplate<
-  { hasShadow: boolean },
-  void
->(({ hasShadow }) => () => ({
+const pointLightTypeTemplate = createUniqueFunctionTemplate<
+  [{ hasShadow: boolean }],
+  []
+>((unique, { hasShadow }) => () => ({
   require: shader`\
-struct ${pointLightTypeName} {
+struct ${pointLightTypeName}_${unique} {
   vec3 color;
   vec3 position;
   float radius;
@@ -55,11 +55,11 @@ ${shaderWhen(
   bool castShadow;`,
 )}
 };`,
-  source: shader`${pointLightTypeName}`,
+  source: shader`${pointLightTypeName}_${unique}`,
 }));
 
 const resultLightTypeName = "ResultLight";
-const resultLightType = createSingletonFunction<void>(
+const resultLightType = createSingletonFunction<[]>(
   shader`\
 struct ${resultLightTypeName} {
   vec3 color;
@@ -69,41 +69,41 @@ struct ${resultLightTypeName} {
   () => resultLightTypeName,
 );
 
-const directionalLightCreateTemplate = createUniqueTemplate<
-  { hasShadow: boolean },
-  { light: string; distanceCamera: string }
->((declare) => {
-  const directionalLightType = directionalLightTypeTemplate(declare);
+const directionalLightCreateTemplate = createUniqueFunctionTemplate<
+  [{ hasShadow: boolean }],
+  [{ light: string; distanceCamera: string }]
+>((unique, { hasShadow }) => {
+  const directionalLightType = directionalLightTypeTemplate({ hasShadow });
 
   return ({ light, distanceCamera }) => ({
     require: shader`\
-${resultLightType()} lightSourceDirectional(in ${directionalLightType()} light, in vec3 distanceCamera) {
+${resultLightType()} lightSourceDirectional_${unique}(in ${directionalLightType()} light, in vec3 distanceCamera) {
   return ${resultLightType()}(
     light.color,
     normalize(distanceCamera),
     1.0
   );
 }`,
-    source: shader`lightSourceDirectional(${light}, ${distanceCamera})`,
+    source: shader`lightSourceDirectional_${unique}(${light}, ${distanceCamera})`,
   });
 });
 
-const pointLightCreateTemplate = createUniqueTemplate<
-  { hasShadow: boolean },
-  { light: string; distanceCamera: string }
->((declare) => {
-  const pointLightType = pointLightTypeTemplate(declare);
+const pointLightCreateTemplate = createUniqueFunctionTemplate<
+  [{ hasShadow: boolean }],
+  [{ light: string; distanceCamera: string }]
+>((unique, { hasShadow }) => {
+  const pointLightType = pointLightTypeTemplate({ hasShadow });
 
   return ({ light, distanceCamera }) => ({
     require: shader`\
-${resultLightType()} lightSourcePoint(in ${pointLightType()} light, in vec3 distanceCamera) {
+${resultLightType()} lightSourcePoint_${unique}(in ${pointLightType()} light, in vec3 distanceCamera) {
   return ${resultLightType()}(
     light.color,
     normalize(distanceCamera),
     max(1.0 - length(distanceCamera) / light.radius, 0.0)
   );
 }`,
-    source: shader`lightSourcePoint(${light}, ${distanceCamera})`,
+    source: shader`lightSourcePoint_${unique}(${light}, ${distanceCamera})`,
   });
 });
 

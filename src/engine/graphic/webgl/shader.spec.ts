@@ -1,50 +1,59 @@
 import {
   createSingletonFunction,
-  createUniqueTemplate,
+  createUniqueFunctionTemplate,
   expandSnippet,
   shader,
 } from "./shader";
 import { describe, expect, it } from "vitest";
 
 describe("shader", () => {
-  it("should declare and invoke functions", () => {
-    const add = createUniqueTemplate<{ increment: number }, { x: number }>(
-      ({ increment }, unique) =>
-        ({ x }) => ({
-          require: shader`float add_${unique}(int float x) { return x + ${increment}; }`,
-          source: shader`add_${unique}(${x})`,
-        }),
+  it("should instanciate and invoke unique functions from template", () => {
+    const add = createUniqueFunctionTemplate<[number], [number]>(
+      (unique, increment) => (value) => ({
+        require: shader`float add_${unique}(int float value) { return value + ${increment}; }`,
+        source: shader`add_${unique}(${value})`,
+      }),
     );
 
-    const add1 = add({ increment: 1 });
-    const add2 = add({ increment: 2 });
-
-    const mul = createSingletonFunction<{ x: number; y: number }>(
-      shader`float mul(int float x, int float y) { return x + y; }`,
-      ({ x, y }) => `mul(${x}, ${y})`,
-    );
+    const add1 = add(1);
+    const add2 = add(2);
 
     const result = expandSnippet(shader`\
 /* ${"c1"} */
-${add1({ x: 1 })};
+${add1(1)};
 /* c2 */
-${add1({ x: 2 })};
+${add1(2)};
 /* c${3} */
-${mul({ x: 3, y: 4 })};
-/* c4 */
-${add2({ x: 5 })};`);
+${add2(5)};`);
 
     expect(result).toEqual(`\
-float add_0(int float x) { return x + 1; }
-float mul(int float x, int float y) { return x + y; }
-float add_1(int float x) { return x + 2; }
+float add_0(int float value) { return value + 1; }
+float add_1(int float value) { return value + 2; }
 /* c1 */
 add_0(1);
 /* c2 */
 add_0(2);
 /* c3 */
-mul(3, 4);
-/* c4 */
 add_1(5);`);
+  });
+
+  it("should declare and invoke singleton function", () => {
+    const mul = createSingletonFunction<[number, number]>(
+      shader`float mul(int float x, int float y) { return x + y; }`,
+      (x, y) => `mul(${x}, ${y})`,
+    );
+
+    const result = expandSnippet(shader`\
+/* ${"c1"} */
+${mul(1, 2)};
+/* c2 */
+${mul(3, 4)};`);
+
+    expect(result).toEqual(`\
+float mul(int float x, int float y) { return x + y; }
+/* c1 */
+mul(1, 2);
+/* c2 */
+mul(3, 4);`);
   });
 });

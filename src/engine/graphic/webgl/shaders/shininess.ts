@@ -1,19 +1,19 @@
 import { createSingletonFunction, shader } from "../shader";
 
-const shininessDecode = createSingletonFunction<{ encoded: string }>(
+const shininessDecode = createSingletonFunction<[string]>(
   shader`\
 float shininessDecode(in float encoded) {
   return 1.0 / encoded - 1.0;
 }`,
-  ({ encoded }) => `shininessDecode(${encoded})`,
+  (encoded) => `shininessDecode(${encoded})`,
 );
 
-const shininessEncode = createSingletonFunction<{ decoded: string }>(
+const shininessEncode = createSingletonFunction<[string]>(
   shader`\
 float shininessEncode(in float decoded) {
   return 1.0 / (max(decoded, 0.0) + 1.0);
 }`,
-  ({ decoded }) => `shininessEncode(${decoded})`,
+  (decoded) => `shininessEncode(${decoded})`,
 );
 
 export { shininessDecode, shininessEncode };

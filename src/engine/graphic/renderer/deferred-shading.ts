@@ -147,11 +147,9 @@ void main(void) {
 
   // Color target 1: [diffuse.rgb, shininess]
   vec4 diffuseSample = texture(diffuseMap, coordinateParallax);
-  vec3 diffuseLinear = ${standardToLinear({
-    standard: "diffuseSample.rgb",
-  })};
+  vec3 diffuseLinear = ${standardToLinear("diffuseSample.rgb")};
   vec3 diffuse = diffuseColor.rgb * diffuseLinear;
-  float shininessPack = ${shininessEncode({ decoded: "shininess" })};
+  float shininessPack = ${shininessEncode("shininess")};
 
   diffuseAndShininess = vec4(diffuse, shininessPack);
 
@@ -161,15 +159,11 @@ void main(void) {
     sampler: "normalMap",
     tbn: "tbn",
   })};
-  vec2 normalPack = ${normalEncode({ decoded: "normalModified" })};
+  vec2 normalPack = ${normalEncode("normalModified")};
 
   vec4 specularSample = texture(specularMap, coordinateParallax);
-  vec3 specularLinear = ${standardToLinear({
-    standard: "specularSample.rgb",
-  })};
-  float specular = ${luminance({
-    color: "specularColor.rgb * specularLinear",
-  })};
+  vec3 specularLinear = ${standardToLinear("specularSample.rgb")};
+  float specular = ${luminance("specularColor.rgb * specularLinear")};
 
   normalAndSpecular = vec4(normalPack, specular, 0.0);
 }`,
@@ -348,11 +342,9 @@ void main(void) {
 
   // Decode geometry and material properties from samples
   vec3 diffuseColor = diffuseAndShininessSample.rgb;
-  vec3 normal = ${normalDecode({
-    encoded: "normalAndSpecularSample.rg",
-  })};
+  vec3 normal = ${normalDecode("normalAndSpecularSample.rg")};
   vec3 specularColor = normalAndSpecularSample.bbb;
-  float shininess = ${shininessDecode({ encoded: "diffuseAndShininessSample.a" })};
+  float shininess = ${shininessDecode("diffuseAndShininessSample.a")};
 
   // Compute point in camera space from fragment coordinate and depth buffer
   vec3 point = getPoint(depthSample.r);
@@ -416,7 +408,7 @@ void main(void) {
   ivec2 bufferCoordinate = ivec2(gl_FragCoord.xy);
   vec3 scene = texelFetch(source, bufferCoordinate, 0).rgb;
 
-  fragColor = vec4(${linearToStandard({ linear: "scene" })}, 1.0);
+  fragColor = vec4(${linearToStandard("scene")}, 1.0);
 }`,
 });
 

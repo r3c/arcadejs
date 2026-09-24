@@ -3,7 +3,7 @@ import { materialType } from "./material";
 import { standardToLinear } from "./rgb";
 import {
   shaderWhen,
-  createUniqueTemplate,
+  createUniqueFunctionTemplate,
   shader,
   createSingletonFunction,
 } from "../shader";
@@ -11,18 +11,20 @@ import {
 // Heavily based on Khronos PBR in glTF 2.0 using WebGL:
 // https://github.com/KhronosGroup/glTF-WebGL-PBR
 
-const pbrEnvironmentTemplate = createUniqueTemplate<
-  { environment: boolean },
-  {
-    environmentBrdfMap: string;
-    environmentDiffuseMap: string;
-    environmentSpecularMap: string;
-    material: string;
-    normal: string;
-    eyeDirection: string;
-  }
+const pbrEnvironmentTemplate = createUniqueFunctionTemplate<
+  [{ environment: boolean }],
+  [
+    {
+      environmentBrdfMap: string;
+      environmentDiffuseMap: string;
+      environmentSpecularMap: string;
+      material: string;
+      normal: string;
+      eyeDirection: string;
+    },
+  ]
 >(
-  ({ environment }) =>
+  (unique, { environment }) =>
     ({
       environmentBrdfMap,
       environmentDiffuseMap,
@@ -37,27 +39,21 @@ const vec3 PBR_ENVIRONMENT_F0 = vec3(0.04);
 // Calculation of the lighting contribution from an optional Image Based Light source.
 // Precomputed Environment Maps are required uniform inputs and are computed as outlined in [1].
 // See our README.md on Environment Maps [3] for additional discussion.
-vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentDiffuseMap, in samplerCube environmentSpecularMap, in ${materialType()} material, in vec3 normal, in vec3 eyeDirection) {
+vec3 pbrEnvironment_${unique}(in sampler2D environmentBrdfMap, in samplerCube environmentDiffuseMap, in samplerCube environmentSpecularMap, in ${materialType()} material, in vec3 normal, in vec3 eyeDirection) {
   ${shaderWhen(
     environment,
     shader`\
   vec3 diffuseColor = material.diffuseColor.rgb * (vec3(1.0) - PBR_ENVIRONMENT_F0) * (1.0 - material.metalness);
   vec3 specularColor = mix(PBR_ENVIRONMENT_F0, material.diffuseColor.rgb, material.metalness);
 
-  vec3 diffuseLight = ${standardToLinear({
-    standard: `texture(environmentDiffuseMap, normal).rgb`,
-  })};
+  vec3 diffuseLight = ${standardToLinear("texture(environmentDiffuseMap, normal).rgb")};
   vec3 diffuse = diffuseLight * diffuseColor;
 
   float NdotV = abs(dot(normal, eyeDirection)) + 0.001;
-  vec3 brdf = ${standardToLinear({
-    standard: `texture(environmentBrdfMap, vec2(NdotV, 1.0 - material.roughness)).rgb`,
-  })};
+  vec3 brdf = ${standardToLinear("texture(environmentBrdfMap, vec2(NdotV, 1.0 - material.roughness)).rgb")};
   vec3 reflection = -normalize(reflect(eyeDirection, normal));
 
-  vec3 specularLight = ${standardToLinear({
-    standard: `texture(environmentSpecularMap, reflection).rgb`,
-  })};
+  vec3 specularLight = ${standardToLinear("texture(environmentSpecularMap, reflection).rgb")};
   vec3 specular = specularLight * (specularColor * brdf.x + brdf.y);
 
   return diffuse + specular;`,
@@ -66,16 +62,20 @@ vec3 pbrEnvironment(in sampler2D environmentBrdfMap, in samplerCube environmentD
   )}
 }`,
 
-      source: shader`pbrEnvironment(${environmentBrdfMap}, ${environmentDiffuseMap}, ${environmentSpecularMap}, ${material}, ${normal}, ${eyeDirection})`,
+      source: shader`pbrEnvironment_${unique}(${environmentBrdfMap}, ${environmentDiffuseMap}, ${environmentSpecularMap}, ${material}, ${normal}, ${eyeDirection})`,
     }),
 );
 
-const pbrLight = createSingletonFunction<{
-  light: string;
-  material: string;
-  normal: string;
-  eyeDirection: string;
-}>(
+const pbrLight = createSingletonFunction<
+  [
+    {
+      light: string;
+      material: string;
+      normal: string;
+      eyeDirection: string;
+    },
+  ]
+>(
   shader`\
 const vec3 PBR_F0 = vec3(0.04);
 const float PBR_PI = 3.141592653589793;

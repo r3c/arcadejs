@@ -162,21 +162,14 @@ void main(void) {
     [GlEncodingFormat.Identity, `encoded`],
     [
       GlEncodingFormat.LinearRGB,
-      `vec4(${linearToStandard({ linear: "encoded.rgb" })}, 1.0)`,
+      `vec4(${linearToStandard("encoded.rgb")}, 1.0)`,
     ],
     [GlEncodingFormat.Monochrome, `vec4(encoded.rrr, 1.0)`],
     [
       GlEncodingFormat.Depth,
-      `vec4(${linearDepth({
-        depth: "encoded.r",
-        zFar: `float(${configuration.zFar})`,
-        zNear: `float(${configuration.zNear})`,
-      })}, 1.0)`,
+      `vec4(${linearDepth("encoded.r", `float(${configuration.zNear})`, `float(${configuration.zFar})`)}, 1.0)`,
     ],
-    [
-      GlEncodingFormat.Spheremap,
-      `vec4(${normalDecode({ encoded: "encoded.rg" })}, 1.0)`,
-    ],
+    [GlEncodingFormat.Spheremap, `vec4(${normalDecode("encoded.rg")}, 1.0)`],
     [GlEncodingFormat.Log2RGB, `vec4(-log2(encoded.rgb), 1.0)`],
   )};
 }`,

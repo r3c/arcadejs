@@ -144,9 +144,9 @@ void main(void) {
     coordinate: "coordParallax",
     tbn: "tbn",
   })};
-  vec2 normalPack = ${normalEncode({ decoded: "normalModified" })};
+  vec2 normalPack = ${normalEncode("normalModified")};
 
-  float shininessPack = ${shininessEncode({ decoded: "shininess" })};
+  float shininessPack = ${shininessEncode("shininess")};
 
   normalAndGloss = vec4(normalPack, shininessPack, 0.0);
 }`,
@@ -271,10 +271,10 @@ void main(void) {
   vec4 depthSample = texelFetch(depthBuffer, bufferCoord, 0);
 
   // Decode geometry
-  vec3 normal = ${normalDecode({ encoded: "normalAndGlossSample.rg" })};
+  vec3 normal = ${normalDecode("normalAndGlossSample.rg")};
 
   // Decode material properties
-  float shininess = ${shininessDecode({ encoded: "normalAndGlossSample.b" })};
+  float shininess = ${shininessDecode("normalAndGlossSample.b")};
 
   // Compute point in camera space from fragment coordinate and depth buffer
   vec3 point = getPoint(gl_FragCoord.xy / viewportSize, depthSample.r);
@@ -314,7 +314,7 @@ ${shaderCase(
   // Note: specular light approximate using ony channel
   vec3 diffuseColor = phongLight.diffuseStrength * phongLight.color;
   vec3 specularColor = phongLight.specularStrength * phongLight.color;
-  float specularValue = ${luminance({ color: "specularColor" })};
+  float specularValue = ${luminance("specularColor")};
 
   fragColor = exp2(-vec4(diffuseColor, specularValue));
 }`,
@@ -393,15 +393,11 @@ void main(void) {
   })};
 
   vec4 diffuseSample = texture(diffuseMap, coordinateParallax);
-  vec3 diffuseLinear = ${standardToLinear({
-    standard: "diffuseSample.rgb",
-  })};
+  vec3 diffuseLinear = ${standardToLinear("diffuseSample.rgb")};
   vec3 diffuse = diffuseColor.rgb * diffuseLinear;
 
   vec4 specularSample = texture(specularMap, coordinateParallax);
-  vec3 specularLinear = ${standardToLinear({
-    standard: "specularSample.rgb",
-  })};
+  vec3 specularLinear = ${standardToLinear("specularSample.rgb")};
   vec3 specular = specularColor.rgb * specularLinear;
 
   // Emit final fragment color
@@ -426,7 +422,7 @@ void main(void) {
       "0.0",
     )};
 
-  fragColor = vec4(${linearToStandard({ linear: "color" })}, 1.0);
+  fragColor = vec4(${linearToStandard("color")}, 1.0);
 }`,
 });
 
