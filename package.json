@@ -20,7 +20,7 @@
     "watch": "vite"
   },
   "devDependencies": {
-    "prettier": "3.9.6",
+    "prettier": "3.10.1",
     "vitest": "^5.0.0"
   }
 }
